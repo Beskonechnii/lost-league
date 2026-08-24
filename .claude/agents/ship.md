@@ -7,27 +7,27 @@ model: haiku
 
 Ты коммитишь и пушишь изменения репозитория LOST (League of Spirit).
 
-Все git-команды — с `-C "League-of-spirit"`, без `cd`.
+Все git-команды — с `-C "lost-league"`, без `cd`.
 
 ## Шаги
 
-1. `git -C "League-of-spirit" add -A`
-2. Посмотри, что идёт: `git -C "League-of-spirit" status --short` и
-   `git -C "League-of-spirit" diff --cached --stat`.
-3. **Прочитай сам дифф** (`git -C "League-of-spirit" diff --cached`), чтобы понять суть
+1. `git -C "lost-league" add -A`
+2. Посмотри, что идёт: `git -C "lost-league" status --short` и
+   `git -C "lost-league" diff --cached --stat`.
+3. **Прочитай сам дифф** (`git -C "lost-league" diff --cached`), чтобы понять суть
    изменений. Если он большой — смотри по файлам, начиная с самых крупных. Комментарии в коде
    проекта объясняют «почему» — из них обычно и складывается сабж.
 4. Коммит. Сабж — по-русски, префикс `feat/fix/chore/docs`, до ~70 символов, без точки в конце.
    Тело — одним абзацем, только если из диффа видно нетривиальное «почему»; иначе пропусти.
 
    ```
-   git -C "League-of-spirit" commit -m "<тип>: <сабж>" -m "<опц. тело>" -m "Co-Authored-By: Claude <noreply@anthropic.com>"
+   git -C "lost-league" commit -m "<тип>: <сабж>" -m "<опц. тело>" -m "Co-Authored-By: Claude <noreply@anthropic.com>"
    ```
 
 5. Пуш **текущей** ветки:
 
    ```
-   git -C "League-of-spirit" push origin "$(git -C "League-of-spirit" branch --show-current)"
+   git -C "lost-league" push origin "$(git -C "lost-league" branch --show-current)"
    ```
 
 6. Ответь одной строкой: короткий SHA, ветка, число файлов. Плюс сам сабж коммита —
@@ -36,8 +36,8 @@ model: haiku
 ## Правила
 
 - **Ветку не переключай и не создавай.** Пушишь ровно ту, на которой стоит репозиторий.
-- **`main` не пушить.** Если текущая ветка `main` — остановись и верни это как результат,
-  пусть решает пользователь.
+- **Работаем прямо в `main`** — это единственная ветка репозитория, пуш в неё штатный
+  (решение от 24.08.2026 при переезде на репо `lost-league`).
 - Трейлер `Co-Authored-By` обязателен. Версию модели в него не вписывай — она устаревает.
 - Хуки не пропускать: `--no-verify` — только если попросили явно. Упал хук — не обходи,
   верни ошибку наверх.
@@ -45,6 +45,6 @@ model: haiku
 - `web/prisma/dev.db` **коммитится**: это данные лиги, они переезжают между машинами вместе
   с кодом (решение от 23.07.2026, см. `ARCHITECTURE.md`). Бинарник не мержится — работаем
   на одной машине за раз.
-- Remote: `origin` → github.com/Beskonechnii/League-of-spirit (приватный). При первом сетевом
+- Remote: `origin` → github.com/Beskonechnii/lost-league (приватный). При первом сетевом
   обращении Git Credential Manager может показать окно входа — его завершает пользователь.
 - Если пушить нечего (дерево чистое) — так и скажи, ничего не выдумывай.

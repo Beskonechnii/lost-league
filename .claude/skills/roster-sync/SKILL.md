@@ -6,7 +6,7 @@ description: Обновить ростер LOST из гугл-таблицы с�
 # roster-sync — составы и account_id из таблицы сезона
 
 Три шага одной командой: разбор таблицы → `data/roster.json` → БД. Всё идемпотентно, повторный прогон обновляет, а не дублирует.
-Все команды — из `D:/DEV/League-of-spirit/web`.
+Все команды — из `lost-league/web`.
 
 **Таблица сезона S2:** `1I5-x60vQUG0p8BhEQW0Ri8KWZ2PxQ8NOYJA9eKK15tU`
 (если пользователь дал другую ссылку — взять её id из `/spreadsheets/d/<id>/`).

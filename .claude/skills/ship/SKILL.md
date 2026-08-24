@@ -32,4 +32,4 @@ Agent(subagent_type: "ship", run_in_background: false,
 - Ветку сабагент не переключает: пушится та, на которой стоит репозиторий.
 - Упал хук — не обходить `--no-verify`, разбираться с причиной.
 - `web/prisma/dev.db` коммитится (данные лиги), `node_modules` / `.env` / `web/src/generated` — нет.
-- Remote: `origin` → github.com/Beskonechnii/League-of-spirit (приватный).
+- Remote: `origin` → github.com/Beskonechnii/lost-league (приватный).
