@@ -30,13 +30,16 @@ async function saveTp(id: number, tp: number): Promise<string | null> {
 // от сохранённого — так видно, что ещё не записано, и нельзя случайно перезаписать нулём.
 function TpRow({ row }: { row: Row }) {
   const [value, setValue] = useState(String(row.tp));
+  // Сохранённое значение держим локально: строка живёт дольше одного ответа сервера,
+  // а props мутировать нельзя.
+  const [saved, setSaved] = useState(row.tp);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
   const num = value.trim() === "" ? 0 : Number(value);
   const valid = Number.isInteger(num) && num >= 0;
-  const dirty = num !== row.tp;
+  const dirty = num !== saved;
 
   const save = async () => {
     if (!valid || !dirty) return;
@@ -45,7 +48,7 @@ function TpRow({ row }: { row: Row }) {
     const err = await saveTp(row.id, num);
     setBusy(false);
     if (err) return setError(err);
-    row.tp = num; // строка перемонтируется по key при refresh; локально сразу гасим «Сохранить»
+    setSaved(num); // локально сразу гасим «Сохранить»; сервер догонит на refresh
     setDone(true);
     setTimeout(() => setDone(false), 1500);
   };

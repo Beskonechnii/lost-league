@@ -7,27 +7,27 @@ model: haiku
 
 Ты коммитишь и пушишь изменения репозитория LOST (League of Spirit).
 
-Все git-команды — с `-C "lost-league"`, без `cd`.
+Все git-команды — из корня репозитория (рабочая папка сессии), без `cd`.
 
 ## Шаги
 
-1. `git -C "lost-league" add -A`
-2. Посмотри, что идёт: `git -C "lost-league" status --short` и
-   `git -C "lost-league" diff --cached --stat`.
-3. **Прочитай сам дифф** (`git -C "lost-league" diff --cached`), чтобы понять суть
+1. `git add -A`
+2. Посмотри, что идёт: `git status --short` и
+   `git diff --cached --stat`.
+3. **Прочитай сам дифф** (`git diff --cached`), чтобы понять суть
    изменений. Если он большой — смотри по файлам, начиная с самых крупных. Комментарии в коде
    проекта объясняют «почему» — из них обычно и складывается сабж.
 4. Коммит. Сабж — по-русски, префикс `feat/fix/chore/docs`, до ~70 символов, без точки в конце.
    Тело — одним абзацем, только если из диффа видно нетривиальное «почему»; иначе пропусти.
 
    ```
-   git -C "lost-league" commit -m "<тип>: <сабж>" -m "<опц. тело>" -m "Co-Authored-By: Claude <noreply@anthropic.com>"
+   git commit -m "<тип>: <сабж>" -m "<опц. тело>" -m "Co-Authored-By: Claude <noreply@anthropic.com>"
    ```
 
 5. Пуш **текущей** ветки:
 
    ```
-   git -C "lost-league" push origin "$(git -C "lost-league" branch --show-current)"
+   git push origin "$(git branch --show-current)"
    ```
 
 6. Ответь одной строкой: короткий SHA, ветка, число файлов. Плюс сам сабж коммита —
