@@ -209,7 +209,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
               {/* Ранг — из OpenDota при импорте состава, в отличие от MMR (его ставит оператор). */}
               {rankLabel(player.rank) && <Chip>{rankLabel(player.rank)}</Chip>}
               {player.tp > 0 && (
-                <Link href="/tp" className="rounded-pill bg-purple px-3 py-1 text-xs font-black text-[var(--on-accent)] cushion-control transition-transform hover:-translate-y-px">
+                <Link href={tournament ? `/tournaments/${tournament.slug}/tp` : "/tp"} className="rounded-pill bg-purple px-3 py-1 text-xs font-black text-[var(--on-accent)] cushion-control transition-transform hover:-translate-y-px">
                   {player.tp} TP
                 </Link>
               )}

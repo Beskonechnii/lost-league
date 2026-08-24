@@ -77,8 +77,7 @@ export function TournamentBar({
       label: "Ростер",
       active: pathname.startsWith(`${root}/roster`),
     },
-    // TP пока живёт по общему адресу; переезд под турнир — Э3 в NAV-PLAN.
-    { href: "/tp", label: "TP", active: pathname === "/tp" },
+    { href: `${root}/tp`, label: "TP", active: pathname === `${root}/tp` },
     { href: `${root}/about`, label: "О турнире", active: pathname === `${root}/about` },
   ];
 
