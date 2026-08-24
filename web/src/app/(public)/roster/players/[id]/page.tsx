@@ -10,9 +10,10 @@ import { rankLabel } from "@/lib/dota-rank";
 import { roleLabel } from "@/lib/roles";
 import { parseTags, tagLabel } from "@/lib/player-tags";
 import { can } from "@/lib/account";
-import { getDivisions } from "@/lib/tournaments";
+import { currentTournament, getDivisions } from "@/lib/tournaments";
 import { buttonClasses } from "@/components/pouf/Button";
 import { Eyebrow } from "@/app/_components/ui";
+import { Breadcrumbs } from "@/app/_components/breadcrumbs";
 import { PlayerAvatar, TeamLogo } from "../../_components/avatar";
 import { PlayerMiniCard } from "../../_components/player-card";
 
@@ -104,12 +105,13 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
   const player = await getPlayerProfile(id);
   if (!player) notFound();
   const pid = player.id;
-  const [authed, heroes, record, league, divisions] = await Promise.all([
+  const [authed, heroes, record, league, divisions, tournament] = await Promise.all([
     can("roster.edit"), // кнопка «Править» — ровно то право, что откроет саму страницу правки
     getPlayerHeroes(pid),
     getPlayerRecord(pid),
     getPlayerLeague(pid),
     getDivisions(), // дивизионы текущего турнира: по ним отделяем «сейчас» от истории
+    currentTournament(), // для крошек: витрина игроков живёт внутри турнира
   ]);
 
   // главное место — первое по порядку ролей: оно и задаёт цвет страницы, и рисуется в крошках
@@ -131,21 +133,19 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="space-y-6 font-pouf">
-      <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-muted">
-        <Link href="/roster/players" className="hover:text-[var(--purple)]">
-          Игроки
-        </Link>
-        {main && (
-          <>
-            <span className="text-ink-subtle">/</span>
-            <Link href={`/roster/teams/${main.team.id}`} className="hover:text-[var(--purple)]">
-              {main.team.name}
-            </Link>
-          </>
-        )}
-        <span className="text-ink-subtle">/</span>
-        <span className="text-ink-muted">{player.nickname}</span>
-      </div>
+      {/* Путь к карточке: турнир → витрина игроков → команда игрока. Ник не дублируем — он ниже, в H1. */}
+      <Breadcrumbs
+        items={[
+          { href: "/tournaments", label: "Турниры" },
+          ...(tournament
+            ? [
+                { href: `/tournaments/${tournament.slug}`, label: tournament.name },
+                { href: `/tournaments/${tournament.slug}/roster/players`, label: "Игроки" },
+              ]
+            : []),
+          ...(main ? [{ href: `/roster/teams/${main.team.id}`, label: main.team.name }] : []),
+        ]}
+      />
 
       {/* Шапка: цвет команды задаёт настроение страницы, лого уходит в подложку водяным знаком */}
       <section className="relative overflow-hidden rounded-card bg-surface cushion-card">

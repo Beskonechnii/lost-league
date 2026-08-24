@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Icon, TeamCrest } from "@/app/_components/postgame/blocks";
 import { Eyebrow } from "@/app/_components/ui";
-import { BackButton } from "@/app/_components/back-button";
+import { Breadcrumbs } from "@/app/_components/breadcrumbs";
 import { divisionWithTournament } from "@/lib/tournaments";
 import { getSeriesDetail, type GamePlayer, type SeriesDetail, type SeriesGameDetail } from "@/lib/series";
 import { playoffLabel, stageLabel } from "@/lib/stages";
@@ -161,16 +161,24 @@ export default async function SeriesPage({ params }: { params: Promise<{ slug: s
       {/* Уже, чем остальной сайт (SITE_MAX_W), намеренно: это читательская страница одной встречи —
           счёт и составы по карте. На всю ширину экрана строки состава растянулись бы некрасиво. */}
       <div className="mx-auto max-w-6xl space-y-4">
-        <BackButton fallback={divHref} />
+        {/* У встречи нет ни строки контекста турнира, ни подвкладок — путь показывают только крошки */}
+        <Breadcrumbs
+          items={[
+            { href: "/tournaments", label: "Турниры" },
+            ...(division
+              ? [
+                  { href: `/tournaments/${division.tournament.slug}`, label: division.tournament.name },
+                  { href: divHref, label: division.label ?? division.name },
+                ]
+              : []),
+          ]}
+        />
 
-        {/* Шапка встречи: крошки разреза + счёт серии одной карточкой с мягкой тенью */}
+        {/* Шапка встречи: разрез + счёт серии одной карточкой с мягкой тенью. Дивизион здесь больше
+            не повторяем — он стоит в крошках выше, а два одинаковых пути подряд читались как ошибка. */}
         <div className="overflow-hidden rounded-card bg-surface cushion-card">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-hairline bg-surface-2 px-4 py-2.5">
             <div className="flex flex-wrap items-center gap-2 text-sm">
-              <Link href={divHref} className="font-black text-[var(--purple)] hover:underline">
-                {s.division}
-              </Link>
-              <span className="text-ink-subtle">·</span>
               <span className="font-bold text-ink-muted">{cutLabel(s)}</span>
             </div>
             <span className="text-xs font-bold text-muted">{s.slug}</span>

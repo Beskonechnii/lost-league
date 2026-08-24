@@ -9,6 +9,7 @@ import { roleLabel } from "@/lib/roles";
 import { QUALIFICATION, qualificationOf } from "@/lib/qualification";
 import { can } from "@/lib/account";
 import { Eyebrow, StatTile } from "@/app/_components/ui";
+import { Breadcrumbs } from "@/app/_components/breadcrumbs";
 import { PlayerMiniCard } from "../../_components/player-card";
 import { TeamCover } from "../../_components/team-cover";
 
@@ -41,13 +42,19 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="space-y-6 font-pouf">
-      <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-muted">
-        <Link href="/roster/teams" className="hover:text-[var(--purple)]">
-          Команды
-        </Link>
-        <span className="text-ink-subtle">/</span>
-        <span className="text-ink-muted">{team.name}</span>
-      </div>
+      {/* Карточка живёт вне турнира и своей строки контекста не имеет — путь показывают крошки.
+          Турнир берём тот, в котором команда играет сейчас; вне турнира ведём в общий список. */}
+      <Breadcrumbs
+        items={
+          division
+            ? [
+                { href: "/tournaments", label: "Турниры" },
+                { href: `/tournaments/${division.tournament.slug}`, label: division.tournament.name },
+                { href: `/tournaments/${division.tournament.slug}/roster/teams`, label: "Команды" },
+              ]
+            : [{ href: "/tournaments", label: "Турниры" }]
+        }
+      />
 
       {/* Обложка: командное фото, если оно есть; иначе — градиент в цвет команды с лого водяным знаком */}
       <section className="overflow-hidden rounded-card bg-canvas cushion-card">
