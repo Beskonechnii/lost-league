@@ -292,14 +292,6 @@ function SeriesCard({ s, onChange }: { s: SeriesRow; onChange: () => void }) {
           </summary>
 
           <div className="mt-2 space-y-2">
-            {/* Правила перечитывания — рядом с кнопкой, а не в голове оператора (см. resyncGame). */}
-            {s.games.length > 0 && (
-              <Text size="sm" muted>
-                «Перечитать» — когда отчёт дозрел, стата легла неполной или поправили ростер:
-                перезапишет стату, варды, длительность и победителя карты и пересчитает счёт серии.
-                Привязка, дата и начисленные баллы останутся.
-              </Text>
-            )}
           {s.games.map((g) => (
             <div key={g.matchId} className="flex flex-wrap items-center gap-2">
               <span className="w-14 shrink-0">

@@ -17,10 +17,24 @@ import { Label } from "@/components/ui/label";
 
 const errorBox = "rounded-md border border-rose-900 bg-rose-950/40 px-3 py-2 text-sm text-rose-300";
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({
+  label,
+  hint,
+  optional,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  /** Единственная пометка в анкете: обязательно всё, кроме отмеченного. */
+  optional?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <div className="space-y-1">
-      <Label>{label}</Label>
+      <Label>
+        {label}
+        {optional && <span className="ml-1 font-normal text-ink-subtle">— необязательно</span>}
+      </Label>
       {children}
       {hint && <p className="text-xs text-ink-subtle">{hint}</p>}
     </div>
@@ -131,24 +145,30 @@ function ApplicationForm({ application }: { application: Application | null }) {
 
   return (
     <form action={action} className="space-y-4">
+      {/* Анкета уходит на модерацию только целиком заполненной: недостающее оператор всё равно
+          спрашивал бы перепиской. Необязательное помечено прямо в подписи поля. */}
+      <p className="text-xs text-ink-subtle">
+        Заполните все поля — с пропусками анкета не уйдёт на модерацию.
+      </p>
+
       <Field label="Ник в лиге" hint="Под ним вас увидят в таблицах и на витрине.">
         <Input name="nickname" defaultValue={v.nickname} required autoFocus placeholder="Например, Miracle-" />
       </Field>
 
       <Field label="Имя">
-        <Input name="realName" defaultValue={v.realName} placeholder="Как вас зовут" />
+        <Input name="realName" defaultValue={v.realName} required placeholder="Как вас зовут" />
       </Field>
 
       <Field label="Дата рождения">
-        <Input name="birthday" type="date" defaultValue={v.birthday} />
+        <Input name="birthday" type="date" defaultValue={v.birthday} required />
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
         <Field label="Город">
-          <Input name="city" defaultValue={v.city} />
+          <Input name="city" defaultValue={v.city} required />
         </Field>
         <Field label="Страна">
-          <Input name="country" defaultValue={v.country} />
+          <Input name="country" defaultValue={v.country} required />
         </Field>
       </div>
 
@@ -157,6 +177,7 @@ function ApplicationForm({ application }: { application: Application | null }) {
           <select
             name="position"
             defaultValue={v.position}
+            required
             className="flex h-9 w-full rounded-md border border-hairline bg-surface-1 px-3 py-1 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             <option value="">не выбрана</option>
@@ -168,27 +189,35 @@ function ApplicationForm({ application }: { application: Application | null }) {
           </select>
         </Field>
         <Field label="MMR" hint="Со слов игрока — проверит организатор.">
-          <Input name="mmr" inputMode="numeric" defaultValue={v.mmr} placeholder="Например, 4200" />
+          <Input name="mmr" inputMode="numeric" defaultValue={v.mmr} required placeholder="Например, 4200" />
         </Field>
       </div>
 
-      <Field label="Dotabuff" hint="Хотя бы одна ссылка на профиль обязательна — по ней вас находят в матчах.">
-        <Input name="dotabuff" defaultValue={v.dotabuff} placeholder="https://www.dotabuff.com/players/…" />
-      </Field>
+      {/* Ссылки — единственное место, где «обязательно» не про каждое поле: у части игроков есть
+          не любой из трёх профилей, поэтому требуем хотя бы один (проверяет сервер). */}
+      <div className="space-y-3 rounded-md border border-hairline bg-surface-2/30 px-3 py-3">
+        <p className="text-xs text-ink-muted">
+          Ссылки на профиль — заполните <span className="text-ink">хотя бы одну</span>: по ней вас находят в матчах.
+        </p>
 
-      <Field label="Stratz">
-        <Input name="stratz" defaultValue={v.stratz} placeholder="https://stratz.com/players/…" />
-      </Field>
+        <Field label="Dotabuff">
+          <Input name="dotabuff" defaultValue={v.dotabuff} placeholder="https://www.dotabuff.com/players/…" />
+        </Field>
 
-      <Field label="Steam">
-        <Input name="steam" defaultValue={v.steam} placeholder="https://steamcommunity.com/profiles/…" />
-      </Field>
+        <Field label="Stratz">
+          <Input name="stratz" defaultValue={v.stratz} placeholder="https://stratz.com/players/…" />
+        </Field>
+
+        <Field label="Steam">
+          <Input name="steam" defaultValue={v.steam} placeholder="https://steamcommunity.com/profiles/…" />
+        </Field>
+      </div>
 
       <Field label="Telegram" hint="Можно с @ или ссылкой — приведём к хендлу.">
-        <Input name="telegram" defaultValue={v.telegram} placeholder="@nickname" />
+        <Input name="telegram" defaultValue={v.telegram} required placeholder="@nickname" />
       </Field>
 
-      <Field label="Достижения" hint="Свободный список — одна строка на достижение.">
+      <Field label="Достижения" optional hint="Свободный список — одна строка на достижение.">
         <textarea
           name="achievements"
           defaultValue={v.achievements}

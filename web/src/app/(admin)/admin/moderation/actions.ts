@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { approveClaim, approveRegistration, rejectClaim, rejectRegistration } from "@/lib/account";
+import { approveRegistration, rejectClaim, rejectRegistration } from "@/lib/account";
 
 // Решения по обеим очередям модерации — анкеты и привязки к профилю. Право accounts.approve
 // проверяет сам lib/account.ts — гейт стоит там, чтобы его нельзя было обойти, дойдя до апрува
@@ -37,15 +37,20 @@ export async function reject(_state: ReviewState, form: FormData): Promise<Revie
 }
 
 // ── привязка к профилю ───────────────────────────────────────────────────────
-// Отдельная пара экшенов: у привязки нет ни анкеты, ни MMR — решение бинарное, состояние формам
-// не нужно, поэтому это простые form actions, а не useActionState как у анкет.
+// Одобрение у привязки то же самое, что у анкеты: approveRegistration ставит playerId из claimId и
+// открывает аккаунт — второй реализации «пустить в лигу» быть не должно. MMR не передаём: профиль
+// уже заведён, его цифры лига не пересматривает. Отказ разный (см. rejectClaim), поэтому свой экшен.
 
-export async function approveLink(form: FormData): Promise<void> {
-  await approveClaim(Number(form.get("accountId")));
+export async function approveLink(_state: ReviewState, form: FormData): Promise<ReviewState> {
+  const res = await approveRegistration(accountIdOf(form), null);
+  if (!res.ok) return { error: res.error };
   revalidatePath("/admin/moderation");
+  return null;
 }
 
-export async function rejectLink(form: FormData): Promise<void> {
-  await rejectClaim(Number(form.get("accountId")));
+export async function rejectLink(_state: ReviewState, form: FormData): Promise<ReviewState> {
+  const error = await rejectClaim(accountIdOf(form), String(form.get("reason") ?? ""));
+  if (error) return { error };
   revalidatePath("/admin/moderation");
+  return null;
 }

@@ -336,48 +336,40 @@ export async function submitClaim(
 
 // ── операторская модерация заявок ────────────────────────────────────────────
 
-/** Заявки, ждущие подтверждения: есть claim, но привязки ещё нет.
- *  Аккаунты в pending исключены намеренно — они целиком (обе ветки воронки) разбираются в очереди
- *  регистраций, и без этого фильтра одна и та же заявка висела бы в двух списках сразу. Здесь
- *  остаётся исходный случай: уже одобренный аккаунт нашёл себя в ростере и просит привязку. */
+/** Заявки на привязку, ждущие решения: есть claim, но привязки ещё нет. Отбираем **по виду заявки**,
+ *  а не по статусу аккаунта: оператор ищет привязку на своей вкладке, и раньше она уезжала в очередь
+ *  анкет только потому, что аккаунт был в pending. Статус решает не место в списке, а последствия
+ *  решения (см. rejectClaim). */
 export function pendingClaims() {
   return prisma.userAccount.findMany({
-    where: { claimId: { not: null }, playerId: null, status: { not: "pending" } },
+    where: { claimId: { not: null }, playerId: null },
     include: { claim: true },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ submittedAt: "asc" }, { id: "asc" }],
   });
 }
 
-/** Оператор подтвердил заявку: claim → привязка. Если игрока успели занять — отказываем. */
-export async function approveClaim(accountId: number): Promise<void> {
-  await requirePermission("accounts.approve"); // право проверяем здесь же, как в очереди регистраций
-  const acc = await prisma.userAccount.findUnique({ where: { id: accountId }, select: { claimId: true } });
-  if (!acc?.claimId) return;
-  const taken = await prisma.userAccount.findUnique({ where: { playerId: acc.claimId }, select: { id: true } });
-  if (taken && taken.id !== accountId) throw new Error("Игрок уже привязан к другому аккаунту");
-  await prisma.userAccount.update({ where: { id: accountId }, data: { playerId: acc.claimId, claimId: null } });
+export type PendingClaim = Awaited<ReturnType<typeof pendingClaims>>[number];
+
+/** Оператор отклонил привязку. Аккаунт из воронки регистрации уходит в `rejected` с причиной —
+ *  иначе он навсегда завис бы в `pending` без профиля и без объяснения; уже открытому аккаунту
+ *  просто снимаем заявку: его самого никто не выгонял, привязку он подаст заново. */
+export async function rejectClaim(accountId: number, reason: string): Promise<string | null> {
+  const reviewer = await requirePermission("accounts.approve");
+  const account = await prisma.userAccount.findUnique({ where: { id: accountId }, select: { status: true } });
+  if (!account) return "Аккаунт не найден";
+  if (account.status === "pending") return rejectRegistration(accountId, reason);
+  await prisma.userAccount.update({
+    where: { id: accountId },
+    data: { claimId: null, reviewedAt: new Date(), reviewedById: reviewer.id },
+  });
+  return null;
 }
 
-/** Оператор отклонил заявку: просто снимаем claim, аккаунт остаётся без привязки. */
-export async function rejectClaim(accountId: number): Promise<void> {
-  await requirePermission("accounts.approve");
-  await prisma.userAccount.update({ where: { id: accountId }, data: { claimId: null } });
-}
-
-// ── очередь регистраций (модерация воронки) ───────────────────────────────────
-//
-// Здесь заявка становится решением. Ветка «я новый игрок» превращает анкету в Player — до этого
-// момента его нет вовсе (§2.1 плана), поэтому неодобренный человек не мог попасть в публичный
-// ростер. Ветка «я уже в ростере» ничего не создаёт, а лишь связывает аккаунт с готовым профилем.
-// Оба пути заканчиваются active: только с ним кабинет открывается целиком.
-//
-// Право accounts.approve проверяется прямо здесь, а не только в экшене: до этих функций можно
-// дойти из любой точки служебной части, а пускать в лигу — самое чувствительное действие в системе.
-
-/** Очередь модерации: отправленные заявки, ранние сверху — их разбирают по порядку. */
+/** Очередь анкет: отправленные заявки нового игрока, ранние сверху — их разбирают по порядку.
+ *  Привязки сюда не попадают: у них своя вкладка (pendingClaims). */
 export function pendingRegistrations() {
   return prisma.userAccount.findMany({
-    where: { status: "pending" },
+    where: { status: "pending", claimId: null },
     include: { claim: true, player: true },
     orderBy: [{ submittedAt: "asc" }, { id: "asc" }],
   });

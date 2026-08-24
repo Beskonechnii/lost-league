@@ -1,11 +1,15 @@
 import Link from "next/link";
-import { pendingClaims, pendingRegistrations, accountApplication, type PendingRegistration } from "@/lib/account";
+import {
+  pendingClaims,
+  pendingRegistrations,
+  accountApplication,
+  type PendingClaim,
+  type PendingRegistration,
+} from "@/lib/account";
 import { parseDraft, pendingApplications } from "@/lib/team-application";
 import { roleLabel } from "@/lib/roles";
 import { ApplicationSummary } from "@/app/_components/application-summary";
-import { Button } from "@/components/ui/button";
 import { denyUnlessPermission } from "../../_components/permission-gate";
-import { approveLink, rejectLink } from "./actions";
 import { ReviewForms } from "./review-forms";
 
 export const dynamic = "force-dynamic";
@@ -90,7 +94,7 @@ export default async function ModerationPage({ searchParams }: { searchParams: P
   );
 }
 
-/** Очередь анкет: обе ветки воронки (новая анкета и привязка) — те, что человек отправил из кабинета. */
+/** Очередь анкет новых игроков. Привязки сюда не попадают — им своя вкладка. */
 function Registrations({ queue }: { queue: PendingRegistration[] }) {
   if (queue.length === 0) {
     return (
@@ -117,40 +121,25 @@ function Card({ account }: { account: PendingRegistration }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span
-          className={`rounded-md border px-2 py-0.5 text-xs ${
-            account.claim
-              ? "border-sky-900 bg-sky-950/40 text-sky-300"
-              : "border-emerald-900 bg-emerald-950/40 text-emerald-300"
-          }`}
-        >
-          {account.claim ? "привязка к профилю" : "новая анкета"}
+        <span className="rounded-md border border-emerald-900 bg-emerald-950/40 px-2 py-0.5 text-xs text-emerald-300">
+          новая анкета
         </span>
         <span className="min-w-0 truncate text-sm text-ink-muted">{account.email}</span>
         {account.name && <span className="truncate text-sm text-ink-subtle">· {account.name}</span>}
         {sent && <span className="ml-auto shrink-0 text-xs text-ink-subtle">отправлено {sent}</span>}
       </div>
 
-      {account.claim ? (
-        <div className="rounded-md border border-hairline bg-surface-2/40 px-3 py-2 text-sm">
-          Заявляет, что он —{" "}
-          {/* адрес карточки игрока — числовой id, не slug (см. /roster/players/[id]) */}
-          <Link href={`/roster/players/${account.claim.id}`} className="font-semibold text-accent-bright hover:underline">
-            {account.claim.nickname}
-          </Link>
-          . Сверьте по профилю: анкеты у этой ветки нет — все данные уже в ростере.
-        </div>
-      ) : application ? (
+      {application ? (
         <div className="rounded-md border border-hairline bg-surface-2/40 px-3 py-2">
           <ApplicationSummary application={application} />
         </div>
       ) : (
         <p className="rounded-md border border-rose-900 bg-rose-950/30 px-3 py-2 text-sm text-rose-300">
-          Заявка пустая: ни анкеты, ни выбранного профиля. Верните её с причиной.
+          Заявка пустая: анкеты нет. Верните её с причиной.
         </p>
       )}
 
-      <ReviewForms accountId={account.id} mmr={account.claim ? undefined : (application?.mmr ?? null)} />
+      <ReviewForms accountId={account.id} mmr={application?.mmr ?? null} />
     </div>
   );
 }
@@ -205,10 +194,11 @@ function TeamApplications({ rows }: { rows: Awaited<ReturnType<typeof pendingApp
 }
 
 /**
- * Привязка к профилю: игрок вошёл и заявил, что он — такой-то в ростере, оператор сверяет.
- * Заявки, отправленные из кабинета, лежат в первой вкладке и сюда не дублируются (`pendingClaims`).
+ * Привязка к профилю: человек вошёл и заявил, что он — такой-то в ростере, оператор сверяет.
+ * Сюда попадают обе ситуации — заявка из воронки регистрации (аккаунт ждёт решения) и привязка от
+ * уже открытого аккаунта: вид заявки один, различаются только последствия решения.
  */
-function Claims({ claims }: { claims: Awaited<ReturnType<typeof pendingClaims>> }) {
+function Claims({ claims }: { claims: PendingClaim[] }) {
   if (claims.length === 0) {
     return (
       <p className="mt-6 rounded-md border border-hairline bg-surface-1 px-3 py-6 text-center text-sm text-ink-subtle">
@@ -217,32 +207,38 @@ function Claims({ claims }: { claims: Awaited<ReturnType<typeof pendingClaims>> 
     );
   }
   return (
-    <ul className="mt-6 space-y-2">
-      {claims.map((c) => (
-        <li key={c.id} className="flex items-center gap-3 rounded-lg border border-hairline bg-surface-1 px-4 py-3">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm">
-              <span className="text-ink-muted">{c.email}</span>
-              {c.name && <span className="text-ink-subtle"> · {c.name}</span>}
-            </p>
-            <p className="mt-0.5 text-sm">
-              заявляет:{" "}
-              {/* карточка игрока живёт по числовому id, не по слагу (см. /roster/players/[id]) */}
+    <ul className="mt-6 space-y-3">
+      {claims.map((c) => {
+        // Аккаунт в pending пришёл из регистрации: одобрение откроет ему кабинет, отказ вернётся к
+        // нему причиной. У открытого аккаунта решение касается только самой привязки.
+        const waiting = c.status === "pending";
+        const sent = c.submittedAt ? dateTime.format(c.submittedAt) : null;
+        return (
+          <li key={c.id} className="space-y-3 rounded-lg border border-hairline bg-surface-1 p-4">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="rounded-md border border-sky-900 bg-sky-950/40 px-2 py-0.5 text-xs text-sky-300">
+                {waiting ? "привязка · регистрация" : "привязка"}
+              </span>
+              <span className="min-w-0 truncate text-sm text-ink-muted">{c.email}</span>
+              {c.name && <span className="truncate text-sm text-ink-subtle">· {c.name}</span>}
+              {sent && <span className="ml-auto shrink-0 text-xs text-ink-subtle">отправлено {sent}</span>}
+            </div>
+
+            <div className="rounded-md border border-hairline bg-surface-2/40 px-3 py-2 text-sm">
+              Заявляет, что он —{" "}
+              {/* адрес карточки игрока — числовой id, не slug (см. /roster/players/[id]) */}
               <Link href={`/roster/players/${c.claim!.id}`} className="font-semibold text-accent-bright hover:underline">
                 {c.claim!.nickname}
               </Link>
-            </p>
-          </div>
-          <form action={approveLink}>
-            <input type="hidden" name="accountId" value={c.id} />
-            <Button type="submit" size="sm">Подтвердить</Button>
-          </form>
-          <form action={rejectLink}>
-            <input type="hidden" name="accountId" value={c.id} />
-            <Button type="submit" size="sm" variant="outline">Отклонить</Button>
-          </form>
-        </li>
-      ))}
+              . Сверьте по профилю: анкеты у этой ветки нет — все данные уже в ростере.
+              {waiting && " Одобрение заодно открывает кабинет."}
+            </div>
+
+            {/* mmr не передаём: профиль уже заведён, его цифры апрув не трогает. */}
+            <ReviewForms accountId={c.id} link reasonRequired={waiting} />
+          </li>
+        );
+      })}
     </ul>
   );
 }

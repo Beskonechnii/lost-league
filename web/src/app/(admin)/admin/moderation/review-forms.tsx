@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { approve, reject, type ReviewState } from "./actions";
+import { approve, approveLink, reject, rejectLink, type ReviewState } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -13,14 +13,27 @@ const errorBox = "rounded-md border border-rose-900 bg-rose-950/40 px-3 py-2 tex
 export function ReviewForms({
   accountId,
   mmr,
+  link = false,
+  reasonRequired = true,
 }: {
   accountId: number;
   /** Заявленный MMR для поля оператора; undefined — ветка «я уже в ростере», где поля нет вовсе:
    *  профиль с его MMR уже заведён, и апрув его не трогает. (null — «анкета есть, MMR не указал».) */
   mmr?: number | null;
+  /** Заявка на привязку: те же две кнопки, но своя пара экшенов — отказ по привязке не выкидывает
+   *  из лиги уже открытый аккаунт. */
+  link?: boolean;
+  /** Причина обязательна там, где отказ виден человеку в кабинете (аккаунт ждёт решения). */
+  reasonRequired?: boolean;
 }) {
-  const [okState, approveAction, approving] = useActionState<ReviewState, FormData>(approve, null);
-  const [noState, rejectAction, rejecting] = useActionState<ReviewState, FormData>(reject, null);
+  const [okState, approveAction, approving] = useActionState<ReviewState, FormData>(
+    link ? approveLink : approve,
+    null,
+  );
+  const [noState, rejectAction, rejecting] = useActionState<ReviewState, FormData>(
+    link ? rejectLink : reject,
+    null,
+  );
   const busy = approving || rejecting;
 
   return (
@@ -41,12 +54,16 @@ export function ReviewForms({
 
         <form action={rejectAction} className="flex flex-1 items-end gap-2">
           <input type="hidden" name="accountId" value={accountId} />
-          <div className="min-w-[12rem] flex-1 space-y-1">
-            <label className="block text-xs text-ink-subtle">Причина возврата</label>
-            <Input name="reason" required placeholder="Чего не хватает в анкете" />
-          </div>
+          {/* Поля причины нет там, где отказ никому не показывается: у открытого аккаунта отклонённая
+              привязка просто снимается, и просить формулировку «в никуда» незачем. */}
+          {reasonRequired && (
+            <div className="min-w-[12rem] flex-1 space-y-1">
+              <label className="block text-xs text-ink-subtle">Причина возврата</label>
+              <Input name="reason" required placeholder={link ? "Почему это не он" : "Чего не хватает в анкете"} />
+            </div>
+          )}
           <Button type="submit" size="sm" variant="outline" disabled={busy}>
-            {rejecting ? "Возвращаю…" : "Вернуть"}
+            {rejecting ? (reasonRequired ? "Возвращаю…" : "Отклоняю…") : reasonRequired ? "Вернуть" : "Отклонить"}
           </Button>
         </form>
       </div>

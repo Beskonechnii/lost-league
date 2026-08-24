@@ -125,19 +125,25 @@ export function normalizeApplication(input: ApplicationInput): ApplicationResult
   const nickname = input.nickname.trim();
   if (!nickname) return { ok: false, error: "Укажите ник — под ним вас увидят в лиге" };
 
-  let birthday = "";
-  if (input.birthday.trim()) {
-    const date = parseBirthday(input.birthday);
-    if (!date) return { ok: false, error: `Дата «${input.birthday.trim()}» не разобрана — ждём 21.04.1998` };
-    birthday = date.toISOString().slice(0, 10);
-  }
+  // Анкета уходит на модерацию только заполненной целиком: оператор решает по ней одну,
+  // и добирать недостающее перепиской — та же работа, что вернуть заявку.
+  const realName = input.realName.trim();
+  if (!realName) return { ok: false, error: "Укажите имя" };
 
-  let telegram = "";
-  if (input.telegram.trim()) {
-    const handle = normalizeTelegram(input.telegram);
-    if (!handle) return { ok: false, error: `«${input.telegram.trim()}» не похоже на телеграм-хендл` };
-    telegram = handle;
-  }
+  if (!input.birthday.trim()) return { ok: false, error: "Укажите дату рождения" };
+  const date = parseBirthday(input.birthday);
+  if (!date) return { ok: false, error: `Дата «${input.birthday.trim()}» не разобрана — ждём 21.04.1998` };
+  const birthday = date.toISOString().slice(0, 10);
+
+  const city = input.city.trim();
+  if (!city) return { ok: false, error: "Укажите город" };
+
+  const country = input.country.trim();
+  if (!country) return { ok: false, error: "Укажите страну" };
+
+  if (!input.telegram.trim()) return { ok: false, error: "Укажите телеграм — по нему с вами свяжется организатор" };
+  const telegram = normalizeTelegram(input.telegram);
+  if (!telegram) return { ok: false, error: `«${input.telegram.trim()}» не похоже на телеграм-хендл` };
 
   for (const kind of ["dotabuff", "stratz", "steam"] as const) {
     const problem = profileLinkProblem(kind, input[kind]);
@@ -147,37 +153,38 @@ export function normalizeApplication(input: ApplicationInput): ApplicationResult
   const stratz = normalizeLink(input.stratz);
   const steam = normalizeLink(input.steam);
   // Хотя бы одна ссылка обязательна: по ней оператор опознаёт человека, а без account_id игрок
-  // потом не находится ни в одном матче (см. §7 CLAUDE.md).
+  // потом не находится ни в одном матче (см. §7 CLAUDE.md). Все три требовать нельзя — у части
+  // игроков есть не каждый профиль.
   if (!dotabuff && !stratz && !steam) {
     return { ok: false, error: "Дайте хотя бы одну ссылку на профиль: Dotabuff, Stratz или Steam" };
   }
 
   const position = input.position.trim();
-  if (position && !isRole(position)) return { ok: false, error: "Выберите позицию из списка" };
+  if (!position) return { ok: false, error: "Выберите позицию" };
+  if (!isRole(position)) return { ok: false, error: "Выберите позицию из списка" };
 
-  let mmr: number | null = null;
-  if (input.mmr.trim()) {
-    const n = Number(input.mmr.replace(/\s+/g, ""));
-    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0 || n > MMR_MAX) {
-      return { ok: false, error: `MMR — целое число от 0 до ${MMR_MAX}` };
-    }
-    mmr = n;
+  if (!input.mmr.trim()) return { ok: false, error: "Укажите MMR — заявленный, его проверит организатор" };
+  const n = Number(input.mmr.replace(/\s+/g, ""));
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0 || n > MMR_MAX) {
+    return { ok: false, error: `MMR — целое число от 0 до ${MMR_MAX}` };
   }
+  const mmr = n;
 
   return {
     ok: true,
     value: {
       nickname,
-      realName: input.realName.trim(),
+      realName,
       birthday,
-      city: input.city.trim(),
-      country: input.country.trim(),
+      city,
+      country,
       dotabuff,
       stratz,
       steam,
       telegram,
       position,
       mmr,
+      // Достижения — единственное необязательное поле: у новичка их просто нет.
       achievements: input.achievements.trim(),
     },
   };
