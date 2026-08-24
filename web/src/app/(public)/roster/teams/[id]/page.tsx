@@ -100,7 +100,7 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
             </Eyebrow>
             <div className="flex flex-wrap gap-3 text-xs">
               <Link
-                href={`/tournaments/${division!.tournament.slug}/${division!.slug}/groups`}
+                href={`/tournaments/${division!.tournament.slug}/${division!.slug}`}
                 className="font-black text-[var(--purple)] hover:underline"
               >
                 Групповая стадия →

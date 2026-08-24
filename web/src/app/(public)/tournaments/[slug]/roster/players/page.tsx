@@ -10,6 +10,7 @@ import { SectionHeader } from "@/app/_components/ui";
 import { notFound } from "next/navigation";
 import { PlayerMiniCard } from "@/app/(public)/roster/_components/player-card";
 import { DivTabs, parseDiv } from "@/app/(public)/roster/_components/div-tabs";
+import { RosterSwitch } from "@/app/(public)/roster/_components/roster-switch";
 import { getDivisions, tournamentBySlug } from "@/lib/tournaments";
 
 export const dynamic = "force-dynamic";
@@ -106,7 +107,10 @@ export default async function PlayersPage({
         />
       )}
 
-      <DivTabs divisions={divisions} current={div} base={`/tournaments/${slug}/roster/players`} keep={{ sort: sort === "tp" ? undefined : sort }} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <RosterSwitch slug={slug} current="players" />
+        <DivTabs divisions={divisions} current={div} base={`/tournaments/${slug}/roster/players`} keep={{ sort: sort === "tp" ? undefined : sort }} />
+      </div>
 
       <div className="flex flex-wrap gap-2 font-pouf">
         {SORTS.map((s) => {

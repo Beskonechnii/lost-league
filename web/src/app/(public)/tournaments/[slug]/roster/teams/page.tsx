@@ -5,6 +5,7 @@ import { SectionHeader } from "@/app/_components/ui";
 import { notFound } from "next/navigation";
 import { TeamCards } from "@/app/(public)/roster/_components/team-cards";
 import { DivTabs, parseDiv } from "@/app/(public)/roster/_components/div-tabs";
+import { RosterSwitch } from "@/app/(public)/roster/_components/roster-switch";
 import { getDivisions, tournamentBySlug } from "@/lib/tournaments";
 
 export const dynamic = "force-dynamic";
@@ -47,7 +48,10 @@ export default async function TeamsPage({
         }
       />
 
-      <DivTabs divisions={divisions} current={div} base={`/tournaments/${slug}/roster/teams`} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <RosterSwitch slug={slug} current="teams" />
+        <DivTabs divisions={divisions} current={div} base={`/tournaments/${slug}/roster/teams`} />
+      </div>
 
       {authed && (
         <CreateForm

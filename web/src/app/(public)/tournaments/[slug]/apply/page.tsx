@@ -5,7 +5,6 @@ import { currentAccount } from "@/lib/account";
 import { myApplications, parseDraft } from "@/lib/team-application";
 import { prisma } from "@/lib/prisma";
 import { roleLabel } from "@/lib/roles";
-import { SITE_MAX_W } from "../../../../_components/ui";
 import { ApplyForm } from "./apply-form";
 
 export const dynamic = "force-dynamic";
@@ -50,11 +49,8 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
     : null;
 
   return (
-    <main className={`mx-auto w-full ${SITE_MAX_W} flex-1 px-4 py-8 md:px-6`}>
-      <Link href={`/tournaments/${tournament.slug}`} className="text-xs text-ink-subtle hover:text-ink">
-        ← {tournament.name}
-      </Link>
-      <h1 className="mt-2 text-2xl font-black tracking-tight">Заявка команды</h1>
+    <div>
+      <h1 className="text-2xl font-black tracking-tight">Заявка команды</h1>
       <p className="mt-1.5 text-sm text-ink-muted">
         {tournament.name}
         {tournament.regCloseAt && ` · заявки до ${date.format(tournament.regCloseAt)}`}
@@ -123,6 +119,6 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
           />
         </div>
       )}
-    </main>
+    </div>
   );
 }

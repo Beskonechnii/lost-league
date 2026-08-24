@@ -1,6 +1,4 @@
 import { notFound } from "next/navigation";
-import { SITE_MAX_W } from "@/app/_components/ui";
-import { BackButton } from "@/app/_components/back-button";
 import { divisionOfTournament } from "@/lib/tournaments";
 
 // Раздел дивизиона внутри турнира: /tournaments/<турнир>/<дивизион>. Турнир в адресе не для красоты —
@@ -8,7 +6,9 @@ import { divisionOfTournament } from "@/lib/tournaments";
 // годы, а прошлый сезон исчезал бы с витрины при старте нового. Старые /standings/<div>/* остались
 // редиректом на текущий турнир, чтобы отданные наружу ссылки не ломались.
 //
-// Этапы (групповая / плей-офф / статистика) — плитки на хабе дивизиона (page.tsx), не ряд вкладок.
+// От layout'а здесь остался ровно один эффект — цвет дивизиона. Строку навигации и колонку контента
+// задаёт layout турнира на уровень выше: этапы (таблица / плей-офф / статистика) — вкладки в ней,
+// а не плитки и не «Назад».
 
 export default async function DivisionLayout({
   children,
@@ -35,16 +35,5 @@ export default async function DivisionLayout({
         } as React.CSSProperties)
       : undefined;
 
-  // Ширина — единая на весь сайт (SITE_MAX_W): шапка и контент совпадают по краю.
-  // Кнопку прячем на самом хабе дивизиона (page.tsx) — назад с него ведёт вкладка LOST S2;
-  // на этапах (группы / плей-офф / статистика) она возвращает к хабу дивизиона.
-  const base = `/tournaments/${slug}/${division.slug}`;
-  return (
-    <div style={accentVars}>
-      <main className={`mx-auto w-full ${SITE_MAX_W} flex-1 px-4 py-8 md:px-6`}>
-        <BackButton fallback={base} hideOn={[base]} className="mb-4" />
-        {children}
-      </main>
-    </div>
-  );
+  return <div style={accentVars}>{children}</div>;
 }

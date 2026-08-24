@@ -44,7 +44,7 @@ export default async function Home() {
   // часть держит вкладка «Админ» в шапке — на лендинге она дублировалась.
   const sections: Section[] = [
     ...divisions.map((d, i) => ({
-      href: current ? `/tournaments/${current.slug}/${d.slug}/groups` : "/tournaments",
+      href: current ? `/tournaments/${current.slug}/${d.slug}` : "/tournaments",
       title: d.label,
       text: `Таблица с зонами выхода, сетка групповой стадии и плей-офф. Правка результата встречи двигает и сетку, и таблицу.`,
       cta: "Смотреть таблицу",
