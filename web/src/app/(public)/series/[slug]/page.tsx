@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { Icon, TeamCrest } from "@/app/_components/postgame/blocks";
 import { Eyebrow } from "@/app/_components/ui";
 import { Breadcrumbs } from "@/app/_components/breadcrumbs";
+import { READ_MAX_W } from "@/app/_components/ui";
 import { divisionWithTournament } from "@/lib/tournaments";
 import { getSeriesDetail, type GamePlayer, type SeriesDetail, type SeriesGameDetail } from "@/lib/series";
 import { playoffLabel, stageLabel } from "@/lib/stages";
@@ -158,9 +159,9 @@ export default async function SeriesPage({ params }: { params: Promise<{ slug: s
 
   return (
     <main className="flex-1 p-4 font-pouf md:p-8">
-      {/* Уже, чем остальной сайт (SITE_MAX_W), намеренно: это читательская страница одной встречи —
-          счёт и составы по карте. На всю ширину экрана строки состава растянулись бы некрасиво. */}
-      <div className="mx-auto max-w-6xl space-y-4">
+      {/* Колонка чтения (READ_MAX_W), а не витрины: это страница одной встречи — счёт и составы
+          по карте. На всю ширину экрана строки состава растянулись бы некрасиво. */}
+      <div className={`mx-auto ${READ_MAX_W} space-y-4`}>
         {/* У встречи нет ни строки контекста турнира, ни подвкладок — путь показывают только крошки */}
         <Breadcrumbs
           items={[

@@ -34,11 +34,16 @@ export function DivTabs({
   current,
   base,
   keep = {},
+  counts,
 }: {
   divisions: Division[];
   current: DivFilter;
   base: string;
   keep?: Record<string, string | undefined>;
+  /** Сколько строк за каждой вкладкой: ключ — слаг дивизиона, "all" — весь пул. Необязательно:
+   *  счётчик есть там, где он дёшев (команды), и опущен там, где ради него пришлось бы тянуть
+   *  лишние выборки. */
+  counts?: Record<string, number>;
 }) {
   const tabs: { key: DivFilter; label: string }[] = [
     ...divisions.map((d) => ({ key: d.slug as DivFilter, label: d.short })),
@@ -57,6 +62,11 @@ export function DivTabs({
           }`}
         >
           {t.label}
+          {counts && (
+            <span className={`ml-1.5 text-xs ${current === t.key ? "text-[var(--on-accent-muted)]" : "text-ink-subtle"}`}>
+              {counts[t.key ?? "all"] ?? 0}
+            </span>
+          )}
         </Link>
       ))}
     </div>

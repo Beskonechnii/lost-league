@@ -8,6 +8,7 @@ import { teamAccent } from "@/lib/profiles";
 import { FEARLESS_VERSION, type FearlessState } from "@/lib/fearless";
 import { FearlessBoard, type HeroRef, type TeamRef } from "../_components/fearless-board";
 import { denyUnlessPermission } from "../../../_components/permission-gate";
+import { SITE_MAX_W } from "@/app/_components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ export default async function FearlessSessionPage({ params }: { params: Promise<
     .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <main className="mx-auto w-full max-w-[100rem] flex-1 px-4 py-6 md:px-6">
+    <main className={`mx-auto w-full ${SITE_MAX_W} flex-1 px-4 py-6 md:px-6`}>
       <Link href="/admin/fearless-draft" className="text-sm text-ink-subtle hover:text-ink-muted">
         ← Все драфты
       </Link>

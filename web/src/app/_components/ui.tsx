@@ -14,6 +14,21 @@ import { Badge } from "@/components/ui/badge";
  */
 export const SITE_MAX_W = "max-w-[96rem]";
 
+/**
+ * Колонка чтения — для страниц одной сущности, которые читают сверху вниз (встреча, регламент).
+ * Уже витрины намеренно: строка длиной во весь экран читается плохо.
+ */
+export const READ_MAX_W = "max-w-6xl";
+
+/**
+ * Колонка формы — анкеты, мастера, списки-настройки в служебной части. Ещё уже: поле ввода во всю
+ * ширину экрана попасть мышью труднее, чем прочитать.
+ *
+ * Три токена и ни одного литерала: ширина страницы всегда называется словом, поэтому видно, к какому
+ * из трёх типов страница себя относит, и правится она в одном месте (UI-GUIDELINES §4).
+ */
+export const FORM_MAX_W = "max-w-3xl";
+
 /** Надпись-категория над заголовком секции: uppercase, положительный трекинг, шрифт pouf.
     Визуал 1st-Pouf — единый eyebrow на весь сайт (совпадает с pouf Eyebrow). */
 export function Eyebrow({ children, className = "" }: { children: ReactNode; className?: string }) {
@@ -76,7 +91,9 @@ export function StatTile({
 }) {
   return (
     <div
-      className={`rounded-blob px-4 pb-[calc(0.75rem+5px)] pt-[calc(0.75rem-5px)] font-pouf ${
+      // Отступы — на шкале pouf: s3 по вертикали, смещённые на половину «губы» (--lip), из-за которой
+      // подушка кажется вдавленной вниз. Раньше здесь стояли те же числа литералами (0.75rem±5px).
+      className={`rounded-blob px-[var(--s4)] pb-[calc(var(--s3)+var(--lip)/2)] pt-[calc(var(--s3)-var(--lip)/2)] font-pouf ${
         accent
           ? "bg-purple text-[var(--on-accent)] cushion-control"
           : "bg-surface-1 cushion-card"

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { tournamentBySlug } from "@/lib/tournaments";
 import { denyUnlessPermission } from "../../../../_components/permission-gate";
 import { ImportForm } from "./import-form";
+import { FORM_MAX_W } from "@/app/_components/ui";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Импорт составов" };
@@ -20,7 +21,7 @@ export default async function ImportPage({ params }: { params: Promise<{ slug: s
   if (!tournament) notFound();
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 md:px-6">
+    <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
       <Link href={`/admin/tournaments/${tournament.slug}`} className="text-xs text-ink-subtle hover:text-ink">
         ← {tournament.name}
       </Link>

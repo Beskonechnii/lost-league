@@ -3,6 +3,7 @@ import { currentTournament, listTournaments, TOURNAMENT_STATUS_LABELS, type Tour
 import { Button } from "@/components/ui/button";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 import { STATUS_TONE } from "./_components/fields";
+import { FORM_MAX_W } from "@/app/_components/ui";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Турниры" };
@@ -22,7 +23,7 @@ export default async function TournamentsPage() {
   const [tournaments, current] = await Promise.all([listTournaments(), currentTournament()]);
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 md:px-6">
+    <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
       <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-300/80">Служебная часть</p>
       <h1 className="mt-1.5 text-xl font-bold tracking-tight">Турниры</h1>
       <p className="mt-1.5 text-sm text-ink-muted">

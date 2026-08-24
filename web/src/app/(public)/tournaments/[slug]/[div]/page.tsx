@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getGroupStage, groupStageDone, groupStageProgress } from "@/lib/group-stage";
 import { QUALIFICATION } from "@/lib/qualification";
 import { divisionOfTournament } from "@/lib/tournaments";
+import { can } from "@/lib/account";
 import { Chip, SectionHeader } from "@/app/_components/ui";
 import { GroupStage } from "../../_components/group-stage";
 
@@ -16,7 +17,7 @@ export default async function StandingsPage({ params }: { params: Promise<{ slug
   const division = await divisionOfTournament(slug, div);
   if (!division) notFound();
 
-  const tables = await getGroupStage(division.id);
+  const [tables, authed] = await Promise.all([getGroupStage(division.id), can("series.edit")]);
   // Сколько встреч сыграно из ожидаемых по жеребьёвке. Стадия закрывается автоматически, когда у
   // всех встреч есть результат, поэтому недостачу («встречу ещё не завели») оператор должен видеть
   // числом: иначе плей-офф разберёт посев раньше времени и никто не поймёт, почему.
@@ -39,8 +40,9 @@ export default async function StandingsPage({ params }: { params: Promise<{ slug
         }
       />
 
-      {/* легенда зон: те же цвета, что и рейка слева от места. В D2 вылета из группы нет — чип не показываем */}
-      <div className="flex flex-wrap gap-2">
+      {/* легенда зон: те же цвета, что и рейка слева от места. В D2 вылета из группы нет — чип не
+          показываем. Пустой таблице легенда не нужна: объяснять нечего */}
+      <div className={`flex flex-wrap gap-2 ${tables.length === 0 ? "hidden" : ""}`}>
         {(division.name === "Division 2" ? (["upper", "lower"] as const) : (["upper", "lower", "out"] as const)).map((k) => (
           <Chip key={k}>
             <span className={`h-2 w-2 rounded-full ${QUALIFICATION[k].marker}`} />
@@ -50,12 +52,17 @@ export default async function StandingsPage({ params }: { params: Promise<{ slug
       </div>
 
       {tables.length === 0 ? (
-        <p className="text-ink-muted">
-          Данных нет. Залить:{" "}
-          <code className="text-ink-muted">
-            npx tsx scripts/import-group-stage.ts --sheet &lt;id&gt; --div {division.slug.replace("d", "")}
-          </code>
-        </p>
+        // Пустое состояние объясняет, что происходит, а не показывает пустоту. Команда заливки —
+        // только оператору: посетителю она ничего не говорит, а страница из-за неё выглядела сломанной.
+        <div className="rounded-card bg-surface p-8 text-center text-sm font-bold text-muted cushion-field">
+          Групп ещё нет — жеребьёвка не проведена. Как только команды разложат по группам, здесь
+          появятся таблицы и сетка личных встреч.
+          {authed && (
+            <span className="mt-2 block text-xs text-ink-subtle">
+              Залить: <code>npx tsx scripts/import-group-stage.ts --sheet &lt;id&gt; --div {division.slug.replace("d", "")}</code>
+            </span>
+          )}
+        </div>
       ) : (
         <GroupStage tables={tables} />
       )}

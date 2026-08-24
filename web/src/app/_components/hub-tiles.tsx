@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Eyebrow } from "./ui";
+import { SectionHeader } from "./ui";
 import { Card } from "@/components/pouf/surface";
 import { Heading } from "@/components/pouf/text";
 import { Badge } from "@/components/pouf/media";
@@ -53,16 +53,6 @@ function TileGrid({ tiles, cols }: { tiles: HubTile[]; cols: 2 | 3 | 4 }) {
   );
 }
 
-/** Заголовок хаба — общая шапка обоих вариантов. */
-function HubHead({ eyebrow, title }: { eyebrow: string; title: string }) {
-  return (
-    <>
-      <Eyebrow className="mb-2">{eyebrow}</Eyebrow>
-      <h1 className="text-[28px] font-black leading-[1.2] tracking-[-0.5px] text-ink md:text-4xl">{title}</h1>
-    </>
-  );
-}
-
 export function HubTiles({
   eyebrow,
   title,
@@ -76,7 +66,7 @@ export function HubTiles({
 }) {
   return (
     <div className="font-pouf">
-      <HubHead eyebrow={eyebrow} title={title} />
+      <SectionHeader eyebrow={eyebrow} title={title} />
       <div className="mt-6">
         <TileGrid tiles={tiles} cols={cols} />
       </div>
@@ -103,7 +93,7 @@ export function HubGroupedTiles({
 }) {
   return (
     <div className="font-pouf">
-      <HubHead eyebrow={eyebrow} title={title} />
+      <SectionHeader eyebrow={eyebrow} title={title} />
 
       <div className="mt-8 space-y-8">
         {groups

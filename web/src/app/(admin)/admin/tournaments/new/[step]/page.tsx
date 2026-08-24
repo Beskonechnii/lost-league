@@ -9,6 +9,7 @@ import { addDivision, autoDraw, removeDivision, saveDivision, saveDraw } from ".
 import { finishWizard, goToStep, saveDraft } from "../actions";
 import { ImportForm } from "../../[slug]/import/import-form";
 import { Steps, isStep, stepIndex, WIZARD_STEPS, type StepKey } from "../_components/steps";
+import { FORM_MAX_W } from "@/app/_components/ui";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Новый турнир" };
@@ -72,7 +73,7 @@ export default async function WizardStep({
   const drawn = rosters.flat().filter((e) => e.group).length;
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 md:px-6">
+    <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
       <Link href="/admin/tournaments" className="text-xs text-ink-subtle hover:text-ink">
         ← Все турниры
       </Link>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getLeaders, METRICS, type Subject } from "@/lib/leaders";
 import { getDivisions } from "@/lib/tournaments";
 import { isStage } from "@/lib/stages";
-import { Eyebrow } from "@/app/_components/ui";
+import { Eyebrow, SITE_MAX_W } from "@/app/_components/ui";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 
 export const dynamic = "force-dynamic";
@@ -102,7 +102,7 @@ export default async function AdminStatsPage({ searchParams }: { searchParams: P
   );
 
   return (
-    <main className="mx-auto w-full max-w-[96rem] flex-1 px-4 py-8 font-pouf md:px-6">
+    <main className={`mx-auto w-full ${SITE_MAX_W} flex-1 px-4 py-8 font-pouf md:px-6`}>
       <Eyebrow className="mb-2">Служебная часть · показатели</Eyebrow>
       <h1 className="text-[28px] font-black tracking-[-0.5px] text-ink md:text-4xl">Показатели турнира</h1>
 

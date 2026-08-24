@@ -28,11 +28,20 @@ export default async function TeamsPage({
   const authed = await can("roster.edit");
 
   // Команды берём по участию в дивизионах ЭТОГО турнира, а не по всей лиге: иначе новый сезон
-  // показывал бы команды прошлого. Вкладка дивизиона сужает список дальше — тоже по `divisionId`:
-  // фильтр по строке-зеркалу `Team.group` в новом турнире давал пустой дивизион (зеркало хранит
-  // имя дивизиона прошлого сезона), и команды были видны только на вкладке «Все».
-  const ids = divisions.filter((d) => !div || d.slug === div).map((d) => d.id);
-  const teams = await listTeamRosters(ids);
+  // показывал бы команды прошлого. Читаем сразу все дивизионы турнира и режем в памяти: фильтр —
+  // одна выборка вместо двух, зато вкладки могут показать, сколько команд за каждой.
+  // Режем по `divisionId`, а не по строке-зеркалу `Team.group`: в новом турнире зеркало хранит имя
+  // дивизиона прошлого сезона, и дивизион оказывался пустым.
+  const all = await listTeamRosters(divisions.map((d) => d.id));
+  const byDiv = (slug: string) => {
+    const id = divisions.find((d) => d.slug === slug)?.id;
+    return id === undefined ? [] : all.filter((t) => t.divisionIds.includes(id));
+  };
+  const teams = div ? byDiv(div) : all;
+  const counts = Object.fromEntries([
+    ...divisions.map((d) => [d.slug, byDiv(d.slug).length] as const),
+    ["all", all.length] as const,
+  ]);
   const noId = teams.reduce((sum, t) => sum + t.noAccountIdCount, 0);
 
   return (
@@ -50,7 +59,7 @@ export default async function TeamsPage({
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <RosterSwitch slug={slug} current="teams" />
-        <DivTabs divisions={divisions} current={div} base={`/tournaments/${slug}/roster/teams`} />
+        <DivTabs divisions={divisions} current={div} base={`/tournaments/${slug}/roster/teams`} counts={counts} />
       </div>
 
       {authed && (
@@ -65,7 +74,7 @@ export default async function TeamsPage({
         />
       )}
 
-      <TeamCards teams={teams} divisions={divisions} />
+      <TeamCards teams={teams} />
     </div>
   );
 }

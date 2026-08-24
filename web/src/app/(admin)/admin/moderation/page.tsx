@@ -11,6 +11,7 @@ import { roleLabel } from "@/lib/roles";
 import { ApplicationSummary } from "@/app/_components/application-summary";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 import { ReviewForms } from "./review-forms";
+import { FORM_MAX_W } from "@/app/_components/ui";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Модерация" };
@@ -51,7 +52,7 @@ export default async function ModerationPage({ searchParams }: { searchParams: P
   const counts: Record<TabKey, number> = { profiles: queue.length, links: claims.length, teams: teams.length };
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 md:px-6">
+    <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
       <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-300/80">Служебная часть</p>
       <h1 className="mt-1.5 text-xl font-bold tracking-tight">Модерация</h1>
       <p className="mt-1.5 text-sm text-ink-muted">

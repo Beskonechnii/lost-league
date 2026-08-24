@@ -1,5 +1,6 @@
 import { can } from "@/lib/account";
 import { permissionLabel, type PermissionKey } from "@/lib/permissions";
+import { FORM_MAX_W } from "@/app/_components/ui";
 
 // Гейт раздела служебной части по гранулярному праву.
 //
@@ -16,7 +17,7 @@ export async function denyUnlessPermission(key: PermissionKey, title: string) {
   if (await can(key)) return null;
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 md:px-6">
+    <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
       <h1 className="text-xl font-bold tracking-tight">{title}</h1>
       <p className="mt-4 rounded-md border border-amber-900 bg-amber-950/40 px-3 py-2 text-sm text-amber-300">
         Раздел открывает право «{permissionLabel(key)}» (<code>{key}</code>). Попросите владельца лиги

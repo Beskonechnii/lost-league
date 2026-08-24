@@ -15,6 +15,7 @@ import { Field, STATUS_TONE } from "../_components/fields";
 import { DeleteTournament } from "../_components/delete-tournament";
 import { SaveForm } from "../_components/save-form";
 import { addDivision, assignTeam, autoDraw, changeStatus, removeDivision, removeTournament, saveDivision, saveDraw, saveTournament } from "../actions";
+import { FORM_MAX_W } from "@/app/_components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,7 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
   const free = teams.filter((t) => !taken.has(t.id));
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 md:px-6">
+    <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
       <Link href="/admin/tournaments" className="text-xs text-ink-subtle hover:text-ink">
         ← Все турниры
       </Link>

@@ -8,6 +8,7 @@ import { denyUnlessPermission } from "../../../../_components/permission-gate";
 import { ReviewForms } from "./review-forms";
 import { enrich, remove, setDivision } from "./actions";
 import { rankLabel } from "@/lib/dota-rank";
+import { FORM_MAX_W } from "@/app/_components/ui";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Заявки команд" };
@@ -53,7 +54,7 @@ export default async function TeamRegistrationsPage({ params }: { params: Promis
   );
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 md:px-6">
+    <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
       <Link href={`/admin/tournaments/${tournament.slug}`} className="text-xs text-ink-subtle hover:text-ink">
         ← {tournament.name}
       </Link>

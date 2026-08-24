@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { Eyebrow } from "@/app/_components/ui";
+import { Eyebrow, SITE_MAX_W } from "@/app/_components/ui";
 import { NewFearlessButton } from "./_components/new-fearless-button";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 
@@ -17,7 +17,7 @@ export default async function FearlessHome() {
   const sessions = await prisma.fearlessSession.findMany({ orderBy: { updatedAt: "desc" }, take: 50 });
 
   return (
-    <main className="mx-auto w-full max-w-[100rem] flex-1 px-4 py-8 font-pouf md:px-6">
+    <main className={`mx-auto w-full ${SITE_MAX_W} flex-1 px-4 py-8 font-pouf md:px-6`}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <Eyebrow className="mb-2">Служебная часть · fearless</Eyebrow>

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { RosterMember, TeamWithRoster } from "@/lib/roster-data";
-import type { Division } from "@/lib/divisions";
 import { countryCode, teamAccent, teamTag } from "@/lib/profiles";
 import { roleLabel } from "@/lib/roles";
 import { Chip, Meter } from "@/app/_components/ui";
@@ -188,60 +187,18 @@ function TeamCard({ team, defaultOpen }: { team: TeamWithRoster; defaultOpen: bo
   );
 }
 
-export function TeamCards({ teams, divisions: all }: { teams: TeamWithRoster[]; divisions: Division[] }) {
+export function TeamCards({ teams }: { teams: TeamWithRoster[] }) {
   // Ключ по «свёрнутости всех» — самый дешёвый способ разом переоткрыть карточки:
   // меняем ключ, React пересоздаёт их с нужным начальным состоянием.
   const [generation, setGeneration] = useState(0);
   // По умолчанию составы свёрнуты: сначала виден список команд, состав разворачивается по клику.
   const [collapsed, setCollapsed] = useState(true);
 
-  // Под-вкладки дивизионов: команды делим по участию (`divisionIds`), а не по строке-зеркалу
-  // `Team.group` — в новом турнире зеркало держит имя дивизиона прошлого сезона, и вкладка
-  // дивизиона оказывалась пустой. Показываем только дивизионы, где есть команды, в порядке
-  // справочника; команды вне дивизионов (если появятся) — вкладкой «Прочие».
-  const inDiv = (t: TeamWithRoster, id: number) => t.divisionIds.includes(id);
-  const divisions = all.filter((d) => teams.some((t) => inDiv(t, d.id)));
-  const other = (t: TeamWithRoster) => !divisions.some((d) => inDiv(t, d.id));
-  const hasOther = teams.some(other);
-  const tabs = [
-    ...divisions.map((d) => ({ key: String(d.id), label: d.short })),
-    ...(hasOther ? [{ key: "—", label: "Прочие" }] : []),
-  ];
-  const [tab, setTab] = useState(tabs[0]?.key ?? "—");
-  const active = tabs.some((t) => t.key === tab) ? tab : (tabs[0]?.key ?? "—");
-  const matches = (t: TeamWithRoster, key: string) => (key === "—" ? other(t) : inDiv(t, Number(key)));
-  const shown = teams.filter((t) => matches(t, active));
-
   return (
     <div className="space-y-4 font-pouf">
-      <div className="flex items-center justify-between gap-3">
-        {tabs.length > 1 ? (
-          <div className="flex gap-2">
-            {tabs.map((t) => {
-              const count = teams.filter((x) => matches(x, t.key)).length;
-              return (
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => setTab(t.key)}
-                  className={`rounded-[14px] px-4 py-[9px] text-[13px] font-black transition-[box-shadow,transform,background] ${
-                    active === t.key
-                      ? "bg-purple text-[var(--on-accent)] cushion-control"
-                      : "bg-surface text-ink-muted cushion-field hover:text-ink"
-                  }`}
-                >
-                  {t.label}
-                  <span className={`ml-1.5 text-xs ${active === t.key ? "text-[var(--on-accent-muted)]" : "text-ink-subtle"}`}>
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          <span />
-        )}
-
+      {/* Фильтр дивизиона живёт на странице, в query (DivTabs), — свой второй ряд вкладок здесь стоял
+          за тот же выбор и путал: два ряда, одно решение (UI-GUIDELINES §2, L4). */}
+      <div className="flex items-center justify-end gap-3">
         <button
           type="button"
           onClick={() => {
@@ -255,7 +212,7 @@ export function TeamCards({ teams, divisions: all }: { teams: TeamWithRoster[]; 
       </div>
 
       <div className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {shown.map((t) => (
+        {teams.map((t) => (
           <TeamCard key={`${t.id}-${generation}`} team={t} defaultOpen={!collapsed} />
         ))}
       </div>
