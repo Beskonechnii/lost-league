@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SITE_MAX_W } from "./ui";
+import { TOUCH_TARGET, useScrollActiveIntoView } from "./nav-scroll";
 
 // Навигация. Две верхние строки, по одной на группу маршрутов:
 //   PublicNav — продукт (src/app/(public)): разбор матча, таблица, витрина ростера;
@@ -88,7 +89,7 @@ function Bar({
                 href={s.href}
                 title={s.hint}
                 aria-current={current ? "page" : undefined}
-                className={`shrink-0 rounded-[14px] px-4 py-[9px] text-[13px] font-black transition-[box-shadow,transform,background] ${focus} ${
+                className={`inline-flex shrink-0 rounded-[14px] px-4 py-[9px] text-[13px] font-black transition-[box-shadow,transform,background] ${TOUCH_TARGET} ${focus} ${
                   current
                     ? "bg-purple text-[var(--on-accent)] cushion-control"
                     : "text-ink-muted hover:bg-surface-1 hover:text-ink hover:cushion-field"
@@ -149,6 +150,7 @@ export function AdminNav({ isAdmin }: { isAdmin: boolean }) {
 /** Подразделы секции (ростер, студия). Подсвечивается самый конкретный подходящий пункт. */
 export function SubNav({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
+  const activeRef = useScrollActiveIntoView<HTMLAnchorElement>();
   const active = items
     .map((t) => ({ href: t.href, score: matchScore(pathname, t) }))
     .filter((x) => x.score > 0)
@@ -161,10 +163,11 @@ export function SubNav({ items }: { items: NavItem[] }) {
         {items.map((t) => (
           <Link
             key={t.href}
+            ref={t.href === active ? activeRef : undefined}
             href={t.href}
             title={t.hint}
             aria-current={t.href === active ? "page" : undefined}
-            className={`shrink-0 rounded-[14px] px-4 py-[9px] text-[13px] font-black transition-[box-shadow,transform,background] ${focus} ${
+            className={`inline-flex shrink-0 rounded-[14px] px-4 py-[9px] text-[13px] font-black transition-[box-shadow,transform,background] ${TOUCH_TARGET} ${focus} ${
               t.href === active
                 ? "bg-purple text-[var(--on-accent)] cushion-control"
                 : "text-ink-muted hover:bg-surface-1 hover:text-ink hover:cushion-field"

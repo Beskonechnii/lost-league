@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Division } from "@/lib/divisions";
+import { TOUCH_TARGET } from "@/app/_components/nav-scroll";
 
 // Вкладки дивизиона для страниц ростера: D1 / D2 / Все. Разрез живёт в query (?div=d1),
 // как и в /standings и в рейтингах — ссылку с нужным дивизионом можно кинуть в чат.
@@ -55,7 +56,7 @@ export function DivTabs({
         <Link
           key={t.key ?? "all"}
           href={href(base, t.key, keep)}
-          className={`rounded-[14px] px-3.5 py-[7px] text-[13px] font-black transition-[box-shadow,transform,background] ${
+          className={`inline-flex items-center rounded-[14px] px-3.5 py-[7px] text-[13px] font-black transition-[box-shadow,transform,background] ${TOUCH_TARGET} ${
             current === t.key
               ? "bg-purple text-[var(--on-accent)] cushion-control"
               : "bg-surface text-ink-muted cushion-field hover:text-ink"

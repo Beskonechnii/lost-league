@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ToolGroup } from "./tools";
 import { QUEUE_TOOL } from "./tools";
+import { TOUCH_TARGET, useScrollActiveIntoView } from "@/app/_components/nav-scroll";
 
 // Постоянный список инструментов операторской. Пришёл на смену связке «плитки + кнопка Назад»:
 // у оператора не просмотр, а работа с полутора десятками инструментов, и переход между двумя из них
@@ -20,6 +21,8 @@ const isActive = (pathname: string, href: string) => pathname === href || pathna
 
 export function AdminSidebar({ groups, pending }: { groups: ToolGroup[]; pending: number }) {
   const pathname = usePathname();
+  // В мобильном ряду активный инструмент так же легко оказывается за краем, как вкладка турнира.
+  const activeRef = useScrollActiveIntoView<HTMLAnchorElement>();
 
   return (
     <aside
@@ -38,10 +41,11 @@ export function AdminSidebar({ groups, pending }: { groups: ToolGroup[]; pending
               return (
                 <Link
                   key={t.href}
+                  ref={active ? activeRef : undefined}
                   href={t.href}
                   title={t.desc}
                   aria-current={active ? "page" : undefined}
-                  className={`flex shrink-0 items-center gap-2 rounded-[14px] px-3 py-[9px] text-[13px] font-black transition-[box-shadow,transform,background] ${focus} ${
+                  className={`flex shrink-0 items-center gap-2 rounded-[14px] px-3 py-[9px] text-[13px] font-black transition-[box-shadow,transform,background] ${TOUCH_TARGET} ${focus} ${
                     active
                       ? "bg-purple text-[var(--on-accent)] cushion-control"
                       : "text-ink-muted hover:bg-surface-1 hover:text-ink hover:cushion-field"

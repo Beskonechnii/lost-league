@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { DropdownMenu } from "@/components/pouf/menu";
 import { SITE_MAX_W } from "./ui";
+import { TOUCH_TARGET, useScrollActiveIntoView } from "./nav-scroll";
 
 // Строка контекста турнира — вторая и последняя строка хрома внутри /tournaments/<slug>.
 // В ней сразу два уровня навигации (UI-GUIDELINES §2):
@@ -21,7 +22,7 @@ const focus = "outline-none focus-visible:ring-[3px] focus-visible:ring-purple";
 /** Пилюля строки: активная вжата внутрь, спокойная поднимается на hover. Один вид на L2 и L3 —
  *  разделяет их не форма, а разделитель между группами. */
 function pill(active: boolean) {
-  return `shrink-0 rounded-[14px] px-3.5 py-[9px] text-[13px] font-black transition-[box-shadow,transform,background] ${focus} ${
+  return `inline-flex shrink-0 rounded-[14px] px-3.5 py-[9px] text-[13px] font-black transition-[box-shadow,transform,background] ${TOUCH_TARGET} ${focus} ${
     active
       ? "bg-purple text-[var(--on-accent)] cushion-control"
       : "text-ink-muted hover:bg-surface-1 hover:text-ink hover:cushion-field"
@@ -52,6 +53,7 @@ export function TournamentBar({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const activeRef = useScrollActiveIntoView<HTMLAnchorElement>();
 
   const root = `/tournaments/${slug}`;
   // Дивизион берём из пути; если стоим на общем разделе турнира (ростер, TP, о турнире) — первый.
@@ -120,7 +122,13 @@ export function TournamentBar({
 
         <nav className="flex gap-2">
           {stages.map((s) => (
-            <Link key={s.href} href={s.href} aria-current={s.active ? "page" : undefined} className={pill(s.active)}>
+            <Link
+              key={s.href}
+              ref={s.active ? activeRef : undefined}
+              href={s.href}
+              aria-current={s.active ? "page" : undefined}
+              className={pill(s.active)}
+            >
               {s.label}
             </Link>
           ))}

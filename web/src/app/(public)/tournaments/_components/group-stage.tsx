@@ -9,6 +9,10 @@ import type { GroupRow, GroupTable } from "@/lib/group-stage";
 // правки — через /admin/series.
 
 const CARD = "overflow-hidden rounded-card bg-surface cushion-card";
+// Та же карточка, но прокручиваемая: `overflow-hidden` из CARD перебивал `overflow-x-auto` (оба
+// правила одной специфичности, порядок решает стилевой файл, а не класс), и на телефоне сетка
+// личных встреч просто обрезалась — прокрутить её было нельзя.
+const CARD_SCROLL = "rounded-card bg-surface cushion-card overflow-x-auto";
 
 /** Заголовок-полоска над таблицей/сеткой — компактный uppercase в духе pouf Eyebrow. */
 const HEAD = "px-4 py-2.5 text-center text-[11px] font-extrabold uppercase tracking-[1.5px] text-muted";
@@ -88,14 +92,15 @@ function StandingsCard({ t }: { t: GroupTable }) {
 /** Перекрёстная сетка: строка — команда, столбец — соперник, ячейка — счёт серии глазами строки. */
 function HeadToHeadCard({ t }: { t: GroupTable }) {
   return (
-    <div className={`${CARD} overflow-x-auto`}>
+    <div className={CARD_SCROLL}>
       <div className={`border-b border-hairline ${HEAD}`}>Личные встречи</div>
       <table className="border-collapse text-sm">
         <tbody>
           {t.rows.map((r, i) => (
             <tr key={r.teamId}>
-              {/* левый столбец — лого команды-строки */}
-              <td className="w-9 border border-hairline/50 bg-surface-2/30 px-2 py-2">
+              {/* левый столбец — лого команды-строки. Липкий: при прокрутке сетки вбок иначе
+                  непонятно, чья это строка */}
+              <td className="sticky left-0 z-10 w-9 border border-hairline/50 bg-surface px-2 py-2">
                 <span className="flex justify-center">
                   <TeamMark row={r} size={24} />
                 </span>

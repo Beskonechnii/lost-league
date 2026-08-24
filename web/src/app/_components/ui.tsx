@@ -49,12 +49,14 @@ export function SectionHeader({
   aside?: ReactNode;
 }) {
   return (
-    <div className="flex items-end justify-between gap-3 font-pouf">
+    // На узком экране заголовок и правая приписка встают друг под друга: в строку они налезали
+    // друг на друга — «сыграно 56 из 56» уезжало на H1.
+    <div className="flex flex-col gap-2 font-pouf sm:flex-row sm:items-end sm:justify-between sm:gap-3">
       <div className="min-w-0">
         {eyebrow && <Eyebrow className="mb-2">{eyebrow}</Eyebrow>}
         <h1 className="text-[28px] font-black leading-[1.2] tracking-[-0.5px] text-ink md:text-4xl">{title}</h1>
       </div>
-      {aside && <div className="shrink-0 pb-1 font-pouf text-sm font-bold text-muted">{aside}</div>}
+      {aside && <div className="font-pouf text-sm font-bold text-muted sm:shrink-0 sm:pb-1">{aside}</div>}
     </div>
   );
 }
