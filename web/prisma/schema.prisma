@@ -570,3 +570,18 @@ model TgChat {
   username String? // без «@», как Player.telegram; у человека без хендла пусто
   seenAt   DateTime @updatedAt
 }
+
+
+/// «Эти двое — разные люди»: решение оператора по паре похожих профилей (`/admin/roster/duplicates`).
+/// Хранится только отказ: слияние убирает одну запись физически, и пара больше не всплывёт сама.
+/// Без этой таблицы очередь дублей вечно показывала бы одних и тех же тёзок.
+model PlayerDistinct {
+  id          Int      @id @default(autoincrement())
+  /// Меньший и больший id пары — порядок нормализован, чтобы (a,b) и (b,a) были одной строкой.
+  aId         Int
+  bId         Int
+  decidedAt   DateTime @default(now())
+  decidedById Int? // след в истории, без relation — как TeamApplication.reviewedById
+
+  @@unique([aId, bId])
+}

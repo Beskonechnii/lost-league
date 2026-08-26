@@ -37,6 +37,7 @@ export const TOOL_GROUPS: ToolGroup[] = [
       { href: "/admin/staff", perm: "accounts.admins", label: "Команда лиги", icon: "🛡️", desc: "Владелец и админы: назначение роли и раздача прав по галочкам." },
       { href: "/admin/tp", perm: "tp.edit", label: "TP", icon: "🏅", desc: "Начисление сезонных очков MVP игрокам." },
       { href: "/admin/bot", perm: "tournaments.edit", label: "Бот заявок", icon: "🤖", desc: "Что телеграм-бот спрашивает у капитана: тексты шагов и свои вопросы." },
+      { href: "/admin/duplicates", perm: "roster.edit", label: "Дубли профилей", icon: "👥", desc: "Похожие профили одного человека: объединить, переименовать или развести." },
     ],
   },
   {
