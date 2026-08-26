@@ -51,7 +51,7 @@ docker --version && docker compose version
 ### 2. Забрать код
 
 ```bash
-git clone https://github.com/Beskonechnii/LOST.git
+git clone https://github.com/Beskonechnii/lost-league.git
 cd LOST/web
 ```
 
@@ -127,7 +127,7 @@ cd LOST && git pull && cd web && docker compose up -d --build
 # Node 24 LTS
 curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && apt install -y nodejs
 
-git clone https://github.com/Beskonechnii/LOST.git
+git clone https://github.com/Beskonechnii/lost-league.git
 cd LOST/web
 cp .env.example .env && nano .env      # заполнить ADMIN_PASSWORD
 

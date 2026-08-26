@@ -12,7 +12,7 @@ Next.js 16 (App Router, Turbopack) · React 19 · Tailwind v4 · Prisma 7 + SQLi
 Единственное, чего нет в репозитории, — `.env`:
 
 ```bash
-git clone https://github.com/Beskonechnii/LOST.git && cd LOST/web
+git clone https://github.com/Beskonechnii/lost-league.git && cd lost-league/web
 cp .env.example .env
 npm install
 npx prisma migrate deploy
