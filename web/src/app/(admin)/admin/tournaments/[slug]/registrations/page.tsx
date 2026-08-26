@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { tournamentBySlug } from "@/lib/tournaments";
-import { applicationProblems, listApplications, parseDraft, type Problem } from "@/lib/team-application";
+import { applicationProblems, listApplications, parseAnswers, parseDraft, type Problem } from "@/lib/team-application";
 import { roleLabel } from "@/lib/roles";
 import { Button } from "@/components/ui/button";
 import { denyUnlessPermission } from "../../../../_components/permission-gate";
@@ -76,6 +76,7 @@ export default async function TeamRegistrationsPage({ params }: { params: Promis
         <ul className="mt-6 space-y-3">
           {applications.map((a, i) => {
             const draft = parseDraft(a.payload);
+            const answers = parseAnswers(a.payload);
             const status = STATUS[a.status] ?? { label: a.status, tone: "border-hairline text-ink-subtle" };
             const blocked = problems[i].some((p) => p.level === "block") || !a.divisionId;
 
@@ -108,6 +109,19 @@ export default async function TeamRegistrationsPage({ params }: { params: Promis
                       </li>
                     ))}
                   </ul>
+                )}
+
+                {answers.length > 0 && (
+                  // Ответы на свои вопросы оператора (квиз бота) — их нет ни у импорта, ни у формы
+                  // с сайта, поэтому блок появляется только когда есть что показать.
+                  <dl className="mt-2 space-y-1 border-l-2 border-hairline pl-3">
+                    {answers.map((ans, j) => (
+                      <div key={j}>
+                        <dt className="text-xs text-ink-subtle">{ans.question}</dt>
+                        <dd className="text-xs text-ink">{ans.answer}</dd>
+                      </div>
+                    ))}
+                  </dl>
                 )}
 
                 {a.status === "pending" && (

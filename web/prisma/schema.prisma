@@ -524,3 +524,33 @@ model PointsEntry {
   tournamentId Int?
 
 }
+
+/// Диалог телеграм-бота: где капитан остановился в квизе заявки. Живёт в БД, а не в памяти
+/// процесса, потому что бот ходит за апдейтами long polling'ом с ноутбука оператора — процесс
+/// перезапускают, а капитан к этому моменту продиктовал полсостава. Одна строка на чат;
+/// заполненный квиз уезжает в `TeamApplication` (source = telegram) и строка обнуляется.
+model BotSession {
+  id        Int      @id @default(autoincrement())
+  chatId    String   @unique // id чата в Telegram, строкой: числа там выходят за 2^53
+  step      String // шаг квиза (src/lib/tg-quiz.ts → Step)
+  /// Всё собранное на текущий момент, JSON (src/lib/tg-quiz.ts → State).
+  state     String
+  updatedAt DateTime @updatedAt
+}
+
+/// Правка вопроса телеграм-бота, сделанная оператором на /admin/bot. В таблице лежат **только
+/// отличия от дефолта**: формулировки по умолчанию живут в коде (src/lib/quiz-config.ts), иначе
+/// пустая база означала бы бота без вопросов. Свои вопросы оператора (`custom`) существуют только
+/// здесь — у них дефолта нет.
+model BotQuestion {
+  id      Int     @id @default(autoincrement())
+  key     String  @unique // ключ шага (hello, team_name, …) либо cq-<n> у своего вопроса
+  custom  Boolean @default(false)
+  text    String
+  /// Варианты ответа кнопками, по строке на вариант. Пусто — свободный ответ. Только у своих вопросов.
+  options String?
+  /// Спрашивать ли. Выключить можно лишь необязательное (тег, телеграм, дивизион) — без ника или
+  /// ссылки заявка не заявка, и такие шаги выключателя не имеют (src/lib/quiz-config.ts).
+  enabled Boolean @default(true)
+  orderNo Int     @default(0) // порядок своих вопросов между собой
+}

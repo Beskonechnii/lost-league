@@ -18,10 +18,15 @@ import type { TeamDraft, PlayerDraft } from "./roster-import";
 
 export type { TeamDraft, PlayerDraft };
 
-/** JSON payload заявки. Версия — чтобы старую заявку можно было прочитать после смены формата. */
-type Payload = { version: 1; team: TeamDraft };
+/** Ответ на свой вопрос телеграм-бота. Вопрос хранится текстом, а не ключом: оператор его потом
+ *  перепишет, а заявка прошлого месяца должна остаться читаемой. */
+export type Answer = { question: string; answer: string };
 
-export const formatDraft = (team: TeamDraft): string => JSON.stringify({ version: 1, team } satisfies Payload);
+/** JSON payload заявки. Версия — чтобы старую заявку можно было прочитать после смены формата. */
+type Payload = { version: 1; team: TeamDraft; answers?: Answer[] };
+
+export const formatDraft = (team: TeamDraft, answers: Answer[] = []): string =>
+  JSON.stringify({ version: 1, team, ...(answers.length ? { answers } : {}) } satisfies Payload);
 
 /** Битый payload — не повод падать всей очередью: заявка покажется пустой, оператор её вернёт. */
 export function parseDraft(raw: string | null | undefined): TeamDraft | null {
@@ -31,6 +36,17 @@ export function parseDraft(raw: string | null | undefined): TeamDraft | null {
     return data?.team?.name ? data.team : null;
   } catch {
     return null;
+  }
+}
+
+/** Ответы на свои вопросы бота. У заявок с сайта и из импорта их нет — пустой список. */
+export function parseAnswers(raw: string | null | undefined): Answer[] {
+  if (!raw) return [];
+  try {
+    const data = JSON.parse(raw) as Payload;
+    return Array.isArray(data?.answers) ? data.answers.filter((a) => a?.question && a?.answer) : [];
+  } catch {
+    return [];
   }
 }
 
@@ -100,6 +116,44 @@ export async function submitTeamApplication(
     source: "web",
     payload: formatDraft({ ...draft, name, players, slug }),
     submittedById: accountId,
+    status: "pending",
+    notes: null,
+    submittedAt: new Date(),
+  };
+  return mine
+    ? prisma.teamApplication.update({ where: { id: mine.id }, data })
+    : prisma.teamApplication.create({ data });
+}
+
+/**
+ * Заявка из телеграм-бота (`src/lib/tg-quiz.ts`). Тот же поток и та же очередь, что у капитана с
+ * сайта, — расходятся только в авторе: у бота аккаунта нет, `submittedById` остаётся пустым, а
+ * человека оператор опознаёт по телеграму капитана в составе. Поэтому и дедуп здесь только по
+ * слагу: сопоставить чат с прежней заявкой не по чему.
+ *
+ * Проверки состава (пустое имя, меньше пяти игроков) квиз делает по шагам — переспросить на месте
+ * дешевле, чем отбить готовую заявку в конце; здесь остаётся то, что зависит от БД.
+ */
+export async function submitTelegramApplication(
+  tournamentId: number,
+  divisionId: number | null,
+  draft: TeamDraft,
+  answers: Answer[] = [],
+) {
+  const tournament = await prisma.tournament.findUnique({ where: { id: tournamentId } });
+  if (!tournament) throw new Error("Турнир не найден");
+  if (!registrationOpen(tournament)) throw new Error("Приём заявок на этот турнир закрыт");
+
+  const slug = draft.slug || slugify(draft.name);
+  const mine = await prisma.teamApplication.findFirst({
+    where: { tournamentId, status: { in: ["pending", "rejected"] }, payload: { contains: `"slug":"${slug}"` } },
+    orderBy: { submittedAt: "desc" },
+  });
+  const data = {
+    tournamentId,
+    divisionId,
+    source: "telegram",
+    payload: formatDraft({ ...draft, slug }, answers),
     status: "pending",
     notes: null,
     submittedAt: new Date(),

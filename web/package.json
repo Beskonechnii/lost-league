@@ -7,6 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "bot": "tsx scripts/bot.ts",
     "lint": "eslint",
     "build:standings": "tsx scripts/build-standings-site.ts",
     "db:export": "tsx scripts/export-db.ts",
