@@ -139,14 +139,21 @@ export async function submitTelegramApplication(
   divisionId: number | null,
   draft: TeamDraft,
   answers: Answer[] = [],
+  chatId: string | null = null,
 ) {
   const tournament = await prisma.tournament.findUnique({ where: { id: tournamentId } });
   if (!tournament) throw new Error("Турнир не найден");
   if (!registrationOpen(tournament)) throw new Error("Приём заявок на этот турнир закрыт");
 
   const slug = draft.slug || slugify(draft.name);
+  // Дедуп по чату либо по слагу: один капитан правит свою заявку из того же чата, а слаг ловит
+  // случай, когда ту же команду подают заново с другого телефона.
   const mine = await prisma.teamApplication.findFirst({
-    where: { tournamentId, status: { in: ["pending", "rejected"] }, payload: { contains: `"slug":"${slug}"` } },
+    where: {
+      tournamentId,
+      status: { in: ["pending", "rejected"] },
+      OR: [...(chatId ? [{ submittedChatId: chatId }] : []), { payload: { contains: `"slug":"${slug}"` } }],
+    },
     orderBy: { submittedAt: "desc" },
   });
   const data = {
@@ -154,6 +161,7 @@ export async function submitTelegramApplication(
     divisionId,
     source: "telegram",
     payload: formatDraft({ ...draft, slug }, answers),
+    submittedChatId: chatId,
     status: "pending",
     notes: null,
     submittedAt: new Date(),

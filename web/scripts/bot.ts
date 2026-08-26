@@ -5,7 +5,8 @@ import { replyTo } from "@/lib/tg-quiz";
 // Телеграм-бот лиги: крутит квиз заявки команды (`src/lib/tg-quiz.ts`). Запускается руками и живёт,
 // пока открыт приём заявок:
 //
-//   cd web && npx tsx scripts/bot.ts
+//   cd web && npm run bot          — в этом окне, видно лог
+//   cd web && npm run bot:up       — фоном, не занимая терминал (лог: npm run bot:log, стоп: npm run bot:down)
 //
 // **Long polling, а не вебхук** — бот сам ходит за апдейтами, поэтому публичный адрес не нужен и
 // бота можно держать с ноутбука до выката наружу (`DEPLOY.md`). Когда приложение переедет на VPS,
@@ -16,6 +17,9 @@ import { replyTo } from "@/lib/tg-quiz";
 //
 // Флаги:
 //   --once   разобрать то, что накопилось, и выйти (проверка связи и прогонов в разработке).
+//
+// Правка **вопросов** в /admin/bot доезжает без перезапуска (конфигурация читается на каждое
+// сообщение), а правка **кода** — только перезапуском: `npm run bot:watch` делает это сам.
 
 const once = process.argv.includes("--once");
 
@@ -39,7 +43,7 @@ async function handle(update: Update): Promise<void> {
   if (!message?.text) return;
   const chatId = String(message.chat.id);
   try {
-    await replyTo(chatId, message.text);
+    await replyTo(chatId, message.text, message.from?.username);
   } catch (e) {
     console.error(`Чат ${chatId}:`, e);
     // Человеку тоже говорим — иначе бот молча «завис» посреди диалога.
@@ -50,7 +54,7 @@ async function handle(update: Update): Promise<void> {
 }
 
 async function main() {
-  console.log(`Бот ${await whoami()} слушает. Ctrl+C — остановить.`);
+  console.log(`Бот ${await whoami()} слушает. Остановить — Ctrl+C, а если запущен фоном — npm run bot:down.`);
 
   // Апдейты Telegram хранит сутки и отдаёт, пока их не подтвердили следующим offset'ом. Начинаем с
   // хвоста: накопленное за время простоя разбирать нечего — люди уже ушли, а диалоги их сбиты.
@@ -63,17 +67,31 @@ async function main() {
     }
   }
 
+  let conflicts = 0;
   for (;;) {
     let updates: Update[];
     try {
       updates = await getUpdates(offset);
     } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      // 409 от Telegram значит «за апдейтами уже кто-то ходит»: два бота на одном токене отбирают
+      // сообщения друг у друга, и диалоги рвутся посреди состава. Одиночный конфликт — это свой же
+      // перезапуск под `bot:watch`, он проходит сам; упорный — второе запущенное окно.
+      if (message.includes("409") || message.toLowerCase().includes("conflict")) {
+        if (++conflicts >= 5) {
+          console.error("\nБот уже запущен где-то ещё (Telegram отдаёт Conflict). Закройте второе окно и запустите снова.");
+          process.exit(1);
+        }
+        await new Promise((r) => setTimeout(r, 2_000));
+        continue;
+      }
       // Сеть отвалилась или Telegram ответил 5xx — ждём и пробуем снова, а не выходим: бот должен
       // пережить смену wifi, не требуя перезапуска руками.
-      console.error("Не получил апдейты:", e instanceof Error ? e.message : e);
+      console.error("Не получил апдейты:", message);
       await new Promise((r) => setTimeout(r, 5_000));
       continue;
     }
+    conflicts = 0;
 
     for (const update of updates) {
       offset = update.update_id + 1;

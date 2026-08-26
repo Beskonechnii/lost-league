@@ -17,6 +17,8 @@ const BY_KEY = new Map(ROLES.map((r) => [r.key as string, r]));
 
 export const isRole = (v: string | null | undefined): v is RoleKey => !!v && BY_KEY.has(v);
 export const roleLabel = (v: string | null | undefined) => (v && BY_KEY.get(v)?.label) ?? null;
+/** Короткая русская подпись («Керри», «Мид») — ей подписаны кнопки и сводки бота. */
+export const roleShort = (v: string | null | undefined) => (v && BY_KEY.get(v)?.short) ?? null;
 // именно number | null: пустая строка вместо роли не должна протекать в тип позиции
 export const rolePosition = (v: string | null | undefined): number | null =>
   (v ? BY_KEY.get(v)?.position : null) ?? null;

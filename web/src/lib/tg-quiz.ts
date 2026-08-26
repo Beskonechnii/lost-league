@@ -11,15 +11,16 @@
 // одном матче, а просить её потом перепиской — та же работа, что вернуть заявку.
 
 import { prisma } from "./prisma";
-import { sendTo, type Keyboard } from "./telegram";
+import { sendTo, type Keyboard, type Reply } from "./telegram";
 import { submitTelegramApplication } from "./team-application";
 import { emptyPlayer, type TeamDraft, type PlayerDraft } from "./roster-import";
 import { profileLinkProblem } from "./application";
-import { ROLES, type RoleKey } from "./roles";
+import { ROLES, roleShort, type RoleKey } from "./roles";
 import { isCoreRole } from "./roster-spots";
 import { slugify, accountIdFromUrl, normalizeTelegram } from "./profiles";
 import { registrationOpen } from "./tournaments";
 import { loadQuiz, type QuizConfig } from "./quiz-config";
+import { MENU, MENU_KEYBOARD, isMenuButton, menuReply, rememberChat } from "./tg-menu";
 
 /** Шаг диалога. Хранится строкой в `BotSession.step` — старую сессию после правки квиза сбросим. */
 export type Step =
@@ -60,9 +61,6 @@ type State = {
  *  и заявка прошлого месяца должна остаться читаемой. */
 export type Answer = { question: string; answer: string };
 
-/** Что бот скажет в ответ. Список, потому что шаг иногда отвечает подтверждением и следующим вопросом. */
-type Reply = { text: string; keyboard?: Keyboard };
-
 const emptyState = (): State => ({
   tournamentId: null,
   divisionId: null,
@@ -91,7 +89,7 @@ const DROP = "Удалить игрока";
 
 // Клавиатура у Telegram висит до отмены, и кнопку прошлого шага легко нажать на следующем. Ник,
 // совпавший со служебным ответом, — почти наверняка такое нажатие, а не имя игрока.
-const SERVICE = new Set([SKIP, DONE, ADD, EDIT, BACK, DROP, "Отправить заявку", "Начать заново"]);
+const SERVICE = new Set([SKIP, DONE, ADD, EDIT, BACK, DROP, "Отправить заявку", "Начать заново", ...Object.values(MENU)]);
 
 // ── сессия ───────────────────────────────────────────────────────────────────
 
@@ -130,10 +128,6 @@ const pick = <T extends { name: string }>(items: T[], text: string): T | undefin
   return items.find((i) => i.name.trim().toLowerCase() === needle);
 };
 
-function roleShort(key: RoleKey): string {
-  return ROLES.find((r) => r.key === key)!.short;
-}
-
 /**
  * Кнопки позиций для этого игрока: занятые позиции 1–5 не показываем — в составе они по одной, и
  * предлагать керри второй раз значит звать капитана в ошибку, которую потом разбирает оператор.
@@ -149,7 +143,7 @@ function roleButtons(state: State, exceptIndex: number): string[][] {
   const free = ROLES.filter((r) => r.position !== null && !taken.has(r.key as RoleKey)).map((r) => r.short);
   const rows: string[][] = [];
   for (let i = 0; i < free.length; i += 2) rows.push(free.slice(i, i + 2));
-  rows.push([roleShort("standin"), roleShort("coach")]);
+  rows.push([roleShort("standin")!, roleShort("coach")!]);
   return rows;
 }
 
@@ -247,10 +241,58 @@ const askEditField = (state: State): Reply => ({
   keyboard: [["Ник", "Позиция"], ["Ссылка", "Телеграм"], [DROP], [BACK]],
 });
 
+/**
+ * Повторить вопрос, на котором стоит диалог. Нужен там, где бот отвлёкся на постороннее (кнопку
+ * меню): без повтора человек остаётся с ответом на другой вопрос и без понимания, что от него ждут.
+ *
+ * Шаги, которым нужны данные из БД (выбор турнира и дивизиона), повторяем текстом без кнопок:
+ * ходить за списком ради подсказки не стоит, а ответ бот примет и набранный руками.
+ */
+function askCurrent(q: QuizConfig, step: Step, state: State): Reply {
+  const player = state.team.players[state.index];
+  switch (step) {
+    case "tournament":
+      return { text: q.text("tournament") };
+    case "division":
+      return { text: q.text("division") };
+    case "team_name":
+    case "edit_name":
+      return { text: q.text("team_name") };
+    case "team_tag":
+    case "edit_tag":
+      return { text: q.text("team_tag"), keyboard: [[SKIP]] };
+    case "nick":
+      return askNick(q, state.index);
+    case "edit_nick":
+      return { text: `Новый ник вместо «${player.nickname}»:` };
+    case "role":
+    case "edit_role":
+      return askRole(q, state, player.nickname);
+    case "link":
+    case "edit_link":
+      return askLink(q, player.nickname);
+    case "telegram":
+    case "edit_tg":
+      return askTelegram(q, player.nickname);
+    case "more":
+      return askMore(q, state);
+    case "captain":
+      return askCaptain(q, state);
+    case "custom":
+      return askCustom(q, state.answers.length);
+    case "edit_pick":
+      return askEditPick(state);
+    case "edit_field":
+      return askEditField(state);
+    case "confirm":
+      return { text: "Продолжаем: отправляем заявку, правим состав или начинаем заново?", keyboard: [["Отправить заявку"], [EDIT], ["Начать заново"]] };
+  }
+}
+
 /** Сводка перед отправкой: последний шанс увидеть опечатку до очереди модерации. */
 function askConfirm(q: QuizConfig, state: State, tournamentName: string, divisionName: string | null): Reply {
   const lines = state.team.players.map((p) => {
-    const parts = [`• <b>${p.nickname}</b>`, p.role ? roleShort(p.role) : "без позиции"];
+    const parts = [`• <b>${p.nickname}</b>`, roleShort(p.role) ?? "без позиции"];
     if (p.isCaptain) parts.push("капитан");
     if (p.accountId) parts.push(`id ${p.accountId}`);
     return parts.join(" — ");
@@ -278,7 +320,7 @@ function askConfirm(q: QuizConfig, state: State, tournamentName: string, divisio
 async function begin(chatId: string, q: QuizConfig): Promise<Reply[]> {
   await clear(chatId);
   const tournaments = await openTournaments();
-  if (tournaments.length === 0) return [{ text: q.text("closed") }];
+  if (tournaments.length === 0) return [{ text: q.text("closed"), keyboard: MENU_KEYBOARD }];
 
   const state = emptyState();
   const hello = { text: q.text("hello") };
@@ -315,18 +357,33 @@ const divisionsOf = (tournamentId: number) =>
  * ответ и двигает состояние, либо переспрашивает. Ошибка ответа не сбрасывает диалог — иначе
  * опечатка на девятом игроке стоила бы всей заявки.
  */
-export async function handleMessage(chatId: string, raw: string): Promise<Reply[]> {
+export async function handleMessage(chatId: string, raw: string, username?: string | null): Promise<Reply[]> {
   const text = raw.trim();
   // Конфигурацию читаем на каждое сообщение: правка в /admin/bot должна действовать сразу.
   const q = await loadQuiz();
+  // Чат запоминаем при каждом сообщении: позже по нему уйдёт решение организатора по заявке.
+  await rememberChat(chatId, username);
 
-  if (/^\/start\b/.test(text)) return begin(chatId, q);
+  if (/^\/start\b/.test(text)) {
+    await clear(chatId);
+    return [{ text: q.text("menu"), keyboard: MENU_KEYBOARD }];
+  }
   if (/^\/cancel\b/.test(text)) {
     await clear(chatId);
-    return [{ text: "Заявка отменена. Начать заново — /start." }];
+    return [{ text: "Заявка отменена.", keyboard: MENU_KEYBOARD }];
   }
 
   const session = await load(chatId);
+
+  // Кнопка меню посреди квиза — справка, а не выход: капитан на седьмом игроке не должен терять
+  // состав из-за случайного нажатия. Отвечаем и тут же повторяем вопрос, на котором стоим.
+  if (isMenuButton(text)) {
+    if (text === MENU.apply) return session ? [askCurrent(q, session.step, session.state)] : begin(chatId, q);
+    const reply = await menuReply(chatId, text, username);
+    if (reply && session) return [reply, askCurrent(q, session.step, session.state)];
+    if (reply) return [reply];
+  }
+
   if (!session) return begin(chatId, q);
   const { step, state } = session;
 
@@ -460,13 +517,13 @@ export async function handleMessage(chatId: string, raw: string): Promise<Reply[
         ];
       }
       try {
-        await submitTelegramApplication(state.tournamentId!, state.divisionId, state.team, state.answers);
+        await submitTelegramApplication(state.tournamentId!, state.divisionId, state.team, state.answers, chatId);
       } catch (e) {
         // Приём мог закрыться, пока капитан отвечал: диалог оставляем, чтобы состав не пропал.
         return [{ text: `Не вышло отправить: ${e instanceof Error ? e.message : "ошибка"}` }];
       }
       await clear(chatId);
-      return [{ text: q.text("done"), keyboard: null }];
+      return [{ text: q.text("done"), keyboard: MENU_KEYBOARD }];
     }
 
     case "edit_pick": {
@@ -619,8 +676,8 @@ async function finish(chatId: string, q: QuizConfig, state: State): Promise<Repl
 }
 
 /** Обработать сообщение и ответить в чат. Точка входа для `scripts/bot.ts`. */
-export async function replyTo(chatId: string, text: string): Promise<void> {
-  const replies = await handleMessage(chatId, text);
+export async function replyTo(chatId: string, text: string, username?: string | null): Promise<void> {
+  const replies = await handleMessage(chatId, text, username);
   for (const r of replies) await sendTo(chatId, r.text, r.keyboard ?? null);
 }
 

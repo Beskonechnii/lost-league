@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { currentAccount, requirePermission } from "@/lib/account";
 import { approveApplication, deleteApplication, formatDraft, parseDraft, rejectApplication } from "@/lib/team-application";
 import { enrichTeam } from "@/lib/enrich";
+import { notifyApproved, notifyRejected } from "@/lib/tg-notify";
 import { prisma } from "@/lib/prisma";
 
 // Решения по заявкам команд. Право проверяется здесь, у самой записи: страницу можно и не
@@ -31,7 +32,10 @@ export async function approve(_prev: ReviewState, form: FormData): Promise<Revie
     await requirePermission("tournaments.edit");
     await requirePermission("roster.edit");
     const me = await currentAccount();
-    await approveApplication(Number(form.get("id")), me?.id ?? null);
+    const id = Number(form.get("id"));
+    const application = await approveApplication(id, me?.id ?? null);
+    // Уведомление после записи и не в транзакции: телеграм лежит — команда всё равно заведена.
+    await notifyApproved(id, parseDraft(application.payload)?.name ?? "Команда");
     revalidatePath(path(String(form.get("tournamentSlug") ?? "")));
     revalidatePath("/roster/teams");
     return { ok: "Команда заведена" };
@@ -44,7 +48,10 @@ export async function reject(_prev: ReviewState, form: FormData): Promise<Review
   try {
     await requirePermission("tournaments.edit");
     const me = await currentAccount();
-    await rejectApplication(Number(form.get("id")), String(form.get("reason") ?? ""), me?.id ?? null);
+    const id = Number(form.get("id"));
+    const reason = String(form.get("reason") ?? "");
+    const application = await rejectApplication(id, reason, me?.id ?? null);
+    await notifyRejected(id, parseDraft(application.payload)?.name ?? "Команда", reason.trim());
     revalidatePath(path(String(form.get("tournamentSlug") ?? "")));
     return { ok: "Заявка возвращена" };
   } catch (e) {

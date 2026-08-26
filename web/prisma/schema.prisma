@@ -109,6 +109,10 @@ model TeamApplication {
   /// Кто подал (id аккаунта) — заполнено у заявок с сайта, у импорта пусто. Без relation, как
   /// reviewedById: это след «чью заявку показывать в кабинете», а не связь (id на машинах разные).
   submittedById Int?
+  /// Чат в Telegram, из которого пришла заявка бота. Единственная надёжная ниточка к подавшему:
+  /// аккаунта у бота нет, а телеграм капитана в составе может быть и не указан. По ней бот
+  /// показывает статус заявки и уведомляет о решении организатора.
+  submittedChatId String?
   submittedAt  DateTime @default(now())
   reviewedAt   DateTime?
   reviewedById Int? // след в истории, без relation — как UserAccount.reviewedById
@@ -553,4 +557,16 @@ model BotQuestion {
   /// ссылки заявка не заявка, и такие шаги выключателя не имеют (src/lib/quiz-config.ts).
   enabled Boolean @default(true)
   orderNo Int     @default(0) // порядок своих вопросов между собой
+}
+
+
+/// Чат, который писал боту: chat_id ↔ телеграм-хендл. Нужен для исходящих сообщений — Telegram
+/// не даёт написать человеку по хендлу, только по chat_id, а он появляется лишь когда человек
+/// сам написал боту. Поэтому запоминаем всех, кто хоть раз написал: иначе уведомить о решении по
+/// заявке некого. Ничего личного здесь нет — id чата и публичный хендл.
+model TgChat {
+  id       Int      @id @default(autoincrement())
+  chatId   String   @unique
+  username String? // без «@», как Player.telegram; у человека без хендла пусто
+  seenAt   DateTime @updatedAt
 }
