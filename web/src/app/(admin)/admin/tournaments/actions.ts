@@ -18,7 +18,7 @@ import type { SaveState } from "./_components/save-form";
 
 // Экшены админки турниров. Право `tournaments.edit` проверяется здесь, а не только гейтом страницы:
 // до экшена можно дойти и мимо неё, а сама страница могла быть отрисована со старыми правами
-// (ACCOUNTS-PLAN.md §2.2). В `tournaments.ts` гард не переносим — этот модуль зовут и разовые
+// (docs/archive/ACCOUNTS-PLAN.md §2.2). В `tournaments.ts` гард не переносим — этот модуль зовут и разовые
 // скрипты через tsx, где ни куки, ни сессии нет.
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();

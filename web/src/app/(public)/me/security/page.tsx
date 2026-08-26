@@ -10,7 +10,7 @@ export const metadata = { title: "Вход и защита" };
 // аккаунта. Доступна любому вошедшему — привязка к игроку тут не нужна.
 //
 // Писем в проекте нет, поэтому подтверждать почту тут нечем: строку «Почта» показываем, только
-// когда её подтвердил Google (ACCOUNTS-PLAN.md §3).
+// когда её подтвердил Google (docs/archive/ACCOUNTS-PLAN.md §3).
 
 /** Строка статуса способа входа — как «connected accounts» на привычных сайтах. */
 function MethodRow({ label, on, onText, offText }: { label: string; on: boolean; onText: string; offText?: string }) {

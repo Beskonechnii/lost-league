@@ -31,5 +31,6 @@ Agent(subagent_type: "ship", run_in_background: false,
   реши его с пользователем, а не обходи.
 - Ветку сабагент не переключает: пушится та, на которой стоит репозиторий.
 - Упал хук — не обходить `--no-verify`, разбираться с причиной.
-- `web/prisma/dev.db` коммитится (данные лиги), `node_modules` / `.env` / `web/src/generated` — нет.
+- `web/prisma/dev.db` коммитится **на компе** (данные лиги); в облачной сессии база не коммитится —
+  бинарник не мержится, см. скилл `handoff`. `node_modules` / `.env` / `web/src/generated` — никогда.
 - Remote: `origin` → github.com/Beskonechnii/lost-league (приватный).

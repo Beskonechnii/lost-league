@@ -9,7 +9,7 @@ import { Heading, Eyebrow } from "@/components/pouf/text";
 // в операторский инструмент и не понимал, куда пришёл. Здесь: что за лига и что тут можно сделать.
 //
 // Цифры берём из базы, а не пишем руками: подписи на витрине не должны расходиться с данными.
-// Стиль — BRENDBOOK.md: тёмная тема, акцент violet-600.
+// Стиль — docs/brand/BRENDBOOK.md: тёмная тема, акцент violet-600.
 
 export const dynamic = "force-dynamic";
 
