@@ -48,7 +48,7 @@ ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || ROOT="$(ls -d */.git 2>/d
   верни ошибку наверх.
 - Не коммитить `node_modules` / `.env` / `web/src/generated` — они в `.gitignore`.
 - `web/prisma/dev.db` **коммитится на компе**: это данные лиги, они переезжают между машинами
-  вместе с кодом (решение от 23.07.2026, см. `ARCHITECTURE.md`). Бинарник не мержится, поэтому
+  вместе с кодом (решение от 23.07.2026, см. `DECISIONS.md`). Бинарник не мержится, поэтому
   **в облачной сессии** (`$CLAUDE_CODE_CONTAINER_ID` не пуст) базу в коммит не бери:
   `git -C "$ROOT" checkout -- web/prisma/dev.db` и скажи об этом в отчёте.
 - Remote: `origin` → github.com/Beskonechnii/lost-league (приватный). На компе при первом сетевом

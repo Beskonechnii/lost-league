@@ -1,5 +1,5 @@
 // Второй источник матча — Steam Web API (GetMatchDetails), первоисточник самой Valve.
-// Нужен, когда OpenDota лежит: их 522 роняли отчёт целиком (см. ARCHITECTURE.md).
+// Нужен, когда OpenDota лежит: их 522 роняли отчёт целиком (см. DECISIONS.md).
 // Ключ бесплатный (steamcommunity.com/dev/apikey), живёт в web/.env как STEAM_API_KEY.
 //
 // Формат ответа Valve — это то, из чего OpenDota делает свой: поля игроков и матча совпадают,
