@@ -30,7 +30,18 @@ const TOURNAMENTS_SECTION: NavItem = {
   href: "/tournaments",
   label: "Турниры",
   hint: "Сезоны и кубки лиги: таблицы, сетка, составы",
-  match: ["/tournaments", "/standings", "/roster", "/series", "/tp"],
+  match: ["/tournaments", "/standings", "/series", "/tp"],
+};
+/**
+ * Общий пул команд лиги, сквозной по всем турнирам: фильтр по турниру, поиск, у оператора — удаление.
+ * Отдельно от «Турниры»: там ростер режется по одному сезону, а здесь — все команды разом, как
+ * сущности лиги. Карточки команд и игроков (`/roster/teams|players/<id>`) принадлежат этому табу.
+ */
+const ROSTER_SECTION: NavItem = {
+  href: "/roster",
+  label: "Ростер",
+  hint: "Все команды лиги: фильтр по турниру и поиск",
+  match: ["/roster"],
 };
 const ADMIN_SECTION: NavItem = {
   href: "/admin",
@@ -140,7 +151,9 @@ const cabinetLink = (
 // Верхняя строка: продукт всем, «Админ» — только админам (роль приходит из layout'а). PublicNav/AdminNav
 // оставлены отдельными функциями лишь потому, что их зовут разные layout'ы — содержимое у них общее.
 function TopBar({ isAdmin }: { isAdmin: boolean }) {
-  const sections = isAdmin ? [TOURNAMENTS_SECTION, ADMIN_SECTION] : [TOURNAMENTS_SECTION];
+  const sections = isAdmin
+    ? [TOURNAMENTS_SECTION, ROSTER_SECTION, ADMIN_SECTION]
+    : [TOURNAMENTS_SECTION, ROSTER_SECTION];
   return <Bar sections={sections} brand={brand} aside={cabinetLink} />;
 }
 

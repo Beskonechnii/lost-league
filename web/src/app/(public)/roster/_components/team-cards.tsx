@@ -2,11 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { RosterMember, TeamWithRoster } from "@/lib/roster-data";
+import type { RosterMember, TeamWithRoster, PoolTournament } from "@/lib/roster-data";
 import { countryCode, teamAccent, teamTag } from "@/lib/profiles";
 import { roleLabel } from "@/lib/roles";
 import { Chip, Meter } from "@/app/_components/ui";
 import { PlayerAvatar } from "./avatar";
+import { TeamManageBar } from "./team-manage-bar";
+
+// Карточка в общем пуле несёт метки турниров и (у оператора) бар управления — этих полей нет у
+// витрины турнира, поэтому они опциональны: тот же компонент рисует и список сезона, и пул.
+type PoolFields = { tournaments?: PoolTournament[]; archivedAt?: Date | string | null };
 
 // Карточка команды в списке: шапка с лого, разворачивается в состав. «Основа» и «Штаб» — вкладки,
 // потому что замены и тренер в общем списке съедали внимание, хотя смотрят обычно на пятёрку.
@@ -82,7 +87,16 @@ function PlayerRow({ player, accent }: { player: RosterMember; accent: string })
   );
 }
 
-function TeamCard({ team, defaultOpen }: { team: TeamWithRoster; defaultOpen: boolean }) {
+function TeamCard({
+  team,
+  defaultOpen,
+  manage,
+}: {
+  team: TeamWithRoster & PoolFields;
+  defaultOpen: boolean;
+  /** Пул у оператора: показать бар управления (архив/возврат/снос). `archived` — в каком мы разрезе. */
+  manage?: { archived: boolean };
+}) {
   const [open, setOpen] = useState(defaultOpen);
   const [tab, setTab] = useState<"main" | "staff">("main");
 
@@ -161,6 +175,16 @@ function TeamCard({ team, defaultOpen }: { team: TeamWithRoster; defaultOpen: bo
         </button>
       </div>
 
+      {/* Метки турниров — только в пуле (там карточка сквозная по сезонам): в каком из них команда
+          играла. В витрине одного турнира это лишний шум, поэтому поле опционально. */}
+      {team.tournaments && team.tournaments.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 px-4 pb-3">
+          {team.tournaments.map((tr) => (
+            <Chip key={tr.slug}>{tr.short || tr.name}</Chip>
+          ))}
+        </div>
+      )}
+
       {open && (
         <div className="relative">
           <div className="flex gap-1.5 px-4 pb-3">
@@ -183,11 +207,19 @@ function TeamCard({ team, defaultOpen }: { team: TeamWithRoster; defaultOpen: bo
           </div>
         </div>
       )}
+
+      {manage && <TeamManageBar teamId={team.id} teamName={team.name} archived={manage.archived} />}
     </div>
   );
 }
 
-export function TeamCards({ teams }: { teams: TeamWithRoster[] }) {
+export function TeamCards({
+  teams,
+  manage,
+}: {
+  teams: (TeamWithRoster & PoolFields)[];
+  manage?: { archived: boolean };
+}) {
   // Ключ по «свёрнутости всех» — самый дешёвый способ разом переоткрыть карточки:
   // меняем ключ, React пересоздаёт их с нужным начальным состоянием.
   const [generation, setGeneration] = useState(0);
@@ -213,7 +245,7 @@ export function TeamCards({ teams }: { teams: TeamWithRoster[] }) {
 
       <div className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {teams.map((t) => (
-          <TeamCard key={`${t.id}-${generation}`} team={t} defaultOpen={!collapsed} />
+          <TeamCard key={`${t.id}-${generation}`} team={t} defaultOpen={!collapsed} manage={manage} />
         ))}
       </div>
     </div>

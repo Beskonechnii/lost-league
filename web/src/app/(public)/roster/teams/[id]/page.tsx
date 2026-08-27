@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getTeamProfile, teamRosterHistory, type RosterMember, type TeamSeasonRoster } from "@/lib/roster-data";
+import { getTeamProfile, teamRosterHistory, rosterKey, type RosterMember, type TeamSeasonRoster } from "@/lib/roster-data";
+import { prisma } from "@/lib/prisma";
 import { getStandings } from "@/lib/standings";
 import { teamDivision } from "@/lib/tournaments";
 import { teamAccent, teamTag } from "@/lib/profiles";
@@ -17,19 +18,23 @@ export const dynamic = "force-dynamic";
 
 export default async function TeamPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  // id или слаг — см. rosterKey: на слаге страница раньше падала с 500
-  const team = await getTeamProfile(id);
-  if (!team) notFound();
+  // id или слаг — см. rosterKey: на слаге страница раньше падала с 500. Дивизион ищем по её
+  // собственному участию раньше состава: getTeamProfile фильтрует ростер именно по нему, иначе
+  // команда, только что принятая в новый турнир, оставалась бы без состава на своей же странице.
+  const teamRow = await prisma.team.findUnique({ where: rosterKey(id), select: { id: true } });
+  if (!teamRow) notFound();
+  const division = await teamDivision(teamRow.id);
 
   // Таблицу берём по дивизиону команды в текущем турнире — тому же, что показывает его раздел.
   // Команда вне турнира (например, из прошлого сезона) таблицы не получает — это не ошибка.
-  const division = await teamDivision(team.id);
-  const [standings, authed, history] = await Promise.all([
+  const [team, standings, authed, history] = await Promise.all([
+    getTeamProfile(id, division?.id),
     division ? getStandings(division.id) : Promise.resolve([]),
     can("roster.edit"),
     // Состав сезонный, поэтому у команды, прожившей не один турнир, есть прошлые составы.
-    teamRosterHistory(team.id),
+    teamRosterHistory(teamRow.id, division?.id),
   ]);
+  if (!team) notFound();
 
   const accent = teamAccent(team);
   const core = team.players.filter((p) => p.position !== null);

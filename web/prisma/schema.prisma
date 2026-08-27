@@ -136,6 +136,10 @@ model Team {
   banner    String? // баннер команды (широкая подложка шапки); путь как у logo
   color     String? // акцент команды, hex
   group     String? // имя дивизиона текущего турнира — зеркало TournamentEntry (src/lib/tournaments.ts)
+  /// Убрана из общего пула (архив). null — в пуле; дата — когда убрали. Двухэтапное удаление: первое
+  /// удаление лишь ставит эту дату (команда исчезает из таба «Ростер» и из добавления в новые турниры,
+  /// но её прошлые таблицы/матчи/серии целы), второе — физически сносит запись. См. src/lib/roster-data.ts.
+  archivedAt DateTime?
   createdAt DateTime @default(now())
 
   roster         RosterSpot[]

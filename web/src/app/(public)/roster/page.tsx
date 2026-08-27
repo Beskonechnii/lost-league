@@ -1,12 +1,62 @@
-import { notFound, redirect } from "next/navigation";
-import { currentTournament } from "@/lib/tournaments";
+import Link from "next/link";
+import { listPoolTeams } from "@/lib/roster-data";
+import { can } from "@/lib/account";
+import { prisma } from "@/lib/prisma";
+import { SectionHeader } from "@/app/_components/ui";
+import { PoolExplorer } from "./_components/pool-explorer";
 
-// Старый адрес ростера. Списки команд и игроков переехали внутрь турнира
-// (/tournaments/<slug>/roster/...): состав сезонный, и общий список «все команды за всю историю»
-// на витрине смысла не имеет. Карточки /roster/teams/<id> и /roster/players/<id> остались здесь —
-// команда и игрок переживают турнир.
-export default async function RosterIndex() {
-  const current = await currentTournament();
-  if (!current) notFound();
-  redirect(`/tournaments/${current.slug}/roster/teams`);
+export const dynamic = "force-dynamic";
+
+// Общий пул команд лиги — таб «Ростер», сквозной по всем турнирам (в отличие от витрины внутри
+// турнира). Фильтр по турниру и поиск — в клиенте (PoolExplorer). Разрез «в пуле / архив» — серверный,
+// через ?view: это разные выборки (архив — первое из двух удалений, см. Team.archivedAt). Кнопки
+// удаления показываем только оператору с правом roster.delete.
+export default async function RosterPoolPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
+  const archived = (await searchParams).view === "archive";
+  const [teams, canDelete, archivedCount, pooledCount] = await Promise.all([
+    listPoolTeams({ archived }),
+    can("roster.delete"),
+    prisma.team.count({ where: { archivedAt: { not: null } } }),
+    prisma.team.count({ where: { archivedAt: null } }),
+  ]);
+
+  const tab = (active: boolean) =>
+    `inline-flex shrink-0 rounded-[14px] px-4 py-[9px] text-[13px] font-black transition ${
+      active ? "bg-purple text-[var(--on-accent)] cushion-control" : "bg-surface text-ink-muted cushion-field hover:text-ink"
+    }`;
+
+  return (
+    <div className="space-y-6 font-pouf">
+      <SectionHeader
+        eyebrow="Лига · все команды"
+        title="Ростер"
+        aside={<>Команды всех турниров лиги в одном месте</>}
+      />
+
+      {/* Разрез пул/архив виден оператору всегда; посетителю архив ни к чему — показываем только пул. */}
+      {canDelete ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/roster" className={tab(!archived)}>
+            В пуле <span className="ml-1 opacity-60 tabular-nums">{pooledCount}</span>
+          </Link>
+          <Link href="/roster?view=archive" className={tab(archived)}>
+            Архив <span className="ml-1 opacity-60 tabular-nums">{archivedCount}</span>
+          </Link>
+        </div>
+      ) : null}
+
+      {canDelete && archived && (
+        <p className="rounded-card bg-surface px-4 py-3 text-xs text-ink-subtle cushion-card">
+          Команды в архиве убраны из общего пула, но остаются в таблицах и матчах своих турниров.
+          «Вернуть в пул» отменяет это; «Удалить полностью» сносит команду со всей историей безвозвратно.
+        </p>
+      )}
+
+      <PoolExplorer teams={teams} manage={canDelete ? { archived } : undefined} />
+    </div>
+  );
 }

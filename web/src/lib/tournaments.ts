@@ -95,18 +95,42 @@ export async function divisionOfTournament(tournamentSlug: string, divisionSlug:
   return row;
 }
 
+/** Ранг «актуальности» турнира: свежее — меньше (running > registration > finished, при равенстве
+ *  статуса — поздний старт). Одно правило для `teamDivision` и пула команд (roster-data.ts). */
+const STATUS_RANK: Record<string, number> = { running: 0, registration: 1, finished: 2 };
+export const tournamentRank = (t: { status: string; startAt: Date | null }) =>
+  (STATUS_RANK[t.status] ?? 3) * 1e15 - (t.startAt?.getTime() ?? 0);
+
 /**
- * Дивизион команды в текущем турнире (с самим турниром) — по нему витрина команды знает, в какую
- * таблицу и в какой раздел вести. Команда вне текущего турнира → null.
+ * Дивизион команды в её собственном актуальном турнире (с самим турниром) — по нему витрина команды
+ * знает, в какую таблицу и в какой раздел вести. Раньше брали дивизион глобально «текущего» турнира
+ * (running, иначе последний) — команда, только что принятая в новый турнир (`registration`) при ещё
+ * идущем прошлом (`running`), оставалась без своего дивизиона и состава. Поэтому ищем среди участий
+ * самой команды, а не среди дивизионов заранее выбранного турнира.
+ *
+ * Кандидаты — дивизионы, где у команды есть состав (`RosterSpot`), а если состава нигде нет — где есть
+ * участие (`TournamentEntry`, команда заявилась, состав ещё не завели). Состав важнее пустого участия:
+ * встречается рассинхрон, когда участие сняли, а места состава остались висеть на дивизионе — карточка
+ * тогда должна показать состав, а не пустоту (ровно так у команды WW: 6 мест в дивизионе, энтри нет).
+ * draft не показываем — у него ещё нет открытой витрины. Из кандидатов берём самый свежий турнир.
  */
 export async function teamDivision(teamId: number) {
-  const current = await currentTournament();
-  if (!current) return null;
-  const entry = await prisma.tournamentEntry.findFirst({
-    where: { teamId, division: { tournamentId: current.id } },
-    include: { division: { include: { tournament: true } } },
-  });
-  return entry?.division ?? null;
+  const [spots, entries] = await Promise.all([
+    prisma.rosterSpot.findMany({
+      where: { teamId, divisionId: { not: null }, division: { tournament: { status: { not: "draft" } } } },
+      select: { division: { include: { tournament: true } } },
+      distinct: ["divisionId"],
+    }),
+    prisma.tournamentEntry.findMany({
+      where: { teamId, division: { tournament: { status: { not: "draft" } } } },
+      include: { division: { include: { tournament: true } } },
+    }),
+  ]);
+  const withRoster = spots.map((s) => s.division!).filter(Boolean);
+  const pool = withRoster.length > 0 ? withRoster : entries.map((e) => e.division);
+  if (pool.length === 0) return null;
+  pool.sort((a, b) => tournamentRank(a.tournament) - tournamentRank(b.tournament));
+  return pool[0];
 }
 
 // ── турниры ──────────────────────────────────────────────────────────────────

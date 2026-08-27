@@ -2,7 +2,7 @@
 // Пишет — только API-роуты (/api/studio/*), здесь только выборки.
 
 import { prisma } from "@/lib/prisma";
-import { getDivisions } from "@/lib/tournaments";
+import { getDivisions, tournamentRank } from "@/lib/tournaments";
 import { playerAccountId } from "@/lib/profiles";
 import { rolePosition, roleOrder } from "@/lib/roles";
 import { withPlayerUploads, withTeamUploads } from "@/lib/uploads";
@@ -203,6 +203,80 @@ export async function listTeamRosters(divisionIds?: number[]): Promise<TeamWithR
   );
 }
 
+/** Турнир, в котором команда играла — метка на карточке пула (по нему же строится фильтр). */
+export type PoolTournament = { slug: string; name: string; short: string | null };
+
+export type PoolTeam = TeamWithRoster & {
+  /** null — команда в пуле; дата — убрана в архив (первое из двух удалений). */
+  archivedAt: Date | null;
+  /** Все турниры, в дивизионах которых команда участвовала — метки и фильтр таба «Ростер». */
+  tournaments: PoolTournament[];
+};
+
+/**
+ * Общий пул команд лиги — витрина таба «Ростер», сквозная по всем турнирам (в отличие от
+ * `listTeamRosters`, что режет по одному турниру). Каждой команде показываем её СОБСТВЕННЫЙ актуальный
+ * состав (по последнему участию, как `teamDivision`), а не состав какого-то «текущего» турнира, и
+ * список турниров, где она играла, — по нему таб строит фильтр и метки.
+ *
+ * `archived`: false (по умолчанию) — команды в пуле; true — убранные в архив (первое удаление).
+ * Историю турниров архив не трогает: их таблицы и матчи по-прежнему показывают команду.
+ */
+export async function listPoolTeams({ archived = false }: { archived?: boolean } = {}): Promise<PoolTeam[]> {
+  const teams = await prisma.team.findMany({
+    where: { archivedAt: archived ? { not: null } : null },
+    orderBy: [{ name: "asc" }],
+    include: {
+      // division у мест нужен, чтобы понять «в каком турнире этот состав»: состав может висеть на
+      // дивизионе и без TournamentEntry (участие сняли, а места остались) — тогда энтри пусты, но
+      // показать команду с её составом всё равно надо.
+      roster: { include: { player: true, division: { include: { tournament: true } } } },
+      entries: { include: { division: { include: { tournament: true } } } },
+    },
+  });
+
+  type Tour = { slug: string; name: string; short: string | null; status: string; startAt: Date | null };
+
+  return Promise.all(
+    teams.map(async ({ roster, entries, ...t }) => {
+      // Ранг «актуальности» дивизиона по его турниру — то же правило, что у `teamDivision`: не
+      // «текущий» турнир лиги, а собственный последний (свежее — меньше, чтобы сортировать по возрастанию).
+      const rank = (tr: Tour) => tournamentRank(tr);
+
+      // Дивизион → его турнир: берём и из участия, и из мест состава — так команда без энтри (её
+      // сняли с турнира, а состав остался) всё равно опознаётся по дивизиону своих игроков.
+      const divTour = new Map<number, Tour>();
+      const add = (divisionId: number | null, tr: { slug: string; name: string; short: string | null; status: string; startAt: Date | null } | null) => {
+        if (divisionId === null || !tr || tr.status === "draft") return;
+        if (!divTour.has(divisionId)) divTour.set(divisionId, tr);
+      };
+      for (const e of entries) add(e.divisionId, e.division.tournament);
+      for (const s of roster) add(s.divisionId, s.division?.tournament ?? null);
+
+      // Актуальный дивизион выбираем среди тех, где реально есть места состава (иначе показали бы
+      // пустую карточку по участию без игроков). Пусто — команда вне турнира, покажем места без дивизиона.
+      const rosterDivs = [...new Set(roster.map((s) => s.divisionId).filter((id): id is number => id !== null))]
+        .filter((id) => divTour.has(id))
+        .sort((a, b) => rank(divTour.get(a)!) - rank(divTour.get(b)!));
+      const currentDivisionId = rosterDivs[0] ?? null;
+      const shown = roster.filter((s) => s.divisionId === currentDivisionId || s.divisionId === null);
+
+      // Турниры для меток и фильтра — все, где команда засветилась (участие или состав), свежие сверху.
+      const tournaments: PoolTournament[] = [...divTour.values()]
+        .sort((a, b) => rank(a) - rank(b))
+        .map((tr) => ({ slug: tr.slug, name: tr.name, short: tr.short }))
+        .filter((tr, i, all) => all.findIndex((x) => x.slug === tr.slug) === i);
+
+      return {
+        ...(await withRoster(t, shown)),
+        archivedAt: t.archivedAt,
+        divisionIds: [...divTour.keys()],
+        tournaments,
+      };
+    }),
+  );
+}
+
 /**
  * Ключ карточки ростера: число — это id, всё остальное — слаг. Ссылки по слагу до сих пор попадаются
  * (старые адреса, ручной ввод), а `Number("bsk")` даёт NaN — Prisma на нём падает, и вместо карточки
@@ -217,16 +291,20 @@ export function rosterKey(key: string | number): { id: number } | { slug: string
  * История составов команды по турнирам. Состав сезонный (`RosterSpot.divisionId`), поэтому у команды,
  * прожившей два сезона, лежат два разных состава — карточка показывает текущий сверху, прошлые ниже.
  *
- * Дивизионы текущего турнира сюда не попадают (их показывает блок «Основа»), места без дивизиона —
- * тоже: это состав команды вне турниров, он и есть текущий.
+ * `currentDivisionId` — дивизион, который у этой команды сейчас показывает блок «Основа» (её
+ * собственное актуальное участие, `teamDivision`, а не дивизионы глобально «текущего» турнира: у
+ * команды, принятой в новый турнир, пока прошлый ещё идёт, это разные вещи). Он сюда не попадает;
+ * места без дивизиона — тоже: это состав команды вне турниров, он и есть текущий.
  *
  * Итог участия берём из снимка таблицы (`GroupEntry`): место и группа. Считать его заново по сериям
  * прошлого сезона незачем — карточка не таблица, а подпись «где команда закончила».
  */
-export async function teamRosterHistory(teamId: number) {
-  const currentIds = (await getDivisions()).map((d) => d.id);
+export async function teamRosterHistory(teamId: number, currentDivisionId?: number | null) {
   const spots = await prisma.rosterSpot.findMany({
-    where: { teamId, divisionId: { not: null, notIn: currentIds } },
+    where: {
+      teamId,
+      divisionId: currentDivisionId ? { not: currentDivisionId } : { not: null },
+    },
     include: {
       player: true,
       division: { include: { tournament: true } },
@@ -275,11 +353,17 @@ export async function teamRosterHistory(teamId: number) {
 
 export type TeamSeasonRoster = Awaited<ReturnType<typeof teamRosterHistory>>[number];
 
-/** Всё для страницы команды: картинки, состав и агрегаты по MMR. */
-export async function getTeamProfile(key: string | number) {
+/**
+ * Всё для страницы команды: картинки, состав и агрегаты по MMR. Состав берём по собственному
+ * дивизиону команды (`divisionId`, передаётся вызывающей стороной из `teamDivision`), а не по
+ * дивизионам глобально «текущего» турнира — иначе команда, принятая в новый турнир, пока прошлый ещё
+ * идёт, оставалась без состава на своей же странице.
+ */
+export async function getTeamProfile(key: string | number, divisionId?: number | null) {
+  const where = divisionId ? { OR: [{ divisionId }, { divisionId: null }] } : { divisionId: null };
   const team = await prisma.team.findUnique({
     where: rosterKey(key),
-    include: { roster: { where: await seasonRosterWhere(), include: { player: true } } },
+    include: { roster: { where, include: { player: true } } },
   });
   if (!team) return null;
   const { roster, ...rest } = team;
