@@ -1,5 +1,5 @@
-// Только сервер: исходящие сообщения людям в телеграм — решения организатора: по заявке команды и
-// по анкете игрока, поданной в боте.
+// Только сервер: исходящие сообщения людям в телеграм — решения организатора: по заявке команды,
+// по анкете игрока, поданной в боте, и по правке его профиля.
 //
 // **Написать можно лишь тому, кто сам писал боту.** Telegram не отдаёт чат по хендлу, поэтому чат
 // подавшего запоминается вместе с заявкой (`TeamApplication.submittedChatId`), а остальные — в
@@ -15,6 +15,8 @@ import { parseDraft } from "./team-application";
 import { normalizeTelegram } from "./profiles";
 import { MENU } from "./tg-menu";
 import { REGISTER_BUTTON } from "./tg-register";
+import { EDIT_BUTTON } from "./tg-profile";
+import { fieldLabel } from "./profile-edit";
 
 /** Чаты, куда стоит написать про эту заявку: подавший плюс те игроки состава, что писали боту. */
 async function recipients(applicationId: number): Promise<string[]> {
@@ -114,4 +116,30 @@ export async function notifyRegistrationRejected(accountId: number, reason: stri
     accountId,
     `Анкету вернул организатор: ${reason}\n\nПоправьте и пришлите снова — «${REGISTER_BUTTON}».`,
   );
+}
+
+// ── решение по правке профиля ────────────────────────────────────────────────
+//
+// Чат берём из самой правки (`ProfileEditRequest.chatId`): она пришла из бота, и отвечать надо
+// туда же — почты у пришедшего из телеграма нет, а кабинет он открывает не каждый день.
+
+/** Правку приняли — профиль уже изменён. */
+export async function notifyProfileEditApproved(requestId: number): Promise<void> {
+  const request = await prisma.profileEditRequest.findUnique({ where: { id: requestId } });
+  if (!request?.chatId || !botConfigured()) return;
+  await sendTo(
+    request.chatId,
+    `Правка принята: <b>${fieldLabel(request.field)}</b> в профиле обновлено. Посмотреть — «${MENU.profile}».`,
+  ).catch((e) => console.error(`Не доставлено в чат ${request.chatId}:`, e));
+}
+
+/** Правку вернули. Причина обязательна и в самом уведомлении: без неё нечего исправлять. */
+export async function notifyProfileEditRejected(requestId: number, reason: string): Promise<void> {
+  const request = await prisma.profileEditRequest.findUnique({ where: { id: requestId } });
+  if (!request?.chatId || !botConfigured()) return;
+  await sendTo(
+    request.chatId,
+    `Правку поля <b>${fieldLabel(request.field)}</b> вернул организатор: ${reason}\n\n` +
+      `Поправить и прислать снова — «${MENU.profile}» → «${EDIT_BUTTON}».`,
+  ).catch((e) => console.error(`Не доставлено в чат ${request.chatId}:`, e));
 }

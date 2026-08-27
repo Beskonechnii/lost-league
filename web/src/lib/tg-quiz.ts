@@ -23,6 +23,17 @@ import { loadQuiz, type QuizConfig } from "./quiz-config";
 import { MENU, menuKeyboard, isMenuButton, menuReply, rememberChat, identify } from "./tg-menu";
 import { FORMS_BUTTON, handleForm, isFormStep, offerForms, type FormState, type FormStep } from "./tg-forms";
 import {
+  EDIT_BUTTON,
+  PE_SERVICE,
+  askEdit,
+  emptyEdit,
+  handleProfileEdit,
+  isPeStep,
+  startProfileEdit,
+  type PeState,
+  type PeStep,
+} from "./tg-profile";
+import {
   REGISTER_BUTTON,
   REG_SERVICE,
   askReg,
@@ -57,10 +68,11 @@ export type Step =
   | "edit_tg"
   | "edit_name"
   | "edit_tag"
-  // шаги анкеты (src/lib/tg-forms.ts) и регистрации в лиге (src/lib/tg-register.ts) — живут в той
-  // же сессии, разведены префиксом
+  // шаги анкеты (src/lib/tg-forms.ts), регистрации в лиге (src/lib/tg-register.ts) и правки
+  // профиля (src/lib/tg-profile.ts) — живут в той же сессии, разведены префиксом
   | FormStep
-  | RegStep;
+  | RegStep
+  | PeStep;
 
 /** Всё собранное на текущий момент. Лежит JSON'ом в `BotSession.state`. */
 type State = {
@@ -76,6 +88,8 @@ type State = {
   quizId: number | null;
   /** Анкета игрока на вступление в лигу, если идёт регистрация (`tg-register.ts`). */
   reg: RegState | null;
+  /** Правка своего профиля, если идёт она (`tg-profile.ts`). */
+  edit: PeState | null;
 };
 
 /** Ответ на свой вопрос: сохраняем текст вопроса, а не только ключ — оператор его потом перепишет,
@@ -90,6 +104,7 @@ const emptyState = (): State => ({
   answers: [],
   quizId: null,
   reg: null,
+  edit: null,
 });
 
 // Состав: пять **основных** обязательны (иначе заявка не заявка), сверху — замены и тренер.
@@ -112,7 +127,7 @@ const DROP = "Удалить игрока";
 
 // Клавиатура у Telegram висит до отмены, и кнопку прошлого шага легко нажать на следующем. Ник,
 // совпавший со служебным ответом, — почти наверняка такое нажатие, а не имя игрока.
-const SERVICE = new Set([SKIP, DONE, ADD, EDIT, BACK, DROP, "Отправить заявку", "Начать заново", ...Object.values(MENU), ...REG_SERVICE]);
+const SERVICE = new Set([SKIP, DONE, ADD, EDIT, BACK, DROP, "Отправить заявку", "Начать заново", ...Object.values(MENU), ...REG_SERVICE, ...PE_SERVICE]);
 
 // ── сессия ───────────────────────────────────────────────────────────────────
 
@@ -258,6 +273,8 @@ const askEditField = (state: State): Reply => ({
 function askCurrent(q: QuizConfig, step: Step, state: State): Reply {
   // Регистрация ведёт свои вопросы сама — повторяем тот, на котором стоим.
   if (isRegStep(step)) return askReg(step, state.reg ?? emptyRegistration());
+  // Правка профиля — тоже свой модуль со своими вопросами.
+  if (isPeStep(step)) return askEdit(step, state.edit ?? emptyEdit());
   const player = state.team.players[state.index];
   switch (step) {
     case "tournament":
@@ -375,6 +392,8 @@ export async function handleMessage(
   raw: string,
   username?: string | null,
   tgId?: string | null,
+  /** `file_id` присланной картинки, если сообщение было фото: его ждёт правка фото в профиле. */
+  photoFileId?: string | null,
 ): Promise<Reply[]> {
   const text = raw.trim();
   // Конфигурацию читаем на каждое сообщение: правка в /admin/bot должна действовать сразу.
@@ -411,6 +430,21 @@ export async function handleMessage(
     return started.replies;
   }
 
+  // Правка своего профиля. Как и регистрация, посреди начатого диалога не запускается: собранный
+  // состав пропал бы молча.
+  if (text === EDIT_BUTTON) {
+    if (session && !isPeStep(session.step)) {
+      return [{ text: "Сначала закончим начатое — или наберите /cancel, чтобы бросить.", keyboard: null }, askCurrent(q, session.step, session.state)];
+    }
+    const started = await startProfileEdit(tgId ?? null);
+    if (started.done || !started.step) {
+      await clear(chatId);
+      return [...started.replies, { text: "Что дальше?", keyboard: await menuKeyboard() }];
+    }
+    await save(chatId, started.step, { ...emptyState(), edit: started.state });
+    return started.replies;
+  }
+
   // Кнопка меню посреди квиза — справка, а не выход: капитан на седьмом игроке не должен терять
   // состав из-за случайного нажатия. Отвечаем и тут же повторяем вопрос, на котором стоим.
   if (isMenuButton(text)) {
@@ -435,6 +469,8 @@ export async function handleMessage(
   if (isFormStep(step)) return runForm(chatId, step, state, text, username, tgId);
   // Регистрацию — свой: она пишет не в заявку команды, а в аккаунт человека.
   if (isRegStep(step)) return runRegister(chatId, step, state, text, username, tgId);
+  // Правку профиля — свой: она пишет в очередь `ProfileEditRequest`.
+  if (isPeStep(step)) return runProfileEdit(chatId, step, state, text, tgId, photoFileId);
 
   switch (step) {
     case "tournament": {
@@ -748,6 +784,29 @@ async function runRegister(
   return result.replies;
 }
 
+/**
+ * Шаг правки профиля. Состояние — своё поле `edit` в общей `BotSession`, как у регистрации: смысл
+ * поля не должен зависеть от того, какой сценарий сейчас идёт. Хендл сюда не передаём вовсе —
+ * править профиль можно только по привязке `tgId` (`tg-profile.ts`).
+ */
+async function runProfileEdit(
+  chatId: string,
+  step: PeStep,
+  state: State,
+  text: string,
+  tgId: string | null | undefined,
+  photoFileId: string | null | undefined,
+): Promise<Reply[]> {
+  const result = await handleProfileEdit(step, state.edit ?? emptyEdit(), text, { chatId, tgId, photoFileId });
+
+  if (result.done) {
+    await clear(chatId);
+    return [...result.replies, { text: "Что дальше?", keyboard: await menuKeyboard() }];
+  }
+  await save(chatId, result.step ?? step, { ...state, edit: result.state });
+  return result.replies;
+}
+
 /** Завести следующего игрока и спросить его ник. */
 async function nextPlayer(chatId: string, q: QuizConfig, state: State): Promise<Reply[]> {
   state.team.players.push(emptyPlayer(""));
@@ -783,8 +842,9 @@ export async function replyTo(
   text: string,
   username?: string | null,
   tgId?: string | null,
+  photoFileId?: string | null,
 ): Promise<void> {
-  const replies = await handleMessage(chatId, text, username, tgId);
+  const replies = await handleMessage(chatId, text, username, tgId, photoFileId);
   for (const r of replies) await sendTo(chatId, r.text, r.keyboard ?? null);
 }
 

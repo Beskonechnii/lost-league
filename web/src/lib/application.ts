@@ -118,7 +118,7 @@ export type ApplicationResult = { ok: true; value: Application } | { ok: false; 
 
 // Заявленный MMR — со слов игрока, но верхняя граница нужна: без неё в очередь модерации приезжают
 // «99999», и оператору приходится гадать, опечатка это или шутка.
-const MMR_MAX = 15000;
+export const MMR_MAX = 15000;
 
 /** Значения формы → проверенная анкета. Одно место правды: зовёт и server-action, и (позже) апрув. */
 export function normalizeApplication(input: ApplicationInput): ApplicationResult {

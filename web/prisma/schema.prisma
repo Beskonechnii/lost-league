@@ -186,6 +186,7 @@ model Player {
 
   account UserAccount?  @relation("AccountPlayer") // подтверждённый вход игрока (0..1)
   claims  UserAccount[] @relation("AccountClaim") // заявки на привязку, ждущие подтверждения
+  edits   ProfileEditRequest[] // правки анкеты, присланные из бота и ждущие оператора
 }
 
 /// Аккаунт игрока: вход по Google. Отдельно от `Player` намеренно — профиль игрока есть у всех в
@@ -671,4 +672,35 @@ model QuizResponse {
   quizId Int
 
   @@index([quizId])
+}
+
+/// Правка своего профиля, присланная игроком из бота (src/lib/profile-edit.ts). Отдельная очередь,
+/// а не прямая запись в `Player`: бот сам ничего не публикует — всё, что пишет, проходит оператора
+/// (решение второй волны бота, ../../DECISIONS.md 27.08.2026). На сайте вошедший игрок правит те же
+/// поля сразу (`updateOwnProfile`) — там его личность подтверждена сессией, а здесь ключом служит
+/// привязка `UserAccount.tgId`, и MMR с фото лига всё равно проверяет глазами.
+///
+/// Одна строка — одно поле: человек чаще правит что-то одно, а оператору так видно, что именно
+/// меняется, без диффа всей анкеты. Старое значение снимается на момент отправки — чтобы в очереди
+/// было видно «из чего во что», даже если профиль успели поправить с другой стороны.
+model ProfileEditRequest {
+  id       Int    @id @default(autoincrement())
+  /// Какое поле правим: nickname | city | mmr | dotabuffUrl | stratzUrl | steamUrl | photo
+  /// (канон — EDIT_FIELDS в src/lib/profile-edit.ts).
+  field    String
+  oldValue String?
+  newValue String
+  status   String @default("pending") // pending | approved | rejected
+  notes    String? // причина возврата — её видит приславший
+  /// Чат, из которого пришла правка: по нему уйдёт решение организатора. Как и у заявки команды,
+  /// это единственная надёжная ниточка к человеку.
+  chatId   String?
+  submittedAt  DateTime  @default(now())
+  reviewedAt   DateTime?
+  reviewedById Int? // след в истории, без relation — как UserAccount.reviewedById
+
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId Int
+
+  @@index([playerId])
 }

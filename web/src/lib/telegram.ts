@@ -55,11 +55,39 @@ export type Update = {
   message?: {
     chat: { id: number };
     text?: string;
+    /** Присланная картинка — тем же сообщением приезжает несколько размеров, от превью к оригиналу.
+     *  Нужна правке профиля: фото игрок шлёт картинкой, а не ссылкой (src/lib/tg-profile.ts). */
+    photo?: { file_id: string; file_size?: number; width?: number; height?: number }[];
     /** `id` — ключ человека (в личке совпадает с `chat.id`, но принадлежит пользователю, а не чату):
      *  по нему регистрация привязывает аккаунт, и он переживает смену хендла. */
     from?: { id?: number; username?: string };
   };
 };
+
+// ── входящее: файлы ──────────────────────────────────────────────────────────
+
+/**
+ * Скачать присланный файл по `file_id`. Telegram отдаёт его в два хода: `getFile` возвращает
+ * временный путь, а сам файл лежит на другом хосте (`/file/bot<токен>/<путь>`) — и путь живёт
+ * около часа, поэтому качаем сразу, а не храним ссылку.
+ *
+ * Расширение берём из пути, а не из mime: mime у сообщения-фото Telegram не присылает вовсе.
+ */
+export async function fetchFile(fileId: string, maxBytes = 8 * 1024 * 1024): Promise<{ bytes: Buffer; ext: string }> {
+  const file = await tgCall<{ file_path?: string; file_size?: number }>("getFile", { file_id: fileId });
+  if (!file.file_path) throw new Error("Telegram не отдал путь к файлу");
+  if (file.file_size && file.file_size > maxBytes) throw new Error(`Файл больше ${Math.round(maxBytes / 1024 / 1024)} МБ`);
+
+  const res = await fetch(`https://api.telegram.org/file/bot${token()}/${file.file_path}`, {
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!res.ok) throw new Error(`Не скачался файл из Telegram: ${res.status}`);
+  const bytes = Buffer.from(await res.arrayBuffer());
+  if (bytes.byteLength > maxBytes) throw new Error(`Файл больше ${Math.round(maxBytes / 1024 / 1024)} МБ`);
+
+  const ext = (file.file_path.match(/\.[a-z0-9]+$/i)?.[0] ?? ".jpg").toLowerCase();
+  return { bytes, ext };
+}
 
 /**
  * Забрать апдейты начиная с `offset`. Long polling: запрос висит до `timeout` секунд и возвращается

@@ -40,10 +40,20 @@ async function whoami(): Promise<string> {
  */
 async function handle(update: Update): Promise<void> {
   const message = update.message;
-  if (!message?.text) return;
+  // Кроме текста принимаем картинку: фото профиля человек шлёт именно ей (src/lib/tg-profile.ts).
+  // Всё остальное (стикеры, голосовые, документы) молча пропускаем — ответить на них нечем.
+  const photo = message?.photo?.length ? message.photo[message.photo.length - 1].file_id : null;
+  if (!message || (!message.text && !photo)) return;
   const chatId = String(message.chat.id);
   try {
-    await replyTo(chatId, message.text, message.from?.username, message.from?.id ? String(message.from.id) : null);
+    await replyTo(
+      chatId,
+      // У фото текста нет — подпись к картинке нам не нужна, шаг ждёт саму картинку.
+      message.text ?? "",
+      message.from?.username,
+      message.from?.id ? String(message.from.id) : null,
+      photo,
+    );
   } catch (e) {
     console.error(`Чат ${chatId}:`, e);
     // Человеку тоже говорим — иначе бот молча «завис» посреди диалога.

@@ -9,6 +9,7 @@ import type { Role } from "./player-auth";
 import { slugify, playerAccountId, normalizeTelegram, parseBirthday } from "./profiles";
 import { hashPassword, verifyPassword, passwordProblem } from "./password";
 import { formatPermissions, hasPermission, permissionsOf, type PermissionKey } from "./permissions";
+import { nicknameCooldownLeft } from "./profile-edit";
 import {
   normalizeApplication,
   formatApplication,
@@ -136,10 +137,9 @@ export async function createProfileFor(accountId: number, nickname: string): Pro
 // slug не трогаем никогда (см. schema): от него зависят файлы картинок, поэтому меняется ник,
 // а адрес ассета — нет.
 
-// Сколько ждать между сменами ника самим игроком. Формального понятия «сезон» в модели пока нет
-// (см. §9 в CLAUDE.md), поэтому приближаем скользящим окном «примерно раз в сезон».
-const NICKNAME_COOLDOWN_DAYS = 120;
-const DAY_MS = 24 * 60 * 60 * 1000;
+// Лимит смены ника — общее правило обоих входов, кабинета и бота, поэтому живёт в profile-edit.ts:
+// сюда `server-only`, а тот модуль зовёт ещё и бот (обычный node). Двух правил «раз в сезон» быть
+// не должно — иначе бот и сайт однажды разойдутся в том, когда можно снова.
 
 export type OwnProfileInput = {
   nickname?: string;
@@ -173,12 +173,9 @@ export async function updateOwnProfile(accountId: number, input: OwnProfileInput
     const nick = input.nickname.trim();
     if (!nick) return "Ник не может быть пустым";
     if (nick !== player.nickname) {
-      const last = player.nicknameChangedAt?.getTime();
-      if (last != null) {
-        const daysLeft = Math.ceil((last + NICKNAME_COOLDOWN_DAYS * DAY_MS - Date.now()) / DAY_MS);
-        if (daysLeft > 0) {
-          return `Ник в этом сезоне уже менялся. Сменить снова можно через ${daysLeft} дн. или попросить оператора.`;
-        }
+      const daysLeft = nicknameCooldownLeft(player.nicknameChangedAt);
+      if (daysLeft > 0) {
+        return `Ник в этом сезоне уже менялся. Сменить снова можно через ${daysLeft} дн. или попросить оператора.`;
       }
       data.nickname = nick;
       data.nicknameChangedAt = new Date();

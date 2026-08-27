@@ -8,17 +8,19 @@
 // **Хендл — не удостоверение.** Его можно сменить, и тогда бот человека не узнает; наоборот,
 // освободившийся хендл может занять посторонний. Поэтому справочные разделы показывают только то,
 // что и так публично на сайте (состав, карточка игрока, турниры), и ничего не меняют. Всё, что
-// пишет, идёт через квиз и очередь модерации. Единственное исключение — «Войти на сайт»: код входа
-// выдаётся строго по привязке `tgId`, хендлу его не дают.
+// пишет, идёт через квиз и очередь модерации. Исключения — то, что опирается на привязку `tgId`, а
+// не на хендл: «Войти на сайт» (код входа) и «Изменить данные» (правка своего профиля, `tg-profile.ts`).
+// Обоим хендла мало: он не удостоверение.
 
 import { prisma } from "./prisma";
 import type { Reply } from "./telegram";
-import { normalizeTelegram, telegramUrl } from "./profiles";
+import { formatBirthday, normalizeTelegram, playerLinks, telegramUrl } from "./profiles";
 import { roleShort, roleOrder } from "./roles";
 import { TOURNAMENT_STATUS_LABELS, isTournamentStatus } from "./tournaments";
 import { parseDraft } from "./team-application";
 import { anyFormOpen, FORMS_BUTTON } from "./tg-forms";
 import { REGISTER_BUTTON } from "./tg-register";
+import { EDIT_BUTTON, editablePlayer } from "./tg-profile";
 import { CODE_TTL_MIN, issueLoginCode, loginAccount, loginUrl, siteUrl } from "./tg-login";
 
 /**
@@ -232,30 +234,64 @@ async function rosterBlocks(playerId: number): Promise<string[]> {
   );
 }
 
-/** Карточка игрока: то же, что видно на сайте, — бот лишь не заставляет за ней ходить. */
+/**
+ * Личный профиль: всё, что лига о человеке знает, — анкета, турнирная строка, TP и ссылки. Показ
+ * читает то же, что и карточка на сайте; бот лишь не заставляет за ней ходить.
+ *
+ * Кнопка «Изменить данные» появляется только у **привязанного** профиля (`UserAccount.tgId`):
+ * узнанному по хендлу бот показывает, но не даёт править — см. `tg-profile.ts`.
+ */
 async function myProfile(chatId: string, username: string | null | undefined, tgId?: string | null): Promise<Reply> {
   const me = await identify(chatId, username, tgId);
   if (me.length === 0) return unknown(username);
 
   const candidates = await prisma.player.findMany({
     where: { id: { in: me } },
-    include: { spots: { orderBy: { divisionId: "desc" }, take: 1, include: { team: true } } },
+    include: {
+      // Последнее место в составе: свежий дивизион сверху, внутри него — последняя запись.
+      spots: {
+        orderBy: [{ divisionId: "desc" }, { createdAt: "desc" }],
+        take: 1,
+        include: { team: true, division: { include: { tournament: true } } },
+      },
+    },
   });
-  // Из дублей показываем ту запись, что реально играет: профиль без единого места в составе — почти
-  // всегда осколок старого импорта, и человек себя в нём не узнаёт.
-  const player = candidates.sort((a, b) => b.spots.length - a.spots.length)[0];
+  const linked = await editablePlayer(tgId);
+  // Привязка — точнее любой эвристики: это тот самый человек. Без неё из дублей показываем запись,
+  // которая реально играет: профиль без единого места в составе — почти всегда осколок старого
+  // импорта, и человек себя в нём не узнаёт.
+  const player =
+    candidates.find((c) => c.id === linked?.id) ?? candidates.sort((a, b) => b.spots.length - a.spots.length)[0];
   if (!player) return unknown(username);
 
   const spot = player.spots[0];
-  const facts = [
-    spot ? `Команда: ${spot.team.name}` : null,
-    roleShort(spot?.role) ? `Позиция: ${roleShort(spot?.role)}` : null,
+  const links = playerLinks(player);
+
+  // Анкетная часть — то, что человек о себе сказал.
+  const about = [
+    player.realName ? `Имя: ${player.realName}` : null,
+    [player.city, player.country].filter(Boolean).join(", ") ? `Город: ${[player.city, player.country].filter(Boolean).join(", ")}` : null,
+    player.birthday ? `Дата рождения: ${formatBirthday(player.birthday)}` : null,
     player.mmr ? `MMR: ${player.mmr}` : null,
-    player.tp ? `TP за всё время: ${player.tp}` : null,
-    [player.city, player.country].filter(Boolean).join(", ") || null,
-    player.telegram ? telegramUrl(player.telegram) : null,
-    player.dotabuffUrl,
-    player.stratzUrl,
+    // TP — сумма за всё время (кеш реестра, src/lib/tp.ts). Ноль показываем тоже: «TP: 0» честнее
+    // молчания, из которого человек делает вывод, что бот их не считает.
+    `TP за всё время: ${player.tp}`,
+  ].filter(Boolean);
+
+  // Турнирная часть: команда всегда в разрезе турнира — участие сезонное, а команда переживает сезон.
+  const tournament = spot?.division?.tournament;
+  const team = spot
+    ? [
+        `<b>${spot.team.name}</b>${tournament ? ` — ${tournament.name}${spot.division ? ` · ${spot.division.name}` : ""}` : ""}`,
+        [roleShort(spot.role) ?? "без позиции", spot.isCaptain ? "капитан" : null].filter(Boolean).join(" · "),
+      ]
+    : ["Пока не в составе команды."];
+
+  const contacts = [
+    links.dotabuff ? `Dotabuff: ${links.dotabuff}` : null,
+    links.stratz ? `Stratz: ${links.stratz}` : null,
+    links.steam ? `Steam: ${links.steam}` : null,
+    player.telegram ? `Телеграм: ${telegramUrl(player.telegram)}` : null,
   ].filter(Boolean);
 
   // Дубль в ростере — не забота человека, но и молчать о нём нельзя: иначе он видит чужой MMR
@@ -265,9 +301,24 @@ async function myProfile(chatId: string, username: string | null | undefined, tg
       ? [``, `В ростере ${candidates.length} записи с вашим телеграмом (${candidates.map((c) => c.nickname).join(", ")}) — скажите организатору, он объединит.`]
       : [];
 
+  const keyboard = await menuKeyboard();
+  // Кнопку правки ставим первой строкой: за ней человек сюда и пришёл, а меню он и так знает.
+  if (linked) keyboard.unshift([EDIT_BUTTON]);
+
   return {
-    text: [`<b>${player.nickname}</b>`, player.realName, "", ...facts, ...dupes].filter(Boolean).join("\n"),
-    keyboard: await menuKeyboard(),
+    text: [
+      `<b>${player.nickname}</b>`,
+      "",
+      ...about,
+      "",
+      ...team,
+      ...(contacts.length ? ["", ...contacts] : []),
+      ...dupes,
+      ...(linked ? ["", `Что-то не так — «${EDIT_BUTTON}»: правку посмотрит организатор.`] : []),
+    ]
+      .filter((line) => line !== null)
+      .join("\n"),
+    keyboard,
   };
 }
 

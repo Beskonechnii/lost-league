@@ -1,9 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { approveRegistration, rejectClaim, rejectRegistration } from "@/lib/account";
+import { approveRegistration, can, currentAccount, rejectClaim, rejectRegistration } from "@/lib/account";
 import { prisma } from "@/lib/prisma";
-import { notifyRegistrationApproved, notifyRegistrationRejected } from "@/lib/tg-notify";
+import { approveProfileEdit, rejectProfileEdit } from "@/lib/profile-edit";
+import {
+  notifyProfileEditApproved,
+  notifyProfileEditRejected,
+  notifyRegistrationApproved,
+  notifyRegistrationRejected,
+} from "@/lib/tg-notify";
 
 // Решения по обеим очередям модерации — анкеты и привязки к профилю. Право accounts.approve
 // проверяет сам lib/account.ts — гейт стоит там, чтобы его нельзя было обойти, дойдя до апрува
@@ -61,6 +67,43 @@ export async function approveLink(_state: ReviewState, form: FormData): Promise<
 export async function rejectLink(_state: ReviewState, form: FormData): Promise<ReviewState> {
   const error = await rejectClaim(accountIdOf(form), String(form.get("reason") ?? ""));
   if (error) return { error };
+  revalidatePath("/admin/moderation");
+  return null;
+}
+
+// ── правки профиля из бота ───────────────────────────────────────────────────
+// Право здесь своё — roster.edit: это правка ростера, а не решение «пускать в лигу». Гейт стоит в
+// экшене, а не только в `profile-edit.ts`: тот модуль зовёт и бот, куда `account.ts` (server-only)
+// не грузится вовсе.
+
+const editIdOf = (form: FormData): number => Number(form.get("editId"));
+
+/** Кто решает — уходит в `reviewedById` и одновременно служит проверкой права. */
+async function reviewer(): Promise<{ id: number } | { error: string }> {
+  if (!(await can("roster.edit"))) return { error: "Нужно право «Правка ростера»" };
+  const account = await currentAccount();
+  return account ? { id: account.id } : { error: "Сессия потерялась — войдите заново" };
+}
+
+export async function approveEdit(_state: ReviewState, form: FormData): Promise<ReviewState> {
+  const who = await reviewer();
+  if ("error" in who) return who;
+  const id = editIdOf(form);
+  const error = await approveProfileEdit(id, who.id);
+  if (error) return { error };
+  await notifyProfileEditApproved(id);
+  revalidatePath("/admin/moderation");
+  return null;
+}
+
+export async function rejectEdit(_state: ReviewState, form: FormData): Promise<ReviewState> {
+  const who = await reviewer();
+  if ("error" in who) return who;
+  const id = editIdOf(form);
+  const reason = String(form.get("reason") ?? "");
+  const error = await rejectProfileEdit(id, reason, who.id);
+  if (error) return { error };
+  await notifyProfileEditRejected(id, reason.trim());
   revalidatePath("/admin/moderation");
   return null;
 }

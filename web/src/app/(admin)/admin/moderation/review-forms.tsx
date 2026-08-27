@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { approve, approveLink, reject, rejectLink, type ReviewState } from "./actions";
+import { approve, approveEdit, approveLink, reject, rejectEdit, rejectLink, type ReviewState } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -64,6 +64,42 @@ export function ReviewForms({
           )}
           <Button type="submit" size="sm" variant="outline" disabled={busy}>
             {rejecting ? (reasonRequired ? "Возвращаю…" : "Отклоняю…") : reasonRequired ? "Вернуть" : "Отклонить"}
+          </Button>
+        </form>
+      </div>
+
+      {(okState?.error || noState?.error) && <p className={errorBox}>{okState?.error ?? noState?.error}</p>}
+    </div>
+  );
+}
+
+/**
+ * Решение по правке профиля из бота. Форм снова две, а не одна: у возврата причина обязательна —
+ * человек увидит её в боте и пришлёт исправленное.
+ */
+export function EditReviewForms({ editId }: { editId: number }) {
+  const [okState, approveAction, approving] = useActionState<ReviewState, FormData>(approveEdit, null);
+  const [noState, rejectAction, rejecting] = useActionState<ReviewState, FormData>(rejectEdit, null);
+  const busy = approving || rejecting;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-end gap-2">
+        <form action={approveAction}>
+          <input type="hidden" name="editId" value={editId} />
+          <Button type="submit" size="sm" disabled={busy}>
+            {approving ? "Применяю…" : "Применить"}
+          </Button>
+        </form>
+
+        <form action={rejectAction} className="flex flex-1 items-end gap-2">
+          <input type="hidden" name="editId" value={editId} />
+          <div className="min-w-[12rem] flex-1 space-y-1">
+            <label className="block text-xs text-ink-subtle">Причина возврата</label>
+            <Input name="reason" required placeholder="Почему так нельзя" />
+          </div>
+          <Button type="submit" size="sm" variant="outline" disabled={busy}>
+            {rejecting ? "Возвращаю…" : "Вернуть"}
           </Button>
         </form>
       </div>
