@@ -11,7 +11,7 @@
 // сезон), слитые в один список. Внутри турнира вопрос однозначен.
 
 import { prisma } from "./prisma";
-import { siteUrl } from "./site";
+import { siteIsLocal, siteUrl } from "./site";
 import type { Reply } from "./telegram";
 import { playerLinks, playerPath, telegramUrl } from "./profiles";
 import { roleShort, roleOrder } from "./roles";
@@ -154,12 +154,19 @@ function tournamentReply(t: Listed): Reply {
  * турнира, — её надо нажать, а не прочитать.
  */
 export function applyReply(t: { slug: string; name: string }, open = true): Reply {
+  const url = `${siteUrl()}/tournaments/${t.slug}/apply`;
+  // Локальный адрес телеграм ссылкой не делает — он покажет её обычным текстом, и человек решит,
+  // что бот сломался. Честнее сказать, что сайт не опубликован: адрес всё равно виден, а
+  // организатор по этой же строке понимает, что надо поднять туннель (скилл `serve`).
+  const link = siteIsLocal()
+    ? [`Сайт сейчас не опубликован наружу (${url}) — скажите организатору.`]
+    : [`<a href="${url}">Открыть сборку состава</a>`];
   return {
     text: [
       `<b>${t.name}</b> — заявка подаётся на сайте: там виден весь пул игроков лиги, и состав`,
       "набирается мышью, а не по одному нику в чате.",
       "",
-      `<a href="${siteUrl()}/tournaments/${t.slug}/apply">Открыть сборку состава</a>`,
+      ...link,
       "",
       `Сайт спросит, кто вы: код для входа даёт бот — «${MENU.profile}» → «${MENU.login}».`,
       "В составе может быть только игрок, которого знает лига: незнакомого позовите",

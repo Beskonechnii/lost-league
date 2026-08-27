@@ -603,3 +603,17 @@ export async function changePassword(
 export async function deleteOwnAccount(accountId: number): Promise<void> {
   await prisma.userAccount.delete({ where: { id: accountId } });
 }
+
+/** Удалить чужой аккаунт входа — только владелец лиги. Отдельная (более узкая, чем accounts.admins)
+ *  проверка: право на панель команды можно выдать и админу, а необратимо стирать чужой вход (пароль,
+ *  привязку tg/Google) — только тому, кого нельзя разжаловать самого. Профиль игрока (Player) не трогаем,
+ *  как и в deleteOwnAccount — рвётся только вход. */
+export async function deleteAccount(targetId: number): Promise<void> {
+  const actor = await currentAccount();
+  if (!actor || effectiveRole(actor) !== "owner") throw new Error("Удалять аккаунты может только владелец лиги");
+  if (actor.id === targetId) throw new Error("Свой аккаунт удаляется из кабинета, а не отсюда");
+  const target = await prisma.userAccount.findUnique({ where: { id: targetId }, select: { email: true } });
+  if (!target) throw new Error("Аккаунт не найден");
+  if (isOwnerEmail(target.email)) throw new Error("Владелец задаётся через OWNER_EMAIL — удалить этот аккаунт нельзя");
+  await prisma.userAccount.delete({ where: { id: targetId } });
+}

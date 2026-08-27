@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { currentAccount, listAccounts, ownerEmail, type StaffAccount } from "@/lib/account";
+import { currentAccount, effectiveRole, listAccounts, ownerEmail, type StaffAccount } from "@/lib/account";
 import { PERMISSIONS, PERMISSION_GROUPS } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { denyUnlessPermission } from "../../_components/permission-gate";
-import { makeAdmin, removeAdmin, savePermissions } from "./actions";
+import { makeAdmin, removeAdmin, removeAccount, savePermissions } from "./actions";
+import { DeleteAccount } from "./_components/delete-account";
 import { FORM_MAX_W } from "@/app/_components/ui";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +30,11 @@ function ProfileLink({ account }: { account: StaffAccount }) {
   );
 }
 
+/** Как назвать аккаунт в диалоге удаления — почта, иначе tg-хендл, иначе id. */
+function whoLabel(account: StaffAccount): string {
+  return account.email ?? (account.tgUsername ? `@${account.tgUsername}` : `#${account.id}`);
+}
+
 function Who({ account, me }: { account: StaffAccount; me: number | null }) {
   return (
     <div className="min-w-0 flex-1">
@@ -50,7 +56,7 @@ function grantedLabels(granted: Set<string>): string {
 
 /** Карточка админа: кто это, набор прав и кнопка снятия роли. Свой аккаунт показываем только для
  *  чтения — иначе админ снял бы себе роль и запер сам себя, а «выдать себе всё» стало бы одним кликом. */
-function AdminCard({ account, me }: { account: StaffAccount; me: number | null }) {
+function AdminCard({ account, me, isOwner }: { account: StaffAccount; me: number | null; isOwner: boolean }) {
   const self = account.id === me;
   const granted = new Set<string>(account.perms);
 
@@ -62,10 +68,13 @@ function AdminCard({ account, me }: { account: StaffAccount; me: number | null }
         </span>
         <Who account={account} me={me} />
         {!self && (
-          <form action={removeAdmin}>
-            <input type="hidden" name="accountId" value={account.id} />
-            <Button type="submit" size="sm" variant="outline">Снять админа</Button>
-          </form>
+          <div className="flex shrink-0 items-center gap-2">
+            <form action={removeAdmin}>
+              <input type="hidden" name="accountId" value={account.id} />
+              <Button type="submit" size="sm" variant="outline">Снять админа</Button>
+            </form>
+            {isOwner && <DeleteAccount id={account.id} who={whoLabel(account)} action={removeAccount} />}
+          </div>
         )}
       </div>
 
@@ -134,6 +143,7 @@ export default async function StaffPage() {
   const admins = accounts.filter((a) => a.effectiveRole === "admin");
   const others = accounts.filter((a) => a.effectiveRole === "player");
   const owner = ownerEmail();
+  const isOwner = me != null && effectiveRole(me) === "owner";
 
   return (
     <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
@@ -178,7 +188,7 @@ export default async function StaffPage() {
       ) : (
         <ul className="mt-2 space-y-3">
           {admins.map((a) => (
-            <AdminCard key={a.id} account={a} me={me?.id ?? null} />
+            <AdminCard key={a.id} account={a} me={me?.id ?? null} isOwner={isOwner} />
           ))}
         </ul>
       )}
@@ -200,10 +210,13 @@ export default async function StaffPage() {
               </span>
               <Who account={a} me={me?.id ?? null} />
               {a.id !== me?.id && (
-                <form action={makeAdmin}>
-                  <input type="hidden" name="accountId" value={a.id} />
-                  <Button type="submit" size="sm">Сделать админом</Button>
-                </form>
+                <div className="flex shrink-0 items-center gap-2">
+                  <form action={makeAdmin}>
+                    <input type="hidden" name="accountId" value={a.id} />
+                    <Button type="submit" size="sm">Сделать админом</Button>
+                  </form>
+                  {isOwner && <DeleteAccount id={a.id} who={whoLabel(a)} action={removeAccount} />}
+                </div>
               )}
             </li>
           ))}
