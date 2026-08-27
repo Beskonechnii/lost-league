@@ -94,6 +94,14 @@ export function playerAccountId(p: {
 }
 
 /** Ссылки на внешние профили: считаем из accountId, если в БД не задана своя. */
+/**
+ * Адрес карточки игрока на сайте. Ключ — числовой `id`, а не `slug`: slug ставится один раз и от
+ * него зависят имена файлов картинок (см. schema), поэтому в адресе он был бы вторым ключом,
+ * который однажды разойдётся с первым. Путь относительный — абсолютный собирает тот, кто шлёт
+ * ссылку наружу (`siteUrl()` в src/lib/site.ts).
+ */
+export const playerPath = (id: number) => `/roster/players/${id}`;
+
 export const dotabuffOf = (accountId: string) => `https://www.dotabuff.com/players/${accountId}`;
 export const stratzOf = (accountId: string) => `https://stratz.com/players/${accountId}`;
 // steam64 = steam32 + константа Valve; 64-битная арифметика — только через BigInt (в Number не влезает).

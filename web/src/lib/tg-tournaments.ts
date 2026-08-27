@@ -11,8 +11,9 @@
 // сезон), слитые в один список. Внутри турнира вопрос однозначен.
 
 import { prisma } from "./prisma";
+import { siteUrl } from "./site";
 import type { Reply } from "./telegram";
-import { playerLinks, telegramUrl } from "./profiles";
+import { playerLinks, playerPath, telegramUrl } from "./profiles";
 import { roleShort, roleOrder } from "./roles";
 import { teamMmr } from "./roster-data";
 import { registrationOpen, TOURNAMENT_STATUS_LABELS, isTournamentStatus } from "./tournaments";
@@ -156,9 +157,17 @@ const loadTournament = (id: number) =>
 
 // ── «Моя команда» ────────────────────────────────────────────────────────────
 
-/** Строка игрока в составе: ник, позиция и капитанство — то же, что показывает витрина. */
-const rosterLine = (m: { isCaptain: boolean; role: string | null; player: { nickname: string } }) =>
-  [`• <b>${m.player.nickname}</b>`, roleShort(m.role) ?? "без позиции", m.isCaptain ? "капитан" : null]
+/**
+ * Строка игрока в составе: ник, позиция и капитанство — то же, что показывает витрина. Ник ведёт
+ * на карточку игрока в лиге: у неё есть постоянный адрес по числовому id, и это единственный
+ * способ из чата попасть к его статистике, не пересказывая её сюда.
+ */
+const rosterLine = (m: { isCaptain: boolean; role: string | null; player: { id: number; nickname: string } }) =>
+  [
+    `• <a href="${siteUrl()}${playerPath(m.player.id)}"><b>${m.player.nickname}</b></a>`,
+    roleShort(m.role) ?? "без позиции",
+    m.isCaptain ? "капитан" : null,
+  ]
     .filter(Boolean)
     .join(" — ");
 
@@ -274,7 +283,9 @@ async function teamCard(entry: Entry): Promise<string> {
   const lines = sorted.map((s) => {
     const link = playerLinks(s.player).dotabuff;
     const parts = [
-      `• <b>${s.player.nickname}</b>`,
+      // Ник — ссылкой на карточку в лиге, Dotabuff остаётся отдельной: это разные вопросы
+      // («кто он у нас» и «как он играет вообще»), и подменять один другим неверно.
+      `• <a href="${siteUrl()}${playerPath(s.player.id)}"><b>${s.player.nickname}</b></a>`,
       roleShort(s.role) ?? "без позиции",
       s.isCaptain ? "капитан" : null,
     ].filter(Boolean);
@@ -289,7 +300,8 @@ async function teamCard(entry: Entry): Promise<string> {
     "",
     ...(lines.length ? lines : ["Состав ещё не заведён."]),
     captain
-      ? `\nКапитан: <b>${captain.player.nickname}</b>${captain.player.telegram ? ` — ${telegramUrl(captain.player.telegram)}` : " (телеграм не указан)"}`
+      ? `\nКапитан: <a href="${siteUrl()}${playerPath(captain.player.id)}"><b>${captain.player.nickname}</b></a>` +
+        `${captain.player.telegram ? ` — ${telegramUrl(captain.player.telegram)}` : " (телеграм не указан)"}`
       : null,
   ]
     .filter((line) => line !== null)

@@ -20,13 +20,14 @@
 
 import { prisma } from "./prisma";
 import type { Reply } from "./telegram";
-import { formatBirthday, normalizeTelegram, playerLinks, telegramUrl } from "./profiles";
+import { formatBirthday, normalizeTelegram, playerLinks, playerPath, telegramUrl } from "./profiles";
 import { roleShort } from "./roles";
 import { parseDraft } from "./team-application";
 import { anyFormOpen, FORMS_BUTTON } from "./tg-forms";
 import { REGISTER_BUTTON } from "./tg-register";
 import { EDIT_BUTTON, editablePlayer } from "./tg-profile";
-import { CODE_TTL_MIN, issueLoginCode, loginAccount, loginUrl, siteUrl } from "./tg-login";
+import { CODE_TTL_MIN, issueLoginCode, loginAccount, loginUrl } from "./tg-login";
+import { siteUrl } from "./site";
 
 /**
  * Запомнить чат: `chat_id` ↔ хендл. Telegram не даёт написать человеку по хендлу — только по
@@ -225,6 +226,9 @@ async function myProfile(chatId: string, username: string | null | undefined, tg
     : ["Пока не в составе команды."];
 
   const contacts = [
+    // Своя карточка на сайте — первой строкой: за ссылкой «покажи, как я выгляжу в лиге» человек
+    // и приходит, а искать её на сайте руками значит знать, что она вообще есть.
+    `Профиль в лиге: ${siteUrl()}${playerPath(player.id)}`,
     links.dotabuff ? `Dotabuff: ${links.dotabuff}` : null,
     links.stratz ? `Stratz: ${links.stratz}` : null,
     links.steam ? `Steam: ${links.steam}` : null,

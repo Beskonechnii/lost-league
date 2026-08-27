@@ -15,14 +15,12 @@
 
 import { randomInt } from "node:crypto";
 import { prisma } from "./prisma";
+import { siteUrl } from "./site";
 
 /** Сколько живёт код. Достаточно, чтобы переключиться на компьютер, и мало, чтобы код не валялся. */
 export const CODE_TTL_MIN = 10;
 
 const CODE_LEN = 6;
-
-/** Адрес сайта для ссылки из бота. Локально по умолчанию тот же, на котором крутится `npm run dev`. */
-export const siteUrl = (): string => (process.env.BASE_URL || "http://localhost:3000").replace(/\/+$/, "");
 
 export const loginUrl = (): string => `${siteUrl()}/login/tg`;
 
