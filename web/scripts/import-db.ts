@@ -280,8 +280,11 @@ async function main() {
   for (const a of snap.accounts ?? []) {
     await prisma.userAccount.create({
       data: {
-        email: a.email,
+        email: a.email ?? null,
         googleSub: a.googleSub ?? null,
+        tgId: a.tgId ?? null,
+        tgUsername: a.tgUsername ?? null,
+        source: a.source ?? "web",
         passwordHash: a.passwordHash ?? null,
         emailVerified: a.emailVerified ?? false,
         name: a.name ?? null,

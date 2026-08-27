@@ -43,7 +43,7 @@ async function handle(update: Update): Promise<void> {
   if (!message?.text) return;
   const chatId = String(message.chat.id);
   try {
-    await replyTo(chatId, message.text, message.from?.username);
+    await replyTo(chatId, message.text, message.from?.username, message.from?.id ? String(message.from.id) : null);
   } catch (e) {
     console.error(`Чат ${chatId}:`, e);
     // Человеку тоже говорим — иначе бот молча «завис» посреди диалога.

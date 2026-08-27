@@ -1,13 +1,14 @@
 // Только сервер / скрипт: меню телеграм-бота — то, что человек может спросить вне квиза.
 //
-// Кнопки постоянные: «Подать заявку», «Мой состав», «Личный профиль», «Турниры». Человека узнаём по
-// телеграм-хендлу отправителя: он приезжает в каждом апдейте, а в ростере хендл уже хранится
-// (`Player.telegram`) — просить его представиться значит спрашивать то, что и так известно.
+// Кнопки постоянные: «Подать заявку», «Мой состав», «Личный профиль», «Турниры». Человека узнаём
+// тремя заходами, в порядке надёжности: привязка `UserAccount.tgId` (её даёт регистрация в боте —
+// `tg-register.ts`), телеграм-хендл в ростере (`Player.telegram`), account_id из его заявок.
 //
 // **Хендл — не удостоверение.** Его можно сменить, и тогда бот человека не узнает; наоборот,
 // освободившийся хендл может занять посторонний. Поэтому меню показывает только то, что и так
 // публично на сайте (состав, карточка игрока, турниры), и ничего не меняет. Всё, что пишет, идёт
-// через квиз и очередь модерации.
+// через квиз и очередь модерации. Привязка из регистрации это меняет — но только для тех действий,
+// которые появятся дальше (BOT-PLAN.md, Э7–Э8).
 
 import { prisma } from "./prisma";
 import type { Reply } from "./telegram";
@@ -16,6 +17,7 @@ import { roleShort, roleOrder } from "./roles";
 import { TOURNAMENT_STATUS_LABELS, isTournamentStatus } from "./tournaments";
 import { parseDraft } from "./team-application";
 import { anyFormOpen, FORMS_BUTTON } from "./tg-forms";
+import { REGISTER_BUTTON } from "./tg-register";
 
 /**
  * Запомнить чат: `chat_id` ↔ хендл. Telegram не даёт написать человеку по хендлу — только по
@@ -41,10 +43,13 @@ export const MENU = {
 
 /**
  * Клавиатура меню. Кнопка «Анкеты» появляется, только когда открытая анкета есть: пустой раздел,
- * который на всё отвечает «сейчас ничего нет», хуже отсутствующего.
+ * который на всё отвечает «сейчас ничего нет», хуже отсутствующего. Кнопка регистрации — наоборот,
+ * только тем, кого лига ещё не знает: звать в лигу того, кто в ней играет, значит путать.
  */
-export async function menuKeyboard(): Promise<string[][]> {
-  const rows: string[][] = [[MENU.apply], [MENU.roster, MENU.profile], [MENU.tournaments]];
+export async function menuKeyboard(register = false): Promise<string[][]> {
+  const rows: string[][] = [];
+  if (register) rows.push([REGISTER_BUTTON]);
+  rows.push([MENU.apply], [MENU.roster, MENU.profile], [MENU.tournaments]);
   if (await anyFormOpen()) rows.push([FORMS_BUTTON]);
   return rows;
 }
@@ -74,21 +79,30 @@ async function playersByHandle(username: string | null | undefined): Promise<num
 /** «Не узнали» — один ответ на все разделы: без профиля показывать нечего. */
 const unknown = async (username: string | null | undefined): Promise<Reply> => ({
   text: username
-    ? `Не нашёл в лиге игрока с телеграмом @${username}. Если вы в ростере под другим хендлом — ` +
-      `скажите организатору, он поправит. Если ещё не заявлялись — «${MENU.apply}».`
+    ? `Не нашёл вас в лиге. Если вы в ростере под другим хендлом — скажите организатору, он поправит. ` +
+      `Если вы здесь впервые — «${REGISTER_BUTTON}».`
     : "У вас не задан телеграм-хендл (@nickname) — по нему я узнаю игрока. Поставьте его в настройках " +
       "Telegram и напишите мне снова.",
-  keyboard: await menuKeyboard(),
+  keyboard: await menuKeyboard(true),
 });
 
 /**
- * Кто это. Сначала телеграм-хендл (ростер его хранит), а если не сошлось — по заявкам из этого чата:
- * капитан, только что подавший состав, в ростере ещё не заведён, но его `account_id` из заявки может
- * совпасть с уже известным игроком лиги. Совпадение по `account_id` надёжнее хендла: хендл меняют,
- * номер аккаунта Dota — нет.
+ * Кто это. Первый источник — привязка из регистрации в боте (`UserAccount.tgId`): она переживает
+ * смену хендла, потому что ключом служит числовой id пользователя Telegram. Хендл и account_id из
+ * заявок остаются запасными ветками — для тех, кто в лиге давно и через бота не регистрировался.
  */
-export async function identify(chatId: string, username: string | null | undefined): Promise<number[]> {
-  const found = new Set(await playersByHandle(username));
+export async function identify(
+  chatId: string,
+  username: string | null | undefined,
+  tgId?: string | null,
+): Promise<number[]> {
+  const found = new Set<number>();
+
+  if (tgId) {
+    const account = await prisma.userAccount.findUnique({ where: { tgId }, select: { playerId: true } });
+    if (account?.playerId) found.add(account.playerId);
+  }
+  for (const id of await playersByHandle(username)) found.add(id);
 
   // Второй заход — по `account_id` из заявок этого чата: капитан, только что подавший состав, в
   // ростере может быть заведён под другим хендлом. Номер аккаунта Dota надёжнее хендла: его не меняют.
@@ -152,12 +166,12 @@ function applicationBlock(a: Awaited<ReturnType<typeof applicationsOf>>[number])
  * Состав всегда в разрезе турнира: команда переживает сезон, участие — нет, и «мой состав» без
  * турнира это два разных состава, слитые в один список.
  */
-async function myRoster(chatId: string, username: string | null | undefined): Promise<Reply> {
+async function myRoster(chatId: string, username: string | null | undefined, tgId?: string | null): Promise<Reply> {
   const applications = await applicationsOf(chatId, username);
   // Одобренная заявка живёт дальше как состав в ростере — второй раз её же показывать незачем.
   const blocks = applications.filter((a) => a.status !== "approved").map(applicationBlock);
 
-  const me = await identify(chatId, username);
+  const me = await identify(chatId, username, tgId);
   for (const playerId of me) blocks.push(...(await rosterBlocks(playerId)));
 
   if (blocks.length === 0) {
@@ -216,8 +230,8 @@ async function rosterBlocks(playerId: number): Promise<string[]> {
 }
 
 /** Карточка игрока: то же, что видно на сайте, — бот лишь не заставляет за ней ходить. */
-async function myProfile(chatId: string, username: string | null | undefined): Promise<Reply> {
-  const me = await identify(chatId, username);
+async function myProfile(chatId: string, username: string | null | undefined, tgId?: string | null): Promise<Reply> {
+  const me = await identify(chatId, username, tgId);
   if (me.length === 0) return unknown(username);
 
   const candidates = await prisma.player.findMany({
@@ -285,12 +299,13 @@ export async function menuReply(
   chatId: string,
   text: string,
   username: string | null | undefined,
+  tgId?: string | null,
 ): Promise<Reply | null> {
   switch (text.trim()) {
     case MENU.roster:
-      return myRoster(chatId, username);
+      return myRoster(chatId, username, tgId);
     case MENU.profile:
-      return myProfile(chatId, username);
+      return myProfile(chatId, username, tgId);
     case MENU.tournaments:
       return tournaments();
     default:

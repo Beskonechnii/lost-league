@@ -41,13 +41,14 @@ export async function currentAccount(): Promise<Account | null> {
 
 export const ownerEmail = () => (process.env.OWNER_EMAIL ?? "").trim().toLowerCase();
 
-export function isOwnerEmail(email: string): boolean {
+/** Почты может не быть вовсе (аккаунт из бота) — тогда это точно не владелец. */
+export function isOwnerEmail(email: string | null | undefined): boolean {
   const owner = ownerEmail();
-  return owner.length > 0 && email.trim().toLowerCase() === owner;
+  return owner.length > 0 && (email ?? "").trim().toLowerCase() === owner;
 }
 
 /** Роль, с которой аккаунт реально ходит по сайту: owner по почте перекрывает запись в БД. */
-export function effectiveRole(account: { email: string; role: string }): Role {
+export function effectiveRole(account: { email: string | null; role: string }): Role {
   if (isOwnerEmail(account.email)) return "owner";
   return account.role === "admin" ? "admin" : "player";
 }
@@ -71,13 +72,13 @@ export type AccountStatus = "draft" | "pending" | "active" | "rejected";
 const STATUSES: AccountStatus[] = ["draft", "pending", "active", "rejected"];
 
 /** Статус, с которым аккаунт реально живёт: у владельца по OWNER_EMAIL всегда active. */
-export function accountStatus(account: { email: string; status: string }): AccountStatus {
+export function accountStatus(account: { email: string | null; status: string }): AccountStatus {
   if (isOwnerEmail(account.email)) return "active";
   return STATUSES.includes(account.status as AccountStatus) ? (account.status as AccountStatus) : "draft";
 }
 
 /** Одобрен ли аккаунт (прошёл модерацию). */
-export const isActiveAccount = (account: { email: string; status: string }) => accountStatus(account) === "active";
+export const isActiveAccount = (account: { email: string | null; status: string }) => accountStatus(account) === "active";
 
 // ── гранулярные права ─────────────────────────────────────────────────────────
 //

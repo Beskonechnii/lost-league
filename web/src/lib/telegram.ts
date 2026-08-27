@@ -55,7 +55,9 @@ export type Update = {
   message?: {
     chat: { id: number };
     text?: string;
-    from?: { username?: string };
+    /** `id` — ключ человека (в личке совпадает с `chat.id`, но принадлежит пользователю, а не чату):
+     *  по нему регистрация привязывает аккаунт, и он переживает смену хендла. */
+    from?: { id?: number; username?: string };
   };
 };
 

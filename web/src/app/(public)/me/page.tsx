@@ -115,7 +115,9 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
 /** Внутренний профиль пользователя: аватар, имя/почта, бейдж роли, способы входа, выход. */
 function ProfileCard({ account, role }: { account: Account; role: Role }) {
   const meta = ROLE_META[role];
-  const initial = (account.name || account.email).trim().charAt(0).toUpperCase() || "?";
+  // Почты может не быть вовсе — у пришедшего из бота её не спрашивают (BOT-PLAN.md, Э1).
+  const contact = account.email ?? (account.tgUsername ? `@${account.tgUsername}` : null);
+  const initial = (account.name || contact || "").trim().charAt(0).toUpperCase() || "?";
   return (
     <div className="rounded-xl border border-hairline bg-surface-2/50 p-4">
       <div className="flex items-center gap-3">
@@ -129,7 +131,7 @@ function ProfileCard({ account, role }: { account: Account; role: Role }) {
         )}
         <div className="min-w-0 flex-1">
           {account.name && <p className="truncate font-semibold">{account.name}</p>}
-          <p className="truncate text-sm text-ink-muted">{account.email}</p>
+          {contact && <p className="truncate text-sm text-ink-muted">{contact}</p>}
         </div>
         <form action={logout}>
           <button type="submit" className="shrink-0 text-xs text-ink-subtle transition-colors hover:text-ink">

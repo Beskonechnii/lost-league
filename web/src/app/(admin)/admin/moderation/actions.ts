@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { approveRegistration, rejectClaim, rejectRegistration } from "@/lib/account";
+import { prisma } from "@/lib/prisma";
+import { notifyRegistrationApproved, notifyRegistrationRejected } from "@/lib/tg-notify";
 
 // Решения по обеим очередям модерации — анкеты и привязки к профилю. Право accounts.approve
 // проверяет сам lib/account.ts — гейт стоит там, чтобы его нельзя было обойти, дойдя до апрува
@@ -22,16 +24,24 @@ export async function approve(_state: ReviewState, form: FormData): Promise<Revi
     mmr = n;
   }
 
-  const res = await approveRegistration(accountIdOf(form), mmr);
+  const accountId = accountIdOf(form);
+  const res = await approveRegistration(accountId, mmr);
   if (!res.ok) return { error: res.error };
+  // Пришедшему из бота говорим решение туда же, откуда он подавал: почты у него нет, и иначе он
+  // узнает об одобрении, только заглянув в бота сам.
+  const player = await prisma.player.findUnique({ where: { id: res.playerId }, select: { nickname: true } });
+  await notifyRegistrationApproved(accountId, player?.nickname ?? "Игрок");
   revalidatePath("/admin/moderation");
   return null;
 }
 
 /** Вернуть заявку с причиной — человек увидит её в кабинете и поправит анкету. */
 export async function reject(_state: ReviewState, form: FormData): Promise<ReviewState> {
-  const error = await rejectRegistration(accountIdOf(form), String(form.get("reason") ?? ""));
+  const accountId = accountIdOf(form);
+  const reason = String(form.get("reason") ?? "");
+  const error = await rejectRegistration(accountId, reason);
   if (error) return { error };
+  await notifyRegistrationRejected(accountId, reason.trim());
   revalidatePath("/admin/moderation");
   return null;
 }

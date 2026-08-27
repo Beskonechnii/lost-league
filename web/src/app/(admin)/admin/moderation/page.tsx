@@ -125,7 +125,16 @@ function Card({ account }: { account: PendingRegistration }) {
         <span className="rounded-md border border-emerald-900 bg-emerald-950/40 px-2 py-0.5 text-xs text-emerald-300">
           новая анкета
         </span>
-        <span className="min-w-0 truncate text-sm text-ink-muted">{account.email}</span>
+        {/* Источник виден сразу: у телеграмной анкеты почты нет вовсе, и пустая колонка иначе
+            выглядела бы поломкой. Связь с человеком у неё — хендл, его и показываем. */}
+        {account.source === "telegram" && (
+          <span className="rounded-md border border-sky-900 bg-sky-950/40 px-2 py-0.5 text-xs text-sky-300">
+            телеграм
+          </span>
+        )}
+        <span className="min-w-0 truncate text-sm text-ink-muted">
+          {account.email ?? (account.tgUsername ? `@${account.tgUsername}` : "контакта нет")}
+        </span>
         {account.name && <span className="truncate text-sm text-ink-subtle">· {account.name}</span>}
         {sent && <span className="ml-auto shrink-0 text-xs text-ink-subtle">отправлено {sent}</span>}
       </div>
@@ -220,7 +229,9 @@ function Claims({ claims }: { claims: PendingClaim[] }) {
               <span className="rounded-md border border-sky-900 bg-sky-950/40 px-2 py-0.5 text-xs text-sky-300">
                 {waiting ? "привязка · регистрация" : "привязка"}
               </span>
-              <span className="min-w-0 truncate text-sm text-ink-muted">{c.email}</span>
+              <span className="min-w-0 truncate text-sm text-ink-muted">
+                {c.email ?? (c.tgUsername ? `@${c.tgUsername}` : "контакта нет")}
+              </span>
               {c.name && <span className="truncate text-sm text-ink-subtle">· {c.name}</span>}
               {sent && <span className="ml-auto shrink-0 text-xs text-ink-subtle">отправлено {sent}</span>}
             </div>

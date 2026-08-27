@@ -15,13 +15,24 @@ import { sendTo, type Keyboard, type Reply } from "./telegram";
 import { submitTelegramApplication } from "./team-application";
 import { emptyPlayer, type TeamDraft, type PlayerDraft } from "./roster-import";
 import { profileLinkProblem } from "./application";
-import { ROLES, roleShort, type RoleKey } from "./roles";
+import { ROLES, roleShort, roleByAnswer, type RoleKey } from "./roles";
 import { isCoreRole } from "./roster-spots";
 import { slugify, accountIdFromUrl, normalizeTelegram } from "./profiles";
 import { registrationOpen } from "./tournaments";
 import { loadQuiz, type QuizConfig } from "./quiz-config";
 import { MENU, menuKeyboard, isMenuButton, menuReply, rememberChat, identify } from "./tg-menu";
 import { FORMS_BUTTON, handleForm, isFormStep, offerForms, type FormState, type FormStep } from "./tg-forms";
+import {
+  REGISTER_BUTTON,
+  REG_SERVICE,
+  askReg,
+  emptyRegistration,
+  handleRegister,
+  isRegStep,
+  startRegistration,
+  type RegState,
+  type RegStep,
+} from "./tg-register";
 
 /** Шаг диалога. Хранится строкой в `BotSession.step` — старую сессию после правки квиза сбросим. */
 export type Step =
@@ -46,8 +57,10 @@ export type Step =
   | "edit_tg"
   | "edit_name"
   | "edit_tag"
-  // шаги анкеты (src/lib/tg-forms.ts) — живут в той же сессии, разведены префиксом
-  | FormStep;
+  // шаги анкеты (src/lib/tg-forms.ts) и регистрации в лиге (src/lib/tg-register.ts) — живут в той
+  // же сессии, разведены префиксом
+  | FormStep
+  | RegStep;
 
 /** Всё собранное на текущий момент. Лежит JSON'ом в `BotSession.state`. */
 type State = {
@@ -61,6 +74,8 @@ type State = {
   answers: Answer[];
   /** Какая анкета заполняется, если идёт анкета, а не заявка (`tg-forms.ts`). */
   quizId: number | null;
+  /** Анкета игрока на вступление в лигу, если идёт регистрация (`tg-register.ts`). */
+  reg: RegState | null;
 };
 
 /** Ответ на свой вопрос: сохраняем текст вопроса, а не только ключ — оператор его потом перепишет,
@@ -74,6 +89,7 @@ const emptyState = (): State => ({
   index: -1,
   answers: [],
   quizId: null,
+  reg: null,
 });
 
 // Состав: пять **основных** обязательны (иначе заявка не заявка), сверху — замены и тренер.
@@ -96,7 +112,7 @@ const DROP = "Удалить игрока";
 
 // Клавиатура у Telegram висит до отмены, и кнопку прошлого шага легко нажать на следующем. Ник,
 // совпавший со служебным ответом, — почти наверняка такое нажатие, а не имя игрока.
-const SERVICE = new Set([SKIP, DONE, ADD, EDIT, BACK, DROP, "Отправить заявку", "Начать заново", ...Object.values(MENU)]);
+const SERVICE = new Set([SKIP, DONE, ADD, EDIT, BACK, DROP, "Отправить заявку", "Начать заново", ...Object.values(MENU), ...REG_SERVICE]);
 
 // ── сессия ───────────────────────────────────────────────────────────────────
 
@@ -152,22 +168,6 @@ function roleButtons(state: State, exceptIndex: number): string[][] {
   for (let i = 0; i < free.length; i += 2) rows.push(free.slice(i, i + 2));
   rows.push([roleShort("standin")!, roleShort("coach")!]);
   return rows;
-}
-
-/**
- * Позиция по ответу. Принимаем не только подпись кнопки: капитан набирает и «мид», и «Mid», и
- * просто «2» — переспрашивать на том, что понятно, значит злить человека посреди длинной анкеты.
- */
-function roleByAnswer(text: string): RoleKey | null {
-  const answer = text.trim().toLowerCase();
-  const position = Number(answer);
-  const role = ROLES.find(
-    (r) =>
-      r.short.toLowerCase() === answer ||
-      r.label.toLowerCase() === answer ||
-      (Number.isInteger(position) && r.position === position),
-  );
-  return (role?.key as RoleKey | undefined) ?? null;
 }
 
 /**
@@ -256,6 +256,8 @@ const askEditField = (state: State): Reply => ({
  * ходить за списком ради подсказки не стоит, а ответ бот примет и набранный руками.
  */
 function askCurrent(q: QuizConfig, step: Step, state: State): Reply {
+  // Регистрация ведёт свои вопросы сама — повторяем тот, на котором стоим.
+  if (isRegStep(step)) return askReg(step, state.reg ?? emptyRegistration());
   const player = state.team.players[state.index];
   switch (step) {
     case "tournament":
@@ -368,7 +370,12 @@ const divisionsOf = (tournamentId: number) =>
  * ответ и двигает состояние, либо переспрашивает. Ошибка ответа не сбрасывает диалог — иначе
  * опечатка на девятом игроке стоила бы всей заявки.
  */
-export async function handleMessage(chatId: string, raw: string, username?: string | null): Promise<Reply[]> {
+export async function handleMessage(
+  chatId: string,
+  raw: string,
+  username?: string | null,
+  tgId?: string | null,
+): Promise<Reply[]> {
   const text = raw.trim();
   // Конфигурацию читаем на каждое сообщение: правка в /admin/bot должна действовать сразу.
   const q = await loadQuiz();
@@ -377,14 +384,32 @@ export async function handleMessage(chatId: string, raw: string, username?: stri
 
   if (/^\/start\b/.test(text)) {
     await clear(chatId);
-    return [{ text: q.text("menu"), keyboard: await menuKeyboard() }];
+    // Кнопку регистрации показываем тому, кого лига не знает: остальным она предлагает вступить
+    // туда, где человек уже играет.
+    const known = (await identify(chatId, username, tgId)).length > 0;
+    return [{ text: q.text("menu"), keyboard: await menuKeyboard(!known) }];
   }
   if (/^\/cancel\b/.test(text)) {
     await clear(chatId);
-    return [{ text: "Заявка отменена.", keyboard: await menuKeyboard() }];
+    return [{ text: "Отменил. Что дальше?", keyboard: await menuKeyboard() }];
   }
 
   const session = await load(chatId);
+
+  // Регистрация в лиге. Посреди уже начатого диалога не запускаем: собранный состав или анкета
+  // пропали бы молча — а это ровно та работа, которую человек только что сделал.
+  if (text === REGISTER_BUTTON) {
+    if (session && !isRegStep(session.step)) {
+      return [{ text: "Сначала закончим начатое — или наберите /cancel, чтобы бросить.", keyboard: null }, askCurrent(q, session.step, session.state)];
+    }
+    const started = await startRegistration(tgId ?? null, normalizeTelegram(username ?? ""));
+    if (started.done || !started.step) {
+      await clear(chatId);
+      return [...started.replies, { text: "Что дальше?", keyboard: await menuKeyboard() }];
+    }
+    await save(chatId, started.step, { ...emptyState(), reg: started.state });
+    return started.replies;
+  }
 
   // Кнопка меню посреди квиза — справка, а не выход: капитан на седьмом игроке не должен терять
   // состав из-за случайного нажатия. Отвечаем и тут же повторяем вопрос, на котором стоим.
@@ -398,7 +423,7 @@ export async function handleMessage(chatId: string, raw: string, username?: stri
       await save(chatId, "form_pick", emptyState());
       return [offer];
     }
-    const reply = await menuReply(chatId, text, username);
+    const reply = await menuReply(chatId, text, username, tgId);
     if (reply && session) return [reply, askCurrent(q, session.step, session.state)];
     if (reply) return [reply];
   }
@@ -407,7 +432,9 @@ export async function handleMessage(chatId: string, raw: string, username?: stri
   const { step, state } = session;
 
   // Анкету ведёт свой модуль: у неё нет ни ростера, ни проверок состава — только вопросы подряд.
-  if (isFormStep(step)) return runForm(chatId, step, state, text, username);
+  if (isFormStep(step)) return runForm(chatId, step, state, text, username, tgId);
+  // Регистрацию — свой: она пишет не в заявку команды, а в аккаунт человека.
+  if (isRegStep(step)) return runRegister(chatId, step, state, text, username, tgId);
 
   switch (step) {
     case "tournament": {
@@ -680,10 +707,11 @@ async function runForm(
   state: State,
   text: string,
   username: string | null | undefined,
+  tgId: string | null | undefined,
 ): Promise<Reply[]> {
   const form: FormState = { quizId: state.quizId, answers: state.answers };
   // Кто отвечает — если человека знаем, ответ будет подписан игроком, а не только хендлом.
-  const [playerId] = await identify(chatId, username);
+  const [playerId] = await identify(chatId, username, tgId);
   const result = await handleForm(step, form, text, chatId, username, playerId ?? null);
 
   if (result.done) {
@@ -691,6 +719,32 @@ async function runForm(
     return [...result.replies, { text: "Что дальше?", keyboard: await menuKeyboard() }];
   }
   await save(chatId, result.step ?? step, { ...state, quizId: result.state.quizId, answers: result.state.answers });
+  return result.replies;
+}
+
+/**
+ * Шаг регистрации в лиге. Как и анкета, состояние держит в общей `BotSession` — своим полем `reg`,
+ * чтобы смысл поля не зависел от того, какой сценарий сейчас идёт.
+ */
+async function runRegister(
+  chatId: string,
+  step: RegStep,
+  state: State,
+  text: string,
+  username: string | null | undefined,
+  tgId: string | null | undefined,
+): Promise<Reply[]> {
+  const result = await handleRegister(step, state.reg ?? emptyRegistration(), text, {
+    chatId,
+    tgId: tgId ?? null,
+    username,
+  });
+
+  if (result.done) {
+    await clear(chatId);
+    return [...result.replies, { text: "Что дальше?", keyboard: await menuKeyboard() }];
+  }
+  await save(chatId, result.step ?? step, { ...state, reg: result.state });
   return result.replies;
 }
 
@@ -724,8 +778,13 @@ async function finish(chatId: string, q: QuizConfig, state: State): Promise<Repl
 }
 
 /** Обработать сообщение и ответить в чат. Точка входа для `scripts/bot.ts`. */
-export async function replyTo(chatId: string, text: string, username?: string | null): Promise<void> {
-  const replies = await handleMessage(chatId, text, username);
+export async function replyTo(
+  chatId: string,
+  text: string,
+  username?: string | null,
+  tgId?: string | null,
+): Promise<void> {
+  const replies = await handleMessage(chatId, text, username, tgId);
   for (const r of replies) await sendTo(chatId, r.text, r.keyboard ?? null);
 }
 

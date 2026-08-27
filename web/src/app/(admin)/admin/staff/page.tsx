@@ -33,7 +33,7 @@ function Who({ account, me }: { account: StaffAccount; me: number | null }) {
   return (
     <div className="min-w-0 flex-1">
       <p className="truncate text-sm">
-        <span className="text-ink-muted">{account.email}</span>
+        <span className="text-ink-muted">{account.email ?? (account.tgUsername ? `@${account.tgUsername}` : "без почты")}</span>
         {account.name && <span className="text-ink-subtle"> · {account.name}</span>}
         {account.id === me && <span className="text-ink-subtle"> · это вы</span>}
       </p>

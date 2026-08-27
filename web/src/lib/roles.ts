@@ -27,6 +27,23 @@ export const rolePosition = (v: string | null | undefined): number | null =>
 export const roleByPosition = (n: number): RoleKey | null =>
   (ROLES.find((r) => r.position === n)?.key as RoleKey | undefined) ?? null;
 
+/**
+ * Роль по ответу человека в боте: подпись кнопки («Керри»), английское имя («Mid») или просто
+ * номер позиции («2»). Живёт здесь, а не в квизе: по ней спрашивают позицию и заявка команды
+ * (tg-quiz.ts), и регистрация игрока (tg-register.ts) — второго разбора одного и того же быть не должно.
+ */
+export function roleByAnswer(text: string): RoleKey | null {
+  const answer = text.trim().toLowerCase();
+  const position = Number(answer);
+  const role = ROLES.find(
+    (r) =>
+      r.short.toLowerCase() === answer ||
+      r.label.toLowerCase() === answer ||
+      (Number.isInteger(position) && r.position === position),
+  );
+  return (role?.key as RoleKey | undefined) ?? null;
+}
+
 /** Индекс для сортировки состава: керри → … → хард, потом замены и тренер. */
 export const roleOrder = (v: string | null | undefined) => {
   const i = ROLES.findIndex((r) => r.key === v);

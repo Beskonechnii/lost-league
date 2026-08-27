@@ -189,13 +189,16 @@ async function main() {
       .sort((a, b) => `${a.matchKey}${a.placed}${a.x}${a.y}`.localeCompare(`${b.matchKey}${b.placed}${b.x}${b.y}`)),
 
     // Аккаунты — реальные данные пользователей, а не производные: должны переживать db:import (зеркало),
-    // иначе привязки и пароли потерялись бы. Ключ переноса — email (уникален и есть всегда, в отличие
-    // от googleSub — у парольного аккаунта его нет); профиль/заявка — по slug игрока. `reviewedById`
-    // не переносим: это id аккаунта, а id на другой машине другие — след «кто рассмотрел» не связь.
+    // иначе привязки и пароли потерялись бы. Ключей переноса теперь два: email и tgId (у аккаунта из
+    // бота почты нет вовсе), профиль/заявка — по slug игрока. `reviewedById` не переносим: это id
+    // аккаунта, а id на другой машине другие — след «кто рассмотрел» не связь.
     accounts: accounts
       .map((a) => ({
         email: a.email,
         googleSub: a.googleSub,
+        tgId: a.tgId,
+        tgUsername: a.tgUsername,
+        source: a.source,
         passwordHash: a.passwordHash,
         emailVerified: a.emailVerified,
         name: a.name,
@@ -212,7 +215,8 @@ async function main() {
         playerSlug: a.player?.slug ?? null,
         claimSlug: a.claim?.slug ?? null,
       }))
-      .sort((a, b) => a.email.localeCompare(b.email)),
+      // Сортируем по тому ключу, который есть: у телеграмного аккаунта почты нет.
+      .sort((a, b) => (a.email ?? a.tgId ?? "").localeCompare(b.email ?? b.tgId ?? "")),
   };
 
   writeFileSync(out, JSON.stringify(snapshot, null, 2) + "\n", "utf8");

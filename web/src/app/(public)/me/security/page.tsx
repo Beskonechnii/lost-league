@@ -55,7 +55,10 @@ export default async function SecurityPage() {
             ← Кабинет
           </Link>
           <h1 className="mt-3 text-2xl font-bold tracking-tight">Вход и защита</h1>
-          <p className="mt-1 text-sm text-ink-muted">{account.email}</p>
+          {/* Почты может не быть: аккаунт из бота входит по телеграму (BOT-PLAN.md, Э1–Э2). */}
+          <p className="mt-1 text-sm text-ink-muted">
+            {account.email ?? (account.tgUsername ? `@${account.tgUsername}` : "вход через Telegram")}
+          </p>
         </div>
 
         <Section title="Способы входа">
