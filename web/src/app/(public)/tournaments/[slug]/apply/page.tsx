@@ -64,9 +64,13 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
   const mine = me ? await myApplications(me.id, tournament.id) : [];
   const open = registrationOpen(tournament);
 
-  // Открытая заявка (ждёт решения или возвращена) открывается на правку, а не заводит вторую
-  // строку в очереди: повторная подача — это досыл правок, а не новая команда.
-  const editable = mine.find((a) => a.status === "pending" || a.status === "rejected") ?? null;
+  // Своя заявка открывается на правку, а не заводит вторую строку в очереди: повторная подача —
+  // это досыл правок, а не новая команда. Принятая тоже правится (замена, ушедший игрок) — тогда
+  // она вернётся на модерацию той же строкой (`submitTeamApplication`).
+  const editable =
+    mine.find((a) => a.status === "pending" || a.status === "rejected") ??
+    mine.find((a) => a.status === "approved") ??
+    null;
   const editableDraft = editable ? parseDraft(editable.payload) : null;
 
   const needBoard = !!me && open;
@@ -140,7 +144,9 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
             <p className="rounded-md border border-sky-900 bg-sky-950/40 px-3 py-2 text-xs text-sky-300">
               {editable.status === "rejected"
                 ? "Заявка возвращена — поправьте состав и отправьте снова, новая строка в очереди не появится."
-                : "Заявка уже подана и ждёт решения. Правки сохранятся в неё же."}
+                : editable.status === "approved"
+                  ? "Заявка принята, состав уже в турнире. Правки уйдут на повторную модерацию той же заявкой — второй в очереди не появится."
+                  : "Заявка уже подана и ждёт решения. Правки сохранятся в неё же."}
               {restored && restored.lost > 0 &&
                 ` Из прежнего состава не нашлось в лиге: ${restored.lost} — этих игроков нужно поставить заново.`}
             </p>

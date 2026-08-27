@@ -98,6 +98,8 @@ export async function submitTeamApplication(
   // Одна команда — одна заявка на турнир (решение Стаса, 23.08.2026): повторная отправка правит
   // прежнюю, а не плодит строку в очереди. Возвращённую заявку это тоже касается — досыл правок
   // снова ставит её в `pending` (`data.status` ниже), чтобы модератор увидел исправленный состав.
+  // **Принятую — тоже**: состав правят и после апрува (замена, ушедший игрок), и такая правка
+  // должна вернуться на модерацию той же строкой, а не второй заявкой той же команды.
   //
   // Ищем и по подавшему, и по слагу команды: заявку может отправить менеджер, а поправить капитан
   // с другого аккаунта — очередь всё равно должна остаться с одной строкой на команду.
@@ -105,7 +107,7 @@ export async function submitTeamApplication(
   const mine = await prisma.teamApplication.findFirst({
     where: {
       tournamentId,
-      status: { in: ["pending", "rejected"] },
+      status: { in: ["pending", "rejected", "approved"] },
       OR: [{ submittedById: accountId }, { payload: { contains: `"slug":"${slug}"` } }],
     },
     orderBy: { submittedAt: "desc" },
@@ -231,6 +233,19 @@ export async function applicationProblems(team: TeamDraft, divisionId: number | 
   }
 
   // Конфликт составов: действующим можно быть только в одной команде дивизиона (roster-spots.ts).
+  // Считаем занятость по командам, **заявленным в этот дивизион**: состав сезонный, и строки
+  // команды остаются в дивизионе после того, как её из турнира убрали, — иначе прошлогодний состав
+  // чужой команды блокировал бы заявку на турнир, где она не играет (то же правило, что на доске
+  // сборки состава: `takenSpots` в apply/pool.ts).
+  const playing =
+    divisionId === null
+      ? null
+      : new Set(
+          (await prisma.tournamentEntry.findMany({ where: { divisionId }, select: { teamId: true } })).map(
+            (e) => e.teamId,
+          ),
+        );
+
   for (const p of team.players) {
     if (!isCoreRole(p.role)) continue;
     const found = await findPlayer(p);
@@ -242,6 +257,7 @@ export async function applicationProblems(team: TeamDraft, divisionId: number | 
     const conflict = spotConflict(
       spots
         .filter((s) => s.team.id !== existingTeam?.id)
+        .filter((s) => playing === null || s.divisionId !== divisionId || playing.has(s.teamId))
         .map((s) => ({ teamId: s.team.id, role: s.role, divisionId: s.divisionId, teamName: s.team.name })),
       { teamId: existingTeam?.id ?? -1, role: p.role, divisionId },
     );

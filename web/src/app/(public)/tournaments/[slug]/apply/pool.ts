@@ -59,21 +59,31 @@ export async function applyPool(): Promise<PoolEntry[]> {
 }
 
 /**
- * Кто уже занят. Считаем только места в дивизионах **этого** турнира (плюс места вне дивизиона):
- * действующим можно быть в одной команде дивизиона, а в прошлом сезоне тот же человек стоит где
- * угодно и заявке не мешает (`src/lib/roster-spots.ts`).
+ * Кто уже занят. Считаем по командам, **заявленным в этот турнир** (`TournamentEntry` в его
+ * дивизионе), а не по всем строкам состава в нём: состав сезонный, и строки команды остаются в
+ * дивизионе после того, как её из турнира убрали. Без этой сверки прошлогодний состав чужой
+ * команды помечал бы пол-лиги занятой в турнире, где эта команда не играет.
  *
  * Слаг команды отдаём вместе с местом: если капитан заявляет ту же команду, в которой человек уже
  * стоит, это не конфликт — экран сам исключит её по слагу названия, как это делает
  * `applicationProblems` перед записью.
  */
 export async function takenSpots(divisionIds: number[]): Promise<TakenSpot[]> {
+  if (divisionIds.length === 0) return [];
+
+  const entries = await prisma.tournamentEntry.findMany({
+    where: { divisionId: { in: divisionIds } },
+    select: { teamId: true, divisionId: true },
+  });
+  if (entries.length === 0) return [];
+  const playing = new Set(entries.map((e) => `${e.teamId}:${e.divisionId}`));
+
   const spots = await prisma.rosterSpot.findMany({
-    where: { OR: [{ divisionId: { in: divisionIds } }, { divisionId: null }] },
+    where: { divisionId: { in: divisionIds }, teamId: { in: entries.map((e) => e.teamId) } },
     include: { team: { select: { slug: true, name: true } } },
   });
   return spots
-    .filter((s) => isCoreRole(s.role))
+    .filter((s) => isCoreRole(s.role) && playing.has(`${s.teamId}:${s.divisionId}`))
     .map((s) => ({
       playerId: s.playerId,
       divisionId: s.divisionId,

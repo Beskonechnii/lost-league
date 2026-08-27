@@ -138,10 +138,21 @@ export async function identify(
   }
   for (const id of await playersByHandle(username)) found.add(id);
 
-  // Второй заход — по `account_id` из заявок этого чата: капитан, только что подавший состав, в
-  // ростере может быть заведён под другим хендлом. Номер аккаунта Dota надёжнее хендла: его не меняют.
+  // Второй заход — по `account_id` из **своей строки** в заявке: капитан, только что подавший
+  // состав, в ростере может быть заведён под другим хендлом, а номер аккаунта Dota надёжнее хендла —
+  // его не меняют. Берём именно свою строку, а не весь состав: иначе «вами» оказывались все пятеро,
+  // и бот показывал профиль сокомандника вместо своего.
+  const handle = normalizeTelegram(username ?? "")?.toLowerCase() ?? null;
   const accountIds = (await applicationsOf(chatId, username))
-    .flatMap((a) => parseDraft(a.payload)?.players ?? [])
+    .flatMap((a) => {
+      const players = parseDraft(a.payload)?.players ?? [];
+      const byHandle = handle
+        ? players.filter((p) => normalizeTelegram(p.telegram ?? "")?.toLowerCase() === handle)
+        : [];
+      // Хендла в составе нет, но заявка пришла из этого чата — значит подал её капитан.
+      if (byHandle.length) return byHandle;
+      return a.submittedChatId === chatId ? players.filter((p) => p.isCaptain) : [];
+    })
     .map((p) => p.accountId)
     .filter((id): id is string => !!id);
   if (accountIds.length) {
@@ -206,10 +217,15 @@ async function myProfile(chatId: string, username: string | null | undefined, tg
   });
   const linked = await editablePlayer(tgId);
   // Привязка — точнее любой эвристики: это тот самый человек. Без неё из дублей показываем запись,
-  // которая реально играет: профиль без единого места в составе — почти всегда осколок старого
-  // импорта, и человек себя в нём не узнаёт.
-  const player =
-    candidates.find((c) => c.id === linked?.id) ?? candidates.sort((a, b) => b.spots.length - a.spots.length)[0];
+  // которая реально играет, и из них — с самым свежим местом в составе: профиль без единого места
+  // почти всегда осколок старого импорта, и человек себя в нём не узнаёт. Мест здесь не больше
+  // одного (`take: 1` выше — оно уже самое свежее), поэтому сравниваем его, а не их число.
+  const fresher = (a: (typeof candidates)[number], b: (typeof candidates)[number]) => {
+    const [x, y] = [a.spots[0], b.spots[0]];
+    if (!x || !y) return (y ? 1 : 0) - (x ? 1 : 0);
+    return (y.divisionId ?? 0) - (x.divisionId ?? 0) || y.createdAt.getTime() - x.createdAt.getTime();
+  };
+  const player = candidates.find((c) => c.id === linked?.id) ?? [...candidates].sort(fresher)[0];
   if (!player) return unknownReply(username);
 
   const spot = player.spots[0];

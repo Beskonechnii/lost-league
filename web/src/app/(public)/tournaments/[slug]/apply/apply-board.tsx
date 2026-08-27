@@ -16,7 +16,7 @@ import { PlayerAvatar } from "@/app/(public)/roster/_components/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { slugify } from "@/lib/profiles";
-import { roleShort } from "@/lib/roles";
+import { ROLES, roleShort } from "@/lib/roles";
 import { submitApplication, type ApplyState } from "./actions";
 import { CORE_KEYS, SLOTS, type RosterInput } from "./slots";
 import type { PoolEntry, TakenSpot } from "./pool";
@@ -71,6 +71,9 @@ export function ApplyBoard({
   // Капитан хранится игроком, а не слотом: при переносе между позициями капитанство едет с человеком.
   const [captainId, setCaptainId] = useState<number | null>(initial?.captainId ?? null);
   const [query, setQuery] = useState("");
+  // Фильтр по позиции: в пуле под две сотни человек, а капитан ищет «кто у нас на четвёрку».
+  // Позиция берётся из ростера (основное место игрока), а не из слота, куда его ставят.
+  const [role, setRole] = useState<string | null>(null);
   const [dragId, setDragId] = useState<number | null>(null);
   const [hint, setHint] = useState<string | null>(null);
 
@@ -95,14 +98,16 @@ export function ApplyBoard({
 
   const found = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return pool;
-    return pool.filter(
-      (p) =>
+    return pool.filter((p) => {
+      if (role && p.role !== role) return false;
+      if (!needle) return true;
+      return (
         p.nickname.toLowerCase().includes(needle) ||
         (p.realName ?? "").toLowerCase().includes(needle) ||
-        (p.teamName ?? "").toLowerCase().includes(needle),
-    );
-  }, [pool, query]);
+        (p.teamName ?? "").toLowerCase().includes(needle)
+      );
+    });
+  }, [pool, query, role]);
 
   const coreCount = CORE_KEYS.filter((k) => slots[k]).length;
   const totalCount = Object.values(slots).filter(Boolean).length;
@@ -207,6 +212,8 @@ export function ApplyBoard({
             found={found}
             query={query}
             setQuery={setQuery}
+            role={role}
+            setRole={setRole}
             busy={busy}
             placed={placed}
             onTap={tap}
@@ -303,6 +310,8 @@ function Pool({
   found,
   query,
   setQuery,
+  role,
+  setRole,
   busy,
   placed,
   onTap,
@@ -311,6 +320,8 @@ function Pool({
   found: PoolEntry[];
   query: string;
   setQuery: (v: string) => void;
+  role: string | null;
+  setRole: (v: string | null) => void;
   busy: Map<number, string>;
   placed: Map<number, string>;
   onTap: (id: number) => void;
@@ -323,6 +334,24 @@ function Pool({
         <span className="text-xs text-ink-subtle">{found.length}</span>
       </div>
       <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск по нику, имени или команде" />
+      {/* Позиции — кнопками, а не выпадающим списком: их шесть, и выбор в один клик тут важнее
+          экономии места (то же решение, что у вкладок дивизионов). */}
+      <div className="flex flex-wrap gap-1.5 font-pouf">
+        {[{ key: null as string | null, short: "Все" }, ...ROLES.filter((r) => r.position !== null)].map((r) => (
+          <button
+            key={r.key ?? "all"}
+            type="button"
+            onClick={() => setRole(r.key)}
+            className={`inline-flex items-center rounded-[14px] px-3 py-[5px] text-[12px] font-black transition-[box-shadow,transform,background] ${
+              role === r.key
+                ? "bg-purple text-[var(--on-accent)] cushion-control"
+                : "bg-surface text-ink-muted cushion-field hover:text-ink"
+            }`}
+          >
+            {r.short}
+          </button>
+        ))}
+      </div>
       <div className={`max-h-[28rem] space-y-1 overflow-y-auto rounded-lg border border-hairline bg-surface-1/40 p-1.5 ${SCROLL}`}>
         {found.length === 0 && (
           <p className="px-2 py-6 text-center text-xs text-ink-subtle">
