@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export const metadata = {
   title: "Правила лиги",
-  description: "Правила League of Spirits: аккаунт и вход, заявка на вступление, пароль, данные профиля, поведение.",
+  description: "Правила SPIRIT/CTRL: аккаунт и вход, заявка на вступление, пароль, данные профиля, поведение.",
 };
 
 // Публичная политика площадки. Под ней подписывается человек, отправляя анкету («принимаю правила»),
@@ -129,7 +129,7 @@ export default function RulesPage() {
 
         <h1 className="mt-4 text-3xl font-bold tracking-tight">Правила лиги</h1>
         <p className="mt-2 text-sm text-ink-muted">
-          Условия, на которых работают аккаунт, заявка на вступление и профиль игрока в League of Spirits.
+          Условия, на которых работают аккаунт, заявка на вступление и профиль игрока в SPIRIT/CTRL.
           Регистрируясь и отправляя анкету, вы соглашаетесь с ними.
         </p>
         <p className="mt-1 text-xs text-ink-subtle">{VERSION}</p>

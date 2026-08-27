@@ -23,11 +23,12 @@ export default async function TelegramLoginPage() {
       <div className="mx-auto w-full max-w-md">
         {/* Шапка-марка — та же, что у кабинета: это один и тот же вход, с разных сторон */}
         <div className="mb-6 text-center">
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-accent to-fuchsia-600 text-xl font-black text-white shadow-lg shadow-accent/20">
-            L
-          </span>
+          {/* Знак вместо буквы в градиентном квадрате: у бренда своя лента, и рисовать её
+              градиентом Tailwind значит держать вторую версию логотипа в классах. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/assets/brand/mark.svg" alt="" aria-hidden className="mx-auto h-12 w-auto" />
           <h1 className="mt-3 text-2xl font-bold tracking-tight">Вход через Telegram</h1>
-          <p className="mt-1 text-sm text-ink-muted">League of Spirits</p>
+          <p className="mt-1 text-sm text-ink-muted">SPIRIT/CTRL</p>
         </div>
 
         <div className="rounded-2xl border border-hairline bg-surface-1/60 p-5 shadow-xl shadow-black/20 backdrop-blur">

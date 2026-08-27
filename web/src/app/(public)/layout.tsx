@@ -7,8 +7,8 @@ import { isAdmin } from "@/lib/admin-session";
 // навигация и свои метаданные, не общие со служебной частью.
 
 export const metadata: Metadata = {
-  title: { default: "League of Spirits", template: "%s — League of Spirits" },
-  description: "Разбор матчей Dota 2, таблица и составы League of Spirits",
+  title: { default: "SPIRIT/CTRL", template: "%s — SPIRIT/CTRL" },
+  description: "Разбор матчей Dota 2, таблица и составы лиги SPIRIT/CTRL",
 };
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {

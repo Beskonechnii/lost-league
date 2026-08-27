@@ -107,15 +107,22 @@ function Bar({
   );
 }
 
-/** Логотип-ссылка на главную — один для всего сайта. Пухлый бренд-Blob в духе pouf. */
+/**
+ * Логотип-ссылка на главную — один для всего сайта: знак плюс вордмарк SPIRIT/CTRL.
+ *
+ * Картинками, а не текстом и блобом: у знака свой градиент, а у вордмарка — своя гарнитура, и ни то,
+ * ни другое интерфейсными токенами не собрать. Подложки под знаком нет намеренно — он сам цветной,
+ * и `cushion-blob` под ним превращался в кашу.
+ *
+ * `<img>`, а не `next/image`: обе картинки — векторные ассеты релиза рядом с кодом, оптимизировать
+ * в них нечего, а лоадер добавил бы кадр пустоты в шапке на каждой навигации.
+ */
 const brand = (
-  <Link href="/" className={`flex shrink-0 items-center gap-3 rounded-control ${focus}`} title="League of Spirits">
-    <span className="grid h-9 w-9 place-items-center rounded-[14px] bg-purple text-[15px] font-black text-[var(--on-accent)] cushion-blob">
-      L
-    </span>
-    <span className="hidden text-xs font-black uppercase tracking-[0.2em] text-ink-muted sm:block">
-      League&nbsp;of&nbsp;Spirits
-    </span>
+  <Link href="/" className={`flex shrink-0 items-center gap-2.5 rounded-control ${focus}`} title="SPIRIT/CTRL">
+    {/* eslint-disable-next-line @next/next/no-img-element */}
+    <img src="/assets/brand/mark.svg" alt="" aria-hidden className="h-8 w-auto" />
+    {/* eslint-disable-next-line @next/next/no-img-element */}
+    <img src="/assets/brand/wordmark.svg" alt="SPIRIT/CTRL" className="hidden h-[15px] w-auto sm:block" />
   </Link>
 );
 

@@ -21,6 +21,7 @@
     ├── scripts/        одноразовые/ручные утилиты (tsx), не часть рантайма
     ├── public/
     │   ├── assets/     иконки Dota (heroes/items/abilities), вендорятся скриптом
+    │   │   └── brand/  знак и вордмарк SPIRIT/CTRL (mark.svg, wordmark.svg); фавикон — src/app/icon.svg
     │   ├── templates/  подложки шаблонов графики: <templateId>/bg.png
     │   └── uploads/    лого и фото ростера — коммитятся; кроме generated/ (черновики OpenAI)
     │                   и postgame/ (архив выгруженных картинок матча)
