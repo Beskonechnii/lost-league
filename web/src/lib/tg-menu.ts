@@ -15,6 +15,7 @@ import { normalizeTelegram, telegramUrl } from "./profiles";
 import { roleShort, roleOrder } from "./roles";
 import { TOURNAMENT_STATUS_LABELS, isTournamentStatus } from "./tournaments";
 import { parseDraft } from "./team-application";
+import { anyFormOpen, FORMS_BUTTON } from "./tg-forms";
 
 /**
  * Запомнить чат: `chat_id` ↔ хендл. Telegram не даёт написать человеку по хендлу — только по
@@ -38,10 +39,18 @@ export const MENU = {
   tournaments: "Турниры",
 } as const;
 
-export const MENU_KEYBOARD: string[][] = [[MENU.apply], [MENU.roster, MENU.profile], [MENU.tournaments]];
+/**
+ * Клавиатура меню. Кнопка «Анкеты» появляется, только когда открытая анкета есть: пустой раздел,
+ * который на всё отвечает «сейчас ничего нет», хуже отсутствующего.
+ */
+export async function menuKeyboard(): Promise<string[][]> {
+  const rows: string[][] = [[MENU.apply], [MENU.roster, MENU.profile], [MENU.tournaments]];
+  if (await anyFormOpen()) rows.push([FORMS_BUTTON]);
+  return rows;
+}
 
 export const isMenuButton = (text: string): boolean =>
-  (Object.values(MENU) as string[]).includes(text.trim());
+  (Object.values(MENU) as string[]).includes(text.trim()) || text.trim() === FORMS_BUTTON;
 
 /**
  * Игроки с этим хендлом — **все**, а не первый попавшийся. В ростере встречаются дубли: один человек
@@ -63,13 +72,13 @@ async function playersByHandle(username: string | null | undefined): Promise<num
 }
 
 /** «Не узнали» — один ответ на все разделы: без профиля показывать нечего. */
-const unknown = (username: string | null | undefined): Reply => ({
+const unknown = async (username: string | null | undefined): Promise<Reply> => ({
   text: username
     ? `Не нашёл в лиге игрока с телеграмом @${username}. Если вы в ростере под другим хендлом — ` +
       `скажите организатору, он поправит. Если ещё не заявлялись — «${MENU.apply}».`
     : "У вас не задан телеграм-хендл (@nickname) — по нему я узнаю игрока. Поставьте его в настройках " +
       "Telegram и напишите мне снова.",
-  keyboard: MENU_KEYBOARD,
+  keyboard: await menuKeyboard(),
 });
 
 /**
@@ -78,7 +87,7 @@ const unknown = (username: string | null | undefined): Reply => ({
  * совпасть с уже известным игроком лиги. Совпадение по `account_id` надёжнее хендла: хендл меняют,
  * номер аккаунта Dota — нет.
  */
-async function identify(chatId: string, username: string | null | undefined): Promise<number[]> {
+export async function identify(chatId: string, username: string | null | undefined): Promise<number[]> {
   const found = new Set(await playersByHandle(username));
 
   // Второй заход — по `account_id` из заявок этого чата: капитан, только что подавший состав, в
@@ -159,12 +168,12 @@ async function myRoster(chatId: string, username: string | null | undefined): Pr
       return {
         text: `Вы есть в лиге как <b>${player?.nickname ?? "игрок"}</b>, но пока не в составе команды. ` +
           `Заявиться — «${MENU.apply}».`,
-        keyboard: MENU_KEYBOARD,
+        keyboard: await menuKeyboard(),
       };
     }
-    return { text: unknown(username).text, keyboard: MENU_KEYBOARD };
+    return unknown(username);
   }
-  return { text: blocks.join("\n\n"), keyboard: MENU_KEYBOARD };
+  return { text: blocks.join("\n\n"), keyboard: await menuKeyboard() };
 }
 
 /** Составы игрока по турнирам, свежий сверху: он бывает заявлен и в D1, и в D2, и в прошлом сезоне. */
@@ -241,7 +250,7 @@ async function myProfile(chatId: string, username: string | null | undefined): P
 
   return {
     text: [`<b>${player.nickname}</b>`, player.realName, "", ...facts, ...dupes].filter(Boolean).join("\n"),
-    keyboard: MENU_KEYBOARD,
+    keyboard: await menuKeyboard(),
   };
 }
 
@@ -252,14 +261,14 @@ async function tournaments(): Promise<Reply> {
     orderBy: [{ startAt: "desc" }, { id: "desc" }],
     include: { divisions: { orderBy: [{ orderNo: "asc" }, { id: "asc" }] } },
   });
-  if (rows.length === 0) return { text: "Сейчас турниров нет — как объявим, напишу.", keyboard: MENU_KEYBOARD };
+  if (rows.length === 0) return { text: "Сейчас турниров нет — как объявим, напишу.", keyboard: await menuKeyboard() };
 
   const blocks = rows.map((t) => {
     const status = isTournamentStatus(t.status) ? TOURNAMENT_STATUS_LABELS[t.status] : t.status;
     const divisions = t.divisions.map((d) => d.name).join(", ");
     return [`<b>${t.name}</b> — ${status}`, divisions || null, t.format || null].filter(Boolean).join("\n");
   });
-  return { text: blocks.join("\n\n"), keyboard: MENU_KEYBOARD };
+  return { text: blocks.join("\n\n"), keyboard: await menuKeyboard() };
 }
 
 /** Дата встречи по-человечески. Времени может не быть — тогда и не пишем. */

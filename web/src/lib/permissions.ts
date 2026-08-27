@@ -40,6 +40,12 @@ export const PERMISSIONS = [
   },
   { key: "series.edit", label: "Архив серий", group: "Турнир", hint: "Встречи, карты, результаты" },
   { key: "tp.edit", label: "Начисление TP", group: "Турнир", hint: "Сезонный зачёт очков MVP" },
+  {
+    key: "quizzes",
+    label: "Анкеты",
+    group: "Инструменты",
+    hint: "Опросы и записи на ивенты, которые бот собирает в телеграме",
+  },
   { key: "studio", label: "Студия графики", group: "Инструменты", hint: "В том числе платная генерация картинок" },
   { key: "underbeer", label: "UNDERBEER", group: "Инструменты", hint: "Шоу-драфт и его оверлей" },
   { key: "theme", label: "Тема UI", group: "Инструменты", hint: "Цвета интерфейса сайта" },

@@ -585,3 +585,58 @@ model PlayerDistinct {
 
   @@unique([aId, bId])
 }
+
+
+/// Анкета под ивент: набор произвольных вопросов, который бот задаёт в телеграме. Отдельно от
+/// заявки команды (`TeamApplication`) сознательно: заявка завязана на модель ростера — команда,
+/// позиции, ссылки на профили, — а анкета собирает что угодно (запись на шоуматч, опрос, заявка
+/// кастера) и никуда, кроме своих ответов, не пишет. Общий у них только движок «вопрос → ответ →
+/// сводка», а правила проверки и последствия разные.
+model Quiz {
+  id          Int      @id @default(autoincrement())
+  slug        String   @unique // в адресе админки
+  title       String // подпись кнопки в боте
+  description String? // что это и зачем — показывается перед первым вопросом
+  /// draft (не видно никому) | open (бот предлагает) | closed (приём закрыт, ответы остались)
+  status      String   @default("draft")
+  closeAt     DateTime? // срок приёма; пусто — до ручного закрытия
+  createdAt   DateTime @default(now())
+
+  questions QuizQuestion[]
+  responses QuizResponse[]
+}
+
+/// Вопрос анкеты. Отдельно от `BotQuestion`: та переопределяет **дефолтные** шаги заявки команды
+/// (дефолт живёт в коде), а здесь вопрос существует только в базе — придумывать ему дефолт не из чего.
+model QuizQuestion {
+  id       Int     @id @default(autoincrement())
+  text     String
+  /// Варианты ответа кнопками, по строке на вариант. Пусто — отвечают свободным текстом.
+  options  String?
+  required Boolean @default(true)
+  orderNo  Int     @default(0)
+
+  quiz   Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quizId Int
+
+  @@index([quizId])
+}
+
+/// Заполненная анкета. Ответы лежат JSON'ом вместе с текстом вопроса — как в заявке бота: вопрос
+/// потом перепишут, а ответ прошлого месяца должен остаться читаемым.
+model QuizResponse {
+  id        Int      @id @default(autoincrement())
+  /// Чат, из которого пришли ответы, и хендл на момент заполнения — иначе с человеком не связаться.
+  chatId    String
+  username  String?
+  /// Игрок лиги, если опознан (src/lib/tg-menu.ts). Без relation: это след, а не связь — профиль
+  /// могут слить или удалить, а ответ должен пережить.
+  playerId  Int?
+  answers   String
+  createdAt DateTime @default(now())
+
+  quiz   Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quizId Int
+
+  @@index([quizId])
+}

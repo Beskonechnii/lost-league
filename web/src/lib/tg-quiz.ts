@@ -20,7 +20,8 @@ import { isCoreRole } from "./roster-spots";
 import { slugify, accountIdFromUrl, normalizeTelegram } from "./profiles";
 import { registrationOpen } from "./tournaments";
 import { loadQuiz, type QuizConfig } from "./quiz-config";
-import { MENU, MENU_KEYBOARD, isMenuButton, menuReply, rememberChat } from "./tg-menu";
+import { MENU, menuKeyboard, isMenuButton, menuReply, rememberChat, identify } from "./tg-menu";
+import { FORMS_BUTTON, handleForm, isFormStep, offerForms, type FormState, type FormStep } from "./tg-forms";
 
 /** Шаг диалога. Хранится строкой в `BotSession.step` — старую сессию после правки квиза сбросим. */
 export type Step =
@@ -44,7 +45,9 @@ export type Step =
   | "edit_link"
   | "edit_tg"
   | "edit_name"
-  | "edit_tag";
+  | "edit_tag"
+  // шаги анкеты (src/lib/tg-forms.ts) — живут в той же сессии, разведены префиксом
+  | FormStep;
 
 /** Всё собранное на текущий момент. Лежит JSON'ом в `BotSession.state`. */
 type State = {
@@ -53,8 +56,11 @@ type State = {
   team: TeamDraft;
   /** Игрок, которого сейчас заполняем: он уже в `team.players`, дописываем его поля по шагам. */
   index: number;
-  /** Ответы на свои вопросы оператора (`quiz-config.ts`) — в том же порядке, что заданы. */
+  /** Ответы на свои вопросы оператора (`quiz-config.ts`) — в том же порядке, что заданы.
+   *  Их же переиспользует анкета (`tg-forms.ts`): формат один — вопрос и ответ текстом. */
   answers: Answer[];
+  /** Какая анкета заполняется, если идёт анкета, а не заявка (`tg-forms.ts`). */
+  quizId: number | null;
 };
 
 /** Ответ на свой вопрос: сохраняем текст вопроса, а не только ключ — оператор его потом перепишет,
@@ -67,6 +73,7 @@ const emptyState = (): State => ({
   team: { slug: "", name: "", tag: null, players: [] },
   index: -1,
   answers: [],
+  quizId: null,
 });
 
 // Состав: пять **основных** обязательны (иначе заявка не заявка), сверху — замены и тренер.
@@ -286,6 +293,10 @@ function askCurrent(q: QuizConfig, step: Step, state: State): Reply {
       return askEditField(state);
     case "confirm":
       return { text: "Продолжаем: отправляем заявку, правим состав или начинаем заново?", keyboard: [["Отправить заявку"], [EDIT], ["Начать заново"]] };
+    default:
+      // Шаги анкеты сюда не приходят: их перехватывает `runForm` раньше. Ответ на всякий случай —
+      // молчащий бот хуже лишней строки.
+      return { text: "Продолжаем." };
   }
 }
 
@@ -320,7 +331,7 @@ function askConfirm(q: QuizConfig, state: State, tournamentName: string, divisio
 async function begin(chatId: string, q: QuizConfig): Promise<Reply[]> {
   await clear(chatId);
   const tournaments = await openTournaments();
-  if (tournaments.length === 0) return [{ text: q.text("closed"), keyboard: MENU_KEYBOARD }];
+  if (tournaments.length === 0) return [{ text: q.text("closed"), keyboard: await menuKeyboard() }];
 
   const state = emptyState();
   const hello = { text: q.text("hello") };
@@ -366,11 +377,11 @@ export async function handleMessage(chatId: string, raw: string, username?: stri
 
   if (/^\/start\b/.test(text)) {
     await clear(chatId);
-    return [{ text: q.text("menu"), keyboard: MENU_KEYBOARD }];
+    return [{ text: q.text("menu"), keyboard: await menuKeyboard() }];
   }
   if (/^\/cancel\b/.test(text)) {
     await clear(chatId);
-    return [{ text: "Заявка отменена.", keyboard: MENU_KEYBOARD }];
+    return [{ text: "Заявка отменена.", keyboard: await menuKeyboard() }];
   }
 
   const session = await load(chatId);
@@ -378,7 +389,15 @@ export async function handleMessage(chatId: string, raw: string, username?: stri
   // Кнопка меню посреди квиза — справка, а не выход: капитан на седьмом игроке не должен терять
   // состав из-за случайного нажатия. Отвечаем и тут же повторяем вопрос, на котором стоим.
   if (isMenuButton(text)) {
-    if (text === MENU.apply) return session ? [askCurrent(q, session.step, session.state)] : begin(chatId, q);
+    if (text === MENU.apply) {
+      return session && !isFormStep(session.step) ? [askCurrent(q, session.step, session.state)] : begin(chatId, q);
+    }
+    if (text === FORMS_BUTTON) {
+      const offer = await offerForms();
+      if (!offer) return [{ text: "Открытых анкет сейчас нет.", keyboard: await menuKeyboard() }];
+      await save(chatId, "form_pick", emptyState());
+      return [offer];
+    }
     const reply = await menuReply(chatId, text, username);
     if (reply && session) return [reply, askCurrent(q, session.step, session.state)];
     if (reply) return [reply];
@@ -386,6 +405,9 @@ export async function handleMessage(chatId: string, raw: string, username?: stri
 
   if (!session) return begin(chatId, q);
   const { step, state } = session;
+
+  // Анкету ведёт свой модуль: у неё нет ни ростера, ни проверок состава — только вопросы подряд.
+  if (isFormStep(step)) return runForm(chatId, step, state, text, username);
 
   switch (step) {
     case "tournament": {
@@ -523,7 +545,7 @@ export async function handleMessage(chatId: string, raw: string, username?: stri
         return [{ text: `Не вышло отправить: ${e instanceof Error ? e.message : "ошибка"}` }];
       }
       await clear(chatId);
-      return [{ text: q.text("done"), keyboard: MENU_KEYBOARD }];
+      return [{ text: q.text("done"), keyboard: await menuKeyboard() }];
     }
 
     case "edit_pick": {
@@ -644,6 +666,32 @@ async function afterPlayer(chatId: string, q: QuizConfig, state: State): Promise
   // Пока основы нет, «дальше» не спрашиваем — сразу следующий ник.
   if (coreCount(state) < CORE_SIZE) return [more, ...(await nextPlayer(chatId, q, state))];
   return [more];
+}
+
+/**
+ * Шаг анкеты. Состояние анкеты хранится в том же поле `BotSession.state`, что и состояние заявки:
+ * диалог у человека один, и держать две строки на чат значит однажды показать ему оба сразу.
+ * Ответы едут в общем поле `answers` (формат тот же — вопрос и ответ текстом), а какая именно
+ * анкета идёт, помнит отдельное поле `quizId`: смысл поля не должен зависеть от сценария.
+ */
+async function runForm(
+  chatId: string,
+  step: FormStep,
+  state: State,
+  text: string,
+  username: string | null | undefined,
+): Promise<Reply[]> {
+  const form: FormState = { quizId: state.quizId, answers: state.answers };
+  // Кто отвечает — если человека знаем, ответ будет подписан игроком, а не только хендлом.
+  const [playerId] = await identify(chatId, username);
+  const result = await handleForm(step, form, text, chatId, username, playerId ?? null);
+
+  if (result.done) {
+    await clear(chatId);
+    return [...result.replies, { text: "Что дальше?", keyboard: await menuKeyboard() }];
+  }
+  await save(chatId, result.step ?? step, { ...state, quizId: result.state.quizId, answers: result.state.answers });
+  return result.replies;
 }
 
 /** Завести следующего игрока и спросить его ник. */
