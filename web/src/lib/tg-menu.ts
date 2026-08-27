@@ -1,14 +1,15 @@
 // Только сервер / скрипт: меню телеграм-бота — то, что человек может спросить вне квиза.
 //
-// Кнопки постоянные: «Подать заявку», «Мой состав», «Личный профиль», «Турниры». Человека узнаём
-// тремя заходами, в порядке надёжности: привязка `UserAccount.tgId` (её даёт регистрация в боте —
-// `tg-register.ts`), телеграм-хендл в ростере (`Player.telegram`), account_id из его заявок.
+// Кнопки постоянные: «Подать заявку», «Мой состав», «Личный профиль», «Турниры», «Войти на сайт».
+// Человека узнаём тремя заходами, в порядке надёжности: привязка `UserAccount.tgId` (её даёт
+// регистрация в боте — `tg-register.ts`), телеграм-хендл в ростере (`Player.telegram`), account_id
+// из его заявок.
 //
 // **Хендл — не удостоверение.** Его можно сменить, и тогда бот человека не узнает; наоборот,
-// освободившийся хендл может занять посторонний. Поэтому меню показывает только то, что и так
-// публично на сайте (состав, карточка игрока, турниры), и ничего не меняет. Всё, что пишет, идёт
-// через квиз и очередь модерации. Привязка из регистрации это меняет — но только для тех действий,
-// которые появятся дальше (BOT-PLAN.md, Э7–Э8).
+// освободившийся хендл может занять посторонний. Поэтому справочные разделы показывают только то,
+// что и так публично на сайте (состав, карточка игрока, турниры), и ничего не меняют. Всё, что
+// пишет, идёт через квиз и очередь модерации. Единственное исключение — «Войти на сайт»: код входа
+// выдаётся строго по привязке `tgId`, хендлу его не дают.
 
 import { prisma } from "./prisma";
 import type { Reply } from "./telegram";
@@ -18,6 +19,7 @@ import { TOURNAMENT_STATUS_LABELS, isTournamentStatus } from "./tournaments";
 import { parseDraft } from "./team-application";
 import { anyFormOpen, FORMS_BUTTON } from "./tg-forms";
 import { REGISTER_BUTTON } from "./tg-register";
+import { CODE_TTL_MIN, issueLoginCode, loginAccount, loginUrl, siteUrl } from "./tg-login";
 
 /**
  * Запомнить чат: `chat_id` ↔ хендл. Telegram не даёт написать человеку по хендлу — только по
@@ -39,6 +41,7 @@ export const MENU = {
   roster: "Мой состав",
   profile: "Личный профиль",
   tournaments: "Турниры",
+  login: "Войти на сайт",
 } as const;
 
 /**
@@ -49,7 +52,7 @@ export const MENU = {
 export async function menuKeyboard(register = false): Promise<string[][]> {
   const rows: string[][] = [];
   if (register) rows.push([REGISTER_BUTTON]);
-  rows.push([MENU.apply], [MENU.roster, MENU.profile], [MENU.tournaments]);
+  rows.push([MENU.apply], [MENU.roster, MENU.profile], [MENU.tournaments, MENU.login]);
   if (await anyFormOpen()) rows.push([FORMS_BUTTON]);
   return rows;
 }
@@ -268,6 +271,44 @@ async function myProfile(chatId: string, username: string | null | undefined, tg
   };
 }
 
+/**
+ * «Войти на сайт»: одноразовый код и адрес страницы (`src/lib/tg-login.ts`). Код выдаётся аккаунту
+ * из регистрации в боте (`UserAccount.tgId`), а не хендлу: это ключ от кабинета, а хендл меняют —
+ * тому, кого узнали только по нему, кода не даём.
+ */
+async function loginCode(
+  chatId: string,
+  username: string | null | undefined,
+  tgId?: string | null,
+): Promise<Reply> {
+  const account = await loginAccount(tgId);
+  if (!account) {
+    // Разводим два случая: человек лиге известен (значит, аккаунт у него сайтовый — с почтой) и
+    // человек лиге незнаком. Звать в регистрацию первого — путать его.
+    const known = (await identify(chatId, username, tgId)).length > 0;
+    return {
+      text: known
+        ? `Код я выдаю аккаунту, заведённому через меня, а вас лига знает и так — значит, кабинет у вас ` +
+          `с почтой и паролем: ${siteUrl()}/me. Если войти не выходит — скажите организатору.`
+        : `Вход по коду — для тех, кто зарегистрирован через меня. Если вы в лиге впервые — ` +
+          `«${REGISTER_BUTTON}». Если аккаунт на сайте уже есть — входите там почтой: ${siteUrl()}/me`,
+      keyboard: await menuKeyboard(!known),
+    };
+  }
+
+  const { code } = await issueLoginCode(account.id);
+  return {
+    text: [
+      `Откройте <a href="${loginUrl()}">${loginUrl()}</a> и введите код:`,
+      "",
+      `<code>${code}</code>`,
+      "",
+      `Код живёт ${CODE_TTL_MIN} минут и срабатывает один раз. Никому его не пересылайте — это вход в ваш кабинет.`,
+    ].join("\n"),
+    keyboard: await menuKeyboard(),
+  };
+}
+
 /** Турниры, которые сейчас идут или принимают заявки. Черновики и сыгранные не показываем. */
 async function tournaments(): Promise<Reply> {
   const rows = await prisma.tournament.findMany({
@@ -308,6 +349,8 @@ export async function menuReply(
       return myProfile(chatId, username, tgId);
     case MENU.tournaments:
       return tournaments();
+    case MENU.login:
+      return loginCode(chatId, username, tgId);
     default:
       return null;
   }

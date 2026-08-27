@@ -201,6 +201,15 @@ function SignedOut() {
           </a>
         </>
       )}
+
+      {/* Третий вход — код из бота: у зарегистрированного через телеграм нет ни почты, ни пароля,
+          и без этой строки он бы не догадался, что кабинет для него вообще открыт */}
+      <p className="text-center text-xs text-ink-subtle">
+        Регистрировались через нашего Telegram-бота?{" "}
+        <Link href="/login/tg" className="text-accent underline-offset-4 hover:underline">
+          Войти по коду
+        </Link>
+      </p>
     </div>
   );
 }
