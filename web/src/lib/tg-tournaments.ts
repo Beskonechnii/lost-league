@@ -18,7 +18,7 @@ import { roleShort, roleOrder } from "./roles";
 import { teamMmr } from "./roster-data";
 import { registrationOpen, TOURNAMENT_STATUS_LABELS, isTournamentStatus } from "./tournaments";
 import { parseDraft } from "./team-application";
-import { MENU, applicationsOf, identify, menuKeyboard, unknownReply } from "./tg-menu";
+import { MENU, QUIZ_ROSTER, applicationsOf, identify, menuKeyboard, unknownReply } from "./tg-menu";
 
 /** Шаги раздела. Лежат в том же `BotSession.step`, что и шаги заявки — префикс их разводит. */
 export type TtStep = "tt_pick" | "tt_menu" | "tt_teams";
@@ -145,6 +145,26 @@ function tournamentReply(t: Listed): Reply {
     ]
       .filter(Boolean)
       .join("\n"),
+    keyboard: tournamentKeyboard(open),
+  };
+}
+
+/**
+ * Ответ на «Подать заявку»: ссылка на сборку состава. Отдельным сообщением, а не строкой в карточке
+ * турнира, — её надо нажать, а не прочитать.
+ */
+export function applyReply(t: { slug: string; name: string }, open = true): Reply {
+  return {
+    text: [
+      `<b>${t.name}</b> — заявка подаётся на сайте: там виден весь пул игроков лиги, и состав`,
+      "набирается мышью, а не по одному нику в чате.",
+      "",
+      `<a href="${siteUrl()}/tournaments/${t.slug}/apply">Открыть сборку состава</a>`,
+      "",
+      `Сайт спросит, кто вы: код для входа даёт бот — «${MENU.profile}» → «${MENU.login}».`,
+      "В составе может быть только игрок, которого знает лига: незнакомого позовите",
+      "зарегистрироваться — ссылка-приглашение есть там же, на странице заявки.",
+    ].join("\n"),
     keyboard: tournamentKeyboard(open),
   };
 }
@@ -388,6 +408,10 @@ export async function handleTournaments(
           state,
         };
       }
+      // Состав собирается на сайте (Э5): в чате пятёрку не выбрать из пула, а вписать кого угодно
+      // мимо лиги больше нельзя. Из раздела при этом не выходим — человек вернётся сюда за статусом.
+      if (!QUIZ_ROSTER)
+        return { replies: [applyReply(current, open)], step: "tt_menu", state };
       return { replies: [], state, apply: current.id };
     }
 

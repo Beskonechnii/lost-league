@@ -20,7 +20,7 @@ import { isCoreRole } from "./roster-spots";
 import { slugify, accountIdFromUrl, normalizeTelegram } from "./profiles";
 import { registrationOpen } from "./tournaments";
 import { loadQuiz, type QuizConfig } from "./quiz-config";
-import { MENU, LEGACY_ROSTER, menuKeyboard, isMenuButton, menuReply, rememberChat, identify } from "./tg-menu";
+import { MENU, LEGACY_ROSTER, QUIZ_ROSTER, menuKeyboard, isMenuButton, menuReply, rememberChat, identify } from "./tg-menu";
 import { FORMS_BUTTON, handleForm, isFormStep, offerForms, type FormState, type FormStep } from "./tg-forms";
 import {
   EDIT_BUTTON,
@@ -381,6 +381,24 @@ async function begin(chatId: string, q: QuizConfig): Promise<Reply[]> {
   return [hello, ...(await afterTournament(chatId, q, state, tournaments[0].name))];
 }
 
+/**
+ * Начать регистрацию игрока. Два входа: кнопка «Регистрация» в меню и ссылка-приглашение
+ * `?start=invite` со страницы сборки состава — шаги у них одни и те же.
+ */
+async function beginRegistration(
+  chatId: string,
+  username: string | null | undefined,
+  tgId: string | null | undefined,
+): Promise<Reply[]> {
+  const started = await startRegistration(tgId ?? null, normalizeTelegram(username ?? ""));
+  if (started.done || !started.step) {
+    await clear(chatId);
+    return [...started.replies, { text: "Что дальше?", keyboard: await menuKeyboard() }];
+  }
+  await save(chatId, started.step, { ...emptyState(), reg: started.state });
+  return started.replies;
+}
+
 /** Турнир выбран → дивизион (если их больше одного и оператор не выключил вопрос) либо название. */
 async function afterTournament(chatId: string, q: QuizConfig, state: State, tournamentName: string): Promise<Reply[]> {
   const divisions = await divisionsOf(state.tournamentId!);
@@ -418,11 +436,16 @@ export async function handleMessage(
   // Чат запоминаем при каждом сообщении: позже по нему уйдёт решение организатора по заявке.
   await rememberChat(chatId, username);
 
-  if (/^\/start\b/.test(text)) {
+  const start = /^\/start(?:\s+(\S+))?/.exec(text);
+  if (start) {
     await clear(chatId);
     // Кнопку регистрации показываем тому, кого лига не знает: остальным она предлагает вступить
     // туда, где человек уже играет.
     const known = (await identify(chatId, username, tgId)).length > 0;
+    // `?start=invite` — переход по ссылке-приглашению со страницы заявки: капитан собирает состав и
+    // не нашёл человека в пуле. Такого сразу ведём в регистрацию, а не в меню: он пришёл по делу,
+    // и лишний экран между ним и анкетой — потерянный игрок.
+    if (start[1] === "invite" && !known) return beginRegistration(chatId, username, tgId);
     return [{ text: q.text("menu"), keyboard: await menuKeyboard(!known) }];
   }
   if (/^\/cancel\b/.test(text)) {
@@ -444,13 +467,7 @@ export async function handleMessage(
     if (dialog && !isRegStep(dialog.step)) {
       return [{ text: "Сначала закончим начатое — или наберите /cancel, чтобы бросить.", keyboard: null }, askCurrent(q, dialog.step, dialog.state)];
     }
-    const started = await startRegistration(tgId ?? null, normalizeTelegram(username ?? ""));
-    if (started.done || !started.step) {
-      await clear(chatId);
-      return [...started.replies, { text: "Что дальше?", keyboard: await menuKeyboard() }];
-    }
-    await save(chatId, started.step, { ...emptyState(), reg: started.state });
-    return started.replies;
+    return beginRegistration(chatId, username, tgId);
   }
 
   // Правка своего профиля. Как и регистрация, посреди начатого диалога не запускается: собранный
@@ -472,7 +489,14 @@ export async function handleMessage(
   // состав из-за случайного нажатия. Отвечаем и тут же повторяем вопрос, на котором стоим.
   if (isMenuButton(text)) {
     if (text === MENU.apply && !inNav) {
-      return dialog && !isFormStep(dialog.step) ? [askCurrent(q, dialog.step, dialog.state)] : begin(chatId, q);
+      if (dialog && !isFormStep(dialog.step)) return [askCurrent(q, dialog.step, dialog.state)];
+      // Кнопка прошлой версии меню (заявка переехала внутрь турнира, а состав — на сайт): ведём в
+      // раздел турниров, там у «Подать заявку» уже есть ссылка на сборку состава.
+      if (!QUIZ_ROSTER) {
+        const hint = { text: `Заявка подаётся внутри турнира: «${MENU.tournaments}» → ваш турнир → «${MENU.apply}».` };
+        return [hint, ...(await enterTournaments(chatId))];
+      }
+      return begin(chatId, q);
     }
     if (text === FORMS_BUTTON) {
       const offer = await offerForms();
@@ -515,6 +539,13 @@ export async function handleMessage(
     if (!session) return enterTournaments(chatId);
   }
 
+  // Непонятый текст без начатого диалога. Раньше он начинал заявку команды — теперь начинать нечего:
+  // состав собирается на сайте, и втягивать человека в квиз из пяти ников по слову «привет» значит
+  // отвечать не на то, о чём просили. Показываем меню.
+  if (!session && !QUIZ_ROSTER) {
+    const known = (await identify(chatId, username, tgId)).length > 0;
+    return [{ text: q.text("menu"), keyboard: await menuKeyboard(!known) }];
+  }
   if (!session) return begin(chatId, q);
   const { step, state } = session;
 
@@ -890,8 +921,9 @@ async function runTournaments(
 ): Promise<Reply[]> {
   const result = await handleTournaments(step, state.nav, text, { chatId, username, tgId });
 
-  // «Подать заявку» внутри турнира: заявку по-прежнему ведёт квиз, но турнир уже выбран — спрашивать
-  // его второй раз незачем. После Э5 здесь будет ссылка на сборку состава на сайте.
+  // «Подать заявку» внутри турнира. С Э5 раздел на неё отвечает ссылкой на сайт и сюда не заходит;
+  // ветка живёт как путь отката (`QUIZ_ROSTER` в tg-menu.ts): турнир уже выбран, спрашивать его
+  // второй раз незачем.
   if (result.apply) {
     const tournament = await prisma.tournament.findUnique({ where: { id: result.apply } });
     const fresh = { ...emptyState(), tournamentId: result.apply };

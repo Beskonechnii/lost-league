@@ -47,6 +47,29 @@ export async function tgCall<T>(method: string, body: unknown, timeoutMs = 15_00
   return json.result as T;
 }
 
+/** Хендл бота, спрошенный у Telegram. Кешируем на процесс: имя бота меняется раз в жизнь. */
+let handle: string | null = null;
+
+/**
+ * Ссылка на бота с полезной нагрузкой: `t.me/<бот>?start=invite`. Нужна сайту — сборка состава
+ * зовёт незнакомого лиге игрока зарегистрироваться (BOT-PLAN.md, Э5).
+ *
+ * Имя бота спрашиваем у самого Telegram (`getMe`), а не заводим ещё одну переменную окружения: она
+ * молча разъедется с токеном, а ссылка на чужого бота выглядит рабочей. Бота нет или Telegram не
+ * ответил — возвращаем null, и экран объясняет то же самое словами.
+ */
+export async function botStartLink(payload: string): Promise<string | null> {
+  if (!handle) {
+    if (!botConfigured()) return null;
+    try {
+      handle = (await tgCall<{ username?: string }>("getMe", {})).username ?? null;
+    } catch {
+      return null; // сеть моргнула — не кешируем, следующий заход попробует снова
+    }
+  }
+  return handle ? `https://t.me/${handle}?start=${encodeURIComponent(payload)}` : null;
+}
+
 // ── входящее: long polling ───────────────────────────────────────────────────
 
 /** Апдейт Bot API — берём только то, что нужно квизу: текст сообщения и чат. */

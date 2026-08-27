@@ -3,17 +3,57 @@ import { notFound } from "next/navigation";
 import { registrationOpen, tournamentBySlug } from "@/lib/tournaments";
 import { currentAccount } from "@/lib/account";
 import { myApplications, parseDraft } from "@/lib/team-application";
-import { prisma } from "@/lib/prisma";
+import { botStartLink } from "@/lib/telegram";
+import { slugify } from "@/lib/profiles";
 import { roleLabel } from "@/lib/roles";
-import { ApplyForm } from "./apply-form";
+import { SectionHeader } from "@/app/_components/ui";
+import { ApplyBoard } from "./apply-board";
+import { applyPool, takenSpots, type PoolEntry } from "./pool";
+import { SLOTS, CORE_KEYS } from "./slots";
+import type { TeamDraft } from "@/lib/roster-import";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Заявка команды" };
 
-// Заявка капитана на турнир. Попадает в ту же очередь `TeamApplication`, что и импорт файла, —
-// разница только в `source`. Приём открыт, пока турнир в статусе «Приём заявок».
+// Заявка капитана на турнир. Состав собирается мышью из пула игроков лиги (BOT-PLAN.md, Э5) и
+// попадает в ту же очередь `TeamApplication`, что и импорт файла, — разница только в `source`.
+// Приём открыт, пока турнир в статусе «Приём заявок».
 
 const date = new Intl.DateTimeFormat("ru", { day: "numeric", month: "long" });
+
+/**
+ * Прежняя заявка → слоты доски. Игрока ищем в пуле по account_id, затем по слагу ника — теми же
+ * ключами, что и апрув (`findPlayer` в team-application.ts). Кого в пуле нет (заявка из старого
+ * квиза бота, где ник вписывали руками), в состав не подставляем — об этом честно пишем капитану.
+ */
+function toSlots(draft: TeamDraft, pool: PoolEntry[]) {
+  const byAccount = new Map(pool.map((p) => [p.accountId, p]));
+  const bySlug = new Map(pool.map((p) => [slugify(p.nickname), p]));
+  const slots: Record<string, number | null> = Object.fromEntries(SLOTS.map((s) => [s.key, null]));
+  let captainId: number | null = null;
+  let lost = 0;
+
+  for (const row of draft.players) {
+    const found = (row.accountId ? byAccount.get(row.accountId) : null) ?? bySlug.get(slugify(row.nickname)) ?? null;
+    if (!found) {
+      lost++;
+      continue;
+    }
+    // Слот по роли, а если занят — соседний той же природы: замена не должна занять позицию основы
+    // только потому, что её слот оказался свободнее. Последний запас — любой пустой слот: потерять
+    // человека из состава хуже, чем показать его не на своём месте, это видно и правится мышью.
+    const prefer = CORE_KEYS.includes(row.role ?? "")
+      ? [row.role as string, ...CORE_KEYS]
+      : row.role === "coach"
+        ? ["coach", "standin-1", "standin-2"]
+        : ["standin-1", "standin-2", "coach"];
+    const key = prefer.find((k) => !slots[k]) ?? SLOTS.find((s) => !slots[s.key])?.key;
+    if (!key) continue;
+    slots[key] = found.id;
+    if (row.isCaptain) captainId = found.id;
+  }
+  return { slots, captainId, lost };
+}
 
 export default async function ApplyPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -24,40 +64,32 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
   const mine = me ? await myApplications(me.id, tournament.id) : [];
   const open = registrationOpen(tournament);
 
-  // Ники ростера — подсказки в поле состава: «этот игрок в лиге уже есть, вот его ник как в базе».
-  const known = me ? await prisma.player.findMany({ select: { nickname: true }, orderBy: { nickname: "asc" } }) : [];
-
   // Открытая заявка (ждёт решения или возвращена) открывается на правку, а не заводит вторую
   // строку в очереди: повторная подача — это досыл правок, а не новая команда.
   const editable = mine.find((a) => a.status === "pending" || a.status === "rejected") ?? null;
   const editableDraft = editable ? parseDraft(editable.payload) : null;
-  const initial = editableDraft
-    ? {
-        name: editableDraft.name,
-        tag: editableDraft.tag,
-        divisionId: editable!.divisionId,
-        players: editableDraft.players.map((p) => ({
-          nickname: p.nickname,
-          realName: p.realName ?? null,
-          role: p.role ?? null,
-          mmr: p.mmr ?? null,
-          link: p.dotabuffUrl ?? p.stratzUrl ?? p.steamUrl ?? null,
-          telegram: p.telegram ?? null,
-          isCaptain: p.isCaptain ?? false,
-        })),
-      }
-    : null;
+
+  const needBoard = !!me && open;
+  const [pool, taken, inviteUrl] = needBoard
+    ? await Promise.all([
+        applyPool(),
+        takenSpots(tournament.divisions.map((d) => d.id)),
+        botStartLink("invite"),
+      ])
+    : [[], [], null];
+
+  const restored = editableDraft ? toSlots(editableDraft, pool) : null;
 
   return (
-    <div>
-      <h1 className="text-2xl font-black tracking-tight">Заявка команды</h1>
-      <p className="mt-1.5 text-sm text-ink-muted">
-        {tournament.name}
-        {tournament.regCloseAt && ` · заявки до ${date.format(tournament.regCloseAt)}`}
-      </p>
+    <div className="space-y-6">
+      <SectionHeader
+        eyebrow="Заявка команды"
+        title={tournament.name}
+        aside={tournament.regCloseAt ? `Заявки до ${date.format(tournament.regCloseAt)}` : null}
+      />
 
       {mine.length > 0 && (
-        <ul className="mt-6 space-y-2">
+        <ul className="space-y-2">
           {mine.map((a) => {
             const draft = parseDraft(a.payload);
             return (
@@ -85,16 +117,17 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
       )}
 
       {!me ? (
-        <p className="mt-6 rounded-md border border-hairline bg-surface-1 px-3 py-4 text-sm text-ink-muted">
+        <p className="rounded-md border border-hairline bg-surface-1 px-3 py-4 text-sm text-ink-muted">
           Заявку подаёт капитан из своего аккаунта.{" "}
           <Link href="/me" className="text-accent-bright hover:underline">Войти в кабинет</Link>
+          {" — "}или получить одноразовый код в телеграм-боте: «Личный профиль» → «Войти на сайт».
         </p>
       ) : !open ? (
-        <p className="mt-6 rounded-md border border-hairline bg-surface-1 px-3 py-4 text-sm text-ink-muted">
+        <p className="rounded-md border border-hairline bg-surface-1 px-3 py-4 text-sm text-ink-muted">
           Приём заявок на этот турнир сейчас закрыт.
         </p>
       ) : (
-        <div className="mt-6 space-y-3">
+        <div className="space-y-3">
           {/* Свой статус в лиге подаче не мешает (решение 23.08.2026): капитан новой команды часто
               сам ещё не в ростере, а заявка всё равно проходит модерацию. */}
           {me.status !== "active" && (
@@ -108,14 +141,28 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
               {editable.status === "rejected"
                 ? "Заявка возвращена — поправьте состав и отправьте снова, новая строка в очереди не появится."
                 : "Заявка уже подана и ждёт решения. Правки сохранятся в неё же."}
+              {restored && restored.lost > 0 &&
+                ` Из прежнего состава не нашлось в лиге: ${restored.lost} — этих игроков нужно поставить заново.`}
             </p>
           )}
-          <ApplyForm
+          <ApplyBoard
             tournamentId={tournament.id}
             tournamentSlug={tournament.slug}
             divisions={tournament.divisions.map((d) => ({ id: d.id, name: d.name }))}
-            knownNicknames={known.map((p) => p.nickname)}
-            initial={initial}
+            pool={pool}
+            taken={taken}
+            inviteUrl={inviteUrl}
+            initial={
+              editableDraft && restored
+                ? {
+                    name: editableDraft.name,
+                    tag: editableDraft.tag ?? "",
+                    divisionId: editable!.divisionId,
+                    slots: restored.slots,
+                    captainId: restored.captainId,
+                  }
+                : null
+            }
           />
         </div>
       )}
