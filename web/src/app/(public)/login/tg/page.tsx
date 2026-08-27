@@ -42,7 +42,8 @@ export default async function TelegramLoginPage() {
             <div className="space-y-5">
               <ol className="space-y-2 text-sm text-ink-muted">
                 <li>
-                  1. Напишите нашему боту и нажмите <b className="text-ink">«{MENU.login}»</b>.
+                  1. Напишите нашему боту: <b className="text-ink">«{MENU.profile}»</b> →{" "}
+                  <b className="text-ink">«{MENU.login}»</b>.
                 </li>
                 <li>2. Он пришлёт шесть цифр — введите их сюда.</li>
               </ol>

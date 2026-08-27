@@ -20,7 +20,7 @@ import { isCoreRole } from "./roster-spots";
 import { slugify, accountIdFromUrl, normalizeTelegram } from "./profiles";
 import { registrationOpen } from "./tournaments";
 import { loadQuiz, type QuizConfig } from "./quiz-config";
-import { MENU, menuKeyboard, isMenuButton, menuReply, rememberChat, identify } from "./tg-menu";
+import { MENU, LEGACY_ROSTER, menuKeyboard, isMenuButton, menuReply, rememberChat, identify } from "./tg-menu";
 import { FORMS_BUTTON, handleForm, isFormStep, offerForms, type FormState, type FormStep } from "./tg-forms";
 import {
   EDIT_BUTTON,
@@ -33,6 +33,18 @@ import {
   type PeState,
   type PeStep,
 } from "./tg-profile";
+import {
+  TT_EXIT,
+  TT_SERVICE,
+  emptyTt,
+  handleTournaments,
+  isTtButton,
+  isTtStep,
+  startTournaments,
+  tournamentsDigest,
+  type TtState,
+  type TtStep,
+} from "./tg-tournaments";
 import {
   REGISTER_BUTTON,
   REG_SERVICE,
@@ -68,11 +80,13 @@ export type Step =
   | "edit_tg"
   | "edit_name"
   | "edit_tag"
-  // шаги анкеты (src/lib/tg-forms.ts), регистрации в лиге (src/lib/tg-register.ts) и правки
-  // профиля (src/lib/tg-profile.ts) — живут в той же сессии, разведены префиксом
+  // шаги анкеты (src/lib/tg-forms.ts), регистрации в лиге (src/lib/tg-register.ts), правки
+  // профиля (src/lib/tg-profile.ts) и раздела «Турниры» (src/lib/tg-tournaments.ts) — живут в той
+  // же сессии, разведены префиксом
   | FormStep
   | RegStep
-  | PeStep;
+  | PeStep
+  | TtStep;
 
 /** Всё собранное на текущий момент. Лежит JSON'ом в `BotSession.state`. */
 type State = {
@@ -90,6 +104,8 @@ type State = {
   reg: RegState | null;
   /** Правка своего профиля, если идёт она (`tg-profile.ts`). */
   edit: PeState | null;
+  /** Где человек стоит в разделе «Турниры» (`tg-tournaments.ts`). */
+  nav: TtState;
 };
 
 /** Ответ на свой вопрос: сохраняем текст вопроса, а не только ключ — оператор его потом перепишет,
@@ -105,6 +121,7 @@ const emptyState = (): State => ({
   quizId: null,
   reg: null,
   edit: null,
+  nav: emptyTt(),
 });
 
 // Состав: пять **основных** обязательны (иначе заявка не заявка), сверху — замены и тренер.
@@ -127,7 +144,7 @@ const DROP = "Удалить игрока";
 
 // Клавиатура у Telegram висит до отмены, и кнопку прошлого шага легко нажать на следующем. Ник,
 // совпавший со служебным ответом, — почти наверняка такое нажатие, а не имя игрока.
-const SERVICE = new Set([SKIP, DONE, ADD, EDIT, BACK, DROP, "Отправить заявку", "Начать заново", ...Object.values(MENU), ...REG_SERVICE, ...PE_SERVICE]);
+const SERVICE = new Set([SKIP, DONE, ADD, EDIT, BACK, DROP, "Отправить заявку", "Начать заново", ...Object.values(MENU), LEGACY_ROSTER, ...REG_SERVICE, ...PE_SERVICE, ...TT_SERVICE]);
 
 // ── сессия ───────────────────────────────────────────────────────────────────
 
@@ -414,12 +431,18 @@ export async function handleMessage(
   }
 
   const session = await load(chatId);
+  // Навигация по турнирам — не диалог: там нечего терять, кроме места в списке. Поэтому для кнопок,
+  // которые «не сбрасывают начатое», она за начатое не считается — из неё просто выходят.
+  const dialog = session && !isTtStep(session.step) ? session : null;
+  // …а вот кнопка «Подать заявку» внутри раздела принадлежит ему: заявка подаётся в выбранный
+  // турнир, и меню не должно перехватывать её вопросом «на какой турнир заявляетесь».
+  const inNav = !!session && !dialog;
 
   // Регистрация в лиге. Посреди уже начатого диалога не запускаем: собранный состав или анкета
   // пропали бы молча — а это ровно та работа, которую человек только что сделал.
   if (text === REGISTER_BUTTON) {
-    if (session && !isRegStep(session.step)) {
-      return [{ text: "Сначала закончим начатое — или наберите /cancel, чтобы бросить.", keyboard: null }, askCurrent(q, session.step, session.state)];
+    if (dialog && !isRegStep(dialog.step)) {
+      return [{ text: "Сначала закончим начатое — или наберите /cancel, чтобы бросить.", keyboard: null }, askCurrent(q, dialog.step, dialog.state)];
     }
     const started = await startRegistration(tgId ?? null, normalizeTelegram(username ?? ""));
     if (started.done || !started.step) {
@@ -433,8 +456,8 @@ export async function handleMessage(
   // Правка своего профиля. Как и регистрация, посреди начатого диалога не запускается: собранный
   // состав пропал бы молча.
   if (text === EDIT_BUTTON) {
-    if (session && !isPeStep(session.step)) {
-      return [{ text: "Сначала закончим начатое — или наберите /cancel, чтобы бросить.", keyboard: null }, askCurrent(q, session.step, session.state)];
+    if (dialog && !isPeStep(dialog.step)) {
+      return [{ text: "Сначала закончим начатое — или наберите /cancel, чтобы бросить.", keyboard: null }, askCurrent(q, dialog.step, dialog.state)];
     }
     const started = await startProfileEdit(tgId ?? null);
     if (started.done || !started.step) {
@@ -448,8 +471,8 @@ export async function handleMessage(
   // Кнопка меню посреди квиза — справка, а не выход: капитан на седьмом игроке не должен терять
   // состав из-за случайного нажатия. Отвечаем и тут же повторяем вопрос, на котором стоим.
   if (isMenuButton(text)) {
-    if (text === MENU.apply) {
-      return session && !isFormStep(session.step) ? [askCurrent(q, session.step, session.state)] : begin(chatId, q);
+    if (text === MENU.apply && !inNav) {
+      return dialog && !isFormStep(dialog.step) ? [askCurrent(q, dialog.step, dialog.state)] : begin(chatId, q);
     }
     if (text === FORMS_BUTTON) {
       const offer = await offerForms();
@@ -457,9 +480,39 @@ export async function handleMessage(
       await save(chatId, "form_pick", emptyState());
       return [offer];
     }
+    if (text === MENU.tournaments) {
+      // Посреди начатого диалога навигацию не заводим — она затёрла бы собранный состав. Отдаём
+      // список текстом и повторяем вопрос: меню не сбрасывает квиз.
+      if (dialog) return [await tournamentsDigest(), askCurrent(q, dialog.step, dialog.state)];
+      return enterTournaments(chatId);
+    }
     const reply = await menuReply(chatId, text, username, tgId);
-    if (reply && session) return [reply, askCurrent(q, session.step, session.state)];
-    if (reply) return [reply];
+    if (reply) {
+      if (dialog) return [reply, askCurrent(q, dialog.step, dialog.state)];
+      // Из навигации по турнирам кнопка меню выводит: держать место в списке, пока человек читает
+      // профиль, незачем — вернётся он всё равно с первого уровня.
+      if (session) await clear(chatId);
+      return [reply];
+    }
+  }
+
+  // Кнопка раздела «Турниры», прилетевшая без сессии, — это клавиатура, оставшаяся от прошлого
+  // захода: Telegram держит её до отмены. Начинать по ней заявку (что бот делает на любой непонятый
+  // текст) значит отвечать не на то, о чём просили.
+  // Кнопка прошлой версии меню: состав переехал внутрь турнира. Посреди диалога — только справка
+  // (меню не сбрасывает квиз), иначе ведём туда, где состав теперь живёт.
+  if (text === LEGACY_ROSTER) {
+    const hint = { text: `Состав теперь внутри турнира: «${MENU.tournaments}» → ваш турнир → «Моя команда».` };
+    if (dialog) return [hint, askCurrent(q, dialog.step, dialog.state)];
+    return [hint, ...(await enterTournaments(chatId))];
+  }
+
+  if (!dialog && isTtButton(text)) {
+    if (text === TT_EXIT) {
+      await clear(chatId);
+      return [{ text: "Что дальше?", keyboard: await menuKeyboard() }];
+    }
+    if (!session) return enterTournaments(chatId);
   }
 
   if (!session) return begin(chatId, q);
@@ -471,6 +524,8 @@ export async function handleMessage(
   if (isRegStep(step)) return runRegister(chatId, step, state, text, username, tgId);
   // Правку профиля — свой: она пишет в очередь `ProfileEditRequest`.
   if (isPeStep(step)) return runProfileEdit(chatId, step, state, text, tgId, photoFileId);
+  // Раздел «Турниры» — свой: он ничего не пишет, только водит по уровням.
+  if (isTtStep(step)) return runTournaments(chatId, step, state, text, q, username, tgId);
 
   switch (step) {
     case "tournament": {
@@ -804,6 +859,52 @@ async function runProfileEdit(
     return [...result.replies, { text: "Что дальше?", keyboard: await menuKeyboard() }];
   }
   await save(chatId, result.step ?? step, { ...state, edit: result.state });
+  return result.replies;
+}
+
+/** Вход в раздел «Турниры» с первого уровня: список сезонов и навигация по ним. */
+async function enterTournaments(chatId: string): Promise<Reply[]> {
+  const started = await startTournaments();
+  if (!started.step) {
+    // Показывать нечего — навигацию не заводим, а прежний диалог всё равно закрываем: человек
+    // нажал кнопку меню, значит с начатым он закончил.
+    await clear(chatId);
+    return started.replies;
+  }
+  await save(chatId, started.step, { ...emptyState(), nav: started.state });
+  return started.replies;
+}
+
+/**
+ * Шаг раздела «Турниры». Он ничего не пишет и ничего не собирает — только водит по уровням, поэтому
+ * состояние у него одно поле (`nav`), а выход из раздела просто сбрасывает диалог.
+ */
+async function runTournaments(
+  chatId: string,
+  step: TtStep,
+  state: State,
+  text: string,
+  q: QuizConfig,
+  username: string | null | undefined,
+  tgId: string | null | undefined,
+): Promise<Reply[]> {
+  const result = await handleTournaments(step, state.nav, text, { chatId, username, tgId });
+
+  // «Подать заявку» внутри турнира: заявку по-прежнему ведёт квиз, но турнир уже выбран — спрашивать
+  // его второй раз незачем. После Э5 здесь будет ссылка на сборку состава на сайте.
+  if (result.apply) {
+    const tournament = await prisma.tournament.findUnique({ where: { id: result.apply } });
+    const fresh = { ...emptyState(), tournamentId: result.apply };
+    return [{ text: q.text("hello") }, ...(await afterTournament(chatId, q, fresh, tournament?.name ?? "турнир"))];
+  }
+
+  if (result.done) {
+    await clear(chatId);
+    // Раздел, отвечающий на выход своим сообщением (например «не нашёл вас в лиге»), сам ставит
+    // клавиатуру меню — второе «Что дальше?» следом было бы шумом.
+    return result.replies.length ? result.replies : [{ text: "Что дальше?", keyboard: await menuKeyboard() }];
+  }
+  await save(chatId, result.step ?? step, { ...state, nav: result.state });
   return result.replies;
 }
 

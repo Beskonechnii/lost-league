@@ -55,7 +55,7 @@ async function tell(applicationId: number, text: string): Promise<void> {
 export async function notifyApproved(applicationId: number, teamName: string): Promise<void> {
   await tell(
     applicationId,
-    `<b>${teamName}</b> — заявка одобрена, команда заведена в лигу. Состав и ближайшие встречи — «Мой состав».`,
+    `<b>${teamName}</b> — заявка одобрена, команда заведена в лигу. Состав и ближайшие встречи — «Турниры» → ваш турнир → «Моя команда».`,
   );
 }
 

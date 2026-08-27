@@ -1,6 +1,12 @@
-// Только сервер / скрипт: меню телеграм-бота — то, что человек может спросить вне квиза.
+// Только сервер / скрипт: меню телеграм-бота — первый уровень и справки, каждая в один ответ.
 //
-// Кнопки постоянные: «Подать заявку», «Мой состав», «Личный профиль», «Турниры», «Войти на сайт».
+// **Первый уровень — три-четыре кнопки:** «Личный профиль», «Турниры», плюс «Анкеты» (когда
+// открытая анкета есть) и «Регистрация» (когда лига человека не знает). Всё остальное живёт
+// уровнем ниже, у того, к чему относится: «Войти на сайт» и «Изменить данные» — в профиле,
+// состав и команды — внутри турнира (`tg-tournaments.ts`). Плоский список кнопок рос быстрее,
+// чем помещался на экран телефона, и «Мой состав» на первом уровне всё равно врал: состав
+// сезонный, а кнопка была одна на все сезоны.
+//
 // Человека узнаём тремя заходами, в порядке надёжности: привязка `UserAccount.tgId` (её даёт
 // регистрация в боте — `tg-register.ts`), телеграм-хендл в ростере (`Player.telegram`), account_id
 // из его заявок.
@@ -15,8 +21,7 @@
 import { prisma } from "./prisma";
 import type { Reply } from "./telegram";
 import { formatBirthday, normalizeTelegram, playerLinks, telegramUrl } from "./profiles";
-import { roleShort, roleOrder } from "./roles";
-import { TOURNAMENT_STATUS_LABELS, isTournamentStatus } from "./tournaments";
+import { roleShort } from "./roles";
 import { parseDraft } from "./team-application";
 import { anyFormOpen, FORMS_BUTTON } from "./tg-forms";
 import { REGISTER_BUTTON } from "./tg-register";
@@ -37,24 +42,37 @@ export async function rememberChat(chatId: string, username: string | null | und
   });
 }
 
-/** Подписи кнопок — они же то, что приезжает текстом: reply-клавиатура шлёт обычные сообщения. */
+/**
+ * Подписи кнопок — они же то, что приезжает текстом: reply-клавиатура шлёт обычные сообщения.
+ *
+ * `apply` и `login` на первом уровне больше не показываются (заявка — внутри турнира, вход — в
+ * профиле), но остаются здесь подписями: клавиатура у Telegram висит до отмены, и кнопку из
+ * прошлой версии меню человек нажмёт ещё не раз — она должна работать, а не проваливаться в квиз.
+ */
 export const MENU = {
   apply: "Подать заявку",
-  roster: "Мой состав",
   profile: "Личный профиль",
   tournaments: "Турниры",
   login: "Войти на сайт",
 } as const;
 
 /**
- * Клавиатура меню. Кнопка «Анкеты» появляется, только когда открытая анкета есть: пустой раздел,
- * который на всё отвечает «сейчас ничего нет», хуже отсутствующего. Кнопка регистрации — наоборот,
- * только тем, кого лига ещё не знает: звать в лигу того, кто в ней играет, значит путать.
+ * Кнопка прошлой версии меню. Клавиатура у Telegram висит до отмены: у того, кто последний раз
+ * писал боту неделю назад, на экране всё ещё «Мой состав», и нажмёт он её не раз. Ловим отдельно —
+ * иначе текст кнопки уходит в квиз заявки (он начинается на любой непонятый текст) и человек
+ * оказывается в диалоге, которого не просил.
+ */
+export const LEGACY_ROSTER = "Мой состав";
+
+/**
+ * Клавиатура первого уровня. Кнопка «Анкеты» появляется, только когда открытая анкета есть: пустой
+ * раздел, который на всё отвечает «сейчас ничего нет», хуже отсутствующего. Кнопка регистрации —
+ * наоборот, только тем, кого лига ещё не знает: звать в лигу того, кто в ней играет, значит путать.
  */
 export async function menuKeyboard(register = false): Promise<string[][]> {
   const rows: string[][] = [];
   if (register) rows.push([REGISTER_BUTTON]);
-  rows.push([MENU.apply], [MENU.roster, MENU.profile], [MENU.tournaments, MENU.login]);
+  rows.push([MENU.profile, MENU.tournaments]);
   if (await anyFormOpen()) rows.push([FORMS_BUTTON]);
   return rows;
 }
@@ -82,7 +100,7 @@ async function playersByHandle(username: string | null | undefined): Promise<num
 }
 
 /** «Не узнали» — один ответ на все разделы: без профиля показывать нечего. */
-const unknown = async (username: string | null | undefined): Promise<Reply> => ({
+export const unknownReply = async (username: string | null | undefined): Promise<Reply> => ({
   text: username
     ? `Не нашёл вас в лиге. Если вы в ростере под другим хендлом — скажите организатору, он поправит. ` +
       `Если вы здесь впервые — «${REGISTER_BUTTON}».`
@@ -126,7 +144,7 @@ export async function identify(
  * Заявки этого человека: из его чата (надёжно — чат запоминается при подаче) плюс те, где он указан
  * телеграмом в составе (заявку мог подать менеджер с другого телефона).
  */
-async function applicationsOf(chatId: string, username: string | null | undefined) {
+export async function applicationsOf(chatId: string, username: string | null | undefined) {
   const handle = normalizeTelegram(username ?? "");
   return prisma.teamApplication.findMany({
     where: {
@@ -141,109 +159,28 @@ async function applicationsOf(chatId: string, username: string | null | undefine
   });
 }
 
-/** Строка статуса заявки — то, ради чего человек и жмёт «Мой состав» сразу после отправки. */
-function applicationBlock(a: Awaited<ReturnType<typeof applicationsOf>>[number]): string {
-  const draft = parseDraft(a.payload);
-  const state =
-    a.status === "approved"
-      ? "Заявка одобрена — команда заведена в лигу."
-      : a.status === "rejected"
-        ? `Заявка возвращена${a.notes ? `: ${a.notes}` : ""}. Поправить — «${MENU.apply}».`
-        : "Заявка на проверке у организатора.";
-  const lines = (draft?.players ?? []).map((p) => {
-    const parts = [`• <b>${p.nickname}</b>`, roleShort(p.role) ?? "без позиции"];
-    if (p.isCaptain) parts.push("капитан");
-    return parts.join(" — ");
-  });
-  return [
-    `<b>${draft?.name ?? "Команда"}</b> — ${a.tournament.name}${a.division ? ` · ${a.division.name}` : ""}`,
-    state,
-    "",
-    ...lines,
-  ].join("\n");
-}
-
-/**
- * «Мой состав»: сначала поданные заявки со статусом, потом составы, уже заведённые в лигу.
- * Показываем и то, и другое: состав, собранный минуту назад, в ростере ещё не появился (он там будет
- * только после одобрения), а прошлые сезоны при этом никуда не делись.
- *
- * Состав всегда в разрезе турнира: команда переживает сезон, участие — нет, и «мой состав» без
- * турнира это два разных состава, слитые в один список.
- */
-async function myRoster(chatId: string, username: string | null | undefined, tgId?: string | null): Promise<Reply> {
-  const applications = await applicationsOf(chatId, username);
-  // Одобренная заявка живёт дальше как состав в ростере — второй раз её же показывать незачем.
-  const blocks = applications.filter((a) => a.status !== "approved").map(applicationBlock);
-
-  const me = await identify(chatId, username, tgId);
-  for (const playerId of me) blocks.push(...(await rosterBlocks(playerId)));
-
-  if (blocks.length === 0) {
-    // Человека нашли, но он никуда не заявлен — это не «мы вас не знаем», и путать одно с другим
-    // нельзя: на первом живом прогоне бот так сказал игроку, который в лиге есть.
-    if (me.length) {
-      const player = await prisma.player.findUnique({ where: { id: me[0] }, select: { nickname: true } });
-      return {
-        text: `Вы есть в лиге как <b>${player?.nickname ?? "игрок"}</b>, но пока не в составе команды. ` +
-          `Заявиться — «${MENU.apply}».`,
-        keyboard: await menuKeyboard(),
-      };
-    }
-    return unknown(username);
-  }
-  return { text: blocks.join("\n\n"), keyboard: await menuKeyboard() };
-}
-
-/** Составы игрока по турнирам, свежий сверху: он бывает заявлен и в D1, и в D2, и в прошлом сезоне. */
-async function rosterBlocks(playerId: number): Promise<string[]> {
-  const spots = await prisma.rosterSpot.findMany({
-    where: { playerId },
-    orderBy: [{ divisionId: "desc" }, { createdAt: "desc" }],
-    include: { team: true, division: { include: { tournament: true } } },
-    take: 3,
-  });
-
-  return Promise.all(
-    spots.map(async (spot) => {
-      const mates = await prisma.rosterSpot.findMany({
-        where: { teamId: spot.teamId, divisionId: spot.divisionId },
-        include: { player: true },
-      });
-      const lines = mates
-        .sort((a, b) => roleOrder(a.role) - roleOrder(b.role))
-        .map((m) => {
-          const parts = [`• <b>${m.player.nickname}</b>`, roleShort(m.role) ?? "без позиции"];
-          if (m.isCaptain) parts.push("капитан");
-          return parts.join(" — ");
-        });
-
-      const next = await prisma.series.findFirst({
-        where: { OR: [{ homeId: spot.teamId }, { awayId: spot.teamId }], startAt: { gte: new Date() } },
-        orderBy: { startAt: "asc" },
-        include: { home: true, away: true },
-      });
-
-      return [
-        `<b>${spot.team.name}</b>${spot.division ? ` — ${spot.division.tournament.name} · ${spot.division.name}` : ""}`,
-        "",
-        ...lines,
-        ...(next ? ["", `Ближайшая встреча: <b>${next.home.name}</b> — <b>${next.away.name}</b>${when(next.startAt)}`] : []),
-      ].join("\n");
-    }),
-  );
-}
-
 /**
  * Личный профиль: всё, что лига о человеке знает, — анкета, турнирная строка, TP и ссылки. Показ
  * читает то же, что и карточка на сайте; бот лишь не заставляет за ней ходить.
  *
  * Кнопка «Изменить данные» появляется только у **привязанного** профиля (`UserAccount.tgId`):
- * узнанному по хендлу бот показывает, но не даёт править — см. `tg-profile.ts`.
+ * узнанному по хендлу бот показывает, но не даёт править — см. `tg-profile.ts`. Рядом с ней живёт
+ * «Войти на сайт»: вход — это про свой аккаунт, а не про лигу, и на первом уровне меню он занимал
+ * место, ничего не объясняя.
  */
 async function myProfile(chatId: string, username: string | null | undefined, tgId?: string | null): Promise<Reply> {
   const me = await identify(chatId, username, tgId);
-  if (me.length === 0) return unknown(username);
+  const account = await loginAccount(tgId);
+  // Аккаунт есть, а игрока ещё нет — это тот, чья регистрация лежит в очереди у организатора.
+  // Показывать ему «не нашёл вас в лиге» нечестно (анкету он подал), а войти на сайт и посмотреть
+  // статус заявки он вправе — за этим кнопка входа и нужна прямо здесь.
+  if (me.length === 0 && account) {
+    return {
+      text: `Анкета на проверке у организатора — как решит, я напишу. Пока можно заглянуть в кабинет: «${MENU.login}».`,
+      keyboard: [[MENU.login], ...(await menuKeyboard())],
+    };
+  }
+  if (me.length === 0) return unknownReply(username);
 
   const candidates = await prisma.player.findMany({
     where: { id: { in: me } },
@@ -262,7 +199,7 @@ async function myProfile(chatId: string, username: string | null | undefined, tg
   // импорта, и человек себя в нём не узнаёт.
   const player =
     candidates.find((c) => c.id === linked?.id) ?? candidates.sort((a, b) => b.spots.length - a.spots.length)[0];
-  if (!player) return unknown(username);
+  if (!player) return unknownReply(username);
 
   const spot = player.spots[0];
   const links = playerLinks(player);
@@ -302,7 +239,9 @@ async function myProfile(chatId: string, username: string | null | undefined, tg
       : [];
 
   const keyboard = await menuKeyboard();
-  // Кнопку правки ставим первой строкой: за ней человек сюда и пришёл, а меню он и так знает.
+  // Кнопки своего аккаунта — первыми строками: за ними человек сюда и пришёл, а меню он и так знает.
+  // Вход даём по тому же правилу, что и правку, — по привязке `tgId`, а не по хендлу (`tg-login.ts`).
+  if (account) keyboard.unshift([MENU.login]);
   if (linked) keyboard.unshift([EDIT_BUTTON]);
 
   return {
@@ -360,32 +299,11 @@ async function loginCode(
   };
 }
 
-/** Турниры, которые сейчас идут или принимают заявки. Черновики и сыгранные не показываем. */
-async function tournaments(): Promise<Reply> {
-  const rows = await prisma.tournament.findMany({
-    where: { status: { in: ["registration", "running"] } },
-    orderBy: [{ startAt: "desc" }, { id: "desc" }],
-    include: { divisions: { orderBy: [{ orderNo: "asc" }, { id: "asc" }] } },
-  });
-  if (rows.length === 0) return { text: "Сейчас турниров нет — как объявим, напишу.", keyboard: await menuKeyboard() };
-
-  const blocks = rows.map((t) => {
-    const status = isTournamentStatus(t.status) ? TOURNAMENT_STATUS_LABELS[t.status] : t.status;
-    const divisions = t.divisions.map((d) => d.name).join(", ");
-    return [`<b>${t.name}</b> — ${status}`, divisions || null, t.format || null].filter(Boolean).join("\n");
-  });
-  return { text: blocks.join("\n\n"), keyboard: await menuKeyboard() };
-}
-
-/** Дата встречи по-человечески. Времени может не быть — тогда и не пишем. */
-const when = (date: Date | null): string =>
-  date
-    ? `, ${date.toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}`
-    : "";
-
 /**
  * Ответ на кнопку меню. `null` — это не кнопка меню, разбирайся сам (квиз).
- * Заявку («Подать заявку») меню не обрабатывает: её ведёт квиз, здесь только справочные разделы.
+ *
+ * Заявку («Подать заявку») меню не обрабатывает: её ведёт квиз. Турниры — тоже: у них свой раздел
+ * с навигацией и состоянием (`tg-tournaments.ts`), а здесь только справки в один ответ.
  */
 export async function menuReply(
   chatId: string,
@@ -394,12 +312,8 @@ export async function menuReply(
   tgId?: string | null,
 ): Promise<Reply | null> {
   switch (text.trim()) {
-    case MENU.roster:
-      return myRoster(chatId, username, tgId);
     case MENU.profile:
       return myProfile(chatId, username, tgId);
-    case MENU.tournaments:
-      return tournaments();
     case MENU.login:
       return loginCode(chatId, username, tgId);
     default:
