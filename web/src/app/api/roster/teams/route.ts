@@ -1,33 +1,8 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { listTeams } from "@/lib/roster-data";
-import { isColor, slugify } from "@/lib/profiles";
-import { guard } from "@/lib/api-guard";
 
+// Список команд лиги (читают студия и разбор матча). Создания здесь нет: команда заводится только
+// штатно — заявкой на турнир, импортом таблицы сезона или через ростер-скрипты, а не свободным вводом.
 export async function GET() {
   return NextResponse.json(await listTeams());
-}
-
-// Создание команды. slug — из названия, если не задан явно; он же ключ импорта составов.
-export async function POST(req: Request) {
-  const denied = await guard("roster.edit");
-  if (denied) return denied;
-  const body = (await req.json()) as { name?: string; slug?: string; tag?: string; group?: string; color?: string };
-  const name = body.name?.trim();
-  if (!name) return NextResponse.json({ error: "Нужно название команды" }, { status: 400 });
-
-  const slug = body.slug?.trim() || slugify(name);
-  if (!slug) return NextResponse.json({ error: "Не удалось вывести slug — задайте вручную" }, { status: 400 });
-  if (await prisma.team.findUnique({ where: { slug } })) {
-    return NextResponse.json({ error: `Команда со слагом «${slug}» уже есть` }, { status: 409 });
-  }
-  const color = body.color?.trim() || null;
-  if (color && !isColor(color)) {
-    return NextResponse.json({ error: `Цвет «${color}» — ожидался hex, например #7c3aed` }, { status: 400 });
-  }
-
-  const team = await prisma.team.create({
-    data: { slug, name, tag: body.tag || null, group: body.group || null, color },
-  });
-  return NextResponse.json(team, { status: 201 });
 }
