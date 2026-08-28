@@ -44,12 +44,15 @@ export function TournamentBar({
   name,
   divisions,
   tournaments,
+  showEntrants = false,
 }: {
   slug: string;
   name: string;
   divisions: BarDivision[];
   /** Остальные турниры для переключателя. Пустой список — переключатель рисуется как простая метка. */
   tournaments: BarTournament[];
+  /** Показать вкладку «Заявленные команды» — только на этапе приёма заявок. */
+  showEntrants?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -67,6 +70,9 @@ export function TournamentBar({
   // быть только одна, поэтому сравниваем полным путём, а не префиксом (кроме ростера — у него внутри
   // ещё команды/игроки).
   const stages = [
+    ...(showEntrants
+      ? [{ href: `${root}/entrants`, label: "Заявленные команды", active: pathname === `${root}/entrants` }]
+      : []),
     ...(div
       ? [
           { href: base, label: "Таблица", active: pathname === base },

@@ -8,8 +8,8 @@ import { slugify } from "@/lib/profiles";
 import { roleLabel } from "@/lib/roles";
 import { SectionHeader } from "@/app/_components/ui";
 import { ApplyBoard } from "./apply-board";
-import { applyPool, takenSpots, type PoolEntry } from "./pool";
-import { SLOTS, CORE_KEYS } from "./slots";
+import { applyPool, takenSpots, captainReadyTeams, type PoolEntry } from "./pool";
+import { placeByRole } from "./slots";
 import type { TeamDraft } from "@/lib/roster-import";
 
 export const dynamic = "force-dynamic";
@@ -29,8 +29,7 @@ const date = new Intl.DateTimeFormat("ru", { day: "numeric", month: "long" });
 function toSlots(draft: TeamDraft, pool: PoolEntry[]) {
   const byAccount = new Map(pool.map((p) => [p.accountId, p]));
   const bySlug = new Map(pool.map((p) => [slugify(p.nickname), p]));
-  const slots: Record<string, number | null> = Object.fromEntries(SLOTS.map((s) => [s.key, null]));
-  let captainId: number | null = null;
+  const rows: { id: number; role: string | null; isCaptain: boolean }[] = [];
   let lost = 0;
 
   for (const row of draft.players) {
@@ -39,20 +38,9 @@ function toSlots(draft: TeamDraft, pool: PoolEntry[]) {
       lost++;
       continue;
     }
-    // Слот по роли, а если занят — соседний той же природы: замена не должна занять позицию основы
-    // только потому, что её слот оказался свободнее. Последний запас — любой пустой слот: потерять
-    // человека из состава хуже, чем показать его не на своём месте, это видно и правится мышью.
-    const prefer = CORE_KEYS.includes(row.role ?? "")
-      ? [row.role as string, ...CORE_KEYS]
-      : row.role === "coach"
-        ? ["coach", "standin-1", "standin-2"]
-        : ["standin-1", "standin-2", "coach"];
-    const key = prefer.find((k) => !slots[k]) ?? SLOTS.find((s) => !slots[s.key])?.key;
-    if (!key) continue;
-    slots[key] = found.id;
-    if (row.isCaptain) captainId = found.id;
+    rows.push({ id: found.id, role: row.role, isCaptain: row.isCaptain });
   }
-  return { slots, captainId, lost };
+  return { ...placeByRole(rows), lost };
 }
 
 export default async function ApplyPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -83,6 +71,9 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
     : [[], [], null];
 
   const restored = editableDraft ? toSlots(editableDraft, pool) : null;
+  // Готовые составы капитана — только когда своей заявки на этот турнир ещё нет: правку прежней
+  // заявки не подменяем чужой командой, а на чистой доске это быстрый путь «заявиться командой».
+  const readyTeams = needBoard && me!.playerId && !editable ? await captainReadyTeams(me!.playerId, pool) : [];
 
   return (
     <div className="space-y-6">
@@ -158,6 +149,7 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
             pool={pool}
             taken={taken}
             inviteUrl={inviteUrl}
+            readyTeams={readyTeams}
             initial={
               editableDraft && restored
                 ? {

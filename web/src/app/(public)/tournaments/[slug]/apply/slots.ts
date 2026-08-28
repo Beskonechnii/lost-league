@@ -34,6 +34,29 @@ export const SLOTS: Slot[] = [
 
 export const CORE_KEYS = core.map((s) => s.key);
 
+/**
+ * Разложить строки состава по слотам доски. Слот — по роли, а если он занят, берём соседний той же
+ * природы (основа к основе, замена к замене), последний запас — любой пустой: потерять человека из
+ * состава хуже, чем показать не на своём месте — это видно и правится мышью. Одно правило и для
+ * восстановления прежней заявки (`toSlots`), и для готового состава капитана (`captainReadyTeams`).
+ */
+export function placeByRole(rows: { id: number; role: string | null; isCaptain: boolean }[]) {
+  const slots: Record<string, number | null> = Object.fromEntries(SLOTS.map((s) => [s.key, null]));
+  let captainId: number | null = null;
+  for (const row of rows) {
+    const prefer = CORE_KEYS.includes(row.role ?? "")
+      ? [row.role as string, ...CORE_KEYS]
+      : row.role === "coach"
+        ? ["coach", "standin-1", "standin-2"]
+        : ["standin-1", "standin-2", "coach"];
+    const key = prefer.find((k) => !slots[k]) ?? SLOTS.find((s) => !slots[s.key])?.key;
+    if (!key) continue;
+    slots[key] = row.id;
+    if (row.isCaptain) captainId = row.id;
+  }
+  return { slots, captainId };
+}
+
 /** Что уходит в server-action: состав слотами, а не строками ввода — игроки берутся только из пула. */
 export type RosterInput = {
   name: string;

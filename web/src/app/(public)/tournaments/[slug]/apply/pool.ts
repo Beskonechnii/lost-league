@@ -4,6 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { listPlayers } from "@/lib/roster-data";
 import { playerAccountId, teamAccent } from "@/lib/profiles";
 import { isCoreRole } from "@/lib/roster-spots";
+import { roleOrder } from "@/lib/roles";
+import { withTeamUploads, withPlayerUploads } from "@/lib/uploads";
+import { placeByRole } from "./slots";
 
 // Пул игроков для сборки состава на сайте и занятые места. Только чтение и только для этого экрана,
 // поэтому модуль лежит рядом со страницей, а не в `src/lib`.
@@ -26,6 +29,112 @@ export type PoolEntry = {
   /** Ключ привязки к прежней заявке: по нему строка состава находит игрока пула (см. page.tsx). */
   accountId: string;
 };
+
+/** Игрок в карточке готового состава — со всем, что рисует продуманная плитка. */
+export type ReadyTeamPlayer = {
+  id: number;
+  nickname: string;
+  realName: string | null;
+  photo: string | null;
+  role: string | null;
+  mmr: number | null;
+  isCaptain: boolean;
+  /** В пуле лиги (есть account_id)? Если нет — в состав заявки не подставится, покажем блёкло. */
+  inPool: boolean;
+};
+
+/**
+ * Готовый состав капитана: команда целиком — лого, акцент, состав — плюс уже разложенные слоты доски.
+ * Карточка даёт заявить команду как есть (продуманное отображение, а не строка с именем), а `slots`
+ * заполняют доску для правок. Форма `slots`/`captainId` совпадает с `initial` доски (apply-board.tsx).
+ */
+export type ReadyTeam = {
+  teamId: number;
+  name: string;
+  tag: string;
+  logo: string | null;
+  color: string | null;
+  /** Весь состав команды в порядке ролей — включая тех, кого нет в пуле (их покажем, но не подставим). */
+  players: ReadyTeamPlayer[];
+  slots: Record<string, number | null>;
+  captainId: number | null;
+  /** Сколько человек из состава команды не попало в пул (нет account_id) — предупредим капитана. */
+  lost: number;
+};
+
+/**
+ * Команды, где вошедший игрок — капитан: их составы, готовые к заявке. Состав берём того же сезона,
+ * где стоит капитанское место (`divisionId`): роспись сезонная, смешивать сезоны нельзя — плюс
+ * бездивизионные строки. В пул попадают только игроки с account_id, поэтому остальных в состав заявки
+ * не подставляем (`inPool: false`), но в карточке показываем и честно считаем в `lost`. Архивные
+ * команды не предлагаем.
+ */
+export async function captainReadyTeams(playerId: number, pool: PoolEntry[]): Promise<ReadyTeam[]> {
+  const captainRows = await prisma.rosterSpot.findMany({
+    where: { playerId, isCaptain: true },
+    select: { teamId: true, divisionId: true },
+    orderBy: { divisionId: "desc" },
+  });
+  // Одна команда — один состав: если человек капитан в нескольких её сезонах, берём новейший.
+  const pick = new Map<number, number | null>();
+  for (const s of captainRows) if (!pick.has(s.teamId)) pick.set(s.teamId, s.divisionId);
+  if (pick.size === 0) return [];
+
+  const inPool = new Set(pool.map((p) => p.id));
+  const teams = await prisma.team.findMany({
+    where: { id: { in: [...pick.keys()] }, archivedAt: null },
+    include: {
+      roster: {
+        include: { player: { select: { id: true, slug: true, nickname: true, realName: true, photo: true, mmr: true } } },
+      },
+    },
+  });
+
+  return Promise.all(
+    teams.map(async (team) => {
+      const divisionId = pick.get(team.id)!;
+      const spots = team.roster
+        .filter((s) => s.divisionId === divisionId || s.divisionId === null)
+        .sort((a, b) => roleOrder(a.role) - roleOrder(b.role));
+
+      const img = await withTeamUploads(team);
+      const color = teamAccent(team);
+
+      const players: ReadyTeamPlayer[] = await Promise.all(
+        spots.map(async (s) => {
+          const withPhoto = await withPlayerUploads(s.player);
+          return {
+            id: s.player.id,
+            nickname: s.player.nickname,
+            realName: s.player.realName,
+            photo: withPhoto.photo,
+            role: s.role,
+            mmr: s.player.mmr,
+            isCaptain: s.player.id === playerId,
+            inPool: inPool.has(s.player.id),
+          };
+        }),
+      );
+
+      const rows = players
+        .filter((p) => p.inPool)
+        .map((p) => ({ id: p.id, role: p.role, isCaptain: p.isCaptain }));
+      const { slots, captainId } = placeByRole(rows);
+
+      return {
+        teamId: team.id,
+        name: team.name,
+        tag: team.tag ?? "",
+        logo: img.logo,
+        color,
+        players,
+        slots,
+        captainId,
+        lost: players.filter((p) => !p.inPool).length,
+      };
+    }),
+  );
+}
 
 /** Занятое место: игрок — действующий (поз. 1–5) в команде этого дивизиона. */
 export type TakenSpot = {

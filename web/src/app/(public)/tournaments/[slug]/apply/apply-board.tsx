@@ -12,14 +12,14 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { PlayerAvatar } from "@/app/(public)/roster/_components/avatar";
+import { PlayerAvatar, TeamLogo } from "@/app/(public)/roster/_components/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { slugify } from "@/lib/profiles";
 import { ROLES, roleShort } from "@/lib/roles";
 import { submitApplication, type ApplyState } from "./actions";
 import { CORE_KEYS, SLOTS, type RosterInput } from "./slots";
-import type { PoolEntry, TakenSpot } from "./pool";
+import type { PoolEntry, TakenSpot, ReadyTeam } from "./pool";
 
 // Доска сборки состава. Слева — пул игроков лиги, справа — слоты позиций: игрок переносится мышью
 // либо ставится кликом в ближайший свободный слот. Раскладка и техника — как у доски драфта
@@ -47,6 +47,7 @@ export function ApplyBoard({
   pool,
   taken,
   inviteUrl,
+  readyTeams,
   initial,
 }: {
   tournamentId: number;
@@ -56,6 +57,8 @@ export function ApplyBoard({
   taken: TakenSpot[];
   /** Ссылка-приглашение в бота; null — бот не настроен, тогда просто объясняем словами. */
   inviteUrl: string | null;
+  /** Готовые составы команд, где вошедший — капитан: заполняют доску одной кнопкой. */
+  readyTeams: ReadyTeam[];
   /** Уже поданная заявка, разложенная по слотам: повторная подача правит её, а не плодит строку. */
   initial: { name: string; tag: string; divisionId: number | null; slots: Filled; captainId: number | null } | null;
 }) {
@@ -132,6 +135,19 @@ export function ApplyBoard({
     setCaptainId((c) => c ?? playerId); // первый поставленный становится капитаном, дальше меняется вручную
   }
 
+  /** Заполнить доску готовым составом капитана — имя, тег и все слоты разом. */
+  function fillFrom(rt: ReadyTeam) {
+    setName(rt.name);
+    setTag(rt.tag);
+    setSlots({ ...emptySlots(), ...rt.slots });
+    setCaptainId(rt.captainId);
+    setHint(
+      rt.lost > 0
+        ? `Из состава «${rt.name}» не в пуле лиги: ${rt.lost} — этих игроков добавьте вручную`
+        : null,
+    );
+  }
+
   function clearSlot(slotKey: string) {
     if (slots[slotKey] && slots[slotKey] === captainId) setCaptainId(null);
     setSlots((prev) => ({ ...prev, [slotKey]: null }));
@@ -180,6 +196,20 @@ export function ApplyBoard({
         <input type="hidden" name="tournamentId" value={tournamentId} />
         <input type="hidden" name="tournamentSlug" value={tournamentSlug} />
         <input type="hidden" name="roster" value={JSON.stringify(roster)} />
+
+        {readyTeams.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs text-ink-muted">
+              Вы капитан — заявите свою команду как есть, состав уже собран. Дальше его можно поправить
+              на доске ниже.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {readyTeams.map((rt) => (
+                <ReadyTeamCard key={rt.teamId} team={rt} onPick={() => fillFrom(rt)} />
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="block sm:col-span-2">
@@ -301,6 +331,66 @@ export function ApplyBoard({
         ) : null}
       </DragOverlay>
     </DndContext>
+  );
+}
+
+// ── готовый состав капитана ───────────────────────────────────────────────────
+
+/**
+ * Карточка команды, где вошедший — капитан: лого, название и весь состав с ролями и MMR. Кнопка
+ * переносит состав на доску заявки. Игроков вне пула лиги (без account_id) показываем блёкло и с
+ * пометкой — в заявку они не уедут, их капитан добавит вручную.
+ */
+function ReadyTeamCard({ team, onPick }: { team: ReadyTeam; onPick: () => void }) {
+  const accent = team.color ?? undefined;
+  return (
+    <div className="overflow-hidden rounded-xl border border-hairline bg-surface-1">
+      <div
+        className="flex items-center gap-3 px-3 py-2.5"
+        style={accent ? { background: `linear-gradient(100deg, ${accent}26, transparent 70%)` } : undefined}
+      >
+        <TeamLogo team={{ name: team.name, tag: team.tag, logo: team.logo }} size={40} className="!rounded-lg" />
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-pouf text-sm font-bold uppercase tracking-wide">{team.name}</div>
+          {team.tag && <div className="truncate text-xs text-ink-subtle">{team.tag}</div>}
+        </div>
+        <span className="shrink-0 text-xs text-ink-subtle">{team.players.length} чел.</span>
+      </div>
+
+      <ul className="divide-y divide-hairline/60">
+        {team.players.map((p) => (
+          <li key={p.id} className={`flex items-center gap-2 px-3 py-1.5 ${p.inPool ? "" : "opacity-45"}`}>
+            <PlayerAvatar photo={p.photo} nickname={p.nickname} color={team.color} size={28} className="!rounded-md" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <span className="truncate text-sm font-medium">{p.nickname}</span>
+                {p.isCaptain && <span className="shrink-0 text-[11px] font-black text-accent-bright">C</span>}
+              </div>
+              <div className="truncate text-[11px] text-ink-subtle">
+                {[roleShort(p.role), p.realName].filter(Boolean).join(" · ") || "—"}
+              </div>
+            </div>
+            {p.inPool ? (
+              <span className="shrink-0 text-right text-[11px] text-ink-muted">
+                {p.mmr ? p.mmr.toLocaleString("ru-RU") : "—"}
+                <span className="block text-[10px] text-ink-subtle">MMR</span>
+              </span>
+            ) : (
+              <span className="shrink-0 text-[10px] text-amber-300">нет в пуле</span>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      <div className="flex items-center justify-between gap-2 px-3 py-2.5">
+        <Button type="button" size="sm" onClick={onPick}>Заявить этот состав</Button>
+        {team.lost > 0 && (
+          <span className="text-right text-[11px] text-amber-300">
+            {team.lost} без account_id — добавьте вручную
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 

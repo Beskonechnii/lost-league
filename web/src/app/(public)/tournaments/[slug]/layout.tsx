@@ -33,6 +33,9 @@ export default async function TournamentLayout({
         name={tournament.name}
         divisions={divisions.map((d) => ({ slug: d.slug, short: d.short }))}
         tournaments={others}
+        // «Заявленные команды» показываем только на приёме: после жеребьёвки команды видны в таблице
+        // и ростере, а до неё принятые заявки живут только на этой вкладке.
+        showEntrants={tournament.status === "registration"}
       />
       <main className={`mx-auto w-full ${SITE_MAX_W} flex-1 px-4 py-8 md:px-6`}>{children}</main>
     </>
