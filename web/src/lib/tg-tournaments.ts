@@ -19,6 +19,8 @@ import { teamMmr } from "./roster-data";
 import { registrationOpen, TOURNAMENT_STATUS_LABELS, isTournamentStatus } from "./tournaments";
 import { parseDraft } from "./team-application";
 import { MENU, QUIZ_ROSTER, applicationsOf, identify, menuKeyboard, unknownReply } from "./tg-menu";
+import { captainSpots, linkedPlayerId } from "./match-request";
+import { MEETING_BUTTON } from "./tg-meetings";
 
 /** Шаги раздела. Лежат в том же `BotSession.step`, что и шаги заявки — префикс их разводит. */
 export type TtStep = "tt_pick" | "tt_menu" | "tt_teams";
@@ -125,14 +127,26 @@ const when = (date: Date | null): string =>
     ? `, ${date.toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}`
     : "";
 
-const tournamentKeyboard = (open: boolean): string[][] => [
+/**
+ * Кнопка «Заказать встречу» есть только у капитана этого турнира: остальным она обещала бы то,
+ * чего им нельзя, и вела бы в отказ. Сам заказ ведёт `tg-meetings.ts` — сюда он не заходит, кнопку
+ * ловит первый уровень (`tg-quiz.ts`), как «Изменить данные».
+ */
+async function canOrderMeeting(tournamentId: number, tgId: string | null | undefined): Promise<boolean> {
+  const playerId = await linkedPlayerId(tgId);
+  if (!playerId) return false;
+  return (await captainSpots(playerId, tournamentId)).length > 0;
+}
+
+const tournamentKeyboard = (open: boolean, meeting = false): string[][] => [
   [MY_TEAM],
   [TEAMS],
+  ...(meeting ? [[MEETING_BUTTON]] : []),
   ...(open ? [[MENU.apply]] : []),
   [BACK, TT_EXIT],
 ];
 
-function tournamentReply(t: Listed): Reply {
+function tournamentReply(t: Listed, meeting = false): Reply {
   const open = registrationOpen(t);
   const dates = [day(t.startAt), day(t.endAt)].filter(Boolean).join(" — ");
   return {
@@ -145,7 +159,7 @@ function tournamentReply(t: Listed): Reply {
     ]
       .filter(Boolean)
       .join("\n"),
-    keyboard: tournamentKeyboard(open),
+    keyboard: tournamentKeyboard(open, meeting),
   };
 }
 
@@ -153,7 +167,7 @@ function tournamentReply(t: Listed): Reply {
  * Ответ на «Подать заявку»: ссылка на сборку состава. Отдельным сообщением, а не строкой в карточке
  * турнира, — её надо нажать, а не прочитать.
  */
-export function applyReply(t: { slug: string; name: string }, open = true): Reply {
+export function applyReply(t: { slug: string; name: string }, open = true, meeting = false): Reply {
   const url = `${siteUrl()}/tournaments/${t.slug}/apply`;
   // Локальный адрес телеграм ссылкой не делает — он покажет её обычным текстом, и человек решит,
   // что бот сломался. Честнее сказать, что сайт не опубликован: адрес всё равно виден, а
@@ -172,7 +186,7 @@ export function applyReply(t: { slug: string; name: string }, open = true): Repl
       "В составе может быть только игрок, которого знает лига: незнакомого позовите",
       "зарегистрироваться — ссылка-приглашение есть там же, на странице заявки.",
     ].join("\n"),
-    keyboard: tournamentKeyboard(open),
+    keyboard: tournamentKeyboard(open, meeting),
   };
 }
 
@@ -359,7 +373,8 @@ export async function handleTournaments(
   if (step === "tt_pick") {
     const chosen = rows.find((t) => t.name.trim().toLowerCase() === answer.toLowerCase());
     if (!chosen) return { replies: [listReply(rows)], step: "tt_pick", state };
-    return { replies: [tournamentReply(chosen)], step: "tt_menu", state: { tournamentId: chosen.id } };
+    const canMeet = await canOrderMeeting(chosen.id, ctx.tgId);
+    return { replies: [tournamentReply(chosen, canMeet)], step: "tt_menu", state: { tournamentId: chosen.id } };
   }
 
   // Турнир мог уехать в черновики или быть удалён, пока человек смотрел, — тогда возвращаем к списку,
@@ -367,6 +382,8 @@ export async function handleTournaments(
   const current = state.tournamentId ? await loadTournament(state.tournamentId) : null;
   if (!current) return back();
   const open = registrationOpen(current);
+  // Капитанство спрашиваем один раз на ответ: от него зависит только лишняя кнопка в клавиатуре.
+  const meet = await canOrderMeeting(current.id, ctx.tgId);
 
   if (answer === BACK) return back();
 
@@ -374,7 +391,7 @@ export async function handleTournaments(
     if (answer === MY_TEAM) {
       const blocks = await myTeam(current, ctx.chatId, ctx.username, ctx.tgId);
       if (blocks.length) {
-        return { replies: [{ text: blocks.join("\n\n"), keyboard: tournamentKeyboard(open) }], step: "tt_menu", state };
+        return { replies: [{ text: blocks.join("\n\n"), keyboard: tournamentKeyboard(open, meet) }], step: "tt_menu", state };
       }
       // Человека знаем, но в этом турнире он не заявлен — это не «мы вас не знаем», и путать одно
       // с другим нельзя: так бот однажды сказал «вас нет» игроку, который в лиге есть.
@@ -387,7 +404,7 @@ export async function handleTournaments(
             text:
               `Вы есть в лиге как <b>${player?.nickname ?? "игрок"}</b>, но в турнире «${current.name}» не заявлены.` +
               (open ? ` Заявиться — «${MENU.apply}».` : ""),
-            keyboard: tournamentKeyboard(open),
+            keyboard: tournamentKeyboard(open, meet),
           },
         ],
         step: "tt_menu",
@@ -399,7 +416,7 @@ export async function handleTournaments(
       const entries = await tournamentEntries(current);
       if (entries.length === 0) {
         return {
-          replies: [{ text: "Команд в турнире пока нет — заявки ещё разбирают.", keyboard: tournamentKeyboard(open) }],
+          replies: [{ text: "Команд в турнире пока нет — заявки ещё разбирают.", keyboard: tournamentKeyboard(open, meet) }],
           step: "tt_menu",
           state,
         };
@@ -410,7 +427,7 @@ export async function handleTournaments(
     if (answer === MENU.apply) {
       if (!open) {
         return {
-          replies: [{ text: "Приём заявок в этот турнир закрыт.", keyboard: tournamentKeyboard(open) }],
+          replies: [{ text: "Приём заявок в этот турнир закрыт.", keyboard: tournamentKeyboard(open, meet) }],
           step: "tt_menu",
           state,
         };
@@ -418,11 +435,11 @@ export async function handleTournaments(
       // Состав собирается на сайте (Э5): в чате пятёрку не выбрать из пула, а вписать кого угодно
       // мимо лиги больше нельзя. Из раздела при этом не выходим — человек вернётся сюда за статусом.
       if (!QUIZ_ROSTER)
-        return { replies: [applyReply(current, open)], step: "tt_menu", state };
+        return { replies: [applyReply(current, open, meet)], step: "tt_menu", state };
       return { replies: [], state, apply: current.id };
     }
 
-    return { replies: [tournamentReply(current)], step: "tt_menu", state };
+    return { replies: [tournamentReply(current, meet)], step: "tt_menu", state };
   }
 
   // tt_teams

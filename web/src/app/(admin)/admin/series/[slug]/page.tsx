@@ -7,9 +7,10 @@ import { listSeries } from "@/lib/series";
 import { leagueMatches } from "@/lib/league-matches";
 import { resolveBracket } from "@/lib/playoff";
 import { SITE_MAX_W } from "@/app/_components/ui";
+import { pendingForAdminView } from "@/lib/match-request";
 import { SeriesAdmin, type SlotOptions } from "../_components/series-admin";
 import { denyUnlessPermission } from "../../../_components/permission-gate";
-import { saveMatchesUrl } from "./actions";
+import { approveMeetingRequest, declineMeetingRequest, saveMatchesUrl } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 // Техническая часть архива — внутри турнира: заведение встречи, привязка/отцепка карт,
 // перечитывание статы. Наверху (/admin/series) остались только блоки турниров: оператор работает
 // с одним сезоном за раз и не должен видеть чужие.
+
+/** «29 августа, 20:00» — как это увидят игроки в уведомлении, чтобы оператор сверял то же самое. */
+const meetingWhen = (d: Date): string =>
+  d.toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
 export default async function TournamentSeriesPage({ params }: { params: Promise<{ slug: string }> }) {
   const denied = await denyUnlessPermission("series.edit", "Архив серий");
@@ -42,6 +47,10 @@ export default async function TournamentSeriesPage({ params }: { params: Promise
     listSeries({ divisionIds: divisions.map((d) => d.id) }),
     ...divisions.map((d) => resolveBracket(d.id)),
   ]);
+
+  // Предложения времени, о которых капитаны уже договорились в боте (BOT-PLAN Э8). Ждут одного
+  // нажатия: подтверждение пишет время встрече и рассылает его обеим командам.
+  const meetings = await pendingForAdminView(divisions.map((d) => d.id));
 
   // Матчи лиги — подсказка «какие id вообще есть», чтобы не вводить их из головы. Тянем только
   // когда league_id задан; уже привязанные из списка убираем — оператору нужны недостающие.
@@ -71,6 +80,68 @@ export default async function TournamentSeriesPage({ params }: { params: Promise
       <Link href="/admin/series" className="text-sm font-bold text-ink-muted hover:text-accent-bright">
         ← Все турниры
       </Link>
+
+      {/* Договорённости капитанов из бота. Наверху страницы, потому что это единственное здесь, что
+          ждёт оператора: остальное он открывает сам, когда ему надо. Пусто — блока нет вовсе. */}
+      {meetings.length > 0 && (
+        <section className="mt-4 rounded-lg border border-hairline bg-surface-1 p-3">
+          <h2 className="text-sm font-bold text-ink">Время встреч от капитанов: {meetings.length}</h2>
+          <p className="mt-1 text-[11px] text-ink-subtle">
+            Капитаны договорились в боте. Подтверждение запишет время встрече и разошлёт его обеим
+            командам; отказ уйдёт обоим капитанам с причиной.
+          </p>
+          <ul className="mt-3 space-y-3">
+            {meetings.map(({ row, fromTeamName }) => (
+              <li key={row.id} className="rounded-md border border-hairline bg-surface-2 p-3">
+                <div className="text-sm font-bold text-ink">
+                  {row.series.home.name} — {row.series.away.name}
+                  {row.series.divisionRef && (
+                    <span className="ml-2 font-normal text-ink-subtle">{row.series.divisionRef.name}</span>
+                  )}
+                </div>
+                <div className="mt-1 text-xs text-ink-muted">
+                  Предложено: <b>{meetingWhen(row.proposedStartAt)}</b>
+                  {row.series.startAt ? ` (сейчас ${meetingWhen(row.series.startAt)})` : " (времени нет)"}
+                </div>
+                <div className="mt-0.5 text-[11px] text-ink-subtle">
+                  Предложил {row.proposedBy.nickname}
+                  {fromTeamName ? ` (${fromTeamName})` : ""} — соперник принял.
+                </div>
+
+                <div className="mt-2 flex flex-wrap items-end gap-2">
+                  <form action={approveMeetingRequest}>
+                    <input type="hidden" name="id" value={row.id} />
+                    <input type="hidden" name="slug" value={tournament.slug} />
+                    <button
+                      type="submit"
+                      className="rounded-md bg-purple px-3 py-1.5 text-sm font-semibold text-[var(--on-accent)]"
+                    >
+                      Подтвердить
+                    </button>
+                  </form>
+                  {/* Отказ отдельной формой: причина обязательна, и она уходит капитанам как есть. */}
+                  <form action={declineMeetingRequest} className="flex flex-wrap items-end gap-2">
+                    <input type="hidden" name="id" value={row.id} />
+                    <input type="hidden" name="slug" value={tournament.slug} />
+                    <input
+                      name="reason"
+                      required
+                      placeholder="причина отказа"
+                      className="w-56 rounded-md border border-hairline bg-surface-1 px-3 py-1.5 text-sm text-ink"
+                    />
+                    <button
+                      type="submit"
+                      className="rounded-md border border-hairline px-3 py-1.5 text-sm font-semibold text-ink-muted"
+                    >
+                      Отклонить
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Источник id матчей — у турнира, не у встречи: список матчей общий на сезон. Ссылка — куда
           смотреть глазами, league_id — тикет лиги в Dota 2, по нему список тянется программно и

@@ -21,6 +21,7 @@ import { prisma } from "./prisma";
 import { botConfigured, sendMessage, sendTo, telegramConfigured } from "./telegram";
 import { normalizeTelegram } from "./profiles";
 import { loadBotSettings, type BotSettings } from "./bot-settings";
+import { expireStaleRequests } from "./match-request";
 
 /** Повод уведомления — он же `SeriesNotice.kind`. */
 type Kind = "remind" | "moved" | "scheduled" | "no_time";
@@ -33,8 +34,11 @@ type Kind = "remind" | "moved" | "scheduled" | "no_time";
  *
  * Хендлы сравниваем в памяти: sqlite через Prisma не умеет `mode: "insensitive"`, а знакомых чатов
  * у бота столько же, сколько людей в лиге.
+ *
+ * Наружу — потому что этим же адресом пишет капитанам `tg-meetings.ts`: адрес человека один на все
+ * исходящие потоки, и вторая его версия однажды разошлась бы с этой.
  */
-async function chatsOfPlayers(playerIds: number[]): Promise<string[]> {
+export async function chatsOfPlayers(playerIds: number[]): Promise<string[]> {
   if (playerIds.length === 0) return [];
   const chats = new Set<string>();
 
@@ -73,7 +77,7 @@ const loadSeries = (id: number) => prisma.series.findUnique({ where: { id }, inc
 type NoticeSeries = NonNullable<Awaited<ReturnType<typeof loadSeries>>>;
 
 /** «28 августа в 20:00» — так это сказал бы человек; часовой пояс берём машины, других у нас нет. */
-const when = (d: Date): string =>
+export const when = (d: Date): string =>
   `${d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" })} в ` +
   d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 
@@ -251,9 +255,9 @@ async function noTimeDigest(now: Date, settings: BotSettings): Promise<void> {
 // ── тик ──────────────────────────────────────────────────────────────────────
 
 /**
- * Один тик расписания: напоминания и, если пора, дайджест. Зовётся раз в минуту из `scripts/bot.ts`.
- * Обе половины ловят свою ошибку по отдельности — упавший дайджест не должен уносить с собой
- * напоминания.
+ * Один тик расписания: напоминания, подчистка просроченных предложений и, если пора, дайджест.
+ * Зовётся раз в минуту из `scripts/bot.ts`. Каждая часть ловит свою ошибку по отдельности — упавший
+ * дайджест не должен уносить с собой напоминания.
  */
 export async function tickSchedule(now: Date = new Date()): Promise<void> {
   if (!botConfigured()) return;
@@ -265,5 +269,8 @@ export async function tickSchedule(now: Date = new Date()): Promise<void> {
     return;
   }
   await remindDue(now, settings).catch((e) => console.error("Напоминания о встречах:", e));
+  // Предложения времени, до которого уже не дожили. Не рассылка, но живёт здесь по той же причине,
+  // что и всё остальное в тике: это единственная минутная стрелка, которая у бота есть.
+  await expireStaleRequests(now).catch((e) => console.error("Подчистка предложений встреч:", e));
   await noTimeDigest(now, settings).catch((e) => console.error("Дайджест встреч без времени:", e));
 }

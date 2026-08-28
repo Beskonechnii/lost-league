@@ -46,6 +46,19 @@ import {
   type TtStep,
 } from "./tg-tournaments";
 import {
+  MEETING_BUTTON,
+  MR_SERVICE,
+  answerProposal,
+  askMeeting,
+  emptyMeeting,
+  handleMeeting,
+  isMrAnswer,
+  isMrStep,
+  startMeeting,
+  type MrState,
+  type MrStep,
+} from "./tg-meetings";
+import {
   REGISTER_BUTTON,
   REG_SERVICE,
   askReg,
@@ -81,12 +94,13 @@ export type Step =
   | "edit_name"
   | "edit_tag"
   // шаги анкеты (src/lib/tg-forms.ts), регистрации в лиге (src/lib/tg-register.ts), правки
-  // профиля (src/lib/tg-profile.ts) и раздела «Турниры» (src/lib/tg-tournaments.ts) — живут в той
-  // же сессии, разведены префиксом
+  // профиля (src/lib/tg-profile.ts), раздела «Турниры» (src/lib/tg-tournaments.ts) и заказа
+  // встречи (src/lib/tg-meetings.ts) — живут в той же сессии, разведены префиксом
   | FormStep
   | RegStep
   | PeStep
-  | TtStep;
+  | TtStep
+  | MrStep;
 
 /** Всё собранное на текущий момент. Лежит JSON'ом в `BotSession.state`. */
 type State = {
@@ -106,6 +120,8 @@ type State = {
   edit: PeState | null;
   /** Где человек стоит в разделе «Турниры» (`tg-tournaments.ts`). */
   nav: TtState;
+  /** Заказ встречи, если идёт он (`tg-meetings.ts`). */
+  meet: MrState | null;
 };
 
 /** Ответ на свой вопрос: сохраняем текст вопроса, а не только ключ — оператор его потом перепишет,
@@ -122,6 +138,7 @@ const emptyState = (): State => ({
   reg: null,
   edit: null,
   nav: emptyTt(),
+  meet: null,
 });
 
 // Состав: пять **основных** обязательны (иначе заявка не заявка), сверху — замены и тренер.
@@ -144,7 +161,7 @@ const DROP = "Удалить игрока";
 
 // Клавиатура у Telegram висит до отмены, и кнопку прошлого шага легко нажать на следующем. Ник,
 // совпавший со служебным ответом, — почти наверняка такое нажатие, а не имя игрока.
-const SERVICE = new Set([SKIP, DONE, ADD, EDIT, BACK, DROP, "Отправить заявку", "Начать заново", ...Object.values(MENU), LEGACY_ROSTER, ...REG_SERVICE, ...PE_SERVICE, ...TT_SERVICE]);
+const SERVICE = new Set([SKIP, DONE, ADD, EDIT, BACK, DROP, "Отправить заявку", "Начать заново", ...Object.values(MENU), LEGACY_ROSTER, ...REG_SERVICE, ...PE_SERVICE, ...TT_SERVICE, ...MR_SERVICE]);
 
 // ── сессия ───────────────────────────────────────────────────────────────────
 
@@ -292,6 +309,8 @@ function askCurrent(q: QuizConfig, step: Step, state: State): Reply {
   if (isRegStep(step)) return askReg(step, state.reg ?? emptyRegistration());
   // Правка профиля — тоже свой модуль со своими вопросами.
   if (isPeStep(step)) return askEdit(step, state.edit ?? emptyEdit());
+  // Заказ встречи — тоже.
+  if (isMrStep(step)) return askMeeting(step, state.meet ?? emptyMeeting());
   const player = state.team.players[state.index];
   switch (step) {
     case "tournament":
@@ -485,6 +504,33 @@ export async function handleMessage(
     return started.replies;
   }
 
+  // Заказ встречи. Кнопка живёт на экране турнира, но ловится здесь, как «Изменить данные»: из
+  // раздела «Турниры» она выводит (там терять нечего), а посреди начатого диалога не запускается.
+  if (text === MEETING_BUTTON) {
+    if (dialog && !isMrStep(dialog.step)) {
+      return [{ text: "Сначала закончим начатое — или наберите /cancel, чтобы бросить.", keyboard: null }, askCurrent(q, dialog.step, dialog.state)];
+    }
+    const started = await startMeeting(tgId ?? null);
+    if (started.done || !started.step) {
+      await clear(chatId);
+      return [...started.replies, { text: "Что дальше?", keyboard: await menuKeyboard() }];
+    }
+    await save(chatId, started.step, { ...emptyState(), meet: started.state });
+    return started.replies;
+  }
+
+  // Ответ на предложение соперника. Прилетает без диалога — клавиатуру поставило само уведомление,
+  // и человек нажимает её из любого места, где он был.
+  if (isMrAnswer(text) && !dialog) {
+    const answered = await answerProposal(text, { tgId: tgId ?? null });
+    if (answered.done || !answered.step) {
+      await clear(chatId);
+      return [...answered.replies, { text: "Что дальше?", keyboard: await menuKeyboard() }];
+    }
+    await save(chatId, answered.step, { ...emptyState(), meet: answered.state });
+    return answered.replies;
+  }
+
   // Кнопка меню посреди квиза — справка, а не выход: капитан на седьмом игроке не должен терять
   // состав из-за случайного нажатия. Отвечаем и тут же повторяем вопрос, на котором стоим.
   if (isMenuButton(text)) {
@@ -555,6 +601,8 @@ export async function handleMessage(
   if (isRegStep(step)) return runRegister(chatId, step, state, text, username, tgId);
   // Правку профиля — свой: она пишет в очередь `ProfileEditRequest`.
   if (isPeStep(step)) return runProfileEdit(chatId, step, state, text, tgId, photoFileId);
+  // Заказ встречи — свой: он пишет в очередь `MatchRequest`.
+  if (isMrStep(step)) return runMeeting(chatId, step, state, text, tgId);
   // Раздел «Турниры» — свой: он ничего не пишет, только водит по уровням.
   if (isTtStep(step)) return runTournaments(chatId, step, state, text, q, username, tgId);
 
@@ -890,6 +938,28 @@ async function runProfileEdit(
     return [...result.replies, { text: "Что дальше?", keyboard: await menuKeyboard() }];
   }
   await save(chatId, result.step ?? step, { ...state, edit: result.state });
+  return result.replies;
+}
+
+/**
+ * Шаг заказа встречи. Состояние — своё поле `meet` в общей `BotSession`, как у регистрации и правки
+ * профиля. Хендл сюда не передаём вовсе: заказать встречу можно только по привязке `tgId`
+ * (`tg-meetings.ts`) — это действие, которое пишет.
+ */
+async function runMeeting(
+  chatId: string,
+  step: MrStep,
+  state: State,
+  text: string,
+  tgId: string | null | undefined,
+): Promise<Reply[]> {
+  const result = await handleMeeting(step, state.meet ?? emptyMeeting(), text, { chatId, tgId });
+
+  if (result.done) {
+    await clear(chatId);
+    return [...result.replies, { text: "Что дальше?", keyboard: await menuKeyboard() }];
+  }
+  await save(chatId, result.step ?? step, { ...state, meet: result.state });
   return result.replies;
 }
 

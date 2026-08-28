@@ -191,6 +191,7 @@ model Player {
   account UserAccount?  @relation("AccountPlayer") // подтверждённый вход игрока (0..1)
   claims  UserAccount[] @relation("AccountClaim") // заявки на привязку, ждущие подтверждения
   edits   ProfileEditRequest[] // правки анкеты, присланные из бота и ждущие оператора
+  proposals MatchRequest[] // предложения времени встречи, отправленные им как капитаном
 }
 
 /// Аккаунт игрока: вход по Google. Отдельно от `Player` намеренно — профиль игрока есть у всех в
@@ -392,7 +393,8 @@ model Series {
 
   games   Match[]
   designs Design[]
-  notices SeriesNotice[]
+  notices  SeriesNotice[]
+  requests MatchRequest[]
 
   @@unique([division, stage, group, homeId, awayId])
   /// Один слот сетки — одна серия. У групповых slot=NULL, а NULL в sqlite-уникальности различны,
@@ -613,6 +615,45 @@ model SeriesNotice {
   seriesId Int
 
   @@unique([seriesId, kind, mark])
+}
+
+/// Предложение времени встречи, отправленное капитаном из бота (`src/lib/match-request.ts`).
+/// Живёт цепочкой: предложил один капитан → второй принял или предложил своё → организатор
+/// подтвердил. Только последний шаг пишет время в `Series.startAt`: до апрува это переписка, а не
+/// расписание (то же правило, что у заявки команды и правки профиля — бот сам ничего не публикует).
+///
+/// `status`: pending_opponent (ждём капитана соперника) | pending_admin (соперник принял, ждём
+/// организатора) | approved | declined | expired. `expired` ставит тик расписания тем, чьё
+/// предложенное время уже прошло: отвечать на «сыграем вчера в 20:00» некому и незачем.
+///
+/// `parentId` — встречное предложение: «предложить другое время» не правит чужую строку, а заводит
+/// свою со ссылкой на исходную. Так в истории видно, кто с чего начал и чем кончилось, а исходное
+/// предложение остаётся `declined`, а не подменяется задним числом.
+///
+/// Команда-отправитель здесь не хранится: она выводится из места капитана в составе дивизиона
+/// встречи (`RosterSpot`). Отдельное поле разъехалось бы с составом при пересборке ростера.
+model MatchRequest {
+  id                Int       @id @default(autoincrement())
+  proposedStartAt   DateTime
+  status            String    @default("pending_opponent")
+  opponentDecidedAt DateTime? // когда ответил капитан соперника
+  adminDecidedAt    DateTime? // когда решил организатор
+  declineReason     String? // причина отказа — её видят оба капитана
+  createdAt         DateTime  @default(now())
+
+  series   Series @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  seriesId Int
+  /// Кто предложил — капитан, а не аккаунт: в составе стоит игрок, и «чья это команда» читается
+  /// именно из его места (`RosterSpot`).
+  proposedBy         Player @relation(fields: [proposedByPlayerId], references: [id], onDelete: Cascade)
+  proposedByPlayerId Int
+
+  parent   MatchRequest?  @relation("MatchRequestChain", fields: [parentId], references: [id], onDelete: SetNull)
+  parentId Int?
+  counters MatchRequest[] @relation("MatchRequestChain")
+
+  @@index([seriesId])
+  @@index([status])
 }
 
 /// Чат, который писал боту: chat_id ↔ телеграм-хендл. Нужен для исходящих сообщений — Telegram
