@@ -463,6 +463,10 @@ export async function setTeamDivision(
     const tournamentId = opts.tournamentId ?? (await currentTournament())?.id;
     if (!tournamentId) return null;
     await prisma.tournamentEntry.deleteMany({ where: { teamId, division: { tournamentId } } });
+    // Снятие с турнира отзывает и заявку команды на него: участие и заявка — одна цепочка (решение
+    // Стаса), иначе на подаче осталась бы «принята, состав уже в турнире» у команды, которой в
+    // турнире уже нет, и повторная подача правила бы мёртвую строку вместо новой заявки.
+    await prisma.teamApplication.deleteMany({ where: { teamId, tournamentId } });
     // Зеркало гасим только когда сняли из текущего турнира: `Team.group` описывает актуальный сезон.
     const current = await currentTournament();
     if (current?.id === tournamentId) await prisma.team.update({ where: { id: teamId }, data: { group: null } });
