@@ -277,6 +277,84 @@ export async function listPoolTeams({ archived = false }: { archived?: boolean }
   );
 }
 
+/** Команда игрока в карточке пула — минимум для акцента и подписи. */
+type PoolPlayerTeam = { id: number; slug: string; name: string; tag: string | null; color: string | null; group: string | null };
+
+export type PoolPlayer = {
+  id: number;
+  nickname: string;
+  photo: string | null;
+  mmr: number | null;
+  country: string | null;
+  accountId: string | null;
+  /** Главное место: действующая команда (по свежести турнира), с ролью и капитанством — для акцента. */
+  main: { team: PoolPlayerTeam; role: string | null; isCaptain: boolean } | null;
+  /** Прочие команды игрока (обычно замены/прошлые) — строкой «ещё в …». */
+  otherTeams: string[];
+  /** Турниры, где игрок засветился составом — метки и фильтр таба «Игроки». */
+  tournaments: PoolTournament[];
+};
+
+/**
+ * Общий пул игроков лиги — витрина `/roster/players`, сквозная по всем турнирам (пара к `listPoolTeams`).
+ * У каждого игрока — его главная команда (по свежайшему турниру), прочие команды строкой и список
+ * турниров для фильтра/меток. Фильтр по турниру и поиск считает клиент (PlayersExplorer).
+ */
+export async function listPoolPlayers(): Promise<PoolPlayer[]> {
+  const players = await prisma.player.findMany({
+    orderBy: [{ nickname: "asc" }],
+    include: {
+      spots: {
+        include: {
+          team: { select: { id: true, slug: true, name: true, tag: true, color: true, group: true } },
+          division: { include: { tournament: true } },
+        },
+      },
+    },
+  });
+
+  return Promise.all(
+    players.map(async (p) => {
+      const uploaded = await withPlayerUploads(p);
+      // Свежесть места — по рангу турнира его дивизиона; места без турнира (null-дивизион) считаем
+      // самыми старыми. Главное место — из свежайшего турнира, при равенстве — по порядку ролей.
+      const spotRank = (s: (typeof p.spots)[number]) =>
+        s.division?.tournament && s.division.tournament.status !== "draft"
+          ? tournamentRank(s.division.tournament)
+          : Number.MAX_SAFE_INTEGER;
+      const ordered = [...p.spots].sort((a, b) => spotRank(a) - spotRank(b) || roleOrder(a.role) - roleOrder(b.role));
+      const main = ordered[0]
+        ? { team: ordered[0].team, role: ordered[0].role, isCaptain: ordered[0].isCaptain }
+        : null;
+      const otherTeams = [...new Set(ordered.slice(1).map((s) => s.team.name))];
+
+      // Турниры без повторов, свежие сверху.
+      const divTour = new Map<number, { slug: string; name: string; short: string | null; status: string; startAt: Date | null }>();
+      for (const s of p.spots) {
+        const tr = s.division?.tournament;
+        if (s.divisionId === null || !tr || tr.status === "draft") continue;
+        if (!divTour.has(s.divisionId)) divTour.set(s.divisionId, tr);
+      }
+      const tournaments: PoolTournament[] = [...divTour.values()]
+        .sort((a, b) => tournamentRank(a) - tournamentRank(b))
+        .map((tr) => ({ slug: tr.slug, name: tr.name, short: tr.short }))
+        .filter((tr, i, all) => all.findIndex((x) => x.slug === tr.slug) === i);
+
+      return {
+        id: p.id,
+        nickname: p.nickname,
+        photo: uploaded.photo,
+        mmr: p.mmr,
+        country: p.country,
+        accountId: playerAccountId(p),
+        main,
+        otherTeams,
+        tournaments,
+      };
+    }),
+  );
+}
+
 /**
  * Ключ карточки ростера: число — это id, всё остальное — слаг. Ссылки по слагу до сих пор попадаются
  * (старые адреса, ручной ввод), а `Number("bsk")` даёт NaN — Prisma на нём падает, и вместо карточки

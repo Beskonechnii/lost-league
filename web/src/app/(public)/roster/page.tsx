@@ -4,6 +4,7 @@ import { can } from "@/lib/account";
 import { prisma } from "@/lib/prisma";
 import { SectionHeader } from "@/app/_components/ui";
 import { PoolExplorer } from "./_components/pool-explorer";
+import { PoolSwitch } from "./_components/pool-switch";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,8 @@ export default async function RosterPoolPage({
         title="Ростер"
         aside={<>Команды всех турниров лиги в одном месте</>}
       />
+
+      <PoolSwitch current="teams" />
 
       {/* Разрез пул/архив виден оператору всегда; посетителю архив ни к чему — показываем только пул. */}
       {canDelete ? (

@@ -91,11 +91,13 @@ function TeamCard({
   team,
   defaultOpen,
   manage,
+  onManaged,
 }: {
   team: TeamWithRoster & PoolFields;
   defaultOpen: boolean;
   /** Пул у оператора: показать бар управления (архив/возврат/снос). `archived` — в каком мы разрезе. */
   manage?: { archived: boolean };
+  onManaged?: (teamId: number) => void;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const [tab, setTab] = useState<"main" | "staff">("main");
@@ -208,7 +210,9 @@ function TeamCard({
         </div>
       )}
 
-      {manage && <TeamManageBar teamId={team.id} teamName={team.name} archived={manage.archived} />}
+      {manage && (
+        <TeamManageBar teamId={team.id} teamName={team.name} archived={manage.archived} onDone={onManaged} />
+      )}
     </div>
   );
 }
@@ -216,9 +220,12 @@ function TeamCard({
 export function TeamCards({
   teams,
   manage,
+  onManaged,
 }: {
   teams: (TeamWithRoster & PoolFields)[];
   manage?: { archived: boolean };
+  /** Пул: карточку убирают из вида сразу после успешного действия оператора (см. PoolExplorer). */
+  onManaged?: (teamId: number) => void;
 }) {
   // Ключ по «свёрнутости всех» — самый дешёвый способ разом переоткрыть карточки:
   // меняем ключ, React пересоздаёт их с нужным начальным состоянием.
@@ -245,7 +252,7 @@ export function TeamCards({
 
       <div className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {teams.map((t) => (
-          <TeamCard key={`${t.id}-${generation}`} team={t} defaultOpen={!collapsed} manage={manage} />
+          <TeamCard key={`${t.id}-${generation}`} team={t} defaultOpen={!collapsed} manage={manage} onManaged={onManaged} />
         ))}
       </div>
     </div>

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { bad, parseId } from "@/lib/api";
 import { isColor } from "@/lib/profiles";
 import { guard } from "@/lib/api-guard";
+import { archiveTeam, purgeTeam, TeamAdminError } from "@/lib/team-admin";
 
 // Редактируемые поля профиля команды. Всё, чего нет в теле запроса, не трогаем.
 const FIELDS = ["name", "tag", "group", "color", "logo", "wordmark", "photo", "banner"] as const;
@@ -42,30 +43,16 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   if (!teamId) return bad("id: ожидался числовой id");
 
   const mode = new URL(req.url).searchParams.get("mode") ?? "archive";
-  const team = await prisma.team.findUnique({ where: { id: teamId }, select: { archivedAt: true } });
-  if (!team) return bad("Команда не найдена", 404);
+  if (mode !== "archive" && mode !== "purge") return bad(`mode: ожидался archive или purge, получено «${mode}»`);
 
-  if (mode === "archive") {
-    // Идемпотентно: повторный архив дату не двигает — «когда убрали» важнее «когда нажали ещё раз».
-    if (!team.archivedAt) {
-      await prisma.team.update({ where: { id: teamId }, data: { archivedAt: new Date() } });
-    }
-    return NextResponse.json({ ok: true, archived: true });
+  // Логика — в общем модуле team-admin (её же зовут серверные действия формы пула). Понятную ошибку
+  // операции (нет команды, «сперва в архив») отдаём как 4xx, а не 500.
+  try {
+    if (mode === "archive") await archiveTeam(teamId);
+    else await purgeTeam(teamId);
+  } catch (e) {
+    if (e instanceof TeamAdminError) return bad(e.message, e.message.includes("архив") ? 409 : 404);
+    throw e;
   }
-
-  if (mode !== "purge") return bad(`mode: ожидался archive или purge, получено «${mode}»`);
-  // Полный снос — только из архива: сперва первое удаление, потом второе. Так один клик не сносит
-  // команду со статистикой, а оператор видит её в архиве перед окончательным удалением.
-  if (!team.archivedAt) return bad("Сначала уберите команду в архив, потом удаляйте полностью", 409);
-
-  // Матчи на команду ссылаются без каскада (иначе случайное удаление рвало бы историю) — сносим их
-  // явно вместе со статой и вардами (те каскадятся от матча). Денормализованный Ward.teamId, что мог
-  // остаться от нераспознанных матчей, обнуляем. Остальное (составы, участие, серии, места в группе)
-  // уходит каскадом при удалении команды. Всё в транзакции — либо команда исчезает целиком, либо никак.
-  await prisma.$transaction([
-    prisma.match.deleteMany({ where: { OR: [{ teamAId: teamId }, { teamBId: teamId }] } }),
-    prisma.ward.updateMany({ where: { teamId }, data: { teamId: null } }),
-    prisma.team.delete({ where: { id: teamId } }),
-  ]);
-  return NextResponse.json({ ok: true, purged: true });
+  return NextResponse.json({ ok: true, [mode === "archive" ? "archived" : "purged"]: true });
 }
