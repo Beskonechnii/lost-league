@@ -287,10 +287,14 @@ export function CreateForm({
   url,
   fields,
   submitLabel,
+  reloadOnSuccess = false,
 }: {
   url: string;
   fields: { key: string; label: string; placeholder?: string }[];
   submitLabel: string;
+  /** Пул: после создания перезагружаем страницу целиком. Клиентский список пула (PoolExplorer) новые
+   *  серверные пропсы не подхватывает — `router.refresh()` обновил бы счётчик, но не карточки. */
+  reloadOnSuccess?: boolean;
 }) {
   const router = useRouter();
   const [v, setV] = useState<Record<string, string>>({});
@@ -305,14 +309,18 @@ export function CreateForm({
       headers: { "content-type": "application/json" },
       body: JSON.stringify(v),
     });
-    setBusy(false);
     if (!res.ok) {
+      setBusy(false);
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       setError(j.error ?? "Не удалось создать");
       return;
     }
     setV({});
-    router.refresh();
+    if (reloadOnSuccess) window.location.reload();
+    else {
+      setBusy(false);
+      router.refresh();
+    }
   }
 
   return (

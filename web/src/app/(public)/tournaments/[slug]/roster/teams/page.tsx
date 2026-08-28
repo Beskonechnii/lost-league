@@ -1,6 +1,5 @@
 import { listTeamRosters } from "@/lib/roster-data";
 import { can } from "@/lib/account";
-import { CreateForm } from "@/app/_components/roster-editors";
 import { SectionHeader } from "@/app/_components/ui";
 import { notFound } from "next/navigation";
 import { TeamCards } from "@/app/(public)/roster/_components/team-cards";
@@ -61,18 +60,6 @@ export default async function TeamsPage({
         <RosterSwitch slug={slug} current="teams" />
         <DivTabs divisions={divisions} current={div} base={`/tournaments/${slug}/roster/teams`} counts={counts} />
       </div>
-
-      {authed && (
-        <CreateForm
-          url="/api/roster/teams"
-          submitLabel="Добавить команду"
-          fields={[
-            { key: "name", label: "Название", placeholder: "MOLOKO" },
-            { key: "tag", label: "Тег", placeholder: "MLK" },
-            { key: "group", label: "Дивизион", placeholder: "Division 1" },
-          ]}
-        />
-      )}
 
       <TeamCards teams={teams} />
     </div>

@@ -1,6 +1,7 @@
 import { listPoolPlayers } from "@/lib/roster-data";
 import { can } from "@/lib/account";
 import { SectionHeader } from "@/app/_components/ui";
+import { CreateForm } from "@/app/_components/roster-editors";
 import { PoolSwitch } from "../_components/pool-switch";
 import { PlayersExplorer } from "../_components/players-explorer";
 
@@ -16,6 +17,21 @@ export default async function RosterPlayersPage() {
     <div className="space-y-6 font-pouf">
       <SectionHeader eyebrow="Лига · все игроки" title="Ростер" aside={<>Игроки всех турниров лиги в одном месте</>} />
       <PoolSwitch current="players" />
+
+      {/* Создание игрока — в пуле лиги, а не в витрине турнира: игрок появляется через регистрацию/
+          заявку/импорт, а это операторский быстрый ввод. canFlag = право roster.edit. */}
+      {canFlag && (
+        <CreateForm
+          url="/api/roster/players"
+          submitLabel="Добавить игрока"
+          reloadOnSuccess
+          fields={[
+            { key: "nickname", label: "Ник", placeholder: "CHIPOLLINO" },
+            { key: "accountId", label: "account_id", placeholder: "123456789" },
+          ]}
+        />
+      )}
+
       <PlayersExplorer players={players} canFlag={canFlag} />
     </div>
   );

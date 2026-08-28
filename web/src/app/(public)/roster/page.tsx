@@ -3,6 +3,7 @@ import { listPoolTeams } from "@/lib/roster-data";
 import { can } from "@/lib/account";
 import { prisma } from "@/lib/prisma";
 import { SectionHeader } from "@/app/_components/ui";
+import { CreateForm } from "@/app/_components/roster-editors";
 import { PoolExplorer } from "./_components/pool-explorer";
 import { PoolSwitch } from "./_components/pool-switch";
 
@@ -18,9 +19,10 @@ export default async function RosterPoolPage({
   searchParams: Promise<{ view?: string }>;
 }) {
   const archived = (await searchParams).view === "archive";
-  const [teams, canDelete, archivedCount, pooledCount] = await Promise.all([
+  const [teams, canDelete, canEdit, archivedCount, pooledCount] = await Promise.all([
     listPoolTeams({ archived }),
     can("roster.delete"),
+    can("roster.edit"),
     prisma.team.count({ where: { archivedAt: { not: null } } }),
     prisma.team.count({ where: { archivedAt: null } }),
   ]);
@@ -57,6 +59,20 @@ export default async function RosterPoolPage({
           Команды в архиве убраны из общего пула, но остаются в таблицах и матчах своих турниров.
           «Вернуть в пул» отменяет это; «Удалить полностью» сносит команду со всей историей безвозвратно.
         </p>
+      )}
+
+      {/* Создание команды живёт здесь, в пуле лиги, а не в витрине турнира: команда — сущность лиги,
+          в турнир она попадает заявкой или импортом. Только в пуле (не в архиве) и только оператору. */}
+      {canEdit && !archived && (
+        <CreateForm
+          url="/api/roster/teams"
+          submitLabel="Добавить команду"
+          reloadOnSuccess
+          fields={[
+            { key: "name", label: "Название", placeholder: "MOLOKO" },
+            { key: "tag", label: "Тег", placeholder: "MLK" },
+          ]}
+        />
       )}
 
       <PoolExplorer teams={teams} manage={canDelete ? { archived } : undefined} />

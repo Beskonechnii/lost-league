@@ -5,7 +5,6 @@ import { tpByTournament } from "@/lib/tp";
 import { roleLabel } from "@/lib/roles";
 import { playerAccountId, playerGaps, teamAccent } from "@/lib/profiles";
 import { can } from "@/lib/account";
-import { CreateForm } from "@/app/_components/roster-editors";
 import { SectionHeader } from "@/app/_components/ui";
 import { notFound } from "next/navigation";
 import { PlayerMiniCard } from "@/app/(public)/roster/_components/player-card";
@@ -95,17 +94,6 @@ export default async function PlayersPage({
           </>
         }
       />
-
-      {authed && (
-        <CreateForm
-          url="/api/roster/players"
-          submitLabel="Добавить игрока"
-          fields={[
-            { key: "nickname", label: "Ник", placeholder: "CHIPOLLINO" },
-            { key: "accountId", label: "account_id", placeholder: "123456789" },
-          ]}
-        />
-      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <RosterSwitch slug={slug} current="players" />
