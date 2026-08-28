@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/account";
 import { prisma } from "@/lib/prisma";
 import { isQuizKey, QUIZ_SLOTS } from "@/lib/quiz-config";
+import { BOT_SETTINGS, isBotSettingKey, normalizeSetting } from "@/lib/bot-settings";
 
 // Правка вопросов телеграм-бота. Право проверяется здесь, у самой записи: страницу можно и не
 // открывать, а отрисована она могла быть со старыми правами (docs/archive/ACCOUNTS-PLAN.md §2.2).
@@ -102,6 +103,41 @@ export async function toggleCustom(form: FormData): Promise<void> {
 export async function deleteCustom(form: FormData): Promise<void> {
   await requirePermission("tournaments.edit");
   await prisma.botQuestion.deleteMany({ where: { key: String(form.get("key") ?? ""), custom: true } });
+  revalidatePath(PATH);
+}
+
+/**
+ * Настройка флоу: тайминги и тексты уведомлений. Значение проходит через `normalizeSetting` —
+ * в базу не должно попасть «25:00», которое потом молча сломает рассылку.
+ */
+export async function saveSetting(_prev: BotState, form: FormData): Promise<BotState> {
+  try {
+    await requirePermission("tournaments.edit");
+    const key = String(form.get("key") ?? "");
+    if (!isBotSettingKey(key)) return { error: "Неизвестная настройка" };
+    const field = BOT_SETTINGS.find((f) => f.key === key)!;
+
+    const checked = normalizeSetting(key, String(form.get("value") ?? ""));
+    if ("error" in checked) return { error: checked.error };
+
+    // Совпало с дефолтом — строку не храним: иначе правка дефолта в коде не доедет до тех,
+    // кто ничего не менял (та же логика, что у текстов вопросов выше).
+    if (checked.value === field.value) await prisma.botSetting.deleteMany({ where: { key } });
+    else await prisma.botSetting.upsert({ where: { key }, create: { key, value: checked.value }, update: { value: checked.value } });
+
+    revalidatePath(PATH);
+    return { ok: `Сохранено: ${field.label}` };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Не удалось сохранить настройку" };
+  }
+}
+
+/** Вернуть настройке значение из кода. */
+export async function resetSetting(form: FormData): Promise<void> {
+  await requirePermission("tournaments.edit");
+  const key = String(form.get("key") ?? "");
+  if (!isBotSettingKey(key)) return;
+  await prisma.botSetting.deleteMany({ where: { key } });
   revalidatePath(PATH);
 }
 

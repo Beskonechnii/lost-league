@@ -153,8 +153,7 @@ export function BotAdmin({ quiz }: { quiz: QuizEditor }) {
 
   return (
     <>
-      <h1 className="text-xl font-bold tracking-tight">Бот заявок</h1>
-      <p className="mt-2 max-w-2xl text-sm text-ink-muted">
+      <p className="mt-6 max-w-2xl text-sm text-ink-muted">
         Что бот спрашивает у капитана в телеграме. Правки действуют сразу — перезапускать бота не нужно.
         Порядок шагов и обязательные вопросы (ник, позиция, ссылка на профиль) не меняются: без них
         заявку нечего одобрять.
