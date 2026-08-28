@@ -70,9 +70,6 @@ export function TournamentBar({
   // быть только одна, поэтому сравниваем полным путём, а не префиксом (кроме ростера — у него внутри
   // ещё команды/игроки).
   const stages = [
-    ...(showEntrants
-      ? [{ href: `${root}/entrants`, label: "Заявленные команды", active: pathname === `${root}/entrants` }]
-      : []),
     ...(div
       ? [
           { href: base, label: "Таблица", active: pathname === base },
@@ -80,11 +77,12 @@ export function TournamentBar({
           { href: `${base}/stats`, label: "Статистика", active: pathname === `${base}/stats` },
         ]
       : []),
-    {
-      href: `${root}/roster/teams`,
-      label: "Ростер",
-      active: pathname.startsWith(`${root}/roster`),
-    },
+    // На приёме заявок ростер турнира — это и есть заявленные команды (участники), поэтому
+    // показываем одну вкладку под именем этапа: «Заявленные команды» вместо «Ростер». Данные и
+    // страница разные, но обе читают участие (`TournamentEntry`), так что список совпадает.
+    showEntrants
+      ? { href: `${root}/entrants`, label: "Заявленные команды", active: pathname === `${root}/entrants` }
+      : { href: `${root}/roster/teams`, label: "Ростер", active: pathname.startsWith(`${root}/roster`) },
     { href: `${root}/tp`, label: "TP", active: pathname === `${root}/tp` },
     { href: `${root}/about`, label: "О турнире", active: pathname === `${root}/about` },
   ];

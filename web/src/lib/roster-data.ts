@@ -203,42 +203,6 @@ export async function listTeamRosters(divisionIds?: number[]): Promise<TeamWithR
   );
 }
 
-/**
- * Заявленные команды турнира — те, чья заявка прошла модерацию (`TeamApplication.status = approved`).
- * Отдельно от `listTeamRosters`: та режет команды по `TournamentEntry`, а его на этапе приёма ещё нет
- * (апрув пишет только состав в дивизион, участие в сетке заводят при жеребьёвке). Поэтому источник
- * здесь — сами одобренные заявки; каждой команде показываем состав того дивизиона, куда её одобрили.
- */
-export async function listApprovedEntrants(tournamentId: number): Promise<TeamWithRoster[]> {
-  const apps = await prisma.teamApplication.findMany({
-    where: { tournamentId, status: "approved", teamId: { not: null }, divisionId: { not: null } },
-    orderBy: { reviewedAt: "asc" },
-    select: { teamId: true, divisionId: true },
-  });
-  // Одна команда — одна карточка: если её зачем-то одобрили дважды, берём первый дивизион.
-  const byTeam = new Map<number, number>();
-  for (const a of apps)
-    if (a.teamId != null && a.divisionId != null && !byTeam.has(a.teamId)) byTeam.set(a.teamId, a.divisionId);
-  if (byTeam.size === 0) return [];
-
-  const teams = await prisma.team.findMany({
-    where: { id: { in: [...byTeam.keys()] } },
-    include: { roster: { include: { player: true } } },
-  });
-  const teamById = new Map(teams.map((t) => [t.id, t]));
-
-  return Promise.all(
-    [...byTeam.entries()].flatMap(([teamId, divisionId]) => {
-      const team = teamById.get(teamId);
-      if (!team) return [];
-      const { roster: teamRoster, ...rest } = team;
-      // Состав того дивизиона, куда одобрили (плюс бездивизионные строки): роспись сезонная.
-      const roster = teamRoster.filter((s) => s.divisionId === divisionId || s.divisionId === null);
-      return [withRoster(rest, roster).then((t) => ({ ...t, divisionIds: [divisionId] }))];
-    }),
-  );
-}
-
 /** Турнир, в котором команда играла — метка на карточке пула (по нему же строится фильтр). */
 export type PoolTournament = { slug: string; name: string; short: string | null };
 
