@@ -43,6 +43,15 @@ const SCORES = ["2:0", "2:1", "1:2", "0:2"];
 
 const clock = (sec: number | null) => (sec ? `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}` : "—");
 
+/** Дата в вид, который понимает <input type="datetime-local">: локальное время без зоны. */
+function forInput(value: Date | string | null): string {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 /** Подпись над контролом формы — компактный uppercase-ярлык в духе pouf Field. */
 function Labeled({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -154,6 +163,10 @@ function SeriesCard({ s, onChange }: { s: SeriesRow; onChange: () => void }) {
   // Подтверждение — вторым кликом по той же кнопке, а не системным confirm(): удаляется встреча
   // вместе с картами и статой, и цена промаха выше, чем неудобство второго клика.
   const [confirming, setConfirming] = useState(false);
+  // Время начала. Правится здесь, потому что отсюда о нём узнают игроки: сохранение рассылает
+  // уведомление обеим командам (src/lib/tg-schedule.ts), а из него же живут напоминания.
+  const [time, setTime] = useState(forInput(s.startAt));
+  const [timeSaved, setTimeSaved] = useState(false);
 
   const resync = async (matchId: number) => {
     setBusy(true);
@@ -171,6 +184,23 @@ function SeriesCard({ s, onChange }: { s: SeriesRow; onChange: () => void }) {
     const json = await res.json().catch(() => ({ ok: res.ok }));
     setBusy(false);
     if (!json.ok) return setError(json.error ?? "Не вышло отцепить");
+    onChange();
+  };
+
+  const saveTime = async () => {
+    setBusy(true);
+    setError(null);
+    setTimeSaved(false);
+    const res = await fetch(`/api/series/${s.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      // Пустое поле — «время снято»: такая встреча попадает в суточный дайджест организатору.
+      body: JSON.stringify({ startAt: time || null }),
+    });
+    const json = await res.json().catch(() => ({ ok: res.ok }));
+    setBusy(false);
+    if (!json.ok) return setError(json.error ?? "Не вышло сохранить время");
+    setTimeSaved(true);
     onChange();
   };
 
@@ -252,6 +282,34 @@ function SeriesCard({ s, onChange }: { s: SeriesRow; onChange: () => void }) {
         </div>
 
         {error && <p className="mt-1 text-[13px] font-bold text-[var(--down)]">{error}</p>}
+
+        <Separator />
+
+        {/* Время начала: игроки узнают о встрече и о переносе только отсюда. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Text size="sm" muted>
+            начало
+          </Text>
+          <div className="w-56">
+            <PoufInput
+              type="datetime-local"
+              value={time}
+              onChange={(v) => {
+                setTime(v);
+                setTimeSaved(false);
+              }}
+              label="Время начала встречи"
+            />
+          </div>
+          <ActionBtn tone="neutral" disabled={busy || time === forInput(s.startAt)} onClick={saveTime}>
+            сохранить
+          </ActionBtn>
+          {timeSaved && (
+            <Text size="sm" muted>
+              сохранено, командам ушло уведомление
+            </Text>
+          )}
+        </div>
 
         <Separator />
 

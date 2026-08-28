@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { botConfigured, getUpdates, sendTo, tgCall, type Update } from "@/lib/telegram";
 import { replyTo } from "@/lib/tg-quiz";
+import { tickSchedule } from "@/lib/tg-schedule";
 
 // Телеграм-бот лиги: крутит квиз заявки команды (`src/lib/tg-quiz.ts`). Запускается руками и живёт,
 // пока открыт приём заявок:
@@ -63,8 +64,37 @@ async function handle(update: Update): Promise<void> {
   }
 }
 
+/**
+ * Расписание встреч (`src/lib/tg-schedule.ts`) тикает в этом же процессе, рядом с long polling:
+ * пока бот один процесс, второй демон — вторая вещь, которую надо не забыть поднять.
+ *
+ * Раз в минуту и без наложений: тик ходит в Telegram, и на медленной сети следующий стартовал бы
+ * поверх незаконченного. От повторной рассылки защищает `SeriesNotice`, но лишние запросы ни к
+ * чему. Ошибку тик глотает сам — здесь только страховка, чтобы не уронить процесс целиком.
+ */
+function startSchedule(): void {
+  let running = false;
+  const tick = async () => {
+    if (running) return;
+    running = true;
+    try {
+      await tickSchedule();
+    } catch (e) {
+      console.error("Тик расписания:", e);
+    } finally {
+      running = false;
+    }
+  };
+  void tick(); // сразу при запуске: бота перезапускают часто, и ждать минуту незачем
+  // unref — чтобы таймер не держал процесс живым сам по себе, если polling завершился.
+  setInterval(() => void tick(), 60_000).unref();
+}
+
 async function main() {
   console.log(`Бот ${await whoami()} слушает. Остановить — Ctrl+C, а если запущен фоном — npm run bot:down.`);
+
+  // В `--once` расписание не трогаем: это разовый прогон входящих, а не работающий бот.
+  if (!once) startSchedule();
 
   // Апдейты Telegram хранит сутки и отдаёт, пока их не подтвердили следующим offset'ом. Начинаем с
   // хвоста: накопленное за время простоя разбирать нечего — люди уже ушли, а диалоги их сбиты.

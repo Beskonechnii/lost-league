@@ -36,6 +36,8 @@ export type SeriesRow = {
   /** Позиция в сетке плей-офф — ключ слота (src/lib/playoff-bracket.ts). У групповых пусто. */
   slot: string | null;
   playedAt: Date | null;
+  /** Запланированное время начала. Его правит оператор, и из него живут напоминания (tg-schedule.ts). */
+  startAt: Date | null;
   guessed: boolean;
   home: { id: number; name: string; tag: string; logo: string | null };
   away: { id: number; name: string; tag: string; logo: string | null };
@@ -110,6 +112,7 @@ export async function listSeries(filter: SeriesFilter = {}): Promise<SeriesRow[]
     round: r.round,
     slot: r.slot,
     playedAt: r.playedAt,
+    startAt: r.startAt,
     guessed: r.guessed,
     home: team(r.home),
     away: team(r.away),

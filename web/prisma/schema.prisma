@@ -392,6 +392,7 @@ model Series {
 
   games   Match[]
   designs Design[]
+  notices SeriesNotice[]
 
   @@unique([division, stage, group, homeId, awayId])
   /// Один слот сетки — одна серия. У групповых slot=NULL, а NULL в sqlite-уникальности различны,
@@ -587,6 +588,31 @@ model BotSetting {
   id    Int    @id @default(autoincrement())
   key   String @unique // ключ настройки (remind_before, slots, text_remind, … — src/lib/bot-settings.ts)
   value String
+}
+
+/// След уже отправленного уведомления о встрече — единственная защита от повтора. Бот живёт
+/// долгоживущим процессом, который перезапускают с ноутбука: без отметки каждый запуск слал бы
+/// напоминание заново, а перенос — по второму разу.
+///
+/// Ключ — тройка «серия + повод + метка». Метка разводит поводы одного вида: у `remind` это
+/// интервал в минутах (`1440`, `60`) — за сутки и за час это два разных напоминания; у `moved` и
+/// `scheduled` — новое время ISO, поэтому следующий перенос той же встречи разошлётся, а
+/// повторная отправка того же — нет; у `no_time` — дата дайджеста (`2026-08-28`).
+///
+/// Связь с серией настоящая (в отличие от прочих следов бота): снесли встречу — следам о ней
+/// делать нечего. Цена — `db:import` пересоздаёт серии и уносит следы с собой; после переноса
+/// данных ближайшее напоминание может уйти вторично, и это дешевле, чем следы, указывающие на
+/// чужую встречу с тем же id.
+model SeriesNotice {
+  id       Int      @id @default(autoincrement())
+  kind     String // remind | moved | scheduled | no_time (src/lib/tg-schedule.ts)
+  mark     String // что именно отправлено: интервал напоминания, новое время или дата дайджеста
+  sentAt   DateTime @default(now())
+
+  series   Series @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  seriesId Int
+
+  @@unique([seriesId, kind, mark])
 }
 
 /// Чат, который писал боту: chat_id ↔ телеграм-хендл. Нужен для исходящих сообщений — Telegram
