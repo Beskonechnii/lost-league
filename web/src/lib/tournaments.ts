@@ -237,6 +237,21 @@ export const registrationOpen = (t: { status: string; regCloseAt: Date | null })
   t.status === "registration" && (!t.regCloseAt || t.regCloseAt.getTime() > Date.now());
 
 /**
+ * Из списка команд — те, что реально участвуют в турнире (есть `TournamentEntry` в его дивизионах).
+ * Участие — единственный признак «команда в турнире»: одобренная заявка без участия осиротела
+ * (команду сняли или сетку пересобрали), и выдавать её за участника нельзя (см. страницу подачи).
+ */
+export async function teamsInTournament(tournamentId: number, teamIds: number[]): Promise<Set<number>> {
+  const ids = [...new Set(teamIds)];
+  if (ids.length === 0) return new Set();
+  const entries = await prisma.tournamentEntry.findMany({
+    where: { teamId: { in: ids }, division: { tournamentId } },
+    select: { teamId: true },
+  });
+  return new Set(entries.map((e) => e.teamId));
+}
+
+/**
  * Что уедет вместе с турниром. Считается до удаления и показывается в подтверждении: турнир —
  * контейнер сезона, и «удалить» здесь означает снести весь его архив, а не одну строку.
  */

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { registrationOpen, tournamentBySlug } from "@/lib/tournaments";
+import { registrationOpen, teamsInTournament, tournamentBySlug } from "@/lib/tournaments";
 import { currentAccount } from "@/lib/account";
 import { myApplications, parseDraft } from "@/lib/team-application";
 import { botStartLink } from "@/lib/telegram";
@@ -49,8 +49,23 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
   if (!tournament || tournament.status === "draft") notFound();
 
   const me = await currentAccount();
-  const mine = me ? await myApplications(me.id, tournament.id) : [];
+  const all = me ? await myApplications(me.id, tournament.id) : [];
   const open = registrationOpen(tournament);
+
+  // «Принята» — только если команда реально в турнире (есть участие). Одобренная заявка без участия
+  // осиротела: команду сняли или сетку пересобрали. Такую заявку для подачи не показываем — иначе
+  // висело бы «состав уже в турнире» у команды, которой в турнире нет. Капитан заявляется заново,
+  // а повторная отправка переиспользует ту же строку (`submitTeamApplication`), не плодя очередь.
+  const inTournament = await teamsInTournament(
+    tournament.id,
+    all.map((a) => a.teamId).filter((id): id is number => id != null),
+  );
+  const mine = all.filter(
+    (a) =>
+      a.status === "pending" ||
+      a.status === "rejected" ||
+      (a.status === "approved" && a.teamId != null && inTournament.has(a.teamId)),
+  );
 
   // Своя заявка открывается на правку, а не заводит вторую строку в очереди: повторная подача —
   // это досыл правок, а не новая команда. Принятая тоже правится (замена, ушедший игрок) — тогда
