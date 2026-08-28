@@ -8,7 +8,13 @@ import { archiveTeamAction, restoreTeamAction, purgeTeamAction, type ActionResul
 //   в пуле  → «Убрать из пула» = архив (обратимо, история турниров цела);
 //   в архиве → «Вернуть в пул» и «Удалить полностью» (второе — физический снос со всей статистикой).
 // Действия серверные (actions.ts): после успеха revalidatePath перерисовывает список и счётчики сам,
-// поэтому router.refresh здесь не нужен. Подтверждение — нативным confirm: действие редкое и операторское.
+// плюс onDone прячет карточку сразу.
+//
+// Подтверждение — ВСТРОЕННОЕ (кнопка → «Точно? Да / Отмена»), а не нативный confirm(): в песочном
+// iframe (превью, встраивание) window.confirm молча возвращает false, диалога нет — и кнопка «не
+// нажималась». Инлайн-подтверждение работает везде.
+
+const btn = "rounded-[12px] px-3 py-1.5 text-xs font-black cushion-field transition disabled:opacity-50 disabled:cursor-not-allowed";
 
 export function TeamManageBar({
   teamId,
@@ -24,29 +30,43 @@ export function TeamManageBar({
   onDone?: (teamId: number) => void;
 }) {
   const [pending, setPending] = useState(false);
+  // Какое разрушительное действие ждёт подтверждения (архив/снос). Возврат из архива не разрушителен —
+  // подтверждения не требует.
+  const [confirming, setConfirming] = useState<null | "archive" | "purge">(null);
 
-  // Плейн-async, а не useTransition: оптимистичное скрытие карточки (onDone) — обычное, высокого
-  // приоритета обновление, оно применяется сразу; в транзакции React откладывал его до простоя.
-  const call = async (action: () => Promise<ActionResult>) => {
+  const run = async (action: () => Promise<ActionResult>) => {
     setPending(true);
     const res = await action();
     setPending(false);
+    setConfirming(null);
     if ("error" in res) alert(res.error);
     else onDone?.(teamId);
   };
 
-  const archive = () => {
-    if (!confirm(`Убрать «${teamName}» из общего пула? Она останется в таблицах и матчах своих турниров, но пропадёт из ростера. Вернуть можно из архива.`)) return;
-    call(() => archiveTeamAction(teamId));
-  };
-  const restore = () => call(() => restoreTeamAction(teamId));
-  const purge = () => {
-    if (!confirm(`Удалить «${teamName}» ПОЛНОСТЬЮ и безвозвратно — вместе с составами, участием, сериями и матчами? Это нельзя отменить.`)) return;
-    call(() => purgeTeamAction(teamId));
-  };
+  const restore = () => run(() => restoreTeamAction(teamId));
 
-  const btn =
-    "rounded-[12px] px-3 py-1.5 text-xs font-black cushion-field transition disabled:opacity-50 disabled:cursor-not-allowed";
+  // Экран подтверждения: заменяет обычные кнопки, пока ждём «Да / Отмена».
+  if (confirming) {
+    const label = confirming === "archive" ? `Убрать «${teamName}» из пула?` : `Удалить «${teamName}» полностью?`;
+    const doIt = () =>
+      run(() => (confirming === "archive" ? archiveTeamAction(teamId) : purgeTeamAction(teamId)));
+    return (
+      <div className="flex flex-wrap items-center gap-2 border-t border-hairline px-4 py-3">
+        <span className="mr-1 text-xs font-bold text-ink-muted">{label}</span>
+        <button
+          type="button"
+          onClick={doIt}
+          disabled={pending}
+          className={`${btn} ${confirming === "purge" ? "bg-[color-mix(in_srgb,#ef4444_22%,transparent)] text-red-200" : "bg-purple text-[var(--on-accent)] cushion-control"}`}
+        >
+          {pending ? "…" : confirming === "purge" ? "Удалить навсегда" : "Да, убрать"}
+        </button>
+        <button type="button" onClick={() => setConfirming(null)} disabled={pending} className={`${btn} bg-surface text-ink-muted hover:text-ink`}>
+          Отмена
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-t border-hairline px-4 py-3">
@@ -57,7 +77,7 @@ export function TeamManageBar({
           </button>
           <button
             type="button"
-            onClick={purge}
+            onClick={() => setConfirming("purge")}
             disabled={pending}
             className={`${btn} bg-[color-mix(in_srgb,#ef4444_16%,transparent)] text-red-300 hover:text-red-200`}
           >
@@ -67,7 +87,7 @@ export function TeamManageBar({
       ) : (
         <button
           type="button"
-          onClick={archive}
+          onClick={() => setConfirming("archive")}
           disabled={pending}
           className={`${btn} bg-surface text-ink-subtle hover:text-red-300`}
         >
