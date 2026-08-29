@@ -1,0 +1,539 @@
+import { writeFileSync } from "node:fs";
+
+// Зафиксированный рецепт объёма: направленный свет ↖, светлая оконтовка, растушёванные тени,
+// idisc/iwell для вложенных элементов. Всё — через переменные-рецепты (перенос в pouf.css прямой).
+const STYLE = `
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+:root{
+  --paper:#E7E3D8;--ink:#33322E;--mut:#807C73;--sub:#AEAAA0;--line:#E0DACE;--line2:#D3CCBE;--mint-ink:#184636;
+  --grad-surface:linear-gradient(135deg,#FFFFFF,#F8F4EC 55%,#EEE8DD);
+  --grad-mint:linear-gradient(135deg,#D5F2E2,#A9DCC3 52%,#8CCBAD);
+  --grad-board:linear-gradient(135deg,#FDFBF6,#F1ECE1);
+  /* приподнятая поверхность — крупная */
+  --sh-raise:0 0 0 1px rgba(255,255,255,.55),inset 2px 3px 4px -1px rgba(255,255,255,.95),inset -3px -4px 7px -2px rgba(150,135,105,.30),inset 0 -3px 0 rgba(178,164,132,.24),0 4px 7px rgba(120,108,78,.15),0 22px 40px -8px rgba(120,108,78,.30),0 58px 88px -24px rgba(120,108,78,.22);
+  /* приподнятая — мелкая (пилюли, чипы, тайлы) */
+  --sh-raise-sm:0 0 0 1px rgba(255,255,255,.55),inset 2px 2px 3px -1px rgba(255,255,255,.95),inset -2px -3px 4px -1px rgba(150,135,105,.28),0 3px 5px rgba(120,108,78,.16),0 12px 22px -5px rgba(120,108,78,.28);
+  /* мятный акцент — крупный */
+  --sh-mint:0 0 0 1px rgba(255,255,255,.4),inset 2px 3px 4px -1px rgba(255,255,255,.9),inset -3px -4px 6px -2px rgba(70,140,105,.4),inset 0 -3px 0 rgba(84,150,116,.45),0 4px 7px rgba(80,150,115,.26),0 16px 28px -6px rgba(80,150,115,.42),0 34px 50px -16px rgba(80,150,115,.26);
+  /* мятный — мелкий */
+  --sh-mint-sm:0 0 0 1px rgba(255,255,255,.4),inset 2px 2px 3px -1px rgba(255,255,255,.9),inset -2px -3px 4px -1px rgba(70,140,105,.38),0 3px 5px rgba(80,150,115,.26),0 12px 22px -5px rgba(80,150,115,.42);
+  /* вдавленное (поля, лунки, дорожки) */
+  --sh-carve:inset 2px 3px 5px rgba(120,108,78,.26),inset -1px -1px 1px rgba(255,255,255,.55),inset 0 -1px 0 rgba(255,255,255,.4);
+  --carve-bg:#ECE7DD;
+}
+*{box-sizing:border-box;} h1,h2,h3,p{margin:0;}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Nunito',system-ui,sans-serif;-webkit-font-smoothing:antialiased;background-image:radial-gradient(120% 80% at 12% 0%,rgba(255,255,255,.42),transparent 55%);}
+.board{margin:40px;padding:44px 48px 58px;border-radius:46px;background:var(--grad-board);max-width:1120px;
+  box-shadow:0 0 0 1px rgba(255,255,255,.6),inset 3px 4px 6px -1px rgba(255,255,255,.95),inset -4px -5px 10px -2px rgba(150,135,105,.22),inset 0 -4px 0 rgba(178,164,132,.2),0 6px 10px rgba(120,108,78,.14),0 34px 60px -10px rgba(120,108,78,.30),0 90px 130px -30px rgba(120,108,78,.20);}
+.title{font-size:36px;font-weight:900;letter-spacing:-1.2px;} .subt{color:var(--mut);font-weight:700;font-size:14px;margin-top:8px;}
+.h2{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:var(--sub);margin:36px 0 18px;border-top:1px solid var(--line);padding-top:22px;}
+.lbl{font-size:11px;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin-bottom:11px;}
+.row{display:flex;gap:16px;flex-wrap:wrap;align-items:center;} .cols{display:grid;grid-template-columns:1fr 1fr;gap:42px;}
+.raise{border-radius:30px;background:var(--grad-surface);box-shadow:var(--sh-raise);}
+/* вложенные элементы */
+.idisc{width:26px;height:26px;border-radius:999px;display:grid;place-items:center;color:var(--mint-ink);background:linear-gradient(135deg,#FFFFFF,#E6F4EE);box-shadow:0 0 0 1px rgba(255,255,255,.5),inset 1px 1px 2px rgba(255,255,255,.95),inset -1px -2px 3px rgba(70,140,105,.34),0 3px 5px -1px rgba(40,100,76,.32);}
+.idisc.neu{color:var(--mut);background:linear-gradient(135deg,#FFFFFF,#EEE9DF);box-shadow:0 0 0 1px rgba(255,255,255,.55),inset 1px 1px 2px rgba(255,255,255,.95),inset -1px -2px 3px rgba(150,135,105,.32),0 3px 5px -1px rgba(120,108,78,.26);}
+.iwell{width:26px;height:26px;border-radius:999px;display:grid;place-items:center;color:#2E7D5E;background:#E7F2EC;box-shadow:inset 2px 3px 4px rgba(40,100,76,.32),inset -1px -1px 0 rgba(255,255,255,.5);}
+/* buttons */
+.btn{border-radius:22px;padding:14px 26px;font-size:15px;font-weight:900;display:inline-flex;align-items:center;gap:9px;color:var(--mint-ink);}
+.btn.sm{border-radius:18px;padding:10px 18px;font-size:13px;} .btn.lg{border-radius:26px;padding:18px 32px;font-size:17px;}
+.solid{background:var(--grad-mint);box-shadow:var(--sh-mint);}
+.hover{background:linear-gradient(135deg,#DEF6EA,#B2E1CB 52%,#94D2B5);box-shadow:0 0 0 1px rgba(255,255,255,.45),inset 2px 3px 4px -1px rgba(255,255,255,1),inset -3px -4px 7px -2px rgba(70,140,105,.44),0 6px 10px rgba(80,155,116,.3),0 22px 36px -6px rgba(80,155,116,.5),0 44px 62px -18px rgba(80,155,116,.3);transform:translateY(-3px);}
+.press{background:linear-gradient(135deg,#B8E2CB,#8CC9AA);box-shadow:0 0 0 1px rgba(255,255,255,.3),inset 3px 4px 8px rgba(40,105,76,.5),inset -1px -1px 2px rgba(255,255,255,.4);transform:translateY(3px);}
+.disabled{color:#9C988F;background:linear-gradient(135deg,#EFEBE2,#DFD9CD);box-shadow:0 0 0 1px rgba(255,255,255,.4),inset 1px 1px 2px rgba(255,255,255,.6),inset -1px -2px 3px rgba(150,135,105,.2),0 3px 6px rgba(120,108,78,.12);}
+.quiet{color:var(--ink);background:var(--grad-surface);box-shadow:var(--sh-raise-sm);}
+.ib{width:52px;padding:0;justify-content:center;} .ib.sm{width:42px;} .ib.lg{width:60px;}
+.spin{width:16px;height:16px;border-radius:50%;border:3px solid rgba(24,70,54,.3);border-top-color:#184636;display:inline-block;}
+/* pills */
+.pill{display:inline-flex;align-items:center;border-radius:20px;padding:11px 18px;font-size:13px;font-weight:800;color:var(--mut);}
+.pill.on{color:var(--mint-ink);background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+.pill.field{color:var(--ink);background:var(--grad-surface);box-shadow:var(--sh-raise-sm);}
+.sep{width:1px;height:24px;background:var(--line2);margin:0 5px;}
+/* segmented / tabs */
+.segset{display:inline-flex;gap:9px;padding:9px;border-radius:24px;background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.seg{border-radius:18px;padding:12px 22px;font-size:14px;font-weight:800;color:var(--mut);}
+.seg.on{color:var(--mint-ink);background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+/* fields */
+.field{display:flex;align-items:center;gap:12px;border-radius:22px;padding:16px 20px;font-size:14px;font-weight:700;color:var(--mut);background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.field.focus{box-shadow:var(--sh-carve),0 0 0 4px rgba(18,190,178,.5);color:var(--ink);}
+.field.area{align-items:flex-start;min-height:100px;}
+.fico{margin-left:auto;color:var(--mut);}
+.flabel{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--sub);margin-bottom:8px;display:block;}
+.chkrow{display:flex;align-items:center;gap:12px;font-size:14px;font-weight:800;}
+.chk{width:28px;height:28px;border-radius:11px;flex:none;display:grid;place-items:center;}
+.chk.off{background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.chk.on{background:var(--grad-mint);color:var(--mint-ink);box-shadow:var(--sh-mint-sm);}
+/* radio */
+.radio{width:28px;height:28px;border-radius:999px;flex:none;display:grid;place-items:center;background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.radio.on{background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+.radio .in{width:12px;height:12px;border-radius:999px;background:#184636;box-shadow:inset 0 -1px 1px rgba(0,0,0,.25);}
+/* switch */
+.switch{width:72px;height:42px;border-radius:999px;padding:5px;display:flex;align-items:center;}
+.switch.off{background:var(--carve-bg);justify-content:flex-start;box-shadow:var(--sh-carve);}
+.switch.on{background:var(--grad-mint);justify-content:flex-end;box-shadow:var(--sh-mint-sm);}
+.knob{width:32px;height:32px;border-radius:999px;background:linear-gradient(135deg,#FFFFFF,#EFEBE2);box-shadow:0 0 0 1px rgba(255,255,255,.5),inset 1px 1px 2px rgba(255,255,255,1),inset -1px -2px 3px rgba(150,135,105,.24),0 4px 7px -1px rgba(120,108,78,.34);}
+/* pagination */
+.pager{display:flex;gap:9px;align-items:center;}
+.pg{min-width:46px;height:46px;padding:0 12px;border-radius:16px;display:grid;place-items:center;font-weight:800;font-size:14px;color:var(--mut);background:var(--grad-surface);box-shadow:var(--sh-raise-sm);}
+.pg.on{color:var(--mint-ink);background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+.pg.gap{background:none;box-shadow:none;color:var(--sub);}
+/* chips/badges */
+.chip{border-radius:999px;padding:9px 16px;font-size:12px;font-weight:800;display:inline-flex;align-items:center;gap:7px;}
+.chip.plain{color:var(--mut);background:var(--grad-surface);box-shadow:var(--sh-raise-sm);}
+.chip.sel{color:var(--mint-ink);background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+.chip.dis{color:#A6A299;background:linear-gradient(135deg,#EDE9E0,#DFD9CD);box-shadow:0 0 0 1px rgba(255,255,255,.4),inset 1px 1px 2px rgba(255,255,255,.6),inset -1px -2px 3px rgba(150,135,105,.18);}
+.dot{width:10px;height:10px;border-radius:999px;box-shadow:0 0 0 1px rgba(255,255,255,.4),inset 1px 1px 1px rgba(255,255,255,.5),inset -1px -2px 2px rgba(0,0,0,.22);}
+.badge{border-radius:999px;padding:8px 15px;font-size:12px;font-weight:900;box-shadow:0 0 0 1px rgba(255,255,255,.4),inset 2px 2px 3px -1px rgba(255,255,255,.6),inset -2px -3px 4px -1px rgba(0,0,0,.08),0 4px 8px -2px rgba(120,108,78,.2);}
+/* stattile */
+.tile{border-radius:26px;padding:18px 20px;background:var(--grad-surface);box-shadow:var(--sh-raise);min-width:130px;}
+.tile.acc{background:var(--grad-mint);box-shadow:var(--sh-mint);}
+.tile .tl{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--sub);} .tile.acc .tl{color:rgba(24,70,54,.72);}
+.tile .tv{font-size:28px;font-weight:900;letter-spacing:-.5px;margin-top:4px;font-variant-numeric:tabular-nums;} .tile.acc .tv{color:var(--mint-ink);}
+.tile .th{font-size:12px;font-weight:700;color:var(--mut);margin-top:2px;}
+.meter{height:11px;border-radius:999px;background:var(--carve-bg);box-shadow:var(--sh-carve);overflow:hidden;width:220px;}
+.meter>i{display:block;height:100%;border-radius:999px;background:linear-gradient(135deg,#C4EAD7,#8CC9AA);box-shadow:0 0 0 1px rgba(255,255,255,.3),inset 1px 1px 1px rgba(255,255,255,.5),inset -1px -2px 3px rgba(40,105,76,.3);}
+/* avatar / marks */
+.av{border-radius:999px;background:var(--grad-surface);box-shadow:var(--sh-raise-sm);flex:none;}
+.tmark{border-radius:14px;background:var(--grad-surface);display:inline-grid;place-items:center;font-size:12px;font-weight:800;color:var(--mut);box-shadow:var(--sh-raise-sm);flex:none;}
+.zbar{width:7px;height:26px;border-radius:999px;box-shadow:0 0 0 1px rgba(255,255,255,.35),inset 1px 1px 1px rgba(255,255,255,.4),inset -1px -2px 2px rgba(0,0,0,.22);display:inline-block;vertical-align:middle;}
+.pts{display:inline-block;min-width:34px;text-align:center;border-radius:999px;padding:6px 14px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--ink);background:var(--grad-surface);box-shadow:var(--sh-raise-sm);}
+.pts.lead{background:var(--grad-mint);color:var(--mint-ink);box-shadow:var(--sh-mint-sm);}
+.avg{display:flex;align-items:center;} .avg .av{border:4px solid #F6F2EB;margin-left:-14px;} .avg .av:first-child{margin-left:0;}
+.avg .more{margin-left:-14px;border:4px solid #F6F2EB;border-radius:999px;display:grid;place-items:center;font-weight:900;font-size:13px;color:var(--mint-ink);background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+/* состояния — универсальные модификаторы (работают на любом элементе) */
+.h{transform:translateY(-2px);filter:drop-shadow(0 14px 18px rgba(120,108,78,.3));}
+.p{transform:translateY(3px);filter:brightness(.93) saturate(1.05);}
+.f{outline:3px solid rgba(18,190,178,.55);outline-offset:3px;}
+.strow{display:flex;gap:26px;align-items:center;flex-wrap:wrap;margin-bottom:14px;}
+.scell{text-align:center;} .scap{font-size:10px;font-weight:800;text-transform:uppercase;color:var(--sub);margin-top:9px;letter-spacing:.5px;}
+.fam{font-size:14px;font-weight:900;width:120px;color:var(--ink);flex:none;}
+/* alerts — компактные (обжимают контент) */
+.alert{display:inline-flex;align-items:center;gap:10px;border-radius:16px;padding:11px 15px;font-size:13px;font-weight:800;max-width:100%;
+  box-shadow:0 0 0 1px rgba(255,255,255,.35),inset 2px 3px 4px -1px rgba(255,255,255,.7),inset -2px -3px 6px -1px rgba(90,70,40,.16),0 4px 7px rgba(120,108,78,.14),0 12px 22px -8px rgba(120,108,78,.22);}
+.alert .aic{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.72);box-shadow:0 0 0 1px rgba(255,255,255,.5),inset 1px 1px 2px #fff,inset -1px -2px 3px rgba(0,0,0,.08),0 3px 5px -1px rgba(0,0,0,.16);flex:none;}
+.alert.mini{gap:8px;padding:6px 12px 6px 8px;border-radius:999px;font-size:12px;}
+.alert.mini .aic{width:22px;height:22px;}
+.alertcol{display:flex;flex-direction:column;align-items:flex-start;gap:10px;}
+.alert.ok{color:#184636;background:linear-gradient(135deg,#D6F0E1,#9CD3B6);}
+.alert.warn{color:#7A5A16;background:linear-gradient(135deg,#F7E3AA,#E8C56E);}
+.alert.err{color:#7C2F2F;background:linear-gradient(135deg,#F5C8C8,#E39191);}
+.alert.info{color:#1E4A66;background:linear-gradient(135deg,#C4E2F3,#98C5E4);}
+/* empty/skeleton/toast */
+.empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:32px;text-align:center;border-radius:28px;background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.sk{border-radius:16px;background:linear-gradient(90deg,#E9E4DB 25%,#DAD4C8 50%,#E9E4DB 75%);box-shadow:var(--sh-carve);}
+.toast{display:flex;align-items:center;gap:12px;border-radius:22px;padding:15px 17px;font-size:14px;font-weight:800;width:330px;
+  box-shadow:0 0 0 1px rgba(255,255,255,.35),inset 2px 3px 4px -1px rgba(255,255,255,.75),inset -2px -3px 6px -1px rgba(90,70,40,.16),0 6px 10px rgba(120,108,78,.16),0 20px 34px -8px rgba(120,108,78,.28);}
+.toast .tic{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.72);display:grid;place-items:center;box-shadow:0 0 0 1px rgba(255,255,255,.5),inset 1px 1px 2px #fff,inset -1px -2px 3px rgba(0,0,0,.08),0 3px 5px -1px rgba(0,0,0,.16);flex:none;}
+/* overlays */
+.scrim{border-radius:32px;padding:30px;background:radial-gradient(120% 120% at 50% 0%,rgba(120,108,78,.3),rgba(90,80,55,.46));display:flex;justify-content:center;}
+.dialog{width:390px;border-radius:34px;padding:26px;background:var(--grad-surface);box-shadow:0 0 0 1px rgba(255,255,255,.55),inset 2px 3px 4px -1px rgba(255,255,255,.95),inset -3px -4px 7px -2px rgba(150,135,105,.28),0 36px 72px -8px rgba(60,50,30,.5);}
+.dhead{display:flex;justify-content:space-between;align-items:flex-start;}
+.dtitle{font-size:21px;font-weight:900;} .ddesc{font-size:13px;font-weight:700;color:var(--mut);margin-top:6px;line-height:1.5;}
+.xbtn{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:var(--mut);background:var(--grad-surface);box-shadow:var(--sh-raise-sm);flex:none;}
+.sheet{width:310px;border-radius:30px 0 0 30px;padding:24px;background:var(--grad-surface);box-shadow:0 0 0 1px rgba(255,255,255,.55),inset 2px 3px 4px -1px rgba(255,255,255,.95),-22px 0 50px -10px rgba(60,50,30,.34);}
+.navlink{display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:18px;font-size:15px;font-weight:800;color:var(--ink);}
+.navlink.on{color:var(--mint-ink);background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+.menu{border-radius:24px;padding:9px;background:var(--grad-surface);box-shadow:0 0 0 1px rgba(255,255,255,.55),inset 2px 3px 4px -1px rgba(255,255,255,.95),0 24px 46px -10px rgba(120,108,78,.36);width:240px;}
+.mi{display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:15px;font-size:14px;font-weight:800;color:var(--ink);}
+.mi.hl{background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.mi.down{color:#B4595A;} .msep{height:1px;background:var(--line);margin:7px 9px;}
+.tip{background:#33322E;color:#F5F2EC;border-radius:14px;padding:10px 14px;font-size:12px;font-weight:800;box-shadow:0 0 0 1px rgba(255,255,255,.06),inset 0 1px 0 rgba(255,255,255,.12),0 14px 26px -6px rgba(60,55,45,.44);display:inline-block;position:relative;}
+.tip:after{content:"";position:absolute;left:24px;bottom:-6px;width:12px;height:12px;background:#33322E;transform:rotate(45deg);}
+/* structure */
+.eyebrow{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:2.5px;color:#5FA383;}
+.sh1{font-size:34px;font-weight:900;letter-spacing:-.8px;margin-top:6px;}
+.crumbs{font-size:13px;font-weight:800;color:var(--sub);display:flex;gap:9px;align-items:center;} .crumbs .c{color:var(--mut);}
+.tcard{border-radius:30px;padding:20px;width:300px;background:var(--grad-surface);box-shadow:var(--sh-raise);}
+.prow{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);}
+.prole{margin-left:auto;font-size:10px;font-weight:800;text-transform:uppercase;color:var(--sub);}
+.rowcard{display:flex;align-items:center;gap:12px;border-radius:20px;padding:13px 15px;}
+.rowcard.sel{background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+.rowcard.idle{background:var(--grad-surface);box-shadow:var(--sh-raise-sm);}
+/* accordion */
+.acc{display:flex;flex-direction:column;gap:16px;max-width:600px;}
+.accitem{border-radius:28px;background:var(--grad-surface);box-shadow:var(--sh-raise);}
+.acchead{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;font-weight:900;font-size:16px;}
+.accbody{padding:0 24px 22px;font-size:14px;font-weight:700;color:var(--mut);line-height:1.55;}
+.chev{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;color:var(--mut);background:var(--carve-bg);box-shadow:var(--sh-carve);}
+/* hero */
+.hero{position:relative;border-radius:38px;overflow:hidden;background:var(--grad-surface);box-shadow:var(--sh-raise);}
+.herowash{position:absolute;inset:0;background:radial-gradient(70% 120% at 8% 0%,rgba(140,203,173,.5),transparent 55%);pointer-events:none;}
+.bigav{width:150px;height:150px;border-radius:34px;flex:none;display:grid;place-items:center;font-size:52px;font-weight:900;color:#184636;background:var(--grad-mint);box-shadow:var(--sh-mint);}
+.herochip{border-radius:999px;padding:8px 15px;font-size:13px;font-weight:800;color:var(--mut);background:var(--grad-surface);box-shadow:var(--sh-raise-sm);display:inline-flex;align-items:center;gap:7px;}
+.herochip.tp{color:var(--mint-ink);background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+.linkchip{border-radius:16px;padding:8px 14px;font-size:12px;font-weight:800;color:var(--mut);background:var(--grad-surface);box-shadow:var(--sh-raise-sm);}
+/* bracket */
+.match{border-radius:22px;overflow:hidden;background:var(--grad-surface);box-shadow:var(--sh-raise);width:220px;}
+.mteam{display:flex;align-items:center;gap:10px;padding:11px 14px;font-size:14px;font-weight:800;}
+.mteam+.mteam{border-top:1px solid var(--line);}
+.mteam.win{color:var(--mint-ink);} .mteam .sc{margin-left:auto;font-weight:900;font-variant-numeric:tabular-nums;}
+.mteam.win .sc{color:var(--mint-ink);} .mteam.lose .sc{color:var(--sub);}
+`;
+
+const boards = {
+"Main": `<div class="board">
+  <h1 class="title">Кит · Управление и формы</h1>
+  <p class="subt">Light Clay, зафиксированный рецепт: направленный свет ↖, оконтовка, растушёванные тени, вложенные элементы (idisc/iwell).</p>
+  <div class="h2">Кнопки · solid</div>
+  <div class="row">
+    <span class="btn sm solid">Small</span><span class="btn solid">Medium</span><span class="btn lg solid">Large</span>
+    <span class="btn solid ib"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></span>
+    <span class="btn solid" style="padding-left:13px;gap:11px"><span class="idisc"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>С иконкой</span>
+  </div>
+  <div class="row" style="margin-top:20px">
+    <div><div class="lbl">Default</div><span class="btn solid">Открыть турнир</span></div>
+    <div><div class="lbl">Hover</div><span class="btn solid hover">Открыть турнир</span></div>
+    <div><div class="lbl">Active</div><span class="btn solid press">Открыть турнир</span></div>
+    <div><div class="lbl">Loading</div><span class="btn solid"><span class="spin"></span>Отправка…</span></div>
+    <div><div class="lbl">Disabled</div><span class="btn disabled">Недоступно</span></div>
+  </div>
+  <div class="h2">Кнопки · quiet</div>
+  <div class="row"><span class="btn sm quiet">Small</span><span class="btn quiet">Подать заявку</span><span class="btn lg quiet">Large</span></div>
+  <div class="cols">
+    <div><div class="h2">Пилюли навигации</div>
+      <div class="lbl">L1 · верхняя строка</div><div class="row" style="gap:9px"><span class="pill on">Турниры</span><span class="pill">Ростер</span><span class="pill">Админ</span></div>
+      <div class="lbl" style="margin-top:16px">L2 · контекст турнира</div><div class="row" style="gap:9px"><span class="pill field">LOST S2 ▾</span><span class="pill on">D1</span><span class="pill">D2</span></div>
+      <div class="lbl" style="margin-top:16px">L3 · вкладки этапа</div><div class="row" style="gap:9px"><span class="pill on">Таблица</span><span class="pill">Плей-офф</span><span class="pill">Статистика</span></div>
+    </div>
+    <div><div class="h2">Сегменты и вкладки</div>
+      <div class="lbl">Segmented</div><div class="segset"><span class="seg on">Команды</span><span class="seg">Игроки</span></div>
+      <div class="lbl" style="margin-top:18px">Tabs</div><div class="segset"><span class="seg on">Обзор</span><span class="seg">Ростер</span><span class="seg">TP</span></div>
+    </div>
+  </div>
+  <div class="h2">Поля ввода</div>
+  <div class="cols">
+    <div><label class="flabel">Текстовое поле</label><div class="field">Nirvana</div>
+      <label class="flabel" style="margin-top:16px">Поиск</label><div class="field">Поиск по командам…<span class="fico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg></span></div>
+      <label class="flabel" style="margin-top:16px">Фокус</label><div class="field focus">Empire</div>
+    </div>
+    <div><label class="flabel">Многострочное</label><div class="field area">Описание команды…</div>
+      <div class="lbl" style="margin-top:16px">Чекбоксы</div>
+      <div class="chkrow"><span class="chk on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5L20 6"/></svg></span>Капитан команды</div>
+      <div class="chkrow" style="margin-top:12px"><span class="chk off"></span>Показать выбывшие</div>
+    </div>
+  </div>
+  <div class="h2">Select</div>
+  <div class="row" style="align-items:flex-start;gap:28px">
+    <div><label class="flabel">Закрыт</label><div class="field" style="width:260px">Division 1 <span class="fico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg></span></div></div>
+    <div><label class="flabel">Открыт</label>
+      <div style="width:260px;border-radius:24px;padding:9px;background:var(--grad-surface);box-shadow:var(--sh-raise)">
+        <div style="padding:11px 13px;border-radius:15px;background:var(--grad-mint);color:#184636;font-weight:800;font-size:14px;box-shadow:var(--sh-mint-sm)">Division 1</div>
+        <div style="padding:11px 13px;font-weight:800;font-size:14px">Division 2</div>
+        <div style="padding:11px 13px;font-weight:800;font-size:14px">Все дивизионы</div>
+      </div>
+    </div>
+  </div>
+</div>`,
+
+"DataFeedback": `<div class="board">
+  <h1 class="title">Кит · Данные и обратная связь</h1>
+  <p class="subt">Чипы, статусы, показатели, элементы таблицы, алерты и тосты.</p>
+  <div class="cols">
+    <div><div class="h2">Чипы</div>
+      <div class="row"><span class="chip plain">carry</span><span class="chip plain">mid</span><span class="chip sel"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5L20 6"/></svg>Выбрано</span><span class="chip dis">Недоступно</span></div>
+      <div class="lbl" style="margin-top:18px">Зоны таблицы</div>
+      <div class="row"><span class="chip plain"><span class="dot" style="background:#7FC9AC"></span>Верхняя сетка</span><span class="chip plain"><span class="dot" style="background:#63C7BE"></span>Нижняя</span><span class="chip plain"><span class="dot" style="background:#E79B9B"></span>Вылет</span></div>
+    </div>
+    <div><div class="h2">Статусы турнира</div>
+      <div class="row">
+        <span class="badge" style="background:linear-gradient(135deg,#EFEBE2,#DFD9CD);color:#8A867D">Черновик</span>
+        <span class="badge" style="background:linear-gradient(135deg,#C4E2F3,#98C5E4);color:#1E4A66">Приём заявок</span>
+        <span class="badge" style="background:linear-gradient(135deg,#D6F0E1,#9CD3B6);color:#184636">Идёт</span>
+        <span class="badge" style="background:linear-gradient(135deg,#F7E3AA,#E8C56E);color:#7A5A16">Завершён</span>
+      </div>
+    </div>
+  </div>
+  <div class="h2">Показатели · StatTile</div>
+  <div class="row" style="gap:14px">
+    <div class="tile acc"><div class="tl">Место</div><div class="tv">1</div><div class="th" style="color:rgba(24,70,54,.72)">из 8</div></div>
+    <div class="tile"><div class="tl">Очки</div><div class="tv">18</div><div class="th">6 побед</div></div>
+    <div class="tile"><div class="tl">Разница</div><div class="tv" style="color:#3FA981">+11</div></div>
+    <div class="tile"><div class="tl">Винрейт</div><div class="tv">74%</div></div>
+    <div class="tile" style="min-width:230px"><div class="tl">Сила состава · MMR</div><div class="tv">11 240</div><div class="meter" style="margin-top:11px"><i style="width:78%"></i></div></div>
+  </div>
+  <div class="h2">Элементы таблицы</div>
+  <div class="row" style="gap:24px">
+    <div><div class="lbl">Место + зона</div><span class="zbar" style="background:#7FC9AC"></span> <span style="font-weight:900;font-size:16px;margin-left:6px">1</span></div>
+    <div><div class="lbl">Лого команды</div><span class="tmark" style="width:40px;height:40px">NV</span></div>
+    <div><div class="lbl">Аватар</div><span class="av" style="width:40px;height:40px;display:inline-block"></span></div>
+    <div><div class="lbl">Очки · лидер / обычные</div><span class="pts lead">9</span> <span class="pts" style="margin-left:8px">6</span></div>
+    <div><div class="lbl">Счёт W–L</div><span style="font-weight:800;font-size:15px"><span style="color:#3FA981">3</span><span style="color:var(--sub)">–0</span></span></div>
+  </div>
+  <div class="cols">
+    <div><div class="h2">Алерты — компактные</div>
+      <div class="alertcol">
+        <div class="alert ok"><span class="aic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#184636" stroke-width="2.6"><path d="m5 12 5 5L20 6"/></svg></span>Заявка принята</div>
+        <div class="alert warn"><span class="aic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7A5A16" stroke-width="2.4"><path d="M12 4 2 20h20z"/><path d="M12 10v4M12 17h.01"/></svg></span>3 игрока без account_id</div>
+        <div class="alert err"><span class="aic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C2F2F" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16h.01"/></svg></span>Матч не найден</div>
+      </div>
+      <div class="lbl" style="margin-top:16px">Мини — статус-пилюли</div>
+      <div class="row" style="gap:9px">
+        <span class="alert ok mini"><span class="aic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#184636" stroke-width="3"><path d="m5 12 5 5L20 6"/></svg></span>Принята</span>
+        <span class="alert warn mini"><span class="aic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7A5A16" stroke-width="2.6"><path d="M12 4 2 20h20z"/></svg></span>Проверьте id</span>
+        <span class="alert err mini"><span class="aic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7C2F2F" stroke-width="2.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v6"/></svg></span>Ошибка</span>
+      </div>
+    </div>
+    <div><div class="h2">Тосты</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="toast" style="color:#184636;background:linear-gradient(135deg,#D6F0E1,#9CD3B6)"><span class="tic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#184636" stroke-width="2.6"><path d="m5 12 5 5L20 6"/></svg></span>Результат сохранён</div>
+        <div class="toast" style="color:#7C2F2F;background:linear-gradient(135deg,#F5C8C8,#E39191)"><span class="tic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C2F2F" stroke-width="2.4"><path d="M6 6l12 12M18 6 6 18"/></svg></span>Не удалось сохранить</div>
+      </div>
+    </div>
+  </div>
+  <div class="cols">
+    <div><div class="h2">Пустое состояние</div>
+      <div class="empty">
+        <span class="tmark" style="width:52px;height:52px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#807C73" stroke-width="2"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 10h16"/></svg></span>
+        <div style="font-size:17px;font-weight:900;margin-top:4px">Групп ещё нет</div>
+        <div style="font-size:13px;font-weight:700;color:var(--mut);max-width:280px;line-height:1.5">Жеребьёвка не проведена. Как только команды разложат по группам — появятся таблицы и сетка.</div>
+      </div>
+    </div>
+    <div><div class="h2">Скелет загрузки</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="sk" style="height:18px;width:60%"></div><div class="sk" style="height:18px;width:85%"></div><div class="sk" style="height:66px;border-radius:22px"></div>
+      </div>
+    </div>
+  </div>
+</div>`,
+
+"OverlaysStructure": `<div class="board">
+  <h1 class="title">Кит · Оверлеи и структура</h1>
+  <p class="subt">Модалки, меню, шапка секции, крошки и карточки-сущности.</p>
+  <div class="h2">Шапка секции · SectionHeader</div>
+  <div class="raise" style="padding:24px 26px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px">
+    <div><p class="eyebrow">LOST Season 2</p><h1 class="sh1">Division 1</h1></div>
+    <div style="display:flex;gap:12px;align-items:center;padding-bottom:6px"><span style="font-size:14px;font-weight:800;color:#B98A2E">сыграно 24 из 28</span><span class="btn solid">Действие</span></div>
+  </div>
+  <div class="h2" style="margin-top:22px">Крошки</div>
+  <div class="crumbs"><span class="c">Турниры</span><span>/</span><span class="c">LOST Season 2</span><span>/</span><span class="c">Игроки</span><span>/</span><span>Nirvana</span></div>
+  <div class="cols">
+    <div><div class="h2">Диалог</div>
+      <div class="scrim"><div class="dialog">
+        <div class="dhead"><div><div class="dtitle">Удалить серию?</div><div class="ddesc">Карты серии и её результат уйдут из архива. Таблица и сетка пересчитаются.</div></div><span class="xbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6 6 18"/></svg></span></div>
+        <div class="row" style="margin-top:20px;gap:12px"><span class="btn quiet">Отмена</span><span class="btn solid" style="background:linear-gradient(135deg,#F5C8C8,#E08B8B);color:#7C2F2F;box-shadow:0 0 0 1px rgba(255,255,255,.4),inset 2px 3px 4px -1px rgba(255,255,255,.85),inset -3px -4px 6px -2px rgba(150,60,60,.4),0 4px 7px rgba(170,80,80,.28),0 16px 28px -6px rgba(170,80,80,.4)">Удалить</span></div>
+      </div></div>
+    </div>
+    <div><div class="h2">Боковой лист · Sheet</div>
+      <div class="scrim" style="justify-content:flex-end;padding:0;overflow:hidden"><div class="sheet">
+        <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:var(--sub);margin-bottom:14px">Меню</div>
+        <div class="navlink on">Турниры</div><div class="navlink">Ростер</div><div class="navlink">Правила</div><div class="navlink">Кабинет</div>
+      </div></div>
+    </div>
+  </div>
+  <div class="cols">
+    <div><div class="h2">Выпадающее меню</div>
+      <div class="menu">
+        <div class="mi hl"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9"/><path d="M16 4l4 4L8 20H4v-4z"/></svg>Редактировать</div>
+        <div class="mi"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Дублировать</div>
+        <div class="msep"></div>
+        <div class="mi down"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>Удалить</div>
+      </div>
+    </div>
+    <div><div class="h2">Тултип</div>
+      <div style="padding-top:8px"><span class="tip">Счёт из привязанных карт архива</span></div>
+      <div class="lbl" style="margin-top:28px">RowCard — выбор из списка</div>
+      <div style="display:flex;flex-direction:column;gap:10px;width:280px">
+        <div class="rowcard sel"><span class="av" style="width:38px;height:38px"></span><div><div style="font-weight:900;font-size:14px;color:#184636">Yatoro</div><div style="font-size:12px;font-weight:700;color:rgba(24,70,54,.72)">carry · капитан</div></div></div>
+        <div class="rowcard idle"><span class="av" style="width:38px;height:38px"></span><div><div style="font-weight:900;font-size:14px">Larl</div><div style="font-size:12px;font-weight:700;color:var(--mut)">mid</div></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="h2">Карточка команды</div>
+  <div class="row" style="align-items:flex-start">
+    <div class="tcard">
+      <div style="display:flex;align-items:center;gap:12px"><span class="tmark" style="width:48px;height:48px;font-size:13px">NV</span><div><div style="font-size:18px;font-weight:900">Nirvana</div><div style="font-size:12px;font-weight:700;color:var(--sub)">5 игроков</div></div><span class="chip sel" style="margin-left:auto;font-size:11px;padding:6px 12px">D1</span></div>
+      <div style="margin-top:12px">
+        <div class="prow" style="border-top:none"><span class="av" style="width:28px;height:28px"></span><span style="font-weight:800;font-size:14px">Yatoro</span><span class="prole">carry</span></div>
+        <div class="prow"><span class="av" style="width:28px;height:28px"></span><span style="font-weight:800;font-size:14px">Larl</span><span class="prole">mid</span></div>
+        <div class="prow"><span class="av" style="width:28px;height:28px"></span><span style="font-weight:800;font-size:14px">Collapse</span><span class="prole">offlane</span></div>
+      </div>
+    </div>
+    <div class="tcard" style="width:220px">
+      <div class="lbl">Мини-карточка игрока</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:9px;padding:8px 0">
+        <span class="av" style="width:68px;height:68px"></span><div style="font-weight:900;font-size:16px">Larl</div><span class="chip plain" style="font-size:11px;padding:6px 12px">mid · 10 800</span>
+      </div>
+    </div>
+  </div>
+</div>`,
+
+"MoreElements": `<div class="board">
+  <h1 class="title">Кит · Ещё элементы</h1>
+  <p class="subt">Аккордеон, тумблер, radio, пагинация, аватар-группа.</p>
+  <div class="h2">Аккордеон</div>
+  <div class="acc">
+    <div class="accitem">
+      <div class="acchead">Как считаются очки?<span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 15 6-6 6 6"/></svg></span></div>
+      <div class="accbody">Очки начисляются по сыгранным сериям групповой стадии: победа — 3, поражение — 0. Счёт берётся из привязанных карт архива серий, автоматически.</div>
+    </div>
+    <div class="accitem"><div class="acchead">Когда встаёт посев плей-офф?<span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></span></div></div>
+    <div class="accitem"><div class="acchead">Что такое TP?<span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></span></div></div>
+  </div>
+  <div class="cols">
+    <div><div class="h2">Тумблер</div>
+      <div class="row" style="gap:26px">
+        <div><div class="lbl">Вкл</div><div class="switch on"><span class="knob"></span></div></div>
+        <div><div class="lbl">Выкл</div><div class="switch off"><span class="knob"></span></div></div>
+      </div>
+    </div>
+    <div><div class="h2">Radio</div>
+      <div class="chkrow"><span class="radio on"><span class="in"></span></span>Single Elimination</div>
+      <div class="chkrow" style="margin-top:14px"><span class="radio off"></span>Double Elimination</div>
+      <div class="chkrow" style="margin-top:14px"><span class="radio off"></span>Round Robin</div>
+    </div>
+  </div>
+  <div class="cols">
+    <div><div class="h2">Пагинация</div>
+      <div class="pager">
+        <span class="pg"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m15 6-6 6 6 6"/></svg></span>
+        <span class="pg on">1</span><span class="pg">2</span><span class="pg">3</span><span class="pg gap">…</span><span class="pg">8</span>
+        <span class="pg"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg></span>
+      </div>
+    </div>
+    <div><div class="h2">Аватар-группа</div>
+      <div class="avg">
+        <span class="av" style="width:46px;height:46px"></span><span class="av" style="width:46px;height:46px"></span><span class="av" style="width:46px;height:46px"></span><span class="av" style="width:46px;height:46px"></span>
+        <span class="more" style="width:46px;height:46px">+5</span>
+      </div>
+      <div class="lbl" style="margin-top:14px">Состав команды · 9 игроков</div>
+    </div>
+  </div>
+</div>`,
+
+"PlayerHero": `<div class="board">
+  <h1 class="title">Кит · Hero-шапка игрока</h1>
+  <p class="subt">Профиль игрока: аватар, имя, роль в лиге, факты и ссылки — в фиксированном рецепте.</p>
+  <div class="h2">Шапка</div>
+  <div class="hero">
+    <div class="herowash"></div>
+    <div style="position:relative;display:flex;gap:28px;padding:30px">
+      <div class="bigav">Y</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:34px;font-weight:900;letter-spacing:-.8px"><span style="color:var(--sub);font-size:22px;margin-right:8px">#12</span>Yatoro<span style="color:#3FA981;font-size:15px;font-weight:900;margin-left:14px">капитан</span></div>
+        <div style="font-weight:700;color:var(--mut);margin-top:2px">Илья Мулярчук</div>
+        <div class="row" style="gap:9px;margin-top:12px"><span class="herochip tp">Игрок</span></div>
+        <div class="row" style="gap:9px;margin-top:12px">
+          <span class="herochip"><span class="tmark" style="width:20px;height:20px;font-size:9px">NV</span>Nirvana · carry</span>
+          <span class="herochip">12 400 MMR</span><span class="herochip">Immortal</span><span class="herochip tp">45 TP</span><span class="herochip">22 года</span><span class="herochip">Минск</span>
+        </div>
+        <div class="row" style="gap:9px;margin-top:12px"><span class="linkchip">@yatoro</span><span class="linkchip">Dotabuff</span><span class="linkchip">Stratz</span><span class="linkchip">Steam</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px"><span class="btn solid sm">Редактировать</span><span style="font-size:12px;font-weight:700;color:var(--sub)">slug: yatoro</span></div>
+    </div>
+    <div style="position:relative;border-top:1px solid var(--line);padding:12px 30px;font-size:12px;font-weight:800;color:#B98A2E">Не заполнено: дата рождения</div>
+  </div>
+</div>`,
+
+"Playoff": `<div class="board">
+  <h1 class="title">Кит · Сетка плей-офф</h1>
+  <p class="subt">Верхняя сетка: матч-карточки с двумя командами и счётом, соединители. В проекте — во всю ширину (full-bleed).</p>
+  <div class="h2">Верхняя сетка · 8 команд</div>
+  <div style="position:relative;width:900px;height:520px;margin-top:8px">
+    <svg width="900" height="520" style="position:absolute;inset:0;pointer-events:none" fill="none" stroke="#CFC7B8" stroke-width="3">
+      <path d="M220,63 H290 V193 H220 M290,128 H340"/>
+      <path d="M220,323 H290 V453 H220 M290,388 H340"/>
+      <path d="M560,128 H620 V388 H560 M620,258 H680"/>
+    </svg>
+    <div class="match" style="position:absolute;left:0;top:20px"><div class="mteam win"><span class="tmark" style="width:24px;height:24px;font-size:9px">NV</span>Nirvana<span class="sc">2</span></div><div class="mteam lose"><span class="tmark" style="width:24px;height:24px;font-size:9px">SP</span>Spirit B<span class="sc">0</span></div></div>
+    <div class="match" style="position:absolute;left:0;top:150px"><div class="mteam win"><span class="tmark" style="width:24px;height:24px;font-size:9px">EM</span>Empire<span class="sc">2</span></div><div class="mteam lose"><span class="tmark" style="width:24px;height:24px;font-size:9px">VP</span>Virtus<span class="sc">1</span></div></div>
+    <div class="match" style="position:absolute;left:0;top:280px"><div class="mteam win"><span class="tmark" style="width:24px;height:24px;font-size:9px">HR</span>Hydra<span class="sc">2</span></div><div class="mteam lose"><span class="tmark" style="width:24px;height:24px;font-size:9px">OG</span>Outlaws<span class="sc">1</span></div></div>
+    <div class="match" style="position:absolute;left:0;top:410px"><div class="mteam win"><span class="tmark" style="width:24px;height:24px;font-size:9px">AX</span>Axiom<span class="sc">2</span></div><div class="mteam lose"><span class="tmark" style="width:24px;height:24px;font-size:9px">RS</span>Rush<span class="sc">0</span></div></div>
+    <div class="match" style="position:absolute;left:340px;top:85px"><div class="mteam win"><span class="tmark" style="width:24px;height:24px;font-size:9px">NV</span>Nirvana<span class="sc">2</span></div><div class="mteam lose"><span class="tmark" style="width:24px;height:24px;font-size:9px">EM</span>Empire<span class="sc">1</span></div></div>
+    <div class="match" style="position:absolute;left:340px;top:345px"><div class="mteam win"><span class="tmark" style="width:24px;height:24px;font-size:9px">HR</span>Hydra<span class="sc">2</span></div><div class="mteam lose"><span class="tmark" style="width:24px;height:24px;font-size:9px">AX</span>Axiom<span class="sc">0</span></div></div>
+    <div class="match" style="position:absolute;left:680px;top:215px;box-shadow:var(--sh-mint)"><div style="text-align:center;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:#5FA383;padding:8px 0 4px">Гранд-финал</div><div class="mteam win"><span class="tmark" style="width:24px;height:24px;font-size:9px">NV</span>Nirvana<span class="sc">3</span></div><div class="mteam lose"><span class="tmark" style="width:24px;height:24px;font-size:9px">HR</span>Hydra<span class="sc">1</span></div></div>
+  </div>
+</div>`,
+
+"States": `<div class="board">
+  <h1 class="title">Кит · Состояния</h1>
+  <p class="subt">Default → Hover → Press → Focus на всех интерактивных. Наведение приподнимает и усиливает тень, нажатие вдавливает и притемняет, фокус — бирюзовое кольцо. Модификаторы .h / .p / .f работают на любом элементе.</p>
+
+  <div class="h2">Интерактивные семейства</div>
+
+  <div class="strow"><div class="fam">Кнопка</div>
+    <div class="scell"><span class="btn solid">Кнопка</span><div class="scap">Default</div></div>
+    <div class="scell"><span class="btn solid h">Кнопка</span><div class="scap">Hover</div></div>
+    <div class="scell"><span class="btn solid p">Кнопка</span><div class="scap">Press</div></div>
+    <div class="scell"><span class="btn solid f">Кнопка</span><div class="scap">Focus</div></div>
+  </div>
+
+  <div class="strow"><div class="fam">Кнопка quiet</div>
+    <div class="scell"><span class="btn quiet">Вторичная</span><div class="scap">Default</div></div>
+    <div class="scell"><span class="btn quiet h">Вторичная</span><div class="scap">Hover</div></div>
+    <div class="scell"><span class="btn quiet p">Вторичная</span><div class="scap">Press</div></div>
+    <div class="scell"><span class="btn quiet f">Вторичная</span><div class="scap">Focus</div></div>
+  </div>
+
+  <div class="strow"><div class="fam">Пилюля</div>
+    <div class="scell"><span class="pill on">Таблица</span><div class="scap">Default</div></div>
+    <div class="scell"><span class="pill on h">Таблица</span><div class="scap">Hover</div></div>
+    <div class="scell"><span class="pill on p">Таблица</span><div class="scap">Press</div></div>
+    <div class="scell"><span class="pill on f">Таблица</span><div class="scap">Focus</div></div>
+  </div>
+
+  <div class="strow"><div class="fam">Чип</div>
+    <div class="scell"><span class="chip sel">Выбрано</span><div class="scap">Default</div></div>
+    <div class="scell"><span class="chip sel h">Выбрано</span><div class="scap">Hover</div></div>
+    <div class="scell"><span class="chip sel p">Выбрано</span><div class="scap">Press</div></div>
+    <div class="scell"><span class="chip sel f">Выбрано</span><div class="scap">Focus</div></div>
+  </div>
+
+  <div class="strow"><div class="fam">Поле</div>
+    <div class="scell"><div class="field" style="width:150px">Nirvana</div><div class="scap">Default</div></div>
+    <div class="scell"><div class="field h" style="width:150px">Nirvana</div><div class="scap">Hover</div></div>
+    <div class="scell"><div class="field focus" style="width:150px;color:var(--ink)">Nirvana</div><div class="scap">Focus</div></div>
+  </div>
+
+  <div class="strow"><div class="fam">Чекбокс</div>
+    <div class="scell"><span class="chk off"></span><div class="scap">Off</div></div>
+    <div class="scell"><span class="chk off h"></span><div class="scap">Hover</div></div>
+    <div class="scell"><span class="chk on"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5L20 6"/></svg></span><div class="scap">On</div></div>
+    <div class="scell"><span class="chk on f"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5L20 6"/></svg></span><div class="scap">On · Focus</div></div>
+  </div>
+
+  <div class="strow"><div class="fam">Тумблер</div>
+    <div class="scell"><div class="switch off"><span class="knob"></span></div><div class="scap">Off</div></div>
+    <div class="scell"><div class="switch on"><span class="knob"></span></div><div class="scap">On</div></div>
+    <div class="scell"><div class="switch on f"><span class="knob"></span></div><div class="scap">On · Focus</div></div>
+  </div>
+
+  <div class="strow"><div class="fam">Пагинация</div>
+    <div class="scell"><span class="pg">2</span><div class="scap">Default</div></div>
+    <div class="scell"><span class="pg h">2</span><div class="scap">Hover</div></div>
+    <div class="scell"><span class="pg p">2</span><div class="scap">Press</div></div>
+    <div class="scell"><span class="pg on">1</span><div class="scap">Current</div></div>
+  </div>
+
+  <div class="strow"><div class="fam">Пункт меню</div>
+    <div class="scell"><div class="menu" style="width:180px"><div class="mi">Редактировать</div></div><div class="scap">Default</div></div>
+    <div class="scell"><div class="menu" style="width:180px"><div class="mi hl">Редактировать</div></div><div class="scap">Hover</div></div>
+  </div>
+
+  <div class="strow" style="margin-bottom:0"><div class="fam">RowCard</div>
+    <div class="scell"><div class="rowcard idle" style="width:200px"><span class="av" style="width:32px;height:32px"></span><span style="font-weight:900;font-size:14px">Larl</span></div><div class="scap">Default</div></div>
+    <div class="scell"><div class="rowcard idle h" style="width:200px"><span class="av" style="width:32px;height:32px"></span><span style="font-weight:900;font-size:14px">Larl</span></div><div class="scap">Hover</div></div>
+    <div class="scell"><div class="rowcard sel" style="width:200px"><span class="av" style="width:32px;height:32px"></span><span style="font-weight:900;font-size:14px;color:#184636">Larl</span></div><div class="scap">Selected</div></div>
+  </div>
+</div>`
+};
+
+const wrap = (content) =>
+`<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><style>${STYLE}</style></helmet>
+${content}
+</x-dc>
+</body>
+</html>
+`;
+
+for (const [name, content] of Object.entries(boards)) {
+  writeFileSync(new URL(`./${name}.dc.html`, import.meta.url), wrap(content));
+  console.log("wrote", name + ".dc.html");
+}

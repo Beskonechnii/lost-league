@@ -1,0 +1,15 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html",              "x": 0,    "y": 0,    "w": 1220, "h": 1380, "title": "Управление и формы" },
+    { "file": "DataFeedback.dc.html",      "x": 1340, "y": 0,    "w": 1220, "h": 1340, "title": "Данные и обратная связь" },
+    { "file": "OverlaysStructure.dc.html", "x": 2680, "y": 0,    "w": 1220, "h": 1460, "title": "Оверлеи и структура" },
+    { "file": "MoreElements.dc.html",      "x": 0,    "y": 1620, "w": 1220, "h": 900,  "title": "Ещё элементы" },
+    { "file": "PlayerHero.dc.html",        "x": 1340, "y": 1620, "w": 1220, "h": 700,  "title": "Hero-шапка игрока" },
+    { "file": "Playoff.dc.html",           "x": 2680, "y": 1620, "w": 1220, "h": 860,  "title": "Сетка плей-офф" },
+    { "file": "States.dc.html",            "x": 0,    "y": 2680, "w": 1560, "h": 1120, "title": "Состояния" }
+  ],
+  "annotations": [
+    { "id": "kit", "x": 0, "y": -150, "w": 800, "text": "Кит элементов LOST · Light Clay — зафиксированный рецеп (направленный свет ↖, оконтовка, растушёванные тени, idisc/iwell). Лист «Состояния» — hover/press/focus на всех интерактивных. Алерты компактные + мини-пилюли. Единый источник рецептов → перенос в pouf.css прямой." }
+  ],
+  "launch": { "view": "canvas" }
+}
