@@ -175,7 +175,7 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:'Nunito',syst
 
 .austage{margin:40px;padding:56px;border-radius:52px;background:var(--grad-board);display:inline-block;
   box-shadow:0 0 0 1px rgba(255,255,255,.6),inset 3px 4px 6px -1px rgba(255,255,255,.95),inset -4px -5px 10px -2px rgba(150,135,105,.22),inset 0 -4px 0 rgba(178,164,132,.2),0 6px 10px rgba(120,108,78,.14),0 34px 60px -10px rgba(120,108,78,.30),0 90px 130px -30px rgba(120,108,78,.20);}
-.aucard{width:420px;border-radius:36px;padding:34px 32px 30px;background:var(--grad-surface);box-shadow:var(--sh-raise);}
+.aucard{position:relative;width:420px;border-radius:36px;padding:34px 32px 30px;background:var(--grad-surface);box-shadow:var(--sh-raise);}
 .auhead{display:flex;flex-direction:column;align-items:center;gap:13px;margin-bottom:22px;}
 .aulogo{width:56px;height:56px;border-radius:19px;display:grid;place-items:center;font-size:24px;font-weight:900;color:#184636;background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
 .autitle{font-size:22px;font-weight:900;letter-spacing:-.5px;}
@@ -194,6 +194,43 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:'Nunito',syst
 .aubtn{width:100%;justify-content:center;margin-top:18px;}
 .aualt{text-align:center;font-size:13px;font-weight:700;color:var(--mut);margin-top:16px;}
 .aualt b{color:var(--mint-ink);font-weight:900;}
+/* ── квиз регистрации ───────────────────────────────────────────── */
+.qcard{width:520px;}
+.col2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.qcheck{display:flex;flex-direction:column;gap:12px;margin-top:18px;}
+.qnav{display:flex;gap:12px;margin-top:22px;}
+.qnav .btn.solid{flex:1;justify-content:center;}
+.hint{font-size:12px;font-weight:700;color:var(--mut);margin-top:7px;line-height:1.5;}
+.hint .aulink{white-space:nowrap;}
+/* степпер */
+.qsteps{display:flex;align-items:flex-start;margin-bottom:24px;}
+.qstep{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1;}
+.qdot{width:38px;height:38px;border-radius:999px;display:grid;place-items:center;font-weight:900;font-size:15px;color:var(--mut);background:var(--carve-bg);box-shadow:var(--sh-carve);flex:none;}
+.qdot.on,.qdot.done{color:var(--mint-ink);background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+.qcap{font-size:11px;font-weight:800;color:var(--sub);text-align:center;line-height:1.25;text-wrap:pretty;} .qstep.on .qcap{color:var(--mint-ink);}
+.qline{height:3px;width:28px;flex:none;border-radius:999px;background:var(--carve-bg);box-shadow:var(--sh-carve);margin:18px 4px 0;}
+.qline.done{background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+/* шапка шага с выходом + телефонный код */
+.qexit{position:absolute;top:24px;right:24px;z-index:2;}
+.codesel{display:inline-flex;align-items:center;gap:4px;color:var(--ink);font-weight:800;padding-right:10px;border-right:1px solid var(--line2);}
+/* ── состояния: календарь (дата рождения) + открытый дропдаун ────── */
+.statesrow{display:flex;gap:44px;align-items:flex-start;}
+.stlbl{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:var(--sub);margin-bottom:14px;}
+.cal{width:420px;border-radius:30px;padding:22px;background:var(--grad-surface);box-shadow:var(--sh-raise);}
+.calhead{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.calnav{display:flex;gap:8px;}
+.calbtn{width:44px;height:44px;border-radius:999px;display:grid;place-items:center;color:var(--mut);background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.caldrop{flex:1;display:flex;align-items:center;justify-content:space-between;gap:8px;border-radius:15px;padding:12px 16px;font-size:14px;font-weight:800;color:var(--ink);background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.caldrop.yr{flex:none;width:104px;}
+.calgrid{border-radius:22px;padding:15px;background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.calwk{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:9px;}
+.calwk span{text-align:center;font-size:10px;font-weight:800;color:var(--sub);text-transform:uppercase;letter-spacing:.4px;}
+.caldays{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+.calday{aspect-ratio:1;border-radius:12px;display:grid;place-items:center;font-size:13px;font-weight:800;color:var(--ink);}
+.calday.mut{color:var(--sub);}
+.calday.sel{border-radius:999px;color:var(--mint-ink);background:var(--grad-mint);box-shadow:inset 3px 4px 8px rgba(40,105,76,.62),inset -2px -3px 6px rgba(255,255,255,.55),inset 0 0 0 1px rgba(40,105,76,.2);}
+.calpop{position:absolute;top:calc(100% + 8px);right:0;z-index:10;}
+.calpop .cal{width:400px;box-shadow:var(--sh-raise),0 30px 60px -12px rgba(60,50,30,.42);}
 </style></helmet>
 <div class="austage">
   <div class="aucard">
