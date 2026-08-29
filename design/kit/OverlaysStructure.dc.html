@@ -172,6 +172,20 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:'Nunito',syst
 .mteam+.mteam{border-top:1px solid var(--line);}
 .mteam.win{color:var(--mint-ink);} .mteam .sc{margin-left:auto;font-weight:900;font-variant-numeric:tabular-nums;}
 .mteam.win .sc{color:var(--mint-ink);} .mteam.lose .sc{color:var(--sub);}
+/* calendar — атом даты: нав/месяц/год блоками, выбранный день вдавлен и кругл */
+.cal{width:420px;border-radius:30px;padding:22px;background:var(--grad-surface);box-shadow:var(--sh-raise);}
+.calhead{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.calnav{display:flex;gap:8px;}
+.calbtn{width:44px;height:44px;border-radius:999px;display:grid;place-items:center;color:var(--mut);background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.caldrop{flex:1;display:flex;align-items:center;justify-content:space-between;gap:8px;border-radius:15px;padding:12px 16px;font-size:14px;font-weight:800;color:var(--ink);background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.caldrop.yr{flex:none;width:104px;}
+.calgrid{border-radius:22px;padding:15px;background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.calwk{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:9px;}
+.calwk span{text-align:center;font-size:10px;font-weight:800;color:var(--sub);text-transform:uppercase;letter-spacing:.4px;}
+.caldays{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+.calday{aspect-ratio:1;border-radius:12px;display:grid;place-items:center;font-size:13px;font-weight:800;color:var(--ink);}
+.calday.mut{color:var(--sub);}
+.calday.sel{border-radius:999px;color:var(--mint-ink);background:var(--grad-mint);box-shadow:inset 3px 4px 8px rgba(40,105,76,.62),inset -2px -3px 6px rgba(255,255,255,.55),inset 0 0 0 1px rgba(40,105,76,.2);}
 </style></helmet>
 <div class="board">
   <h1 class="title">Кит · Оверлеи и структура</h1>

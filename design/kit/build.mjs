@@ -168,7 +168,31 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:'Nunito',syst
 .mteam+.mteam{border-top:1px solid var(--line);}
 .mteam.win{color:var(--mint-ink);} .mteam .sc{margin-left:auto;font-weight:900;font-variant-numeric:tabular-nums;}
 .mteam.win .sc{color:var(--mint-ink);} .mteam.lose .sc{color:var(--sub);}
+/* calendar — атом даты: нав/месяц/год блоками, выбранный день вдавлен и кругл */
+.cal{width:420px;border-radius:30px;padding:22px;background:var(--grad-surface);box-shadow:var(--sh-raise);}
+.calhead{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.calnav{display:flex;gap:8px;}
+.calbtn{width:44px;height:44px;border-radius:999px;display:grid;place-items:center;color:var(--mut);background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.caldrop{flex:1;display:flex;align-items:center;justify-content:space-between;gap:8px;border-radius:15px;padding:12px 16px;font-size:14px;font-weight:800;color:var(--ink);background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.caldrop.yr{flex:none;width:104px;}
+.calgrid{border-radius:22px;padding:15px;background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.calwk{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:9px;}
+.calwk span{text-align:center;font-size:10px;font-weight:800;color:var(--sub);text-transform:uppercase;letter-spacing:.4px;}
+.caldays{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+.calday{aspect-ratio:1;border-radius:12px;display:grid;place-items:center;font-size:13px;font-weight:800;color:var(--ink);}
+.calday.mut{color:var(--sub);}
+.calday.sel{border-radius:999px;color:var(--mint-ink);background:var(--grad-mint);box-shadow:inset 3px 4px 8px rgba(40,105,76,.62),inset -2px -3px 6px rgba(255,255,255,.55),inset 0 0 0 1px rgba(40,105,76,.2);}
 `;
+
+// дни календаря для показа (нейтральный пример: выбран 12)
+const calDays = () => {
+  let c = "";
+  [26, 27, 28].forEach((d) => (c += `<div class="calday mut">${d}</div>`));
+  for (let d = 1; d <= 31; d++) c += `<div class="calday${d === 12 ? " sel" : ""}">${d}</div>`;
+  for (let d = 1; d <= 8; d++) c += `<div class="calday mut">${d}</div>`;
+  return c;
+};
+const csvg = (d) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
 
 const boards = {
 "Main": `<div class="board">
@@ -366,7 +390,7 @@ const boards = {
 
 "MoreElements": `<div class="board">
   <h1 class="title">Кит · Ещё элементы</h1>
-  <p class="subt">Аккордеон, тумблер, radio, пагинация, аватар-группа.</p>
+  <p class="subt">Аккордеон, тумблер, radio, пагинация, аватар-группа, календарь.</p>
   <div class="h2">Аккордеон</div>
   <div class="acc">
     <div class="accitem">
@@ -403,6 +427,18 @@ const boards = {
         <span class="more" style="width:46px;height:46px">+5</span>
       </div>
       <div class="lbl" style="margin-top:14px">Состав команды · 9 игроков</div>
+    </div>
+  </div>
+  <div class="h2">Календарь</div>
+  <div class="cal">
+    <div class="calhead">
+      <div class="calnav"><span class="calbtn">${csvg('<path d="M15 6l-6 6 6 6"/>')}</span><span class="calbtn">${csvg('<path d="M9 6l6 6-6 6"/>')}</span></div>
+      <div class="caldrop">Март${csvg('<path d="M6 9l6 6 6-6"/>')}</div>
+      <div class="caldrop yr">2001${csvg('<path d="M6 9l6 6 6-6"/>')}</div>
+    </div>
+    <div class="calgrid">
+      <div class="calwk"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>
+      <div class="caldays">${calDays()}</div>
     </div>
   </div>
 </div>`,
