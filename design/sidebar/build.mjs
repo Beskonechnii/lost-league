@@ -42,6 +42,26 @@ const SB = `
 .sbfoot{margin-top:10px;padding-top:8px;border-top:1px solid var(--line);display:flex;flex-direction:column;}
 /* свитчер темы: китовый .switch справа, ужат под ритм строк */
 .thsw .switch{margin-left:auto;transform:scale(.78);transform-origin:right center;}
+
+/* ── свёрнутое состояние: только иконки ─────────────────────────────── */
+.sbc{width:76px;border-radius:30px;padding:12px 11px;background:var(--grad-surface);box-shadow:var(--sh-raise);display:flex;flex-direction:column;align-items:center;gap:5px;}
+.chead{display:flex;flex-direction:column;align-items:center;gap:9px;padding-top:4px;}
+.clogo{width:46px;height:46px;border-radius:16px;display:grid;place-items:center;font-size:20px;font-weight:900;color:#184636;background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+.cexp{width:34px;height:34px;border-radius:12px;display:grid;place-items:center;color:var(--sub);background:var(--grad-surface);box-shadow:var(--sh-raise-sm);}
+.cav{width:48px;height:48px;border-radius:999px;display:grid;place-items:center;font-weight:900;font-size:15px;color:#184636;background:var(--grad-mint);box-shadow:var(--sh-mint-sm);margin:6px 0;}
+.cwrap{position:relative;display:grid;place-items:center;}
+.cbtn{width:52px;height:52px;border-radius:18px;display:grid;place-items:center;color:var(--mut);}
+.cbtn svg{width:21px;height:21px;}
+.cbtn.on{color:var(--mint-ink);background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+.cbtn.down{color:#B4595A;}
+.cdiv{width:38px;height:1px;background:var(--line);margin:7px 0;}
+.cfoot{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:5px;}
+/* счётчик поверх иконки */
+.cbd{position:absolute;top:4px;right:4px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;display:grid;place-items:center;font-size:10px;font-weight:900;color:#fff;background:linear-gradient(135deg,#E28B8B,#C25E5E);box-shadow:0 0 0 2px #F6F2EB,0 2px 4px rgba(150,60,60,.4);}
+/* подпись при наведении — раскрывается вправо (реф 1/3) */
+.clabel{position:absolute;left:60px;top:50%;transform:translateY(-50%);white-space:nowrap;background:#33322E;color:#F5F2EC;border-radius:13px;padding:10px 14px;font-size:13px;font-weight:800;display:flex;align-items:center;gap:9px;z-index:5;box-shadow:0 0 0 1px rgba(255,255,255,.06),0 14px 26px -6px rgba(60,55,45,.5);}
+.clabel:before{content:"";position:absolute;left:-5px;top:50%;transform:translateY(-50%) rotate(45deg);width:10px;height:10px;background:#33322E;}
+.clbd{background:#C25E5E;color:#fff;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:900;}
 `;
 
 // line-иконки в стиле кита (stroke 2.2)
@@ -77,6 +97,14 @@ const item = (icon, label, o = {}) => {
   return `<div class="${cls}">${I[icon]}<span>${label}</span>${badge}</div>`;
 };
 const sec = (t) => `<div class="sbsec">${t}</div>`;
+
+// свёрнутый пункт: иконка + опц. счётчик-точка + опц. hover-подпись
+const cbtn = (icon, o = {}) => `<div class="cwrap">
+  <div class="cbtn${o.on ? " on" : ""}${o.down ? " down" : ""}">${I[icon]}</div>
+  ${o.badge ? `<span class="cbd">${o.badge}</span>` : ""}
+  ${o.label ? `<span class="clabel">${o.label}${o.badge ? `<b class="clbd">${o.badge}</b>` : ""}</span>` : ""}
+</div>`;
+const cdiv = `<div class="cdiv"></div>`;
 
 // профиль-блок
 const prof = (initials, name, roleDot, roleText) =>
@@ -147,6 +175,42 @@ const boards = {
     ${item("lock","Безопасность")}
     ${item("crown","Моя команда")}
     ${foot()}
+  </aside>
+</div>`,
+
+// ── Свёрнутый: только иконки, подпись по наведению ───────────────────────────
+"Collapsed": `<div class="sbstage">
+  <div class="sbcap">Свёрнутый · только иконки</div>
+  <aside class="sbc">
+    <div class="chead">
+      <div class="clogo">L</div>
+      <div class="cexp" title="Развернуть">${I.chev.replace("M15 6l-6 6 6 6","M9 6l6 6-6 6")}</div>
+    </div>
+    <div class="cav">СБ</div>
+    ${cbtn("search")}
+    ${cdiv}
+    ${cbtn("trophy",{on:true})}
+    ${cbtn("users")}
+    ${cbtn("table")}
+    ${cbtn("versus")}
+    ${cbtn("star")}
+    ${cdiv}
+    ${cbtn("studio")}
+    ${cbtn("monitor")}
+    ${cbtn("eye")}
+    ${cbtn("draft")}
+    ${cbtn("shield",{badge:"3",label:"Модерация"})}
+    ${cbtn("archive")}
+    ${cdiv}
+    ${cbtn("user")}
+    ${cbtn("lock")}
+    ${cbtn("crown")}
+    ${cbtn("palette")}
+    <div class="cfoot">
+      ${cbtn("moon")}
+      ${cbtn("book")}
+      ${cbtn("out",{down:true})}
+    </div>
   </aside>
 </div>`,
 };
