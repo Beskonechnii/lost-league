@@ -46,7 +46,7 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:'Nunito',syst
 .press{background:linear-gradient(135deg,#B8E2CB,#8CC9AA);box-shadow:0 0 0 1px rgba(255,255,255,.3),inset 3px 4px 8px rgba(40,105,76,.5),inset -1px -1px 2px rgba(255,255,255,.4);transform:translateY(3px);}
 .disabled{color:#9C988F;background:linear-gradient(135deg,#EFEBE2,#DFD9CD);box-shadow:0 0 0 1px rgba(255,255,255,.4),inset 1px 1px 2px rgba(255,255,255,.6),inset -1px -2px 3px rgba(150,135,105,.2),0 3px 6px rgba(120,108,78,.12);}
 .quiet{color:var(--ink);background:var(--grad-surface);box-shadow:var(--sh-raise-sm);}
-.ib{width:52px;padding:0;justify-content:center;} .ib.sm{width:42px;} .ib.lg{width:60px;}
+.ib{width:52px;padding:0;justify-content:center;} .ib.sm{width:42px;} .ib.lg{width:60px;} .ib.round{border-radius:999px;}
 .spin{width:16px;height:16px;border-radius:50%;border:3px solid rgba(24,70,54,.3);border-top-color:#184636;display:inline-block;}
 /* pills */
 .pill{display:inline-flex;align-items:center;border-radius:20px;padding:11px 18px;font-size:13px;font-weight:800;color:var(--mut);}
@@ -188,6 +188,13 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:'Nunito',syst
     <div><div class="lbl">Active</div><span class="btn solid press">Открыть турнир</span></div>
     <div><div class="lbl">Loading</div><span class="btn solid"><span class="spin"></span>Отправка…</span></div>
     <div><div class="lbl">Disabled</div><span class="btn disabled">Недоступно</span></div>
+  </div>
+  <div class="lbl" style="margin-top:18px">Иконочные — квадрат / круг</div>
+  <div class="row" style="gap:11px">
+    <span class="btn solid ib"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></span>
+    <span class="btn solid ib round"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></span>
+    <span class="btn quiet ib"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg></span>
+    <span class="btn quiet ib round"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg></span>
   </div>
   <div class="h2">Кнопки · quiet</div>
   <div class="row"><span class="btn sm quiet">Small</span><span class="btn quiet">Подать заявку</span><span class="btn lg quiet">Large</span></div>
