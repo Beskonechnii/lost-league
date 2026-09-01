@@ -1,12 +1,16 @@
 /* ============================================================================
- * POUF — the theme file. Tokens as Tailwind v4 @theme, the clay recipe as
- * custom properties, shared cushion machinery as @utility recipes.
+ * POUF — файл темы. Токены — как @theme Tailwind v4, рецепт «пластилина» — как
+ * кастомные свойства, общая машинерия подушек — как @utility.
  *
- * Visual language adapted from novusgfx/retro-design-system (MIT),
- * styles/39-claymorphism. One deliberate deviation, kept from the fork:
- * ink on pastel, never white — the reference's white-on-pastel .btn fails
- * WCAG AA (1.25:1–1.99:1 measured); its own -pink/-mint/-yellow variants
- * use ink (6.10:1–9.75:1). We follow the better instinct uniformly.
+ * ЗНАЧЕНИЯ ЦВЕТА И ФОРМЫ ЖИВУТ ТОЛЬКО ЗДЕСЬ и приезжают из Кита элементов
+ * (Light Clay). Компонент, который пишет цвет, тень или радиус литералом, —
+ * это второй источник правды; такой литерал заводится токеном ниже.
+ *
+ * Каркас (компоненты, утилиты подушек, оверлеи) взят из novusgfx/
+ * retro-design-system (MIT), styles/39-claymorphism. Одно осознанное отличие,
+ * унаследованное от форка: на пастели всегда ink, никогда белый — у оригинала
+ * белый на пастели проваливает WCAG AA (замерено 1.25:1–1.99:1), тогда как его
+ * же варианты -pink/-mint/-yellow дают 6.10:1–9.75:1. Держим ink везде.
  * ========================================================================= */
 /* LOST: Tailwind уже импортирован в globals.css — второй @import ломает preflight.
  * Этот файл подключается ИЗ globals.css, поэтому tailwind здесь не тянем. */
@@ -15,90 +19,156 @@
  * the utility classes used in these sources. */
 @source './';
 
+/* ============================================================================
+ * ТОКЕНЫ LIGHT CLAY — перенос Кита элементов (Э2 RELEASE-PLAN).
+ *
+ * Источник значений — артборд `Main.dc.html` канонического Кита: бумага
+ * #E7E3D8, ink #33322E, мятный акцент, пластилиновые тени sh-raise/sh-mint/
+ * sh-carve, Nunito. Ничего не подбирается «на глаз»: если цвета или тени тут
+ * не хватает — она сначала заводится артбордом в Ките, потом приезжает сюда.
+ *
+ * Имена СЕМАНТИЧЕСКИЕ (bg / surface / ink / accent-fill / sh-raise), а не по
+ * оттенку («мятный», «бумага»). Это цена одной строки сейчас и экономия целого
+ * переезда потом: тёмная тема после релиза — это один блок переопределений
+ * (см. секцию DARK ниже), а не правка двух десятков компонентов.
+ *
+ * Почему акцент называется --accent-fill, а не --accent: сырой --accent уже
+ * занят бренд-акцентом LOST — его пишет панель /admin/theme инлайном на <html>,
+ * и на него же сидит весь shadcn-мост в globals.css. Второе объявление на :root
+ * перекрасило бы кнопки всего сайта.
+ * ========================================================================= */
 @theme {
-  /* -- Palette: verbatim from the reference ------------------------------ */
-  --color-bg: #f0e9ff;
-  /* LOST: переименованы из --color-ink/--color-muted — они конфликтуют с нашими
-   * одноимёнными токенами в globals.css (у нас ink=белый). Значения не тронуты. */
-  --color-clay-ink: #3a2e5c;
-  --color-clay-muted: #71609b;
-  --color-pink: #ffb3d1;
-  --color-purple: #c9a8ff;
-  --color-blue: #9ec8ff;
-  --color-mint: #a8f0d0;
-  --color-yellow: #ffe58a;
-  --color-orange: #ffb38a;
-  --color-surface: #ffffff;
+  /* -- Палитра. @theme — словарь для утилит Tailwind (bg-*, text-*).
+   *    Ключи --color-clay-* так названы исторически: --color-ink/--color-muted
+   *    заняты нашей тёмной системой в globals.css. -------------------------- */
+  /* Поверхности: бумага (нижний фон) → подушка → дно вдавленного */
+  --color-bg: #e7e3d8;
+  --color-surface: #f8f4ec;
+  --color-carve: #ece7dd;
 
-  /* 'Nunito Variable' FIRST, and it is not interchangeable with 'Nunito':
-   * @fontsource-variable/nunito — the package the install docs tell you to
-   * import — registers its @font-face under the family name 'Nunito Variable'.
-   * A stack that only says 'Nunito' therefore matches nothing, silently falls
-   * through to SF Pro Rounded / Helvetica Neue on macOS and DejaVu Sans on
-   * Linux, and 1st-Pouf renders in a system face on every machine. Confirmed with
-   * Chrome's CSS.getPlatformFontsForNode: the nav was drawing in Helvetica Neue
-   * while document.fonts.check('Nunito Variable') returned false.
-   * 'Nunito' is kept behind it for anyone on the static @fontsource/nunito
-   * package, which does register that name. */
+  /* Текст: ровно три ступени, как в Ките (ink / mut / sub) */
+  --color-clay-ink: #33322e;
+  --color-clay-muted: #807c73;
+  --color-clay-subtle: #aeaaa0;
+
+  /* Линии: тонкая и плотная */
+  --color-line: #e0dace;
+  --color-line-strong: #d3ccbe;
+
+  /* Акцент и текст на нём */
+  --color-accent-fill: #a9dcc3;
+  --color-on-accent: #184636;
+
+  /* Статусы: заливки алертов Кита (.ok/.warn/.err/.info) и их ink.
+   * Кит держит по два оттенка на статус — здесь конечный (насыщенный),
+   * градиент целиком лежит ниже в --grad-*. */
+  --color-ok: #9cd3b6;
+  --color-ok-ink: #184636;
+  --color-warn: #e8c56e;
+  --color-warn-ink: #7a5a16;
+  --color-err: #e39191;
+  --color-err-ink: #7c2f2f;
+  --color-info: #98c5e4;
+  --color-info-ink: #1e4a66;
+
+  /* -- Устаревшие имена-по-оттенку. Их зовут утилитами (bg-mint, text-pink)
+   *    ~20 компонентов из трёх параллельных библиотек; вычищаются на Э3
+   *    вместе со слиянием. До тех пор — алиасы на семантику выше, чтобы
+   *    значение жило в одном месте. -------------------------------------- */
+  --color-mint: var(--color-accent-fill);
+  --color-purple: var(--color-accent-fill);
+  --color-pink: var(--color-err);
+  --color-blue: var(--color-info);
+  --color-yellow: var(--color-warn);
+  /* Оранжевого в Ките нет: внимание там жёлтое. Алиас на warn до Э3. */
+  --color-orange: var(--color-warn);
+
+  /* -- Шрифт. Nunito из Кита; 'Nunito Variable' ПЕРВЫМ и не взаимозаменяем
+   *    с 'Nunito': пакет @fontsource-variable/nunito (он и подключён в
+   *    layout.tsx) регистрирует @font-face именно под этим именем. Стек
+   *    только с 'Nunito' не матчится ни на что и молча падает в системный
+   *    SF Pro Rounded / DejaVu Sans. 'Nunito' оставлен следом — для статического
+   *    пакета @fontsource/nunito, который регистрирует то имя. --------------- */
   --font-pouf: 'Nunito Variable', 'Nunito', 'SF Pro Rounded', 'Helvetica Neue', system-ui, sans-serif;
 
-  /* -- Radii: verbatim (card 32, control 20, blob 24) -------------------- */
-  --radius-card: 32px;
-  --radius-control: 20px;
+  /* -- Радиусы Кита. Форма читается как размер: чем крупнее блок, тем круглее.
+   *    board 46 — полотно раздела, card 30 — подушка, blob 24 — вложенная
+   *    группа (сегменты, меню), control 22 — кнопка и поле, control-sm 18 —
+   *    мелкая кнопка/вкладка/пункт меню, chip 16 — мелкий блок. ----------- */
+  --radius-board: 46px;
+  --radius-card: 30px;
   --radius-blob: 24px;
+  --radius-control: 22px;
+  --radius-control-sm: 18px;
+  --radius-chip: 16px;
   --radius-pill: 999px;
 }
 
 :root {
-  /* -- Legacy token aliases. Components and the recipes below speak these
-   *    names; @theme above is the Tailwind-facing vocabulary. Both resolve
-   *    to the same values. -------------------------------------------- */
+  /* -- Короткие алиасы. Собственный CSS компонентов говорит на них
+   *    (--ink, --surface, --s3), утилиты Tailwind — на @theme-именах выше.
+   *    Значение одно, адреса два. ---------------------------------------- */
   --bg: var(--color-bg);
+  --surface: var(--color-surface);
+  --carve: var(--color-carve);
   --ink: var(--color-clay-ink);
   --muted: var(--color-clay-muted);
-  --pink: var(--color-pink);
-  --purple: var(--color-purple);
-  --blue: var(--color-blue);
-  --mint: var(--color-mint);
-  --yellow: var(--color-yellow);
-  --orange: var(--color-orange);
-  --surface: var(--color-surface);
+  --subtle: var(--color-clay-subtle);
+  --line: var(--color-line);
+  --line-strong: var(--color-line-strong);
+  --accent-fill: var(--color-accent-fill);
   --font: var(--font-pouf);
+  --r-board: var(--radius-board);
   --r-card: var(--radius-card);
-  --r-control: var(--radius-control);
   --r-blob: var(--radius-blob);
+  --r-control: var(--radius-control);
+  --r-control-sm: var(--radius-control-sm);
+  --r-chip: var(--radius-chip);
   --r-pill: var(--radius-pill);
 
-  /* -- Ink that sits ON a pastel accent fill (a solid Button, a Badge, a Blob,
-   *    an active NavLink) rather than on the page.
-   *
-   *    It is a separate token ONLY because of dark mode. The accents stay
-   *    pastel in both themes — they are the brand — so text on them must stay
-   *    dark, while --ink flips to near-white for the page. Collapsing the two
-   *    puts #efe9ff on #c9a8ff, which is unreadable. In light mode this
-   *    resolves to exactly --ink, so every computed colour is unchanged. --- */
-  --on-accent: var(--ink);
-  /* Secondary copy on a pastel fill. Fixed dark ink rather than `--muted`,
-   * because `--muted` follows the page theme and becomes lavender in dark
-   * mode. #493b64 clears 5.03:1 on the lowest-contrast brand accent. */
-  --on-accent-muted: #493b64;
-  /* Inverse and code surfaces intentionally diverge in dark mode. Simply
-   * swapping page ink/background makes command bars and inverse pills turn
-   * into large white slabs, which overwhelms an otherwise dark interface. */
-  --inverse-surface: var(--ink);
-  --inverse-ink: var(--bg);
-  --code-surface: var(--ink);
-  --code-ink: var(--bg);
+  /* Устаревшие имена-по-оттенку — см. блок в @theme. */
+  --mint: var(--color-mint);
+  --purple: var(--color-purple);
+  --pink: var(--color-pink);
+  --blue: var(--color-blue);
+  --yellow: var(--color-yellow);
+  --orange: var(--color-orange);
 
-  /* -- Semantic aliases. Screens speak intent ("this is a loss"), never
-   *    colour ("this is pink"), so a re-theme is a change here alone. ---- */
-  --up: var(--mint);
-  --down: var(--pink);
-  --warn: var(--yellow);
-  --info: var(--blue);
-  --idle: var(--purple);
+  /* -- Градиенты Кита. В Ките ни одна поверхность не заливается плоским
+   *    цветом: свет идёт ↖, поэтому у подушки есть светлая и теневая
+   *    сторона. Плоские --surface/--accent-fill выше — это их «средний»
+   *    цвет для мест, где градиент неуместен (текст, иконка, точка). ------ */
+  --grad-surface: linear-gradient(135deg, #ffffff, #f8f4ec 55%, #eee8dd);
+  --grad-accent: linear-gradient(135deg, #d5f2e2, #a9dcc3 52%, #8ccbad);
+  --grad-board: linear-gradient(135deg, #fdfbf6, #f1ece1);
+  --grad-ok: linear-gradient(135deg, #d6f0e1, #9cd3b6);
+  --grad-warn: linear-gradient(135deg, #f7e3aa, #e8c56e);
+  --grad-err: linear-gradient(135deg, #f5c8c8, #e39191);
+  --grad-info: linear-gradient(135deg, #c4e2f3, #98c5e4);
 
-  /* -- Spacing scale. The reference uses 6/8/10/12/14/16/20/24/26/32/40. -- */
+  /* -- Текст на акцентной заливке. Отдельный токен не ради светлой темы (тут
+   *    он просто мятный ink), а ради второй палитры: акценты остаются
+   *    пастельными в обеих темах — это бренд, — поэтому надпись на них обязана
+   *    остаться тёмной, пока --ink уезжает в почти белый. ------------------ */
+  --on-accent: var(--color-on-accent);
+  /* Вторичная подпись на акцентной заливке (Кит: .tile.acc .tl). */
+  --on-accent-muted: rgba(24, 70, 54, 0.72);
+  /* Инверсные поверхности (командная строка, тултип Кита) — не просто
+   * перевёрнутые ink/bg: в тёмной теме такая инверсия давала бы белые плиты. */
+  --inverse-surface: #33322e;
+  --inverse-ink: #f5f2ec;
+  --code-surface: #33322e;
+  --code-ink: #f5f2ec;
+
+  /* -- Семантика состояний. Экраны говорят намерением («это поражение»),
+   *    а не цветом («это розовое»), поэтому переезд темы — правка здесь. -- */
+  --up: var(--color-ok);
+  --down: var(--color-err);
+  --warn: var(--color-warn);
+  --info: var(--color-info);
+  --idle: var(--accent-fill);
+
+  /* -- Шкала отступов Кита: 6/8/12/16/20/24/32/40 + 48 (поля полотна). ---- */
   --s1: 6px;
   --s2: 8px;
   --s3: 12px;
@@ -107,57 +177,110 @@
   --s6: 24px;
   --s7: 32px;
   --s8: 40px;
+  --s9: 48px;
 
-  /* -- The clay recipe. Three shadows encoding one physical claim:
-   *    light from above (inner top highlight), the surface's own thickness
-   *    (inner floor shadow), and the cast onto the page (outer drop). ---- */
-  /* -- Floor thickness as tokens, because the floor inset paints INSIDE the
-   *    box: symmetric padding therefore reads bottom-heavy — the lip eats
-   *    that much of the lower whitespace. White containers below bias their
-   *    vertical padding by half their lip (same total height, optically
-   *    centred content). The blob solves the same problem with a
-   *    translateY(-2px) on its glyph. ---------------------------------- */
-  --lip: 10px;
-  --lip-row: 6px;
-  --pouf-card:
-    inset 0 calc(-1 * var(--lip)) 0 rgba(201, 168, 255, 0.35),
-    inset 0 6px 0 rgba(255, 255, 255, 0.9),
-    0 20px 40px rgba(58, 46, 92, 0.15);
-  --pouf-control:
-    inset 0 -6px 0 rgba(0, 0, 0, 0.15), inset 0 4px 0 rgba(255, 255, 255, 0.35),
-    0 8px 16px rgba(58, 46, 92, 0.2);
-  --pouf-control-active:
-    inset 0 -3px 0 rgba(0, 0, 0, 0.15), inset 0 2px 0 rgba(255, 255, 255, 0.35),
-    0 4px 10px rgba(58, 46, 92, 0.15);
-  --pouf-blob:
-    inset 0 -8px 0 rgba(0, 0, 0, 0.12), inset 0 4px 0 rgba(255, 255, 255, 0.4),
-    0 10px 20px rgba(58, 46, 92, 0.15);
-  --pouf-field:
-    inset 0 -4px 0 rgba(0, 0, 0, 0.06), inset 0 4px 0 rgba(255, 255, 255, 0.7),
-    inset 0 0 0 2px rgba(201, 168, 255, 0.2);
-  --pouf-field-focus:
-    inset 0 -4px 0 rgba(0, 0, 0, 0.06), inset 0 4px 0 rgba(255, 255, 255, 0.7),
-    inset 0 0 0 3px var(--purple);
+  /* -- Начертания Кита: интерфейс набран жирно, обычного 400 в нём нет.
+   *    700 — текст, 800 — подписи и элементы управления, 900 — числа
+   *    и заголовки. ------------------------------------------------------ */
+  --fw-body: 700;
+  --fw-strong: 800;
+  --fw-display: 900;
 
-  /* -- Cushion rows. "Every row a cushion" at 32px padding makes a 50-row
-   *    log unnavigable, so rows get their own tighter scale. The shadow
-   *    recipe is kept whole -- only the padding tightens. ---------------- */
-  --pouf-row:
-    inset 0 calc(-1 * var(--lip-row)) 0 rgba(201, 168, 255, 0.3),
-    inset 0 4px 0 rgba(255, 255, 255, 0.9),
-    0 8px 18px rgba(58, 46, 92, 0.1);
-  --pouf-row-hover:
-    inset 0 calc(-1 * var(--lip-row)) 0 rgba(201, 168, 255, 0.45),
-    inset 0 4px 0 rgba(255, 255, 255, 0.95),
-    0 12px 24px rgba(58, 46, 92, 0.16);
+  /* -- Тени Кита. Каждая — физическое утверждение, а не «красивое размытие»:
+   *    оконтовка (0 0 0 1px белым), свет сверху-слева, собственная толщина
+   *    плиты снизу-справа, приступочек-пол и мягкий отброс на бумагу.
+   *    Отсюда и деление: raise — приподнято, carve — вдавлено, accent —
+   *    приподнято и мятное. Значения перенесены из Кита буква в букву. --- */
+  --sh-raise:
+    0 0 0 1px rgba(255, 255, 255, 0.55),
+    inset 2px 3px 4px -1px rgba(255, 255, 255, 0.95),
+    inset -3px -4px 7px -2px rgba(150, 135, 105, 0.3),
+    inset 0 calc(-1 * var(--lip)) 0 rgba(178, 164, 132, 0.24),
+    0 4px 7px rgba(120, 108, 78, 0.15),
+    0 22px 40px -8px rgba(120, 108, 78, 0.3),
+    0 58px 88px -24px rgba(120, 108, 78, 0.22);
+  /* Мелкая — пилюли, чипы, плитки, строки: тот же рецепт без дальнего отброса. */
+  --sh-raise-sm:
+    0 0 0 1px rgba(255, 255, 255, 0.55),
+    inset 2px 2px 3px -1px rgba(255, 255, 255, 0.95),
+    inset -2px -3px 4px -1px rgba(150, 135, 105, 0.28),
+    0 3px 5px rgba(120, 108, 78, 0.16),
+    0 12px 22px -5px rgba(120, 108, 78, 0.28);
+  /* Полотно раздела — самая крупная плита, лежит прямо на бумаге. */
+  --sh-board:
+    0 0 0 1px rgba(255, 255, 255, 0.6),
+    inset 3px 4px 6px -1px rgba(255, 255, 255, 0.95),
+    inset -4px -5px 10px -2px rgba(150, 135, 105, 0.22),
+    inset 0 -4px 0 rgba(178, 164, 132, 0.2),
+    0 6px 10px rgba(120, 108, 78, 0.14),
+    0 34px 60px -10px rgba(120, 108, 78, 0.3),
+    0 90px 130px -30px rgba(120, 108, 78, 0.2);
+  /* Акцент: тот же свет, но тени зелёные — мятная плита не отбрасывает бежевую. */
+  --sh-accent:
+    0 0 0 1px rgba(255, 255, 255, 0.4),
+    inset 2px 3px 4px -1px rgba(255, 255, 255, 0.9),
+    inset -3px -4px 6px -2px rgba(70, 140, 105, 0.4),
+    inset 0 calc(-1 * var(--lip)) 0 rgba(84, 150, 116, 0.45),
+    0 4px 7px rgba(80, 150, 115, 0.26),
+    0 16px 28px -6px rgba(80, 150, 115, 0.42),
+    0 34px 50px -16px rgba(80, 150, 115, 0.26);
+  --sh-accent-sm:
+    0 0 0 1px rgba(255, 255, 255, 0.4),
+    inset 2px 2px 3px -1px rgba(255, 255, 255, 0.9),
+    inset -2px -3px 4px -1px rgba(70, 140, 105, 0.38),
+    0 3px 5px rgba(80, 150, 115, 0.26),
+    0 12px 22px -5px rgba(80, 150, 115, 0.42);
+  /* Нажатие: свет уходит внутрь, плита садится в бумагу (Кит, .press). */
+  --sh-accent-press:
+    0 0 0 1px rgba(255, 255, 255, 0.3),
+    inset 3px 4px 8px rgba(40, 105, 76, 0.5),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.4);
+  /* Вдавленное: поля ввода, дорожки, лунки, сегмент-группа. */
+  --sh-carve:
+    inset 2px 3px 5px rgba(120, 108, 78, 0.26),
+    inset -1px -1px 1px rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.4);
+  /* Фокус — бирюзовое кольцо Кита (.field.focus / .f). */
+  --sh-focus: 0 0 0 4px rgba(18, 190, 178, 0.5);
+  --focus-ring: rgba(18, 190, 178, 0.55);
+
+  /* -- Толщина приступочка. Он рисуется ВНУТРИ коробки, поэтому симметричный
+   *    padding читается низом тяжелее — компоненты смещают вертикальные поля
+   *    на половину приступочка. В Ките он 3px (inset 0 -3px 0). ---------- */
+  --lip: 3px;
+  --lip-row: 3px;
+
+  /* -- Совместимость: рецепты под старыми именами. Их зовут компоненты pouf
+   *    (cushion-card, cushion-field…) и утилиты ниже. Собственных значений
+   *    больше не держат — только адресуют тени Кита. Уйдут на Э3 вместе со
+   *    слиянием библиотек. ------------------------------------------------ */
+  --pouf-card: var(--sh-raise);
+  --pouf-row: var(--sh-raise-sm);
+  --pouf-row-hover: var(--sh-raise);
+  --pouf-control: var(--sh-accent);
+  --pouf-control-active: var(--sh-accent-press);
+  --pouf-blob: var(--sh-accent-sm);
+  --pouf-field: var(--sh-carve);
+  --pouf-field-focus: var(--sh-carve), var(--sh-focus);
 }
 
 /* ============================================================================
- * DARK
+ * ТЁМНАЯ ТЕМА — тот самый «один блок переопределений».
  *
- * Opt-in via <html data-theme="dark"> or <html class="dark">. Nothing here
- * touches the light values,
- * so the snapshot goldens (which capture the default theme) cannot move.
+ * По решению от 01.09 (RELEASE-PLAN §B) на релиз идёт ОДНА тема — светлый Кит
+ * выше. Этот блок пока остаётся не как вторая палитра продукта, а как рабочее
+ * состояние прода: `data-theme="dark"` ещё висит на <html> и на нескольких
+ * обёртках (layout.tsx, site-nav.tsx, admin-sidebar.tsx…), а панель /admin/theme
+ * дописывает поверх свои --lost-pouf-*. Пока это так, сайт выглядит как прежде,
+ * и переезд на Кит не размазывается по двум этапам. Снимается на Э3 вместе со
+ * слиянием UI-библиотек; после релиза сюда же вернётся настоящая тёмная тема —
+ * и вся её цена будет в этом блоке, потому что имена токенов семантические.
+ *
+ * Значения ниже — прежняя сливово-фиолетовая палитра pouf, не Кит: их задача —
+ * ничего не сломать до Э3.
+ *
+ * Палитра — лёгкая половина. Тяжёлая в том, что подушка — это утверждение
+ * о свете, и ниже расписано, почему её три тени нельзя просто перекрасить.
  *
  * The palette is the easy half. The hard half is that a cushion is a claim
  * about light: an inner top highlight (light from above), an inner floor
@@ -192,6 +315,16 @@
   --surface: var(--color-surface);
   --ink: var(--color-clay-ink);
   --muted: var(--color-clay-muted);
+
+  /* Приступочек прежней толщины. В Ките он 3px, у сливовой подушки был 10/6 —
+   * и на нём же сидит вертикальный padding компонентов (±lip/2). Пиним, чтобы
+   * до Э3 прод не поехал по высотам. Уйдёт вместе с блоком. */
+  --lip: 10px;
+  --lip-row: 6px;
+
+  /* Новые токены Кита (--carve, --subtle, --line*, --grad-*) здесь нарочно не
+   * дублируются: пока их никто не читает, а блок временный. Настоящая тёмная
+   * тема после релиза заведёт их разом. */
 
   /* Pinned, not inherited: --ink is light here, and this must stay dark. */
   --on-accent: #2a2145;
