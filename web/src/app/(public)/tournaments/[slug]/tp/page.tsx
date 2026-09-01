@@ -6,7 +6,7 @@ import { can } from "@/lib/account";
 import { notFound } from "next/navigation";
 import { tournamentBySlug } from "@/lib/tournaments";
 import { tpByTournament } from "@/lib/tp";
-import { SectionHeader } from "@/app/_components/ui";
+import { SectionHeader } from "@/components/pouf/blocks";
 import { PlayerAvatar } from "@/app/(public)/roster/_components/avatar";
 
 export const dynamic = "force-dynamic";
@@ -53,7 +53,7 @@ export default async function TpPage({
             <span>Очки MVP{all ? " за всё время" : ` · ${current.short ?? current.name}`}</span>
             <Link
               href={all ? `/tournaments/${slug}/tp` : `/tournaments/${slug}/tp?all=1`}
-              className="rounded-[12px] bg-surface-2 px-3 py-1 text-xs font-black hover:text-[var(--purple)]"
+              className="rounded-[12px] bg-surface-2 px-3 py-1 text-xs font-black hover:text-[var(--accent-ink)]"
             >
               {all ? "Текущий турнир" : "За всё время"}
             </Link>
@@ -68,7 +68,7 @@ export default async function TpPage({
             <>
               {" "}
               Проставить можно в{" "}
-              <Link href="/admin/tp" className="text-[var(--purple)] hover:underline">
+              <Link href="/admin/tp" className="text-[var(--accent-ink)] hover:underline">
                 админке
               </Link>
               .
@@ -99,7 +99,7 @@ export default async function TpPage({
                     </div>
                   </div>
                   <span className="shrink-0 text-right">
-                    <span className="text-xl font-black tabular-nums text-[var(--purple)]">{p.score}</span>
+                    <span className="text-xl font-black tabular-nums text-[var(--accent-ink)]">{p.score}</span>
                     <span className="ml-1 text-xs font-bold text-muted">TP</span>
                   </span>
                 </Link>

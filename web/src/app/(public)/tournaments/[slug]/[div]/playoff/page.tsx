@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { divisionOfTournament } from "@/lib/tournaments";
 import { QUALIFICATION } from "@/lib/qualification";
 import { resolveBracket } from "@/lib/playoff";
-import { Eyebrow, SectionHeader } from "@/app/_components/ui";
+import { Eyebrow } from "@/components/pouf/text";
+import { SectionHeader } from "@/components/pouf/blocks";
 import { BracketView } from "./_components/bracket";
 
 export const dynamic = "force-dynamic";
@@ -59,7 +60,7 @@ export default async function PlayoffPage({ params }: { params: Promise<{ slug: 
               <Link
                 key={t.teamId}
                 href={`/roster/teams/${t.teamId}`}
-                className="rounded-[14px] bg-surface px-3 py-1.5 text-xs font-bold text-ink-muted cushion-field transition hover:text-rose-400"
+                className="rounded-[14px] bg-surface px-3 py-1.5 text-xs font-bold text-ink-muted cushion-field transition hover:text-rose-700"
               >
                 {t.name}
                 <span className="ml-1 text-muted">

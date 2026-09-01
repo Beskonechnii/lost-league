@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { currentTournament, listTournaments, TOURNAMENT_STATUS_LABELS, type TournamentStatus } from "@/lib/tournaments";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/pouf/Button";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 import { STATUS_TONE } from "./_components/fields";
-import { FORM_MAX_W } from "@/app/_components/ui";
+import { FORM_MAX_W } from "@/components/pouf/blocks";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Турниры" };
@@ -24,7 +24,7 @@ export default async function TournamentsPage() {
 
   return (
     <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-300/80">Служебная часть</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-700">Служебная часть</p>
       <h1 className="mt-1.5 text-xl font-bold tracking-tight">Турниры</h1>
       <p className="mt-1.5 text-sm text-ink-muted">
         Сезон или кубок целиком: описание, сроки, дивизионы и составы. Вкладкой в шапке сайта
@@ -50,7 +50,7 @@ export default async function TournamentsPage() {
                 {/* Какой турнир открывает вкладка в шапке — видно сразу: при двух-трёх сразу
                     непонятно, чьи таблицы показывает сайт. */}
                 {t.id === current?.id && (
-                  <span className="rounded-md border border-violet-900 bg-violet-950/40 px-2 py-0.5 text-xs text-violet-300">
+                  <span className="rounded-md border border-violet-200 bg-violet-100 px-2 py-0.5 text-xs text-violet-700">
                     вкладка в шапке
                   </span>
                 )}

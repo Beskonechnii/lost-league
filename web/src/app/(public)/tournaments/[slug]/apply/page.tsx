@@ -6,7 +6,7 @@ import { myApplications, parseDraft } from "@/lib/team-application";
 import { botStartLink } from "@/lib/telegram";
 import { slugify } from "@/lib/profiles";
 import { roleLabel } from "@/lib/roles";
-import { SectionHeader } from "@/app/_components/ui";
+import { SectionHeader } from "@/components/pouf/blocks";
 import { ApplyBoard } from "./apply-board";
 import { applyPool, takenSpots, captainReadyTeams, type PoolEntry } from "./pool";
 import { placeByRole } from "./slots";
@@ -119,7 +119,7 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
                     {draft.players.map((p) => `${p.nickname} (${roleLabel(p.role) ?? "роль не указана"})`).join(", ")}
                   </p>
                 )}
-                {a.notes && <p className="mt-1 text-xs text-amber-300">Причина возврата: {a.notes}</p>}
+                {a.notes && <p className="mt-1 text-xs text-amber-700">Причина возврата: {a.notes}</p>}
               </li>
             );
           })}
@@ -147,7 +147,7 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
             </p>
           )}
           {editable && (
-            <p className="rounded-md border border-sky-900 bg-sky-950/40 px-3 py-2 text-xs text-sky-300">
+            <p className="rounded-md border border-sky-200 bg-sky-100 px-3 py-2 text-xs text-sky-700">
               {editable.status === "rejected"
                 ? "Заявка возвращена — поправьте состав и отправьте снова, новая строка в очереди не появится."
                 : editable.status === "approved"

@@ -18,11 +18,11 @@ export default async function TeamEditPage({ params }: { params: Promise<{ id: s
   return (
     <div className="space-y-6 font-pouf">
       <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-muted">
-        <Link href="/roster/teams" className="hover:text-[var(--purple)]">
+        <Link href="/roster/teams" className="hover:text-[var(--accent-ink)]">
           Команды
         </Link>
         <span className="text-ink-subtle">/</span>
-        <Link href={`/roster/teams/${team.id}`} className="hover:text-[var(--purple)]">
+        <Link href={`/roster/teams/${team.id}`} className="hover:text-[var(--accent-ink)]">
           {team.name}
         </Link>
         <span className="text-ink-subtle">/</span>
@@ -34,7 +34,7 @@ export default async function TeamEditPage({ params }: { params: Promise<{ id: s
           <h1 className="text-[28px] font-black tracking-[-0.5px] text-ink md:text-4xl">{team.name}</h1>
           <p className="text-xs font-bold text-muted">slug: {team.slug} — ключ импорта составов и подбора файлов</p>
         </div>
-        <Link href={`/roster/teams/${team.id}`} className="text-sm font-bold text-muted hover:text-[var(--purple)]">
+        <Link href={`/roster/teams/${team.id}`} className="text-sm font-bold text-muted hover:text-[var(--accent-ink)]">
           ← к команде
         </Link>
       </div>

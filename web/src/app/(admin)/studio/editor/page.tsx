@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { Eyebrow } from "@/app/_components/ui";
+import { Eyebrow } from "@/components/pouf/text";
 import { CreateDesign } from "./_components/create-design";
 import { DeleteDesign } from "./_components/delete-design";
 import { GraphicsShelf } from "./_components/graphics-shelf";
@@ -94,7 +94,7 @@ function Section({
               <Link
                 href={`/studio/editor/${d.id}`}
                 className={`block rounded-card p-4 transition hover:-translate-y-1 ${
-                  locked ? "bg-purple/[0.12] cushion-field" : "bg-surface cushion-card"
+                  locked ? "bg-accent-fill/[0.12] cushion-field" : "bg-surface cushion-card"
                 } ${locked ? "" : "pr-12"}`}
               >
                 <div className="flex items-center gap-2">

@@ -24,7 +24,7 @@ export function Steps({ current, slug }: { current: StepKey; slug: string | null
         const done = i < now;
         const cls =
           i === now
-            ? "bg-purple text-[var(--on-accent)]"
+            ? "bg-accent-fill text-[var(--on-accent)]"
             : done
               ? "bg-surface-2 text-ink hover:text-accent-bright"
               : "bg-surface-2 text-ink-subtle";

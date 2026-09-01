@@ -6,8 +6,7 @@ import Link from "next/link";
 import type { SeriesRow } from "@/lib/series";
 import { BRACKETS, STAGES, playoffLabel, stageLabel } from "@/lib/stages";
 import { slotByKey, validScores } from "@/lib/playoff-bracket";
-// Страница целиком в стиле 1st-Pouf (claymorphism). Обёртка .pouf-lost + data-theme="dark"
-// в globals.css включает тёмные «подушки» и перекрашивает акцент в бренд-violet LOST.
+// Страница целиком на компонентах Кита («подушки» claymorphism).
 import { Button as PoufButton } from "@/components/pouf/Button";
 import { Input as PoufInput } from "@/components/pouf/Input";
 import { Card } from "@/components/pouf/surface";
@@ -151,7 +150,7 @@ function AttachGame({ seriesId, nextNumber, onDone }: { seriesId: number; nextNu
         {busy ? "Читаю…" : "Привязать"}
       </PoufButton>
       {error && (
-        <span className="text-[13px] font-bold text-[var(--orange)]">{error}</span>
+        <span className="text-[13px] font-bold text-[var(--warn)]">{error}</span>
       )}
     </div>
   );
@@ -262,7 +261,7 @@ function SeriesCard({ s, onChange }: { s: SeriesRow; onChange: () => void }) {
             </span>
             {s.away.name}
           </Link>
-          {s.guessed && <span className="text-[12px] font-bold text-[var(--orange)]">счёт под вопросом</span>}
+          {s.guessed && <span className="text-[12px] font-bold text-[var(--warn)]">счёт под вопросом</span>}
           {s.games.length > 0 && (
             <Text size="sm" muted>
               карт: {s.games.length}
@@ -338,11 +337,11 @@ function SeriesCard({ s, onChange }: { s: SeriesRow; onChange: () => void }) {
             <Text size="sm" muted>
               {s.games.length === 0 ? "карт нет — стата в рейтинги не идёт" : `карт: ${s.games.length}`}
             </Text>
-            <span className="text-[13px] font-bold tabular-nums text-[var(--purple)]">
+            <span className="text-[13px] font-bold tabular-nums text-[var(--accent-ink)]">
               {s.homeScore}:{s.awayScore}
             </span>
             {s.games.length > 0 && (
-              <span className="text-[13px] font-bold text-[var(--purple)]">
+              <span className="text-[13px] font-bold text-[var(--accent-ink)]">
                 <span className="group-open/games:hidden">развернуть</span>
                 <span className="hidden group-open/games:inline">свернуть</span>
               </span>
@@ -358,7 +357,7 @@ function SeriesCard({ s, onChange }: { s: SeriesRow; onChange: () => void }) {
                 </Text>
               </span>
               {g.openDotaMatchId ? (
-                <Link href={`/match/${g.openDotaMatchId}`} className="text-[13px] font-bold text-[var(--purple)] hover:underline">
+                <Link href={`/match/${g.openDotaMatchId}`} className="text-[13px] font-bold text-[var(--accent-ink)] hover:underline">
                   #{g.openDotaMatchId}
                 </Link>
               ) : (
@@ -374,7 +373,7 @@ function SeriesCard({ s, onChange }: { s: SeriesRow; onChange: () => void }) {
                   стата: {g.statsCount} игроков
                 </Text>
               ) : (
-                <span className="text-[13px] font-bold text-[var(--orange)]">стата не легла — игроков нет в ростере</span>
+                <span className="text-[13px] font-bold text-[var(--warn)]">стата не легла — игроков нет в ростере</span>
               )}
               <span className="ml-auto flex items-center gap-2">
                 {/* счёт серии на момент этой карты (накопительный): графика-заглушка между картами */}
@@ -542,7 +541,7 @@ export function SeriesAdmin({
   ];
 
   return (
-    <div className="pouf-lost space-y-6" data-theme="dark">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <Eyebrow>Служебная часть · архив{tournamentName ? ` · ${tournamentName}` : ""}</Eyebrow>
@@ -551,7 +550,7 @@ export function SeriesAdmin({
         <div className="flex flex-wrap items-center gap-4">
           <Text size="sm" muted>
             Карты отсюда идут в{" "}
-            <Link href={statsHref} className="font-bold text-[var(--purple)] hover:underline">
+            <Link href={statsHref} className="font-bold text-[var(--accent-ink)] hover:underline">
               статистику
             </Link>
           </Text>

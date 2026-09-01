@@ -12,7 +12,7 @@ import { parseTags, tagLabel } from "@/lib/player-tags";
 import { can } from "@/lib/account";
 import { currentTournament, getDivisions } from "@/lib/tournaments";
 import { buttonClasses } from "@/components/pouf/Button";
-import { Eyebrow } from "@/app/_components/ui";
+import { Eyebrow } from "@/components/pouf/text";
 import { Breadcrumbs } from "@/app/_components/breadcrumbs";
 import { PlayerAvatar, TeamLogo } from "../../_components/avatar";
 import { PlayerMiniCard } from "../../_components/player-card";
@@ -34,7 +34,7 @@ function ExternalLink({ href, children }: { href: string; children: React.ReactN
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="rounded-[14px] bg-surface px-3 py-1.5 text-xs font-bold text-ink-muted cushion-field transition-colors hover:text-[var(--purple)]"
+      className="rounded-[14px] bg-surface px-3 py-1.5 text-xs font-bold text-ink-muted cushion-field transition-colors hover:text-[var(--accent-ink)]"
     >
       {children}
     </a>
@@ -73,17 +73,17 @@ function TournamentCard({ row, accent }: { row: PlayerTournamentRow; accent: str
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-bold tabular-nums">
           <span className="text-muted">
             встречи{" "}
-            <span className="text-emerald-400">{row.series.wins}</span>
+            <span className="text-emerald-700">{row.series.wins}</span>
             <span className="text-ink-subtle">–</span>
-            <span className="text-rose-400">{row.series.losses}</span>
+            <span className="text-rose-700">{row.series.losses}</span>
           </span>
           <span className="text-muted">
             карты{" "}
-            <span className="text-emerald-400">{row.wins}</span>
+            <span className="text-emerald-700">{row.wins}</span>
             <span className="text-ink-subtle">–</span>
-            <span className="text-rose-400">{row.losses}</span>
+            <span className="text-rose-700">{row.losses}</span>
           </span>
-          <span className="text-[var(--purple)]">{row.winrate.toFixed(0)}%</span>
+          <span className="text-[var(--accent-ink)]">{row.winrate.toFixed(0)}%</span>
         </div>
       </div>
     </div>
@@ -179,14 +179,14 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
               <h1 className="text-3xl font-black tracking-[-0.5px] text-ink">
                 {player.orderNo != null && <span className="mr-2 align-middle text-xl font-black text-ink-subtle tabular-nums">#{player.orderNo}</span>}
                 {player.nickname}
-                {main?.isCaptain && <span className="ml-3 align-middle text-sm font-black text-[var(--purple)]">капитан</span>}
+                {main?.isCaptain && <span className="ml-3 align-middle text-sm font-black text-[var(--accent-ink)]">капитан</span>}
               </h1>
               {player.realName && <p className="font-bold text-ink-muted">{player.realName}</p>}
               {/* Плашки роли в лиге — кем человек является для лиги (игрок / кастер / организатор …) */}
               {tags.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {tags.map((t) => (
-                    <span key={t} className="rounded-pill bg-purple px-3 py-1 text-xs font-black text-[var(--on-accent)]">
+                    <span key={t} className="rounded-pill bg-accent-fill px-3 py-1 text-xs font-black text-[var(--on-accent)]">
                       {tagLabel(t)}
                     </span>
                   ))}
@@ -209,7 +209,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
               {/* Ранг — из OpenDota при импорте состава, в отличие от MMR (его ставит оператор). */}
               {rankLabel(player.rank) && <Chip>{rankLabel(player.rank)}</Chip>}
               {player.tp > 0 && (
-                <Link href={tournament ? `/tournaments/${tournament.slug}/tp` : "/tp"} className="rounded-pill bg-purple px-3 py-1 text-xs font-black text-[var(--on-accent)] cushion-control transition-transform hover:-translate-y-px">
+                <Link href={tournament ? `/tournaments/${tournament.slug}/tp` : "/tp"} className="rounded-pill bg-accent-fill px-3 py-1 text-xs font-black text-[var(--on-accent)] cushion-control transition-transform hover:-translate-y-px">
                   {player.tp} TP
                 </Link>
               )}
@@ -245,7 +245,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
         </div>
 
         {gaps.length > 0 && (
-          <div className="relative border-t border-hairline px-6 py-2 text-xs font-bold text-amber-400/90">
+          <div className="relative border-t border-hairline px-6 py-2 text-xs font-bold text-amber-700">
             Не заполнено: {gaps.join(", ")}
           </div>
         )}
@@ -284,7 +284,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
         <section key={spot.id}>
           <div className="mb-3 flex flex-wrap items-baseline gap-2">
             <Eyebrow>{spot === player.spots[0] ? "Команда" : "Ещё в составе"}</Eyebrow>
-            <Link href={`/roster/teams/${spot.team.id}`} className="text-sm font-medium text-ink-muted hover:text-[var(--purple)]">
+            <Link href={`/roster/teams/${spot.team.id}`} className="text-sm font-medium text-ink-muted hover:text-[var(--accent-ink)]">
               {spot.team.name}
             </Link>
             {/* Турнир и роль — отдельными плашками, а не строкой через точки: состав сезонный, и
@@ -336,7 +336,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
               <>
                 {" "}
                 Пока смотрите на{" "}
-                <a href={links.dotabuff} target="_blank" rel="noreferrer" className="text-[var(--purple)] hover:underline">
+                <a href={links.dotabuff} target="_blank" rel="noreferrer" className="text-[var(--accent-ink)] hover:underline">
                   Dotabuff
                 </a>
                 .
@@ -350,13 +350,13 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
               {[
                 { label: "Карт", value: record.games, tone: "text-ink" },
                 { label: "Победы — поражения", value: `${record.wins}–${record.losses}`, tone: "text-ink" },
-                { label: "Винрейт", value: `${record.winrate.toFixed(0)}%`, tone: "text-[var(--purple)]" },
+                { label: "Винрейт", value: `${record.winrate.toFixed(0)}%`, tone: "text-[var(--accent-ink)]" },
                 { label: "Сред. KDA", value: `${league.summary.kills.toFixed(1)}/${league.summary.deaths.toFixed(1)}/${league.summary.assists.toFixed(1)}`, tone: "text-ink" },
                 { label: "GPM / XPM", value: `${league.summary.gpm} / ${league.summary.xpm}`, tone: "text-ink" },
                 { label: "Сред. время", value: mmss(league.summary.avgDurationSec) ?? "—", tone: "text-ink" },
               ].map((s) => (
                 <div key={s.label} className="rounded-control bg-surface cushion-card p-4 text-center">
-                  <div className={`text-xl font-black tabular-nums ${s.tone === "text-[var(--purple)]" ? "text-[var(--purple)]" : s.tone}`}>{s.value}</div>
+                  <div className={`text-xl font-black tabular-nums ${s.tone === "text-[var(--accent-ink)]" ? "text-[var(--accent-ink)]" : s.tone}`}>{s.value}</div>
                   <div className="mt-1 text-xs font-bold text-muted">{s.label}</div>
                 </div>
               ))}
@@ -394,7 +394,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                       <img src={heroImg(g.heroSlug)} alt={g.heroName} className="h-10 w-[62px] shrink-0 rounded object-cover" />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 text-sm">
-                          <span className={`font-black ${g.won ? "text-emerald-400" : "text-rose-400"}`}>{g.won ? "W" : "L"}</span>
+                          <span className={`font-black ${g.won ? "text-emerald-700" : "text-rose-700"}`}>{g.won ? "W" : "L"}</span>
                           {g.opponent && (
                             <span className="truncate text-ink-muted">
                               {g.myTeam && <span className="text-ink">{g.myTeam.tag ?? g.myTeam.name}</span>} vs {g.opponent.tag ?? g.opponent.name}
@@ -409,11 +409,11 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                       {/* K/D/A — крупно и в одну строку, GPM мельче под ним */}
                       <div className="shrink-0 text-right">
                         <div className="text-lg font-black leading-none tabular-nums">
-                          <span className="text-emerald-400">{g.kills}</span>
+                          <span className="text-emerald-700">{g.kills}</span>
                           <span className="text-ink-subtle">/</span>
-                          <span className="text-rose-400">{g.deaths}</span>
+                          <span className="text-rose-700">{g.deaths}</span>
                           <span className="text-ink-subtle">/</span>
-                          <span className="text-sky-400">{g.assists}</span>
+                          <span className="text-sky-700">{g.assists}</span>
                         </div>
                         <div className="mt-1 text-[11px] font-bold tabular-nums text-muted">
                           {g.gpm} gpm · {g.xpm} xpm
@@ -438,10 +438,10 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-black text-ink">{h.name}</div>
                         <div className="text-xs font-bold tabular-nums text-muted">
-                          {h.games} карт · <span className="text-emerald-400">{h.wins}</span>–<span className="text-rose-400">{h.losses}</span>
+                          {h.games} карт · <span className="text-emerald-700">{h.wins}</span>–<span className="text-rose-700">{h.losses}</span>
                         </div>
                       </div>
-                      <div className="shrink-0 text-sm font-black tabular-nums text-[var(--purple)]">{h.winrate.toFixed(0)}%</div>
+                      <div className="shrink-0 text-sm font-black tabular-nums text-[var(--accent-ink)]">{h.winrate.toFixed(0)}%</div>
                     </div>
                   ))}
                 </div>
@@ -458,7 +458,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
           <ul className="space-y-1.5">
             {achievements.map((a, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-ink-muted">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-purple" />
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent-fill" />
                 <span>{a}</span>
               </li>
             ))}

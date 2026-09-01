@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { tournamentArchive } from "@/lib/series";
 import { TOURNAMENT_STATUS_LABELS, type TournamentStatus } from "@/lib/tournaments";
-import { SITE_MAX_W } from "@/app/_components/ui";
+import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 
 export const dynamic = "force-dynamic";
@@ -14,9 +14,9 @@ export const metadata = { title: "Архив серий" };
 
 const TONE: Record<string, string> = {
   draft: "bg-surface-2 text-ink-subtle",
-  registration: "bg-sky-500/20 text-sky-300",
-  running: "bg-emerald-500/20 text-emerald-300",
-  finished: "bg-amber-500/20 text-amber-300",
+  registration: "bg-sky-500/20 text-sky-700",
+  running: "bg-emerald-500/20 text-emerald-700",
+  finished: "bg-amber-500/20 text-amber-700",
 };
 
 export default async function SeriesArchiveHome() {
@@ -27,7 +27,7 @@ export default async function SeriesArchiveHome() {
 
   return (
     <main className={`mx-auto w-full ${SITE_MAX_W} flex-1 px-4 py-8 md:px-6`}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-300/80">Служебная часть</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-700">Служебная часть</p>
       <h1 className="mt-1.5 text-xl font-bold tracking-tight">Архив серий</h1>
       <p className="mt-1.5 text-sm text-ink-muted">
         Выберите турнир — встречи, карты и перечитывание статы внутри. Отсюда стата попадает в
@@ -53,7 +53,7 @@ export default async function SeriesArchiveHome() {
                   </span>
                   {/* Незаполненные встречи — то, ради чего сюда и заходят: без карт нет статы. */}
                   {t.empty > 0 && (
-                    <span className="ml-auto rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-semibold text-amber-300">
+                    <span className="ml-auto rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-semibold text-amber-700">
                       {t.empty} без карт
                     </span>
                   )}

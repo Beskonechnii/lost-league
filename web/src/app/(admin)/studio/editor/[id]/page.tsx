@@ -47,7 +47,7 @@ export default async function DesignEditorPage({ params }: { params: Promise<{ i
   return (
     <div className="space-y-4 font-pouf">
       <div className="flex items-center justify-between">
-        <Link href="/studio/editor" className="text-xs font-bold text-muted hover:text-[var(--purple)]">
+        <Link href="/studio/editor" className="text-xs font-bold text-muted hover:text-[var(--accent-ink)]">
           ← к списку документов
         </Link>
         <DeleteDesign id={design.id} title={design.title} redirectTo="/studio/editor" full />

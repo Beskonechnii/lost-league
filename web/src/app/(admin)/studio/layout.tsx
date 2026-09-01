@@ -1,5 +1,5 @@
 import { SubNav } from "../../_components/site-nav";
-import { SITE_MAX_W } from "../../_components/ui";
+import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { denyUnlessPermission } from "../_components/permission-gate";
 
 // Студия — только генерация графики. Профили команд и игроков живут в разделе «Ростер»,

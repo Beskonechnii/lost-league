@@ -13,8 +13,8 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { PlayerAvatar, TeamLogo } from "@/app/(public)/roster/_components/avatar";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/pouf/Button";
+import { FormInput } from "@/components/pouf/Input";
 import { slugify } from "@/lib/profiles";
 import { ROLES, roleShort } from "@/lib/roles";
 import { submitApplication, type ApplyState } from "./actions";
@@ -31,7 +31,7 @@ import type { PoolEntry, TakenSpot, ReadyTeam } from "./pool";
 // Состояние доски живёт в клиенте, поэтому ответ сервера ничего не стирает и форму перемонтировать
 // не нужно (старая форма ради этого возила введённое туда-обратно).
 
-const errorBox = "rounded-md border border-rose-900 bg-rose-950/40 px-3 py-2 text-sm text-rose-300";
+const errorBox = "rounded-md border border-rose-200 bg-rose-100 px-3 py-2 text-sm text-rose-700";
 const SCROLL =
   "[scrollbar-width:thin] [scrollbar-color:#404040_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-surface-3";
 
@@ -214,11 +214,11 @@ export function ApplyBoard({
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="block sm:col-span-2">
             <span className="text-xs text-ink-muted">Название команды</span>
-            <Input value={name} onChange={(e) => setName(e.target.value)} required placeholder="Например: ГУЗЛИКИ" className="mt-1" />
+            <FormInput value={name} onChange={(e) => setName(e.target.value)} required placeholder="Например: ГУЗЛИКИ" className="mt-1" />
           </label>
           <label className="block">
             <span className="text-xs text-ink-muted">Тег</span>
-            <Input value={tag} onChange={(e) => setTag(e.target.value)} placeholder="ГУЗЛИ" className="mt-1" />
+            <FormInput value={tag} onChange={(e) => setTag(e.target.value)} placeholder="ГУЗЛИ" className="mt-1" />
           </label>
           {divisions.length > 1 && (
             <label className="block">
@@ -284,7 +284,7 @@ export function ApplyBoard({
           <Button type="submit" name="intent" value="submit" disabled={pending || !ready}>
             {pending ? "Отправляю…" : initial ? "Сохранить заявку" : "Отправить заявку"}
           </Button>
-          <Button type="submit" name="intent" value="check" variant="outline" disabled={pending || totalCount === 0}>
+          <Button type="submit" name="intent" value="check" variant="quiet" disabled={pending || totalCount === 0}>
             Проверить состав
           </Button>
           {!ready && (
@@ -298,9 +298,9 @@ export function ApplyBoard({
           )}
         </div>
 
-        {hint && <p className="text-xs text-amber-300">{hint}</p>}
+        {hint && <p className="text-xs text-amber-700">{hint}</p>}
         {state?.error && <p className={errorBox}>{state.error}</p>}
-        {state?.ok && <p className="text-sm text-emerald-400">{state.ok}</p>}
+        {state?.ok && <p className="text-sm text-emerald-700">{state.ok}</p>}
 
         {/* Замечания: красное закрывает отправку, жёлтое — повод перепроверить, серое — просто факт. */}
         {state?.problems && state.problems.length > 0 && (
@@ -310,9 +310,9 @@ export function ApplyBoard({
                 key={i}
                 className={`rounded-md border px-3 py-1.5 text-xs ${
                   p.level === "block"
-                    ? "border-rose-900 bg-rose-950/40 text-rose-300"
+                    ? "border-rose-200 bg-rose-100 text-rose-700"
                     : p.level === "warn"
-                      ? "border-amber-900 bg-amber-950/40 text-amber-300"
+                      ? "border-amber-200 bg-amber-100 text-amber-700"
                       : "border-hairline bg-surface-2 text-ink-subtle"
                 }`}
               >
@@ -376,7 +376,7 @@ function ReadyTeamCard({ team, onPick }: { team: ReadyTeam; onPick: () => void }
                 <span className="block text-[10px] text-ink-subtle">MMR</span>
               </span>
             ) : (
-              <span className="shrink-0 text-[10px] text-amber-300">нет в пуле</span>
+              <span className="shrink-0 text-[10px] text-amber-700">нет в пуле</span>
             )}
           </li>
         ))}
@@ -385,7 +385,7 @@ function ReadyTeamCard({ team, onPick }: { team: ReadyTeam; onPick: () => void }
       <div className="flex items-center justify-between gap-2 px-3 py-2.5">
         <Button type="button" size="sm" onClick={onPick}>Заявить этот состав</Button>
         {team.lost > 0 && (
-          <span className="text-right text-[11px] text-amber-300">
+          <span className="text-right text-[11px] text-amber-700">
             {team.lost} без account_id — добавьте вручную
           </span>
         )}
@@ -423,7 +423,7 @@ function Pool({
         <h2 className="font-pouf text-sm font-bold uppercase tracking-wide text-ink-muted">Игроки лиги</h2>
         <span className="text-xs text-ink-subtle">{found.length}</span>
       </div>
-      <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск по нику, имени или команде" />
+      <FormInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск по нику, имени или команде" />
       {/* Позиции — кнопками, а не выпадающим списком: их шесть, и выбор в один клик тут важнее
           экономии места (то же решение, что у вкладок дивизионов). */}
       <div className="flex flex-wrap gap-1.5 font-pouf">
@@ -434,7 +434,7 @@ function Pool({
             onClick={() => setRole(r.key)}
             className={`inline-flex items-center rounded-[14px] px-3 py-[5px] text-[12px] font-black transition-[box-shadow,transform,background] ${
               role === r.key
-                ? "bg-purple text-[var(--on-accent)] cushion-control"
+                ? "bg-accent-fill text-[var(--on-accent)] cushion-control"
                 : "bg-surface text-ink-muted cushion-field hover:text-ink"
             }`}
           >
@@ -552,7 +552,7 @@ function SlotRow({
           >
             <PlayerLine player={player} />
           </div>
-          <button type="button" onClick={onClear} className="shrink-0 px-2 text-ink-subtle hover:text-rose-400" title="Убрать">
+          <button type="button" onClick={onClear} className="shrink-0 px-2 text-ink-subtle hover:text-rose-700" title="Убрать">
             ✕
           </button>
         </>

@@ -155,7 +155,7 @@ function PickTwo({ label, names, value, onChange }: { label: string; names: [str
       <div className="flex gap-2">
         {([0, 1] as TeamIdx[]).map((i) => (
           <button key={i} type="button" onClick={() => onChange(i)}
-            className={`flex-1 truncate rounded-[14px] px-3 py-2 text-sm font-black transition-[box-shadow,transform,background] ${value === i ? "bg-purple text-[var(--on-accent)] cushion-control" : "bg-surface text-ink-muted cushion-field hover:text-ink"}`}>
+            className={`flex-1 truncate rounded-[14px] px-3 py-2 text-sm font-black transition-[box-shadow,transform,background] ${value === i ? "bg-accent-fill text-[var(--on-accent)] cushion-control" : "bg-surface text-ink-muted cushion-field hover:text-ink"}`}>
             {names[i]}
           </button>
         ))}
@@ -247,7 +247,7 @@ function Draft({ state, setState, heroById, onReset }: {
       <div className="grid grid-cols-3 items-center gap-3">
         <ReserveTimer team={state.teams[0]} value={reserve[0] - (active === 0 ? overage : 0)} active={active === 0} />
         <div className="text-center">
-          <div className={`text-3xl font-bold tabular-nums ${mainLeft < 0 ? "text-rose-400" : "text-ink"}`}>
+          <div className={`text-3xl font-bold tabular-nums ${mainLeft < 0 ? "text-rose-700" : "text-ink"}`}>
             {step ? fmtTime(mainLeft < 0 ? activeReserveLeft : mainLeft) : "0:00"}
           </div>
           <div className="text-[11px] uppercase tracking-widest text-ink-subtle">
@@ -267,7 +267,7 @@ function Draft({ state, setState, heroById, onReset }: {
               {state.teams[active!].name} — {step.action === "ban" ? "банит" : "пикает"}
             </span>
           ) : (
-            <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-sm font-semibold text-emerald-400">Карта задрафчена</span>
+            <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-sm font-semibold text-emerald-700">Карта задрафчена</span>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -391,7 +391,7 @@ function PoolGrid({ state, heroById, locked, onPick, disabled }: {
                     className={`group relative overflow-hidden rounded-md border transition ${selectable ? "border-hairline hover:border-accent hover:ring-1 hover:ring-accent" : "cursor-not-allowed border-transparent"}`}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={h.img} alt={h.name} className={`h-8 w-full object-cover transition ${selectable ? "" : "opacity-30 grayscale"}`} />
-                    {isLocked && <span className="absolute inset-0 grid place-items-center bg-canvas/50 text-[8px] font-bold uppercase text-rose-300">в серии</span>}
+                    {isLocked && <span className="absolute inset-0 grid place-items-center bg-canvas/50 text-[8px] font-bold uppercase text-rose-700">в серии</span>}
                   </button>
                 );
               })}

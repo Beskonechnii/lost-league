@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ImageField, SaveButton, SelectField, TextAreaField, TextField, Label } from "./form";
 import { Button } from "@/components/pouf/Button";
 import { Input } from "@/components/pouf/Input";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Checkbox } from "@/components/pouf/checkbox";
 import { ROLES } from "@/lib/roles";
 import { PLAYER_TAGS, parseTags } from "@/lib/player-tags";
 
@@ -147,7 +147,7 @@ export function PlayerEditor({ id, initial }: { id: number; initial: PlayerForm 
                 onClick={() => toggleTag(t.key)}
                 className={`rounded-[14px] px-3.5 py-[7px] text-[13px] font-black transition-[box-shadow,transform,background] ${
                   active.has(t.key)
-                    ? "bg-purple text-[var(--on-accent)] cushion-control"
+                    ? "bg-accent-fill text-[var(--on-accent)] cushion-control"
                     : "bg-surface text-ink-muted cushion-field hover:text-ink"
                 }`}
               >
@@ -277,7 +277,7 @@ export function SpotsEditor({
         </div>
       )}
 
-      {error && <p className="text-sm font-bold text-rose-400">{error}</p>}
+      {error && <p className="text-sm font-bold text-rose-700">{error}</p>}
     </div>
   );
 }

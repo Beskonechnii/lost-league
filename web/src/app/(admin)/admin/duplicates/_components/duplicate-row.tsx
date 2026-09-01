@@ -12,7 +12,7 @@ const CARD = "rounded-lg border border-hairline bg-surface-1 p-4";
 
 function Note({ state }: { state: DupState }) {
   if (!state) return null;
-  return <span className={`text-xs ${state.error ? "text-red-400" : "text-emerald-400"}`}>{state.error ?? state.ok}</span>;
+  return <span className={`text-xs ${state.error ? "text-red-700" : "text-emerald-700"}`}>{state.error ?? state.ok}</span>;
 }
 
 /** Чем профиль наполнен — по этому оператор понимает, какой из двух оставлять. */
@@ -95,7 +95,7 @@ function MergeButton({ winner, loser, impact }: { winner: Candidate; loser: Cand
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md border border-red-800 px-3 py-1 text-xs text-red-300 hover:bg-red-950/40 disabled:opacity-50"
+        className="rounded-md border border-red-200 px-3 py-1 text-xs text-red-700 hover:bg-red-100 disabled:opacity-50"
       >
         Объединить
       </button>

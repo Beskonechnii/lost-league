@@ -107,7 +107,7 @@ function Card({ entry, onOpen, onDropped }: { entry: ArchiveEntry; onOpen: () =>
           onClick={() => void dropEntry(entry.matchId).then(onDropped)}
           title="Убрать из архива (удалит картинки)"
           aria-label={`Убрать матч ${entry.matchId} из архива`}
-          className="rounded bg-black/70 px-1.5 py-0.5 text-[11px] text-ink-muted hover:text-rose-400"
+          className="rounded bg-black/70 px-1.5 py-0.5 text-[11px] text-ink-muted hover:text-rose-700"
         >
           ✕
         </button>

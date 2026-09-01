@@ -3,9 +3,8 @@
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import { register, login, type AuthState } from "./actions";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/components/pouf/Button";
+import { FormInput, Label } from "@/components/pouf/Input";
 
 // Формы входа по email + паролю: два режима — «Войти» и «Регистрация». Рядом с Google-кнопкой
 // (её рисует страница). Каждый режим — своя server-action через useActionState.
@@ -17,7 +16,7 @@ type Mode = "login" | "register";
 
 // Успех обеих форм — редирект в кабинет, поэтому «зелёного» состояния тут нет: только ошибка.
 const box = {
-  error: "rounded-md border border-rose-900 bg-rose-950/40 px-3 py-2 text-sm text-rose-300",
+  error: "rounded-md border border-rose-200 bg-rose-100 px-3 py-2 text-sm text-rose-700",
 };
 
 export function AuthForms() {
@@ -64,12 +63,12 @@ function LoginForm() {
   return (
     <form action={action} className="space-y-3">
       <Field label="Email">
-        <Input name="email" type="email" autoComplete="email" placeholder="you@gmail.com" required />
+        <FormInput name="email" type="email" autoComplete="email" placeholder="you@gmail.com" required />
       </Field>
       <Field label="Пароль">
-        <Input name="password" type="password" autoComplete="current-password" required />
+        <FormInput name="password" type="password" autoComplete="current-password" required />
       </Field>
-      <Button type="submit" disabled={pending} className="w-full">
+      <Button type="submit" disabled={pending} block>
         {pending ? "Вхожу…" : "Войти"}
       </Button>
       {state?.error && <p className={box.error}>{state.error}</p>}
@@ -82,18 +81,18 @@ function RegisterForm() {
   return (
     <form action={action} className="space-y-3">
       <Field label="Email">
-        <Input name="email" type="email" autoComplete="email" placeholder="you@gmail.com" required />
+        <FormInput name="email" type="email" autoComplete="email" placeholder="you@gmail.com" required />
       </Field>
       <Field label="Имя (необязательно)">
-        <Input name="name" autoComplete="name" placeholder="Как к вам обращаться" />
+        <FormInput name="name" autoComplete="name" placeholder="Как к вам обращаться" />
       </Field>
       <Field label="Пароль">
-        <Input name="password" type="password" autoComplete="new-password" placeholder="Минимум 8 символов" required />
+        <FormInput name="password" type="password" autoComplete="new-password" placeholder="Минимум 8 символов" required />
       </Field>
       <Field label="Повторите пароль">
-        <Input name="confirm" type="password" autoComplete="new-password" required />
+        <FormInput name="confirm" type="password" autoComplete="new-password" required />
       </Field>
-      <Button type="submit" disabled={pending} className="w-full">
+      <Button type="submit" disabled={pending} block>
         {pending ? "Создаю…" : "Зарегистрироваться"}
       </Button>
       <p className="text-center text-xs text-ink-subtle">

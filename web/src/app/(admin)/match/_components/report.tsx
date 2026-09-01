@@ -16,7 +16,7 @@ import {
 } from "@/app/_components/postgame/blocks";
 import { PostgameExport } from "@/app/_components/postgame/export-canvas";
 import { VisionMap } from "@/app/_components/postgame/vision-map";
-import { SITE_MAX_W } from "@/app/_components/ui";
+import { SITE_MAX_W } from "@/components/pouf/blocks";
 import {
   clock,
   fmt,
@@ -137,8 +137,8 @@ function ScoreHeader({
   );
   const sideChips = (side: Side) => (
     <>
-      {gold !== 0 && (side === "radiant") === gold > 0 && chip(gold, "золото", "bg-amber-500/15 text-amber-300 ring-amber-500/30")}
-      {xp !== 0 && (side === "radiant") === xp > 0 && chip(xp, "опыт", "bg-sky-500/15 text-sky-300 ring-sky-500/30")}
+      {gold !== 0 && (side === "radiant") === gold > 0 && chip(gold, "золото", "bg-amber-500/15 text-amber-700 ring-amber-500/30")}
+      {xp !== 0 && (side === "radiant") === xp > 0 && chip(xp, "опыт", "bg-sky-500/15 text-sky-700 ring-sky-500/30")}
     </>
   );
   const d = match.startTime ? new Date(match.startTime * 1000) : null;
@@ -156,9 +156,9 @@ function ScoreHeader({
       <div className="flex shrink-0 flex-col items-center px-2">
         <div className="text-[10px] uppercase tracking-widest text-ink-subtle">⏱ {clock(match.durationSeconds)}</div>
         <div className="text-3xl font-black tabular-nums md:text-4xl">
-          <span className="text-emerald-400">{match.radiantScore}</span>
+          <span className="text-emerald-700">{match.radiantScore}</span>
           <span className="text-ink-subtle"> – </span>
-          <span className="text-rose-400">{match.direScore}</span>
+          <span className="text-rose-700">{match.direScore}</span>
         </div>
         <div className="text-[10px] text-ink-subtle">
           {d
@@ -185,7 +185,7 @@ function HeroStrip({ radiant, dire }: { radiant: PlayerReport[]; dire: PlayerRep
   const group = (list: PlayerReport[], side: Side) => (
     <div
       key={side}
-      className={`grid flex-1 grid-cols-5 gap-1.5 rounded-lg p-2 ${side === "radiant" ? "bg-emerald-950/15" : "bg-rose-950/15"}`}
+      className={`grid flex-1 grid-cols-5 gap-1.5 rounded-lg p-2 ${side === "radiant" ? "bg-emerald-100" : "bg-rose-100"}`}
     >
       {pad(list, 5).map((p, i) =>
         p ? (
@@ -242,7 +242,7 @@ function Draft({ picksBans, names }: { picksBans: PickBan[]; names: { radiant: s
     <div
       className={`flex items-center gap-1.5 rounded border py-0.5 pl-1 pr-1.5 text-[11px] ${
         pb.isPick ? "border-hairline-strong" : "border-hairline opacity-60"
-      } ${pb.side === "radiant" ? "text-emerald-300" : "text-rose-300"}`}
+      } ${pb.side === "radiant" ? "text-emerald-700" : "text-rose-700"}`}
     >
       <span className="w-4 shrink-0 text-right tabular-nums text-ink-subtle">{pb.order + 1}.</span>
       <HeroFrame hero={pb.hero} side={pb.side} h={18} banned={!pb.isPick} />
@@ -260,7 +260,7 @@ function Draft({ picksBans, names }: { picksBans: PickBan[]; names: { radiant: s
           <div key={side}>
             <div
               className={`mb-2 truncate text-[11px] font-bold uppercase tracking-wide ${
-                side === "radiant" ? "text-emerald-400" : "text-rose-400"
+                side === "radiant" ? "text-emerald-700" : "text-rose-700"
               }`}
             >
               {(side === "radiant" ? names.radiant : names.dire) || (side === "radiant" ? "Свет" : "Тьма")}
@@ -295,8 +295,8 @@ function HeroCard({
 }) {
   const tint =
     side === "radiant"
-      ? "border-emerald-900/40 bg-emerald-950/15 hover:bg-emerald-950/25"
-      : "border-rose-900/40 bg-rose-950/15 hover:bg-rose-950/25";
+      ? "border-emerald-200 bg-emerald-100 hover:bg-emerald-100"
+      : "border-rose-200 bg-rose-100 hover:bg-rose-100";
   const box = (label: string, v: number) => (
     <span key={label} className="rounded bg-surface-2/70 px-1.5 py-0.5 text-[10px] tabular-nums text-ink">
       <span className="text-ink-subtle">{label} </span>
@@ -310,7 +310,7 @@ function HeroCard({
         <div className="relative w-14 shrink-0">
           <HeroPortrait hero={p.hero} />
           <span
-            className="absolute -bottom-1 -left-1 grid h-5 w-5 place-items-center rounded-full bg-canvas text-[10px] font-bold tabular-nums text-amber-300 ring-1 ring-amber-500/50"
+            className="absolute -bottom-1 -left-1 grid h-5 w-5 place-items-center rounded-full bg-canvas text-[10px] font-bold tabular-nums text-amber-700 ring-1 ring-amber-500/50"
             title={`Уровень ${p.level}`}
           >
             {p.level}
@@ -319,7 +319,7 @@ function HeroCard({
         {/* тег+ник+роль → XPM/GPM + KDA → NET-бар + опыт + ЛХ/ДН */}
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-1.5">
-            <span className={`shrink-0 text-[10px] font-black uppercase ${side === "radiant" ? "text-emerald-400" : "text-rose-400"}`}>
+            <span className={`shrink-0 text-[10px] font-black uppercase ${side === "radiant" ? "text-emerald-700" : "text-rose-700"}`}>
               {tag}
             </span>
             <span className="truncate text-sm font-semibold text-ink" title={p.name}>
@@ -332,11 +332,11 @@ function HeroCard({
             {box("GPM", p.gpm)}
             <span className="text-[11px] font-semibold tabular-nums" title="Убийства / смерти / помощь">
               <span className="text-ink-subtle">KDA </span>
-              <span className="text-emerald-400">{p.kills}</span>
+              <span className="text-emerald-700">{p.kills}</span>
               <span className="text-ink-subtle">/</span>
-              <span className="text-rose-400">{p.deaths}</span>
+              <span className="text-rose-700">{p.deaths}</span>
               <span className="text-ink-subtle">/</span>
-              <span className="text-sky-300">{p.assists}</span>
+              <span className="text-sky-700">{p.assists}</span>
             </span>
           </div>
           <div className="mt-1.5 flex items-center gap-2">
@@ -396,7 +396,7 @@ function CardTeam({
   score: number;
   won: boolean;
 }) {
-  const accent = side === "radiant" ? "text-emerald-400" : "text-rose-400";
+  const accent = side === "radiant" ? "text-emerald-700" : "text-rose-700";
   const bar = side === "radiant" ? "bg-emerald-500" : "bg-rose-500";
   return (
     <div className="rounded-card bg-surface cushion-card p-3 ">
@@ -480,7 +480,7 @@ function TalentTree({ talents }: { talents: TalentTier[] }) {
     <div
       title={opt?.name}
       className={`flex-1 self-stretch px-2 py-1 text-[11px] leading-tight ${align === "right" ? "text-right" : "text-left"} ${
-        opt?.picked ? "bg-amber-500/10 font-semibold text-amber-200" : "text-ink-muted"
+        opt?.picked ? "bg-amber-500/10 font-semibold text-amber-700" : "text-ink-muted"
       }`}
     >
       {opt?.name ?? ""}
@@ -497,7 +497,7 @@ function TalentTree({ talents }: { talents: TalentTier[] }) {
           >
             <Side opt={t.left} align="right" />
             <div
-              className="grid h-6 w-6 flex-none place-items-center rounded-full bg-canvas text-[11px] font-bold tabular-nums text-amber-300 ring-1 ring-amber-500/40"
+              className="grid h-6 w-6 flex-none place-items-center rounded-full bg-canvas text-[11px] font-bold tabular-nums text-amber-700 ring-1 ring-amber-500/40"
               style={{ boxShadow: "0 0 8px rgba(183,154,0,0.5)" }}
             >
               {t.heroLevel}
@@ -748,7 +748,7 @@ export function MatchReportView({ matchId, canArchive }: { matchId: string; canA
             <Link
               href="/match"
               title="К вводу другого матча"
-              className="rounded-[12px] bg-surface px-3 py-1.5 text-xs font-bold text-ink-muted cushion-field transition-colors hover:text-[var(--purple)]"
+              className="rounded-[12px] bg-surface px-3 py-1.5 text-xs font-bold text-ink-muted cushion-field transition-colors hover:text-[var(--accent-ink)]"
             >
               ← Другой матч
             </Link>
@@ -756,7 +756,7 @@ export function MatchReportView({ matchId, canArchive }: { matchId: string; canA
               Postgame <span className="tabular-nums text-ink-subtle">#{matchId}</span>
             </h1>
             {match && !match.parsed && (
-              <span className="text-[11px] font-bold text-amber-400" title="OpenDota ещё не разобрала реплей">
+              <span className="text-[11px] font-bold text-amber-700" title="OpenDota ещё не разобрала реплей">
                 ⚠ не распарсен
               </span>
             )}
@@ -769,7 +769,7 @@ export function MatchReportView({ matchId, canArchive }: { matchId: string; canA
                 onClick={() => patchUrl({ src: s.key === "opendota" ? null : s.key })}
                 title={s.hint}
                 className={`rounded-[14px] px-3.5 py-[7px] text-xs font-black transition-[box-shadow,transform,background] ${
-                  src === s.key ? "bg-purple text-[var(--on-accent)] cushion-control-active [transform:translateY(1px)]" : "bg-surface text-ink-subtle cushion-field hover:text-ink"
+                  src === s.key ? "bg-accent-fill text-[var(--on-accent)] cushion-control-active [transform:translateY(1px)]" : "bg-surface text-ink-subtle cushion-field hover:text-ink"
                 }`}
               >
                 {s.label}
@@ -785,7 +785,7 @@ export function MatchReportView({ matchId, canArchive }: { matchId: string; canA
         )}
 
         {error && (
-          <div className="rounded-control bg-orange px-3 py-2 text-sm font-bold text-[var(--on-accent)]">
+          <div className="rounded-control bg-warn px-3 py-2 text-sm font-bold text-[var(--on-accent)]">
             {error}
             {/* Второй источник живёт независимо: когда OpenDota лежит, разбор всё равно соберётся. */}
             <button
@@ -806,7 +806,7 @@ export function MatchReportView({ matchId, canArchive }: { matchId: string; canA
                   onClick={() => patchUrl({ tab: t.key === "report" ? null : t.key })}
                   className={`rounded-[14px] px-4 py-[9px] text-[13px] font-black transition-[box-shadow,transform,background] ${
                     tab === t.key
-                      ? "bg-purple text-[var(--on-accent)] cushion-control"
+                      ? "bg-accent-fill text-[var(--on-accent)] cushion-control"
                       : "bg-surface text-ink-muted cushion-field hover:text-ink"
                   }`}
                 >

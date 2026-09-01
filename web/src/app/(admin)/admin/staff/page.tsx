@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { currentAccount, effectiveRole, listAccounts, ownerEmail, type StaffAccount } from "@/lib/account";
 import { PERMISSIONS, PERMISSION_GROUPS } from "@/lib/permissions";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/pouf/Button";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 import { makeAdmin, removeAdmin, removeAccount, savePermissions } from "./actions";
 import { DeleteAccount } from "./_components/delete-account";
-import { FORM_MAX_W } from "@/app/_components/ui";
+import { FORM_MAX_W } from "@/components/pouf/blocks";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Команда лиги" };
@@ -63,7 +63,7 @@ function AdminCard({ account, me, isOwner }: { account: StaffAccount; me: number
   return (
     <li className="rounded-lg border border-hairline bg-surface-1 p-4">
       <div className="flex items-start gap-3">
-        <span className="shrink-0 rounded-md border border-emerald-900 bg-emerald-950/40 px-2 py-0.5 text-xs text-emerald-300">
+        <span className="shrink-0 rounded-md border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
           Админ
         </span>
         <Who account={account} me={me} />
@@ -71,7 +71,7 @@ function AdminCard({ account, me, isOwner }: { account: StaffAccount; me: number
           <div className="flex shrink-0 items-center gap-2">
             <form action={removeAdmin}>
               <input type="hidden" name="accountId" value={account.id} />
-              <Button type="submit" size="sm" variant="outline">Снять админа</Button>
+              <Button type="submit" size="sm" variant="quiet">Снять админа</Button>
             </form>
             {isOwner && <DeleteAccount id={account.id} who={whoLabel(account)} action={removeAccount} />}
           </div>
@@ -147,7 +147,7 @@ export default async function StaffPage() {
 
   return (
     <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-300/80">Служебная часть</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-700">Служебная часть</p>
       <h1 className="mt-1.5 text-xl font-bold tracking-tight">Команда лиги</h1>
       <p className="mt-1.5 text-sm text-ink-muted">
         Роль решает, пускать ли в служебную часть вообще; чем человек там занимается — решают права.
@@ -168,7 +168,7 @@ export default async function StaffPage() {
         ) : (
           owners.map((a) => (
             <li key={a.id} className="flex items-center gap-3 rounded-lg border border-hairline bg-surface-1 px-4 py-3">
-              <span className="shrink-0 rounded-md border border-fuchsia-800 bg-fuchsia-950/40 px-2 py-0.5 text-xs text-fuchsia-300">
+              <span className="shrink-0 rounded-md border border-fuchsia-200 bg-fuchsia-100 px-2 py-0.5 text-xs text-fuchsia-700">
                 Владелец
               </span>
               <Who account={a} me={me?.id ?? null} />

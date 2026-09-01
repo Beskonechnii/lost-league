@@ -1,10 +1,18 @@
 import type { ReactNode } from "react";
-import { Badge } from "@/components/ui/badge";
+import { Eyebrow } from "./text";
 
-// Переиспользуемые презентационные примитивы UI. Без "use client" — можно тянуть в серверные
-// страницы. Задают единый ритм заголовков, чипов и плашек, чтобы страницы выглядели одним набором,
-// а не собранными вручную каждая по-своему. Интерактивные варианты (сегменты с onClick) живут
-// в клиентских компонентах рядом с их состоянием.
+/* Блоки страницы — то, из чего собирается КОМПОЗИЦИЯ экрана: шапка секции, чип,
+ * плитка показателя, полоска силы, и три токена ширины колонки. Уровень выше,
+ * чем у атомов рядом (Button, Input, Text): здесь уже сказано, как элементы
+ * стоят друг относительно друга.
+ *
+ * До Э3 файл лежал в `app/_components/ui.tsx` — третьей UI-библиотекой рядом с
+ * pouf и shadcn. Библиотека теперь одна, поэтому блоки переехали сюда, к своим
+ * атомам, и говорят на тех же токенах Кита.
+ *
+ * Без "use client" — можно тянуть в серверные страницы. Интерактивные варианты
+ * (сегменты с onClick) живут в клиентских компонентах рядом со своим состоянием.
+ */
 
 /**
  * Единая ширина контента сайта — один токен на шапку, подменю и колонку каждой страницы, чтобы они
@@ -29,16 +37,8 @@ export const READ_MAX_W = "max-w-6xl";
  */
 export const FORM_MAX_W = "max-w-3xl";
 
-/** Надпись-категория над заголовком секции: uppercase, положительный трекинг, шрифт pouf.
-    Визуал 1st-Pouf — единый eyebrow на весь сайт (совпадает с pouf Eyebrow). */
-export function Eyebrow({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return (
-    <p className={`font-pouf text-[13px] font-extrabold uppercase tracking-[2px] text-muted ${className}`}>{children}</p>
-  );
-}
-
 /** Шапка секции: eyebrow + заголовок слева, счётчик/действие справа.
-    Заголовок — крупный жирный Nunito в духе pouf Heading. */
+    Заголовок — крупный жирный Nunito в духе Кита. */
 export function SectionHeader({
   eyebrow,
   title,
@@ -61,22 +61,21 @@ export function SectionHeader({
   );
 }
 
-/** Небольшой чип-метка (роль, тег, статус). Тихая «подушка»-капсула в стиле pouf:
-    поверхность с внутренним cushion-field, без пастельной заливки — чтобы много чипов
-    в ряду не кричали, но читались как один набор с остальным визуалом. */
+/** Небольшой чип-метка (роль, тег, статус). Тихая «подушка»-капсула: поверхность
+    с внутренним cushion-field, без акцентной заливки — чтобы много чипов в ряду
+    не кричали, но читались как один набор с остальным визуалом. */
 export function Chip({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <Badge
-      variant="secondary"
-      className={`gap-1 rounded-pill border-none bg-surface-2 px-3 py-1 font-pouf text-[11px] font-bold text-ink-muted cushion-field ${className}`}
+    <span
+      className={`inline-flex w-fit shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-pill bg-surface-2 px-3 py-1 font-pouf text-[11px] font-bold text-ink-muted cushion-field ${className}`}
     >
       {children}
-    </Badge>
+    </span>
   );
 }
 
 /** Плитка показателя: подпись сверху, крупное число, опциональная сноска.
-    «Подушка» pouf: поверхность с cushion-card, крупное жирное число Nunito. */
+    «Подушка» Кита: поверхность с cushion-card, крупное жирное число Nunito. */
 export function StatTile({
   label,
   value,
@@ -93,11 +92,11 @@ export function StatTile({
 }) {
   return (
     <div
-      // Отступы — на шкале pouf: s3 по вертикали, смещённые на половину «губы» (--lip), из-за которой
+      // Отступы — на шкале Кита: s3 по вертикали, смещённые на половину «губы» (--lip), из-за которой
       // подушка кажется вдавленной вниз. Раньше здесь стояли те же числа литералами (0.75rem±5px).
       className={`rounded-blob px-[var(--s4)] pb-[calc(var(--s3)+var(--lip)/2)] pt-[calc(var(--s3)-var(--lip)/2)] font-pouf ${
         accent
-          ? "bg-purple text-[var(--on-accent)] cushion-control"
+          ? "bg-accent-fill text-[var(--on-accent)] cushion-control"
           : "bg-surface-1 cushion-card"
       }`}
     >
@@ -114,9 +113,9 @@ export function StatTile({
  */
 export function Meter({ pct, className = "" }: { pct: number; className?: string }) {
   return (
-    <div className={`h-[6px] overflow-hidden rounded-pill bg-surface-3 ${className}`}>
+    <div className={`h-[6px] overflow-hidden rounded-pill bg-surface-2 ${className}`}>
       <div
-        className="h-full rounded-pill bg-purple [box-shadow:inset_0_-2px_0_rgba(0,0,0,0.15)]"
+        className="h-full rounded-pill bg-accent-fill [box-shadow:inset_0_-2px_0_rgba(0,0,0,0.12)]"
         style={{ width: `${Math.max(0, Math.min(100, pct))}%` }}
       />
     </div>

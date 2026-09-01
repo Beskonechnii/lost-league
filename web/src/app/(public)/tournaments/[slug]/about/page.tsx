@@ -7,7 +7,7 @@ import {
   TOURNAMENT_STATUS_LABELS,
   type TournamentStatus,
 } from "@/lib/tournaments";
-import { SectionHeader, StatTile } from "@/app/_components/ui";
+import { SectionHeader, StatTile } from "@/components/pouf/blocks";
 
 export const dynamic = "force-dynamic";
 
@@ -25,9 +25,9 @@ const date = new Intl.DateTimeFormat("ru", { day: "numeric", month: "long", year
 /** Цвет плашки статуса — тот же смысл, что в админке, но на витрине. */
 const TONE: Record<TournamentStatus, string> = {
   draft: "bg-surface-2 text-ink-subtle",
-  registration: "bg-sky-500/20 text-sky-300",
-  running: "bg-emerald-500/20 text-emerald-300",
-  finished: "bg-amber-500/20 text-amber-300",
+  registration: "bg-sky-500/20 text-sky-700",
+  running: "bg-emerald-500/20 text-emerald-700",
+  finished: "bg-amber-500/20 text-amber-700",
 };
 
 export default async function TournamentAbout({ params }: { params: Promise<{ slug: string }> }) {
@@ -63,7 +63,7 @@ export default async function TournamentAbout({ params }: { params: Promise<{ sl
       {registrationOpen(tournament) && (
         <Link
           href={`/tournaments/${slug}/apply`}
-          className="inline-block rounded-[14px] bg-purple px-4 py-[9px] text-[13px] font-black text-[var(--on-accent)] cushion-control"
+          className="inline-block rounded-[14px] bg-accent-fill px-4 py-[9px] text-[13px] font-black text-[var(--on-accent)] cushion-control"
         >
           Подать заявку командой
         </Link>

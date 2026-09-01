@@ -12,7 +12,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/components/pouf/alert-dialog";
 
 // История генераций с удалением. Клиент — удаление это DELETE (запись); строки убираем
 // оптимистично, чтобы не перезапрашивать страницу. Подтверждение — Radix AlertDialog, а не
@@ -50,14 +50,14 @@ export function RenderHistory({ renders }: { renders: Item[] }) {
           const label = r.title ?? r.templateId;
           return (
             <li key={r.id} className="flex items-center gap-2">
-              <Link href={`/studio/new/${r.templateId}?render=${r.id}`} className="font-bold text-[var(--purple)] hover:underline">
+              <Link href={`/studio/new/${r.templateId}?render=${r.id}`} className="font-bold text-[var(--accent-ink)] hover:underline">
                 {label}
               </Link>
               <span className="text-xs font-bold text-muted">{r.created}</span>
               <button
                 onClick={() => setConfirmId(r.id)}
                 title="Удалить из истории"
-                className="ml-1 rounded p-0.5 text-xs text-ink-subtle transition-colors hover:text-red-400"
+                className="ml-1 rounded p-0.5 text-xs text-ink-subtle transition-colors hover:text-red-700"
               >
                 ✕
               </button>
@@ -83,7 +83,7 @@ export function RenderHistory({ renders }: { renders: Item[] }) {
                 if (confirmId !== null) remove(confirmId);
               }}
               disabled={busy !== null}
-              className="bg-red-600 text-white hover:bg-red-500"
+              tone="down"
             >
               {busy !== null ? "…" : "Удалить"}
             </AlertDialogAction>

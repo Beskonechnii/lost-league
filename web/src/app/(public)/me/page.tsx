@@ -2,7 +2,7 @@ import Link from "next/link";
 import { googleConfigured } from "@/lib/google-oauth";
 import { currentAccount, linkablePlayers, effectiveRole, accountStatus, accountApplication } from "@/lib/account";
 import type { Role } from "@/lib/player-auth";
-import { Button } from "@/components/ui/button";
+import { buttonClasses } from "@/components/pouf/Button";
 import { ApplicationSummary } from "@/app/_components/application-summary";
 import { Onboarding } from "./onboarding";
 import { ApplicationFlow } from "./application-form";
@@ -39,9 +39,9 @@ type Account = NonNullable<Awaited<ReturnType<typeof currentAccount>>>;
 
 // Оформление бейджа роли: у каждой роли свой цвет и подпись — роль всегда на виду в карточке.
 const ROLE_META: Record<Role, { label: string; cls: string }> = {
-  owner: { label: "Владелец лиги", cls: "border-amber-700/60 bg-amber-950/40 text-amber-300" },
-  admin: { label: "Администратор", cls: "border-fuchsia-700/60 bg-fuchsia-950/40 text-fuchsia-300" },
-  player: { label: "Игрок", cls: "border-sky-800/60 bg-sky-950/40 text-sky-300" },
+  owner: { label: "Владелец лиги", cls: "border-amber-200 bg-amber-100 text-amber-700" },
+  admin: { label: "Администратор", cls: "border-fuchsia-200 bg-fuchsia-100 text-fuchsia-700" },
+  player: { label: "Игрок", cls: "border-sky-200 bg-sky-100 text-sky-700" },
 };
 
 export default async function AccountPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
@@ -65,7 +65,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
 
         <div className="rounded-2xl border border-hairline bg-surface-1/60 p-5 shadow-xl shadow-black/20 backdrop-blur">
           {error && ERRORS[error] && (
-            <p className="mb-4 rounded-lg border border-rose-900 bg-rose-950/40 px-3 py-2 text-sm text-rose-300">{ERRORS[error]}</p>
+            <p className="mb-4 rounded-lg border border-rose-200 bg-rose-100 px-3 py-2 text-sm text-rose-700">{ERRORS[error]}</p>
           )}
 
           {!account || !role || !status ? (
@@ -147,7 +147,7 @@ function ProfileCard({ account, role }: { account: Account; role: Role }) {
         {/* Плашка только у подтверждённой почты: её поднимает лишь Google, а «не подтверждена»
             после отказа от писем ничего не значит — подтверждать нечем */}
         {account.emailVerified && (
-          <span className="rounded-full border border-emerald-800/60 bg-emerald-950/30 px-2.5 py-0.5 text-xs text-emerald-400">
+          <span className="rounded-full border border-emerald-200 bg-emerald-100 px-2.5 py-0.5 text-xs text-emerald-700">
             почта подтверждена
           </span>
         )}
@@ -167,15 +167,15 @@ function AdminEntry({ role }: { role: "owner" | "admin" }) {
   return (
     <Link
       href="/admin"
-      className="flex items-center justify-between gap-2 rounded-xl border border-fuchsia-800/70 bg-fuchsia-950/30 px-4 py-3 transition-colors hover:bg-fuchsia-950/50"
+      className="flex items-center justify-between gap-2 rounded-xl border border-fuchsia-200 bg-fuchsia-100 px-4 py-3 transition-colors hover:bg-fuchsia-100"
     >
       <span>
-        <span className="block text-sm font-medium text-fuchsia-100">
+        <span className="block text-sm font-medium text-fuchsia-700">
           {role === "owner" ? "Вы владелец лиги" : "Вы админ лиги"}
         </span>
-        <span className="block text-xs text-fuchsia-300/70">Инструменты, заявки{role === "owner" ? ", роли" : ""}</span>
+        <span className="block text-xs text-fuchsia-700">Инструменты, заявки{role === "owner" ? ", роли" : ""}</span>
       </span>
-      <span className="shrink-0 text-sm text-fuchsia-300">Открыть →</span>
+      <span className="shrink-0 text-sm text-fuchsia-700">Открыть →</span>
     </Link>
   );
 }
@@ -220,17 +220,19 @@ function Linked({ account }: { account: Account }) {
   const player = account.player!;
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-emerald-900 bg-emerald-950/30 px-4 py-3">
-        <p className="text-xs uppercase tracking-wide text-emerald-400/80">Профиль привязан</p>
+      <div className="rounded-xl border border-emerald-200 bg-emerald-100 px-4 py-3">
+        <p className="text-xs uppercase tracking-wide text-emerald-700">Профиль привязан</p>
         <p className="mt-1 text-lg font-semibold">{player.nickname}</p>
       </div>
       <div className="grid gap-2">
-        <Button asChild className="w-full">
-          <Link href="/me/profile">Редактировать анкету</Link>
-        </Button>
-        <Button asChild variant="outline" className="w-full">
-          <Link href={`/roster/players/${player.id}`}>Открыть мой профиль</Link>
-        </Button>
+        {/* Ссылка, которая выглядит кнопкой: `buttonClasses` — тот же билдер, что внутри
+            Button, поэтому ссылка не может разъехаться с кнопкой рядом. */}
+        <Link href="/me/profile" className={buttonClasses({ block: true })}>
+          Редактировать анкету
+        </Link>
+        <Link href={`/roster/players/${player.id}`} className={buttonClasses({ variant: "quiet", block: true })}>
+          Открыть мой профиль
+        </Link>
       </div>
     </div>
   );
@@ -244,8 +246,8 @@ function UnderReview({ account }: { account: Account }) {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-amber-900 bg-amber-950/30 px-4 py-3">
-        <p className="text-xs uppercase tracking-wide text-amber-400/80">Заявка на рассмотрении</p>
+      <div className="rounded-xl border border-amber-200 bg-amber-100 px-4 py-3">
+        <p className="text-xs uppercase tracking-wide text-amber-700">Заявка на рассмотрении</p>
         <p className="mt-1 text-sm text-ink-muted">
           {account.claim ? (
             <>
@@ -284,8 +286,8 @@ function UnderReview({ account }: { account: Account }) {
 /** Заявка на существующего игрока подана — ждёт оператора. */
 function Pending({ account }: { account: Account }) {
   return (
-    <div className="rounded-xl border border-amber-900 bg-amber-950/30 px-4 py-3">
-      <p className="text-xs uppercase tracking-wide text-amber-400/80">Заявка на подтверждении</p>
+    <div className="rounded-xl border border-amber-200 bg-amber-100 px-4 py-3">
+      <p className="text-xs uppercase tracking-wide text-amber-700">Заявка на подтверждении</p>
       <p className="mt-1 text-sm text-ink-muted">
         Вы заявили привязку к профилю <span className="font-semibold text-ink">{account.claim!.nickname}</span>.
         Оператор подтвердит её в админке — после этого профиль появится здесь.

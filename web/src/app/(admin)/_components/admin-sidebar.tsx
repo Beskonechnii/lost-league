@@ -14,7 +14,7 @@ import { TOUCH_TARGET, useScrollActiveIntoView } from "@/app/_components/nav-scr
 // горизонтально прокручиваемый ряд пилюль — тот же список, та же подсветка, без отдельного меню
 // и без состояния, которое пришлось бы синхронизировать.
 
-const focus = "outline-none focus-visible:ring-[3px] focus-visible:ring-purple";
+const focus = "outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]";
 
 /** Активен инструмент, если путь совпал или лежит внутри него (у студии и архива есть вложенные страницы). */
 const isActive = (pathname: string, href: string) => pathname === href || pathname.startsWith(`${href}/`);
@@ -26,8 +26,7 @@ export function AdminSidebar({ groups, pending }: { groups: ToolGroup[]; pending
 
   return (
     <aside
-      className="pouf-lost font-pouf lg:sticky lg:top-[57px] lg:h-[calc(100dvh-57px)] lg:w-60 lg:shrink-0 lg:overflow-y-auto lg:border-r lg:border-hairline"
-      data-theme="dark"
+      className="font-pouf lg:sticky lg:top-[57px] lg:h-[calc(100dvh-57px)] lg:w-60 lg:shrink-0 lg:overflow-y-auto lg:border-r lg:border-hairline"
     >
       <nav className="flex gap-2 overflow-x-auto border-b border-hairline px-4 py-2 lg:flex-col lg:gap-5 lg:border-b-0 lg:px-3 lg:py-4">
         {groups.map((g) => (
@@ -47,7 +46,7 @@ export function AdminSidebar({ groups, pending }: { groups: ToolGroup[]; pending
                   aria-current={active ? "page" : undefined}
                   className={`flex shrink-0 items-center gap-2 rounded-[14px] px-3 py-[9px] text-[13px] font-black transition-[box-shadow,transform,background] ${TOUCH_TARGET} ${focus} ${
                     active
-                      ? "bg-purple text-[var(--on-accent)] cushion-control"
+                      ? "bg-accent-fill text-[var(--on-accent)] cushion-control"
                       : "text-ink-muted hover:bg-surface-1 hover:text-ink hover:cushion-field"
                   }`}
                 >
@@ -56,7 +55,7 @@ export function AdminSidebar({ groups, pending }: { groups: ToolGroup[]; pending
                   {t.soon && <span className="ml-auto text-[10px] font-bold text-muted">скоро</span>}
                   {/* Очередь модерации: её легко пропустить, если о ней ничего не напоминает */}
                   {t.href === QUEUE_TOOL && pending > 0 && (
-                    <span className="ml-auto rounded-pill bg-amber-500/20 px-2 text-[11px] font-black text-amber-300">
+                    <span className="ml-auto rounded-pill bg-amber-500/20 px-2 text-[11px] font-black text-amber-700">
                       {pending}
                     </span>
                   )}

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getDivisions, listTournaments, tournamentBySlug } from "@/lib/tournaments";
 import { TournamentBar } from "@/app/_components/tournament-bar";
-import { SITE_MAX_W } from "@/app/_components/ui";
+import { SITE_MAX_W } from "@/components/pouf/blocks";
 
 // Оболочка всего, что живёт внутри турнира. Строку контекста (турнир · дивизион · этап) и колонку
 // контента задаёт она одна — вложенные layout'ы больше не рисуют ни своего <main>, ни своих рядов

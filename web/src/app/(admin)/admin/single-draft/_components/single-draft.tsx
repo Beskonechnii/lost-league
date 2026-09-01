@@ -11,10 +11,10 @@ import { assetUrl, assetFallback } from "@/lib/assets";
 type Attr = "str" | "agi" | "int" | "all";
 
 const ATTRS: { key: Attr; label: string; accent: string }[] = [
-  { key: "str", label: "Сила", accent: "border-rose-500/40 bg-rose-500/10 text-rose-300" },
-  { key: "agi", label: "Ловкость", accent: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" },
-  { key: "int", label: "Интеллект", accent: "border-sky-500/40 bg-sky-500/10 text-sky-300" },
-  { key: "all", label: "Универсал", accent: "border-violet-500/40 bg-violet-500/10 text-violet-300" },
+  { key: "str", label: "Сила", accent: "border-rose-500/40 bg-rose-500/10 text-rose-700" },
+  { key: "agi", label: "Ловкость", accent: "border-emerald-500/40 bg-emerald-500/10 text-emerald-700" },
+  { key: "int", label: "Интеллект", accent: "border-sky-500/40 bg-sky-500/10 text-sky-700" },
+  { key: "all", label: "Универсал", accent: "border-violet-500/40 bg-violet-500/10 text-violet-700" },
 ];
 
 const slug = (h: LocalHero) => h.name.replace(/^npc_dota_hero_/, "");
@@ -76,7 +76,7 @@ export function SingleDraft() {
       <button
         type="button"
         onClick={reroll}
-        className="rounded-control bg-purple px-6 py-[14px] text-[15px] font-black text-[var(--on-accent)] cushion-control transition-[box-shadow,transform] active:translate-y-0.5 active:cushion-control-active"
+        className="rounded-control bg-accent-fill px-6 py-[14px] text-[15px] font-black text-[var(--on-accent)] cushion-control transition-[box-shadow,transform] active:translate-y-0.5 active:cushion-control-active"
       >
         🎲 Перекрутить
       </button>

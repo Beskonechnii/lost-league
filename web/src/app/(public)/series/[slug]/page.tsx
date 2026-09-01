@@ -2,9 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Icon, TeamCrest } from "@/app/_components/postgame/blocks";
-import { Eyebrow } from "@/app/_components/ui";
+import { Eyebrow } from "@/components/pouf/text";
 import { Breadcrumbs } from "@/app/_components/breadcrumbs";
-import { READ_MAX_W } from "@/app/_components/ui";
+import { READ_MAX_W } from "@/components/pouf/blocks";
 import { divisionWithTournament } from "@/lib/tournaments";
 import { getSeriesDetail, type GamePlayer, type SeriesDetail, type SeriesGameDetail } from "@/lib/series";
 import { playoffLabel, stageLabel } from "@/lib/stages";
@@ -43,7 +43,7 @@ function SeriesSide({ team, winnerId, align }: { team: Team; winnerId: number | 
         <Link
           href={`/roster/teams/${team.id}`}
           className={`block truncate text-lg font-bold hover:underline ${
-            winnerId === team.id ? "text-emerald-400"
+            winnerId === team.id ? "text-emerald-700"
             : winnerId ? "text-ink-muted"
             : "text-ink"
           }`}
@@ -66,11 +66,11 @@ function PlayerRow({ p, won }: { p: GamePlayer; won: boolean }) {
       </span>
       <span className={`truncate text-sm ${won ? "text-ink" : "text-ink-muted"}`}>{p.nickname}</span>
       <span className="ml-auto shrink-0 text-xs tabular-nums">
-        <span className="text-emerald-400">{p.kills}</span>
+        <span className="text-emerald-700">{p.kills}</span>
         <span className="text-ink-subtle"> / </span>
-        <span className="text-rose-400">{p.deaths}</span>
+        <span className="text-rose-700">{p.deaths}</span>
         <span className="text-ink-subtle"> / </span>
-        <span className="text-sky-400">{p.assists}</span>
+        <span className="text-sky-700">{p.assists}</span>
       </span>
     </div>
   );
@@ -84,7 +84,7 @@ function GameTeam({ team, game, firstPickTeamId }: { team: Team; game: SeriesGam
   return (
     <div className="min-w-0 flex-1">
       <div className="mb-1 flex flex-wrap items-baseline gap-2 border-b border-hairline pb-1">
-        <span className={`text-sm font-bold ${won ? "text-emerald-400" : "text-ink-muted"}`}>{team.name}</span>
+        <span className={`text-sm font-bold ${won ? "text-emerald-700" : "text-ink-muted"}`}>{team.name}</span>
         {game.radiantTeamId != null && (
           <span className={`text-[10px] uppercase tracking-widest ${isRadiant ? "text-emerald-500/80" : "text-rose-500/80"}`}>
             {isRadiant ? "Свет" : "Тьма"}
@@ -121,16 +121,16 @@ function GameCard({ game, home, away }: { game: SeriesGameDetail; home: Team; aw
       <div className="flex flex-wrap items-center gap-3 border-b border-hairline bg-surface-2 px-4 py-2.5">
         <span className="text-sm font-black text-ink-muted">#{game.gameNumber ?? "?"}</span>
         {game.openDotaMatchId && (
-          <Link href={`/match/${game.openDotaMatchId}`} className="text-xs font-bold text-[var(--purple)] hover:underline">
+          <Link href={`/match/${game.openDotaMatchId}`} className="text-xs font-bold text-[var(--accent-ink)] hover:underline">
             {game.openDotaMatchId}
           </Link>
         )}
         <span className="text-xs tabular-nums text-ink-subtle">{clock(game.durationSec)}</span>
         {homeKills != null && awayKills != null && (
           <span className="text-sm font-bold tabular-nums">
-            <span className={game.winnerTeamId === home.id ? "text-emerald-400" : "text-ink-subtle"}>{homeKills}</span>
+            <span className={game.winnerTeamId === home.id ? "text-emerald-700" : "text-ink-subtle"}>{homeKills}</span>
             <span className="mx-1 text-ink-subtle">—</span>
-            <span className={game.winnerTeamId === away.id ? "text-emerald-400" : "text-ink-subtle"}>{awayKills}</span>
+            <span className={game.winnerTeamId === away.id ? "text-emerald-700" : "text-ink-subtle"}>{awayKills}</span>
           </span>
         )}
         {game.startedAt && <span className="ml-auto text-[11px] text-ink-subtle">{dateFmt.format(game.startedAt)}</span>}
@@ -190,15 +190,15 @@ export default async function SeriesPage({ params }: { params: Promise<{ slug: s
               <SeriesSide team={s.home} winnerId={winner} align="left" />
               <div className="shrink-0 text-center">
                 <div className="text-4xl font-black tabular-nums">
-                  <span className={winner === s.home.id ? "text-emerald-400" : "text-ink-muted"}>{s.homeScore}</span>
+                  <span className={winner === s.home.id ? "text-emerald-700" : "text-ink-muted"}>{s.homeScore}</span>
                   <span className="mx-2 text-ink-subtle">—</span>
-                  <span className={winner === s.away.id ? "text-emerald-400" : "text-ink-muted"}>{s.awayScore}</span>
+                  <span className={winner === s.away.id ? "text-emerald-700" : "text-ink-muted"}>{s.awayScore}</span>
                 </div>
                 <div className="mt-1.5 text-[11px] text-ink-subtle">
                   {bo}
                   {s.playedAt ? ` · ${dateFmt.format(s.playedAt)}` : ""}
                 </div>
-                {s.guessed && <div className="mt-1 text-[10px] text-amber-400">счёт под вопросом</div>}
+                {s.guessed && <div className="mt-1 text-[10px] text-amber-700">счёт под вопросом</div>}
               </div>
               <SeriesSide team={s.away} winnerId={winner} align="right" />
             </div>

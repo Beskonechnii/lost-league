@@ -21,55 +21,36 @@ export type ThemeKey =
   | "inkMuted"
   | "inkSubtle"
   | "hairline"
-  | "hairlineStrong"
-  // Слой 1st-Pouf (claymorphism): вторая палитра, на ней студия, архив, TP, драфт, заглушки и бейджи.
-  // Акцент pouf привязан к бренд-акценту выше (globals.css), поэтому отдельного поля у него нет.
-  | "poufBg"
-  | "poufSurface"
-  | "poufInk"
-  | "poufMuted"
-  | "poufWarn"
-  | "poufOrange"
-  | "poufDown"
-  | "poufUp"
-  | "poufInfo";
+  | "hairlineStrong";
+// Полей 1st-Pouf здесь больше нет: на Э3 палитры слились в одну (Light Clay), и «поверхность pouf»
+// перестала быть отдельным цветом — это та же surface1. Значения Кита живут в pouf.css, панель
+// правит ту же одну систему.
 
 export type Theme = Record<ThemeKey, string>;
 
-/** Значения по умолчанию = ровно те литералы, что раньше стояли в globals.css. Fallback'и токенов
-    совпадают с этими, поэтому пустой data/theme.json оставляет сайт как есть. */
+/** Значения по умолчанию = Light Clay из Кита элементов (те же литералы, что в pouf.css).
+    Fallback'и токенов в globals.css совпадают с этими, поэтому пустой data/theme.json
+    оставляет сайт ровно таким, каким его задаёт Кит. */
 export const DEFAULT_THEME: Theme = {
   accent: "#7c3aed",
-  accentBright: "#a78bfa",
+  accentBright: "#5b21b6",
   accentContrast: "#ffffff",
   d2: "#14c6cb",
-  d2Bright: "#5eead4",
+  d2Bright: "#0b6c70",
   d2Contrast: "#000000",
-  canvas: "#000000",
-  surface1: "#15181e",
-  surface2: "#1f232b",
-  surface3: "#3b3d45",
-  ink: "#ffffff",
-  inkMuted: "#b2b6bd",
-  inkSubtle: "#656a76",
-  hairline: "rgba(178, 182, 189, 0.1)",
-  hairlineStrong: "#3b3d45",
-  // Дефолты pouf = значения ТЁМНОЙ темы pouf (сайт всегда тёмный): поверхности/текст оттуда,
-  // акцентные пастельные — одинаковы в обеих темах. Совпадают с pouf.css, поэтому пустой файл
-  // ничего не меняет.
-  poufBg: "#12111a",
-  poufSurface: "#211f2b",
-  poufInk: "#f7f3ff",
-  poufMuted: "#b8afcb",
-  poufWarn: "#ffe58a",
-  poufOrange: "#ffb38a",
-  poufDown: "#ffb3d1",
-  poufUp: "#a8f0d0",
-  poufInfo: "#9ec8ff",
+  canvas: "#e7e3d8",
+  surface1: "#f8f4ec",
+  surface2: "#ece7dd",
+  surface3: "#d3ccbe",
+  ink: "#33322e",
+  inkMuted: "#807c73",
+  inkSubtle: "#aeaaa0",
+  hairline: "#e0dace",
+  hairlineStrong: "#d3ccbe",
 };
 
 /** Группы для раскладки editor'а — порядок = порядок секций на странице. */
-export type ThemeGroup = "Акцент" | "Поверхности" | "Текст" | "Границы" | "1st-Pouf";
+export type ThemeGroup = "Акцент" | "Поверхности" | "Текст" | "Границы";
 
 /** Метаданные одного управляемого цвета: как подписать в UI и в какую сырую CSS-переменную писать. */
 export type ThemeField = {
@@ -84,35 +65,24 @@ export type ThemeField = {
 /** Полный список управляемых полей. Добавить цвет = строка сюда + ключ в ThemeKey/DEFAULT_THEME. */
 export const FIELDS: ThemeField[] = [
   { key: "accent", label: "Бренд-акцент (D1)", hint: "Кнопки, ссылки, активные вкладки", group: "Акцент", cssVar: "--accent" },
-  { key: "accentBright", label: "Акцент — светлый", hint: "Ховеры и подсветка", group: "Акцент", cssVar: "--accent-bright" },
+  { key: "accentBright", label: "Акцент — текстовый", hint: "Ссылки и ховеры: тёмный оттенок акцента, читаемый на бумаге", group: "Акцент", cssVar: "--accent-bright" },
   { key: "accentContrast", label: "Текст на акценте", hint: "Цвет надписи внутри залитой кнопки", group: "Акцент", cssVar: "--accent-contrast" },
   { key: "d2", label: "Акцент D2", hint: "Дивизион 2 перекрашивает акцент в него", group: "Акцент", cssVar: "--lost-d2" },
-  { key: "d2Bright", label: "Акцент D2 — светлый", group: "Акцент", cssVar: "--lost-d2-bright" },
+  { key: "d2Bright", label: "Акцент D2 — текстовый", hint: "То же для дивизиона 2", group: "Акцент", cssVar: "--lost-d2-bright" },
   { key: "d2Contrast", label: "Текст на акценте D2", group: "Акцент", cssVar: "--lost-d2-contrast" },
-  { key: "canvas", label: "Канва", hint: "Самый нижний фон страницы", group: "Поверхности", cssVar: "--lost-canvas" },
-  { key: "surface1", label: "Поверхность 1", hint: "Карточки над канвой", group: "Поверхности", cssVar: "--lost-surface-1" },
-  { key: "surface2", label: "Поверхность 2", hint: "Приподнятые панели, поля ввода", group: "Поверхности", cssVar: "--lost-surface-2" },
+  { key: "canvas", label: "Канва", hint: "Бумага — самый нижний фон страницы", group: "Поверхности", cssVar: "--lost-canvas" },
+  { key: "surface1", label: "Поверхность 1", hint: "Подушки-карточки над бумагой", group: "Поверхности", cssVar: "--lost-surface-1" },
+  { key: "surface2", label: "Поверхность 2", hint: "Дно вдавленного: поля ввода, дорожки", group: "Поверхности", cssVar: "--lost-surface-2" },
   { key: "surface3", label: "Поверхность 3", group: "Поверхности", cssVar: "--lost-surface-3" },
   { key: "ink", label: "Текст основной", group: "Текст", cssVar: "--lost-ink" },
   { key: "inkMuted", label: "Текст приглушённый", group: "Текст", cssVar: "--lost-ink-muted" },
   { key: "inkSubtle", label: "Текст тусклый", group: "Текст", cssVar: "--lost-ink-subtle" },
   { key: "hairline", label: "Линия", hint: "Тонкая граница между блоками (можно rgba)", group: "Границы", cssVar: "--lost-hairline" },
   { key: "hairlineStrong", label: "Линия плотная", group: "Границы", cssVar: "--lost-hairline-strong" },
-  // Слой pouf. cssVar = --lost-pouf-*; globals.css раздаёт их в pouf-переменные (и alias, и @theme-имя)
-  // под скоупом .pouf-lost. Акцент pouf сюда не входит — он общий с брендом (--accent).
-  { key: "poufBg", label: "Фон pouf", hint: "Нижний фон pouf-страниц (студия, архив)", group: "1st-Pouf", cssVar: "--lost-pouf-bg" },
-  { key: "poufSurface", label: "Поверхность pouf", hint: "Карточки-подушки, поля", group: "1st-Pouf", cssVar: "--lost-pouf-surface" },
-  { key: "poufInk", label: "Текст pouf", group: "1st-Pouf", cssVar: "--lost-pouf-ink" },
-  { key: "poufMuted", label: "Текст pouf приглушённый", group: "1st-Pouf", cssVar: "--lost-pouf-muted" },
-  { key: "poufWarn", label: "Предупреждение", hint: "Жёлтый: бейдж «в разработке», warn", group: "1st-Pouf", cssVar: "--lost-pouf-warn" },
-  { key: "poufOrange", label: "Оранжевый", hint: "Акцент внимания в pouf", group: "1st-Pouf", cssVar: "--lost-pouf-orange" },
-  { key: "poufDown", label: "Ошибка / поражение", hint: "Розово-красный: ошибки форм, down", group: "1st-Pouf", cssVar: "--lost-pouf-down" },
-  { key: "poufUp", label: "Успех / победа", hint: "Мятный: up", group: "1st-Pouf", cssVar: "--lost-pouf-up" },
-  { key: "poufInfo", label: "Инфо", hint: "Голубой: info", group: "1st-Pouf", cssVar: "--lost-pouf-info" },
 ];
 
 /** Порядок групп на странице. */
-export const GROUPS: ThemeGroup[] = ["Акцент", "Поверхности", "Текст", "Границы", "1st-Pouf"];
+export const GROUPS: ThemeGroup[] = ["Акцент", "Поверхности", "Текст", "Границы"];
 
 // Значение цвета попадает в <style> через dangerouslySetInnerHTML, поэтому его нужно чистить от
 // всего, чем можно вырваться из `--x: VALUE;` (закрыть блок, вставить тег). Пропускаем только то, из

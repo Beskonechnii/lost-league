@@ -4,7 +4,7 @@ import { useState } from "react";
 import { IMAGE_MODELS, IMAGE_QUALITIES, IMAGE_SIZES, MAX_IMAGES, MAX_REFERENCES } from "@/lib/image-options";
 import { SelectField, TextAreaField } from "../../../_components/form";
 import { Button } from "@/components/pouf/Button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Checkbox } from "@/components/pouf/checkbox";
 
 // Генерация картинок по API. Настройки → POST /api/studio/generate → готовые файлы в public/uploads/generated.
 // Ключ OpenAI живёт только на сервере, сюда не приходит.
@@ -89,7 +89,7 @@ export function Generator() {
                 type="file"
                 multiple
                 accept="image/png,image/jpeg,image/webp"
-                className="block w-full text-xs font-bold text-ink-muted file:mr-3 file:rounded-[12px] file:border-0 file:bg-purple file:px-3 file:py-1.5 file:font-black file:text-[var(--on-accent)]"
+                className="block w-full text-xs font-bold text-ink-muted file:mr-3 file:rounded-[12px] file:border-0 file:bg-accent-fill file:px-3 file:py-1.5 file:font-black file:text-[var(--on-accent)]"
                 onChange={(e) => setRefs(Array.from(e.target.files ?? []).slice(0, MAX_REFERENCES))}
               />
               {refs.length > 0 && (
@@ -113,7 +113,7 @@ export function Generator() {
         </div>
 
         {error && (
-          <p className="rounded-control bg-orange px-3 py-2 text-sm font-bold text-[var(--on-accent)]">{error}</p>
+          <p className="rounded-control bg-warn px-3 py-2 text-sm font-bold text-[var(--on-accent)]">{error}</p>
         )}
       </div>
 
@@ -130,7 +130,7 @@ export function Generator() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={src} alt="" className="block w-full" />
                 <figcaption className="flex items-center justify-between px-3 py-2 text-xs font-bold">
-                  <a href={src} download className="text-[var(--purple)] hover:underline">
+                  <a href={src} download className="text-[var(--accent-ink)] hover:underline">
                     скачать
                   </a>
                   <a href={src} target="_blank" rel="noreferrer" className="text-muted hover:text-ink-muted">

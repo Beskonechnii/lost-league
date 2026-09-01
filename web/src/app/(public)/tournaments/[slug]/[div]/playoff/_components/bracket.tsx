@@ -62,10 +62,10 @@ function Row({ side, won, lost, walkover }: { side: SlotSide; won: boolean; lost
       ) : (
         <span className="h-4 w-4 shrink-0 rounded-sm bg-surface-3" />
       )}
-      <span className={`truncate text-xs ${won ? "font-semibold text-white" : "text-ink-muted"}`}>{side.team.name}</span>
+      <span className={`truncate text-xs ${won ? "font-semibold text-ink" : "text-ink-muted"}`}>{side.team.name}</span>
       <span
         className={`ml-auto flex h-full w-6 shrink-0 items-center justify-center text-xs tabular-nums ${
-          cell === "" ? "text-ink-subtle" : won ? "bg-surface-3 font-bold text-white" : "bg-surface-2 text-ink-muted"
+          cell === "" ? "text-ink-subtle" : won ? "bg-surface-3 font-bold text-ink" : "bg-surface-2 text-ink-muted"
         }`}
       >
         {cell}
@@ -91,7 +91,7 @@ function Box({ slot }: { slot: ResolvedSlot }) {
         <Link
           href={`/series/${slot.seriesSlug}`}
           title="Открыть серию"
-          className="absolute -right-2 top-1/2 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded-full bg-surface-3 text-[9px] font-black text-ink-muted transition hover:bg-purple hover:text-[var(--on-accent)]"
+          className="absolute -right-2 top-1/2 flex h-4 w-4 -translate-y-1/2 items-center justify-center rounded-full bg-surface-3 text-[9px] font-black text-ink-muted transition hover:bg-accent-fill hover:text-[var(--on-accent)]"
         >
           i
         </Link>

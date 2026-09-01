@@ -12,7 +12,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/components/pouf/alert-dialog";
 
 // Список драфтов с удалением. Клиент, потому что удаление — это DELETE (запись); карточки
 // убираем оптимистично из локального состояния, чтобы не перезапрашивать всю страницу.
@@ -65,7 +65,7 @@ export function DraftList({ sessions }: { sessions: Item[] }) {
                 <span className="truncate font-black text-ink">{label}</span>
                 <span
                   className={`shrink-0 rounded-pill px-2.5 py-0.5 text-xs font-black text-[var(--on-accent)] ${
-                    s.status === "done" ? "bg-mint" : "bg-warn"
+                    s.status === "done" ? "bg-ok" : "bg-warn"
                   }`}
                 >
                   {s.status === "done" ? "Собран" : "Черновик"}
@@ -79,7 +79,7 @@ export function DraftList({ sessions }: { sessions: Item[] }) {
             <button
               onClick={() => setConfirmId(s.id)}
               title="Удалить драфт"
-              className="absolute right-2 top-2 rounded p-1 text-ink-subtle opacity-0 transition-opacity hover:text-red-400 focus-visible:opacity-100 group-hover:opacity-100"
+              className="absolute right-2 top-2 rounded p-1 text-ink-subtle opacity-0 transition-opacity hover:text-red-700 focus-visible:opacity-100 group-hover:opacity-100"
             >
               ✕
             </button>
@@ -104,7 +104,7 @@ export function DraftList({ sessions }: { sessions: Item[] }) {
                 if (confirmId !== null) remove(confirmId);
               }}
               disabled={busy !== null}
-              className="bg-red-600 text-white hover:bg-red-500"
+              tone="down"
             >
               {busy !== null ? "…" : "Удалить"}
             </AlertDialogAction>

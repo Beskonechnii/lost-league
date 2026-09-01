@@ -1,6 +1,6 @@
 import { findDuplicates, mergeImpact } from "@/lib/duplicates";
 import { denyUnlessPermission } from "../../_components/permission-gate";
-import { READ_MAX_W } from "@/app/_components/ui";
+import { READ_MAX_W } from "@/components/pouf/blocks";
 import { DuplicateRow } from "./_components/duplicate-row";
 
 export const metadata = { title: "Дубли профилей" };

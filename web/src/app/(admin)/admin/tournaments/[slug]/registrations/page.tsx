@@ -3,12 +3,12 @@ import { notFound } from "next/navigation";
 import { tournamentBySlug } from "@/lib/tournaments";
 import { applicationProblems, listApplications, parseAnswers, parseDraft, type Problem } from "@/lib/team-application";
 import { roleLabel } from "@/lib/roles";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/pouf/Button";
 import { denyUnlessPermission } from "../../../../_components/permission-gate";
 import { ReviewForms } from "./review-forms";
 import { enrich, remove, setDivision } from "./actions";
 import { rankLabel } from "@/lib/dota-rank";
-import { FORM_MAX_W } from "@/app/_components/ui";
+import { FORM_MAX_W } from "@/components/pouf/blocks";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Заявки команд" };
@@ -23,15 +23,15 @@ export const metadata = { title: "Заявки команд" };
 const dateTime = new Intl.DateTimeFormat("ru", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
 const TONE: Record<Problem["level"], string> = {
-  block: "border-rose-900 bg-rose-950/40 text-rose-300",
-  warn: "border-amber-900 bg-amber-950/40 text-amber-300",
+  block: "border-rose-200 bg-rose-100 text-rose-700",
+  warn: "border-amber-200 bg-amber-100 text-amber-700",
   info: "border-hairline bg-surface-2 text-ink-subtle",
 };
 
 const STATUS: Record<string, { label: string; tone: string }> = {
-  pending: { label: "Ждёт решения", tone: "border-sky-900 bg-sky-950/40 text-sky-300" },
-  approved: { label: "Одобрена", tone: "border-emerald-900 bg-emerald-950/40 text-emerald-300" },
-  rejected: { label: "Возвращена", tone: "border-amber-900 bg-amber-950/40 text-amber-300" },
+  pending: { label: "Ждёт решения", tone: "border-sky-200 bg-sky-100 text-sky-700" },
+  approved: { label: "Одобрена", tone: "border-emerald-200 bg-emerald-100 text-emerald-700" },
+  rejected: { label: "Возвращена", tone: "border-amber-200 bg-amber-100 text-amber-700" },
 };
 
 export default async function TeamRegistrationsPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -142,13 +142,13 @@ export default async function TeamRegistrationsPage({ params }: { params: Promis
                           ))}
                         </select>
                       </label>
-                      <Button type="submit" size="sm" variant="outline">Сохранить дивизион</Button>
+                      <Button type="submit" size="sm" variant="quiet">Сохранить дивизион</Button>
                     </form>
 
                     <form action={enrich} className="mt-2">
                       <input type="hidden" name="id" value={a.id} />
                       <input type="hidden" name="tournamentSlug" value={tournament.slug} />
-                      <Button type="submit" size="sm" variant="ghost">Подтянуть данные из Steam и OpenDota</Button>
+                      <Button type="submit" size="sm" variant="quiet">Подтянуть данные из Steam и OpenDota</Button>
                     </form>
 
                     {problems[i].length > 0 && (
@@ -159,7 +159,7 @@ export default async function TeamRegistrationsPage({ params }: { params: Promis
                       </ul>
                     )}
                     {!a.divisionId && (
-                      <p className="mt-2 text-xs text-rose-300">Дивизион не выбран — команде некуда встать.</p>
+                      <p className="mt-2 text-xs text-rose-700">Дивизион не выбран — команде некуда встать.</p>
                     )}
 
                     <div className="mt-3">
@@ -168,12 +168,12 @@ export default async function TeamRegistrationsPage({ params }: { params: Promis
                   </>
                 )}
 
-                {a.notes && <p className="mt-2 text-xs text-amber-300">Причина возврата: {a.notes}</p>}
+                {a.notes && <p className="mt-2 text-xs text-amber-700">Причина возврата: {a.notes}</p>}
 
                 <form action={remove} className="mt-3">
                   <input type="hidden" name="id" value={a.id} />
                   <input type="hidden" name="tournamentSlug" value={tournament.slug} />
-                  <Button type="submit" size="sm" variant="ghost">Удалить заявку</Button>
+                  <Button type="submit" size="sm" variant="quiet">Удалить заявку</Button>
                 </form>
               </li>
             );

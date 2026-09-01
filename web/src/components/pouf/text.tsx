@@ -30,7 +30,7 @@ export function Highlight({ children, tone = 'yellow' }: { children: ReactNode; 
   return (
     <span
       className={cx(
-        'pouf-highlight inline-block px-[14px] rounded-control text-[var(--on-accent)] bg-[var(--tone,var(--yellow))]',
+        'pouf-highlight inline-block px-[14px] rounded-control text-[var(--on-accent)] bg-[var(--tone,var(--warn))]',
         '[box-shadow:inset_0_-6px_0_rgba(0,0,0,0.08)]',
         toneClass(tone),
       )}
@@ -41,10 +41,15 @@ export function Highlight({ children, tone = 'yellow' }: { children: ReactNode; 
 }
 
 /** The reference's compact uppercase section eyebrow. The muted token clears
- * AA contrast on both the page background and white surfaces. */
-export function Eyebrow({ children }: { children: ReactNode }) {
+ * AA contrast on both the page background and white surfaces.
+ *
+ * LOST: единственный eyebrow на весь проект. До Э3 их было два — этот и
+ * почти такой же в `app/_components/ui.tsx`, отличавшийся лишь размером и
+ * возможностью дописать класс. Осталась вторая способность (`className`
+ * нужен шапке секции для отбивки), размер один — 13px из Кита. */
+export function Eyebrow({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className="pouf-eyebrow text-[14px] tracking-[2px] uppercase font-extrabold text-muted">
+    <div className={`pouf-eyebrow font-pouf text-[13px] tracking-[2px] uppercase font-extrabold text-muted ${className}`}>
       {children}
     </div>
   )

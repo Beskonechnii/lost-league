@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/pouf/Button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,7 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from "@/components/pouf/alert-dialog";
 
 // Удаление турнира. Подтверждение — Radix AlertDialog, а не window.confirm(): нативный диалог
 // подавляется в webview и кнопка «молча не работала» (та же причина, что в studio/delete-design).
@@ -59,7 +59,7 @@ export function DeleteTournament({
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button type="button" size="sm" variant="ghost" className="text-red-400 hover:text-red-300">
+        <Button type="button" size="sm" variant="quiet">
           Удалить турнир
         </Button>
       </AlertDialogTrigger>
@@ -77,7 +77,7 @@ export function DeleteTournament({
             <AlertDialogCancel type="button" disabled={busy}>
               Отмена
             </AlertDialogCancel>
-            <AlertDialogAction type="submit" disabled={busy} className="bg-red-600 text-white hover:bg-red-500">
+            <AlertDialogAction type="submit" disabled={busy} tone="down">
               {busy ? "…" : "Удалить"}
             </AlertDialogAction>
           </AlertDialogFooter>

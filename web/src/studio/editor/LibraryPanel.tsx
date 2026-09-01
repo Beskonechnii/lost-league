@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeftIcon, XIcon } from "lucide-react";
 import { Label } from "@/app/_components/form";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button, IconButton } from "@/components/pouf/Button";
+import { FormInput } from "@/components/pouf/Input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/pouf/select";
 
 // Левая панель: добавление текста и выбор картинки из библиотеки.
 // Два источника: «Загруженные материалы» (модель MediaAsset, можно удалять) и «Команды и игроки» —
@@ -41,7 +41,7 @@ export function LibraryPanel({
     <div className="space-y-5">
       <div>
         <Label>Добавить</Label>
-        <Button type="button" variant="outline" size="sm" className="mt-1 w-full" onClick={() => onAdd("text")}>
+        <Button type="button" variant="quiet" size="sm" block className="mt-1" onClick={() => onAdd("text")}>
           + Текст
         </Button>
       </div>
@@ -95,7 +95,7 @@ function TeamBrowser({ teams, onPick }: { teams: TeamGroup[]; onPick: PickFn }) 
     const tiles: LibItem[] = [...(team.logo ? [{ src: team.logo, name: `${team.name} — лого` }] : []), ...team.players];
     return (
       <div className="mt-2">
-        <Button type="button" variant="ghost" size="sm" className="mb-2 -ml-1 text-ink-muted" onClick={() => setOpenId(null)}>
+        <Button type="button" variant="quiet" size="sm" className="mb-2 -ml-1" onClick={() => setOpenId(null)}>
           <ChevronLeftIcon />
           {team.name}
         </Button>
@@ -106,7 +106,7 @@ function TeamBrowser({ teams, onPick }: { teams: TeamGroup[]; onPick: PickFn }) 
 
   return (
     <div className="mt-2">
-      <Input placeholder="Поиск команды…" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <FormInput placeholder="Поиск команды…" value={query} onChange={(e) => setQuery(e.target.value)} />
       <div className="scroll-dark mt-2 max-h-72 space-y-1 overflow-y-auto pr-1">
         {found.map((t) => (
           <button
@@ -183,7 +183,7 @@ function Materials({ onPick }: { onPick: PickFn }) {
         }}
       />
       {busy && <p className="mt-1 text-xs text-accent-bright">Загружаю…</p>}
-      {error && <p className="mt-1 text-xs text-rose-400">{error}</p>}
+      {error && <p className="mt-1 text-xs text-rose-700">{error}</p>}
 
       <div className="scroll-dark mt-3 max-h-72 overflow-y-auto pr-1">
         <div className="grid grid-cols-3 gap-2">
@@ -198,16 +198,15 @@ function Materials({ onPick }: { onPick: PickFn }) {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={m.url} alt={m.name} className="h-full w-full object-contain" />
               </button>
-              <Button
+              <IconButton
                 type="button"
-                variant="ghost"
-                size="icon-xs"
-                title="Удалить из библиотеки"
+                size="xs"
+                tone="down"
+                label="Удалить из библиотеки"
                 onClick={() => void remove(m.id)}
-                className="absolute right-0.5 top-0.5 hidden bg-canvas/80 text-ink-subtle hover:text-rose-400 group-hover:flex"
-              >
-                <XIcon />
-              </Button>
+                className="absolute right-0.5 top-0.5 hidden group-hover:inline-flex"
+                icon={<XIcon />}
+              />
             </div>
           ))}
         </div>

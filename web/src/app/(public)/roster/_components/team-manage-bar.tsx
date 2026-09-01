@@ -57,7 +57,7 @@ export function TeamManageBar({
           type="button"
           onClick={doIt}
           disabled={pending}
-          className={`${btn} ${confirming === "purge" ? "bg-[color-mix(in_srgb,#ef4444_22%,transparent)] text-red-200" : "bg-purple text-[var(--on-accent)] cushion-control"}`}
+          className={`${btn} ${confirming === "purge" ? "bg-[color-mix(in_srgb,#ef4444_22%,transparent)] text-red-700" : "bg-accent-fill text-[var(--on-accent)] cushion-control"}`}
         >
           {pending ? "…" : confirming === "purge" ? "Удалить навсегда" : "Да, убрать"}
         </button>
@@ -79,7 +79,7 @@ export function TeamManageBar({
             type="button"
             onClick={() => setConfirming("purge")}
             disabled={pending}
-            className={`${btn} bg-[color-mix(in_srgb,#ef4444_16%,transparent)] text-red-300 hover:text-red-200`}
+            className={`${btn} bg-[color-mix(in_srgb,#ef4444_16%,transparent)] text-red-700 hover:text-red-700`}
           >
             Удалить полностью
           </button>
@@ -89,7 +89,7 @@ export function TeamManageBar({
           type="button"
           onClick={() => setConfirming("archive")}
           disabled={pending}
-          className={`${btn} bg-surface text-ink-subtle hover:text-red-300`}
+          className={`${btn} bg-surface text-ink-subtle hover:text-red-700`}
         >
           Убрать из пула
         </button>

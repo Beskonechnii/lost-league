@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { UploadKind } from "@/lib/profiles";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/pouf/select";
 import { Button } from "@/components/pouf/Button";
 import { Input, Textarea } from "@/components/pouf/Input";
 
@@ -129,15 +129,15 @@ export function ImageField(props: {
           <input
             type="file"
             accept="image/png,image/jpeg,image/webp"
-            className="block w-full text-xs font-bold text-ink-muted file:mr-3 file:rounded-[12px] file:border-0 file:bg-purple file:px-3 file:py-1.5 file:font-black file:text-[var(--on-accent)]"
+            className="block w-full text-xs font-bold text-ink-muted file:mr-3 file:rounded-[12px] file:border-0 file:bg-accent-fill file:px-3 file:py-1.5 file:font-black file:text-[var(--on-accent)]"
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) void upload(f);
             }}
           />
           {props.hint && <p className="mt-1 text-xs font-bold text-muted">{props.hint}</p>}
-          {busy && <p className="mt-1 text-xs font-bold text-[var(--purple)]">Загружаю…</p>}
-          {error && <p className="mt-1 text-xs font-bold text-rose-400">{error}</p>}
+          {busy && <p className="mt-1 text-xs font-bold text-[var(--accent-ink)]">Загружаю…</p>}
+          {error && <p className="mt-1 text-xs font-bold text-rose-700">{error}</p>}
           {props.value && (
             <button type="button" className="mt-1 text-xs font-bold text-muted underline" onClick={() => props.onChange(null)}>
               убрать

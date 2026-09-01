@@ -24,7 +24,7 @@ export function NewQuizForm() {
       >
         Создать
       </button>
-      {state?.error && <span className="text-xs text-red-400">{state.error}</span>}
+      {state?.error && <span className="text-xs text-red-700">{state.error}</span>}
     </form>
   );
 }

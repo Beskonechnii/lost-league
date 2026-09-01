@@ -2,13 +2,13 @@
 
 import { useActionState } from "react";
 import { approve, approveEdit, approveLink, reject, rejectEdit, rejectLink, type ReviewState } from "./actions";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/pouf/Button";
+import { FormInput } from "@/components/pouf/Input";
 
 // Решение по одной заявке. Две формы рядом, а не одна с двумя кнопками: у отказа причина
 // обязательна, и браузерная проверка `required` не должна мешать одобрению.
 
-const errorBox = "rounded-md border border-rose-900 bg-rose-950/40 px-3 py-2 text-sm text-rose-300";
+const errorBox = "rounded-md border border-rose-200 bg-rose-100 px-3 py-2 text-sm text-rose-700";
 
 export function ReviewForms({
   accountId,
@@ -44,7 +44,7 @@ export function ReviewForms({
           {mmr !== undefined && (
             <div className="w-28 space-y-1">
               <label className="block text-xs text-ink-subtle">MMR в лигу</label>
-              <Input name="mmr" inputMode="numeric" defaultValue={mmr == null ? "" : String(mmr)} />
+              <FormInput name="mmr" inputMode="numeric" defaultValue={mmr == null ? "" : String(mmr)} />
             </div>
           )}
           <Button type="submit" size="sm" disabled={busy}>
@@ -59,10 +59,10 @@ export function ReviewForms({
           {reasonRequired && (
             <div className="min-w-[12rem] flex-1 space-y-1">
               <label className="block text-xs text-ink-subtle">Причина возврата</label>
-              <Input name="reason" required placeholder={link ? "Почему это не он" : "Чего не хватает в анкете"} />
+              <FormInput name="reason" required placeholder={link ? "Почему это не он" : "Чего не хватает в анкете"} />
             </div>
           )}
-          <Button type="submit" size="sm" variant="outline" disabled={busy}>
+          <Button type="submit" size="sm" variant="quiet" disabled={busy}>
             {rejecting ? (reasonRequired ? "Возвращаю…" : "Отклоняю…") : reasonRequired ? "Вернуть" : "Отклонить"}
           </Button>
         </form>
@@ -96,9 +96,9 @@ export function EditReviewForms({ editId }: { editId: number }) {
           <input type="hidden" name="editId" value={editId} />
           <div className="min-w-[12rem] flex-1 space-y-1">
             <label className="block text-xs text-ink-subtle">Причина возврата</label>
-            <Input name="reason" required placeholder="Почему так нельзя" />
+            <FormInput name="reason" required placeholder="Почему так нельзя" />
           </div>
-          <Button type="submit" size="sm" variant="outline" disabled={busy}>
+          <Button type="submit" size="sm" variant="quiet" disabled={busy}>
             {rejecting ? "Возвращаю…" : "Вернуть"}
           </Button>
         </form>

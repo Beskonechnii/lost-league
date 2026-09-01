@@ -1,9 +1,9 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/pouf/Button";
+import { FormInput } from "@/components/pouf/Input";
+import { Checkbox } from "@/components/pouf/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/pouf/select";
 import { FORMAT_PRESETS } from "./model";
 
 // Верхняя панель редактора: имя, формат холста, фон, экспорт и сохранение.
@@ -54,7 +54,7 @@ export function Toolbar({
   const current = `${w}×${h}`;
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-lg border border-hairline bg-surface-1/40 p-3">
-      <Input value={title} onChange={(e) => onTitle(e.target.value)} placeholder="Без названия" className="w-52" />
+      <FormInput value={title} onChange={(e) => onTitle(e.target.value)} placeholder="Без названия" className="w-52" />
 
       <Select
         value={current}
@@ -108,7 +108,7 @@ export function Toolbar({
               </button>
             ))}
           </div>
-          <button type="button" onClick={onClearBackgroundImage} className="text-ink-subtle hover:text-rose-400" title="Убрать фон-картинку">
+          <button type="button" onClick={onClearBackgroundImage} className="text-ink-subtle hover:text-rose-700" title="Убрать фон-картинку">
             ✕
           </button>
         </div>
@@ -121,7 +121,7 @@ export function Toolbar({
       {showGrid && (
         <label className="flex items-center gap-1.5 text-xs text-ink-subtle">
           шаг
-          <Input
+          <FormInput
             type="number"
             min={4}
             value={gridSize}
@@ -141,7 +141,7 @@ export function Toolbar({
 
       <div className="ml-auto flex items-center gap-3">
         {saved && <span className="text-sm text-ink-muted">{saved}</span>}
-        <Button type="button" variant="outline" onClick={onSave}>
+        <Button type="button" variant="quiet" onClick={onSave}>
           Сохранить
         </Button>
         <Button type="button" disabled={busy} onClick={onExport}>

@@ -1,7 +1,7 @@
 import { readTheme } from "@/lib/theme-store";
 import { ThemeAdmin } from "./_components/theme-admin";
 import { denyUnlessPermission } from "../../_components/permission-gate";
-import { SITE_MAX_W } from "@/app/_components/ui";
+import { SITE_MAX_W } from "@/components/pouf/blocks";
 
 export const metadata = { title: "Тема" };
 

@@ -1,7 +1,7 @@
 import { HubGroupedTiles } from "@/app/_components/hub-tiles";
 import { currentPermissions, pendingClaims, pendingRegistrations } from "@/lib/account";
 import { QUEUE_TOOL, toolGroupsFor } from "../_components/tools";
-import { SITE_MAX_W } from "@/app/_components/ui";
+import { SITE_MAX_W } from "@/components/pouf/blocks";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Инструменты" };
@@ -27,7 +27,7 @@ export default async function AdminHome() {
     <main className={`mx-auto w-full ${SITE_MAX_W} flex-1 px-4 py-8 md:px-6`}>
       <HubGroupedTiles eyebrow="Служебная часть" title="Инструменты" groups={groups} />
       {groups.length === 0 && (
-        <p className="mt-6 rounded-md border border-amber-900 bg-amber-950/40 px-3 py-2 text-sm text-amber-300">
+        <p className="mt-6 rounded-md border border-amber-200 bg-amber-100 px-3 py-2 text-sm text-amber-700">
           Роль админа есть, а прав пока нет: попросите владельца лиги отметить нужные разделы в
           «Команде лиги».
         </p>

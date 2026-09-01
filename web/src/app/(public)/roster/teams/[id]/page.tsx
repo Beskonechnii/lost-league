@@ -9,7 +9,8 @@ import { buttonClasses } from "@/components/pouf/Button";
 import { roleLabel } from "@/lib/roles";
 import { QUALIFICATION, qualificationOf } from "@/lib/qualification";
 import { can } from "@/lib/account";
-import { Eyebrow, StatTile } from "@/app/_components/ui";
+import { Eyebrow } from "@/components/pouf/text";
+import { StatTile } from "@/components/pouf/blocks";
 import { Breadcrumbs } from "@/app/_components/breadcrumbs";
 import { PlayerMiniCard } from "../../_components/player-card";
 import { TeamCover } from "../../_components/team-cover";
@@ -113,13 +114,13 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
             <div className="flex flex-wrap gap-3 text-xs">
               <Link
                 href={`/tournaments/${division!.tournament.slug}/${division!.slug}`}
-                className="font-black text-[var(--purple)] hover:underline"
+                className="font-black text-[var(--accent-ink)] hover:underline"
               >
                 Групповая стадия →
               </Link>
               <Link
                 href={`/tournaments/${division!.tournament.slug}/${division!.slug}/playoff`}
-                className="font-black text-[var(--purple)] hover:underline"
+                className="font-black text-[var(--accent-ink)] hover:underline"
               >
                 Плей-офф →
               </Link>
@@ -168,7 +169,7 @@ function SeasonRoster({ season, accent }: { season: TeamSeasonRoster; accent: st
   return (
     <details className="rounded-card bg-surface px-4 py-3 cushion-field">
       <summary className="flex cursor-pointer flex-wrap items-center gap-2 text-sm font-black text-ink">
-        <Link href={`/tournaments/${tournament.slug}`} className="hover:text-[var(--purple)]">
+        <Link href={`/tournaments/${tournament.slug}`} className="hover:text-[var(--accent-ink)]">
           {tournament.short ?? tournament.name}
         </Link>
         <span className="text-xs font-bold text-ink-muted">{division.label ?? division.name}</span>
@@ -183,7 +184,7 @@ function SeasonRoster({ season, accent }: { season: TeamSeasonRoster; accent: st
       <ul className="mt-3 space-y-1">
         {players.map((p) => (
           <li key={p.id} className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
-            <Link href={`/roster/players/${p.id}`} className="font-bold text-ink hover:text-[var(--purple)]">
+            <Link href={`/roster/players/${p.id}`} className="font-bold text-ink hover:text-[var(--accent-ink)]">
               {p.nickname}
             </Link>
             {p.isCaptain && <span className="font-black" style={{ color: accent }}>C</span>}

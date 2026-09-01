@@ -14,7 +14,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { PlayerAvatar } from "@/app/(public)/roster/_components/avatar";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/pouf/Button";
 import { ROLES } from "@/lib/roles";
 import {
   addTeam,
@@ -224,7 +224,7 @@ export function DraftBoard({
       </div>
 
       {error && (
-        <div className="mt-3 rounded border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-300">{error}</div>
+        <div className="mt-3 rounded border border-red-200 bg-red-100 px-3 py-2 text-sm text-red-700">{error}</div>
       )}
 
       {state.phase === "draft" && <TurnBanner state={state} />}
@@ -264,7 +264,7 @@ export function DraftBoard({
           )}
 
           {state.phase === "done" && (
-            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-900/50 bg-emerald-950/30 p-3 text-sm text-emerald-200">
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-100 p-3 text-sm text-emerald-700">
               Составы собраны.
               <button
                 onClick={() =>
@@ -276,7 +276,7 @@ export function DraftBoard({
                     teams: s.teams.map((t) => ({ ...t, picks: [], locked: [], usedLock: false, usedSteal: false })),
                   }))
                 }
-                className="rounded border border-emerald-800 px-2 py-1 text-xs hover:bg-emerald-900/40"
+                className="rounded border border-emerald-200 px-2 py-1 text-xs hover:bg-emerald-100"
               >
                 Пересобрать заново
               </button>
@@ -355,10 +355,10 @@ export function DraftBoard({
 
 function PhaseBadge({ phase }: { phase: DraftState["phase"] }) {
   const map = {
-    roster: ["Выбор участников", "bg-sky-500/15 text-sky-300"],
+    roster: ["Выбор участников", "bg-sky-500/15 text-sky-700"],
     config: ["Настройка команд", "bg-surface-3/40 text-ink-muted"],
-    draft: ["Идёт драфт", "bg-amber-500/15 text-amber-300"],
-    done: ["Собран", "bg-emerald-500/15 text-emerald-300"],
+    draft: ["Идёт драфт", "bg-amber-500/15 text-amber-700"],
+    done: ["Собран", "bg-emerald-500/15 text-emerald-700"],
   } as const;
   const [label, cls] = map[phase];
   return <span className={`rounded-full px-2.5 py-1 text-xs ${cls}`}>{label}</span>;
@@ -582,7 +582,7 @@ function TeamColumn({
           {members.length}/{state.targetSize}
         </span>
         {state.phase === "config" && (
-          <button onClick={(e) => (e.stopPropagation(), onRemove())} className="shrink-0 text-ink-subtle hover:text-red-400" title="Удалить команду">
+          <button onClick={(e) => (e.stopPropagation(), onRemove())} className="shrink-0 text-ink-subtle hover:text-red-700" title="Удалить команду">
             ✕
           </button>
         )}
@@ -591,10 +591,10 @@ function TeamColumn({
       {/* Значки использованных спец-действий */}
       {state.phase !== "config" && (
         <div className="flex gap-1.5 px-2.5 pt-2 text-[10px]">
-          <span className={`rounded px-1.5 py-0.5 ${team.usedLock ? "bg-surface-2 text-ink-subtle line-through" : "bg-sky-500/15 text-sky-300"}`}>
+          <span className={`rounded px-1.5 py-0.5 ${team.usedLock ? "bg-surface-2 text-ink-subtle line-through" : "bg-sky-500/15 text-sky-700"}`}>
             Закрепить
           </span>
-          <span className={`rounded px-1.5 py-0.5 ${team.usedSteal ? "bg-surface-2 text-ink-subtle line-through" : "bg-fuchsia-500/15 text-fuchsia-300"}`}>
+          <span className={`rounded px-1.5 py-0.5 ${team.usedSteal ? "bg-surface-2 text-ink-subtle line-through" : "bg-fuchsia-500/15 text-fuchsia-700"}`}>
             Украсть
           </span>
         </div>
@@ -617,17 +617,17 @@ function TeamColumn({
                 <PlayerRow player={p} />
               </div>
               <div className="flex shrink-0 flex-col items-end gap-0.5 pr-1.5">
-                {isCaptain && <span className="rounded bg-amber-500/20 px-1 text-[9px] font-bold text-amber-300">КАП</span>}
+                {isCaptain && <span className="rounded bg-amber-500/20 px-1 text-[9px] font-bold text-amber-700">КАП</span>}
                 {locked && <span title="Закреплён — украсть нельзя">🔒</span>}
                 {canLockThis && (
-                  <button onClick={() => onLock(pid)} className="rounded bg-sky-500/15 px-1 text-[9px] text-sky-300 hover:bg-sky-500/30">
+                  <button onClick={() => onLock(pid)} className="rounded bg-sky-500/15 px-1 text-[9px] text-sky-700 hover:bg-sky-500/30">
                     Закрепить
                   </button>
                 )}
                 {stealable && (
                   <button
                     onClick={() => curTeamId && onSteal(team.id, pid)}
-                    className="rounded bg-fuchsia-500/15 px-1 text-[9px] text-fuchsia-300 hover:bg-fuchsia-500/30"
+                    className="rounded bg-fuchsia-500/15 px-1 text-[9px] text-fuchsia-700 hover:bg-fuchsia-500/30"
                   >
                     Украсть
                   </button>
@@ -683,7 +683,7 @@ function ConfigControls({
           <input type="checkbox" checked={state.snake} onChange={(e) => onSnake(e.target.checked)} />
           Змейка (1→N, N→1)
         </label>
-        <Button variant="outline" size="sm" onClick={onAddTeam} className="hover:border-amber-600">
+        <Button variant="quiet" size="sm" onClick={onAddTeam}>
           + Команда
         </Button>
         <Button
@@ -691,7 +691,8 @@ function ConfigControls({
           onClick={onStart}
           disabled={!!blocker}
           title={blocker ?? "Начать драфт"}
-          className="ml-auto bg-amber-600 text-neutral-950 hover:bg-amber-500"
+          tone="warn"
+          className="ml-auto"
         >
           Начать драфт
         </Button>

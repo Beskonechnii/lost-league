@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentAccount } from "@/lib/account";
-import { Button } from "@/components/ui/button";
+import { buttonClasses } from "@/components/pouf/Button";
 import { ProfileForm, type ProfileValues } from "./profile-form";
 
 export const dynamic = "force-dynamic";
@@ -38,9 +38,9 @@ export default async function EditProfilePage() {
           <Link href="/me" className="text-sm text-ink-subtle transition-colors hover:text-ink">
             ← Кабинет
           </Link>
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/roster/players/${p.id}`}>Моя витрина</Link>
-          </Button>
+          <Link href={`/roster/players/${p.id}`} className={buttonClasses({ variant: "quiet", size: "sm" })}>
+            Моя витрина
+          </Link>
         </div>
 
         <h1 className="mb-1 text-2xl font-bold tracking-tight">Моя анкета</h1>

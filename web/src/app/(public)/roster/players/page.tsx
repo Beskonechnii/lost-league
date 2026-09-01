@@ -1,6 +1,6 @@
 import { listPoolPlayers } from "@/lib/roster-data";
 import { can } from "@/lib/account";
-import { SectionHeader } from "@/app/_components/ui";
+import { SectionHeader } from "@/components/pouf/blocks";
 import { PoolSwitch } from "../_components/pool-switch";
 import { PlayersExplorer } from "../_components/players-explorer";
 

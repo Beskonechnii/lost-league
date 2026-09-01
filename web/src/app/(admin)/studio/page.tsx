@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { TEMPLATES } from "@/studio/registry";
 import { prisma } from "@/lib/prisma";
-import { Eyebrow } from "@/app/_components/ui";
+import { Eyebrow } from "@/components/pouf/text";
 import { RenderHistory } from "./_components/render-history";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ export default async function StudioHome() {
         <h1 className="text-[28px] font-black tracking-[-0.5px] text-ink md:text-4xl">Студия</h1>
         <p className="mt-1.5 text-sm font-bold text-muted">
           Графика собирается по данным ростера: {teams} команд(ы) и {players} игрок(ов). Лого, фото и составы правятся в{" "}
-          <Link href="/roster" className="text-[var(--purple)] hover:underline">
+          <Link href="/roster" className="text-[var(--accent-ink)] hover:underline">
             разделе «Ростер»
           </Link>
           .

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { listQuizzes, quizOpen } from "@/lib/quizzes";
 import { denyUnlessPermission } from "../../_components/permission-gate";
-import { READ_MAX_W } from "@/app/_components/ui";
+import { READ_MAX_W } from "@/components/pouf/blocks";
 import { NewQuizForm } from "./_components/new-quiz-form";
 
 export const metadata = { title: "Анкеты" };
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 const STATUS: Record<string, { label: string; tone: string }> = {
   draft: { label: "Черновик", tone: "border-hairline text-ink-subtle" },
-  open: { label: "Открыта", tone: "border-emerald-800 text-emerald-400" },
+  open: { label: "Открыта", tone: "border-emerald-200 text-emerald-700" },
   closed: { label: "Закрыта", tone: "border-hairline text-ink-muted" },
 };
 
@@ -48,7 +48,7 @@ export default async function QuizzesPage() {
                   <span className={`rounded-md border px-2 py-0.5 text-xs ${status.tone}`}>{status.label}</span>
                   <span className="text-sm font-semibold text-ink hover:text-accent-bright">{quiz.title}</span>
                   {quiz.status === "open" && !live && (
-                    <span className="text-xs text-amber-400">срок прошёл — бот не предлагает</span>
+                    <span className="text-xs text-amber-700">срок прошёл — бот не предлагает</span>
                   )}
                   <span className="text-xs text-ink-subtle">
                     вопросов: {quiz.questions.length} · ответов: {quiz.responses.length}

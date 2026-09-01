@@ -5,7 +5,7 @@ import { tpByTournament } from "@/lib/tp";
 import { roleLabel } from "@/lib/roles";
 import { playerAccountId, playerGaps, teamAccent } from "@/lib/profiles";
 import { can } from "@/lib/account";
-import { SectionHeader } from "@/app/_components/ui";
+import { SectionHeader } from "@/components/pouf/blocks";
 import { notFound } from "next/navigation";
 import { PlayerMiniCard } from "@/app/(public)/roster/_components/player-card";
 import { DivTabs, parseDiv } from "@/app/(public)/roster/_components/div-tabs";
@@ -89,7 +89,7 @@ export default async function PlayersPage({
         aside={
           <>
             {players.length} игроков
-            {authed && noId > 0 && <span className="ml-2 text-amber-400">{noId} без account_id</span>}
+            {authed && noId > 0 && <span className="ml-2 text-amber-700">{noId} без account_id</span>}
             {authed && incomplete > 0 && <span className="ml-2 text-ink-subtle">{incomplete} с неполной анкетой</span>}
           </>
         }
@@ -115,7 +115,7 @@ export default async function PlayersPage({
             href={qs ? `${base}?${qs}` : base}
             className={`rounded-[14px] px-3.5 py-[7px] text-[13px] font-black transition-[box-shadow,transform,background] ${
               sort === s.key
-                ? "bg-purple text-[var(--on-accent)] cushion-control"
+                ? "bg-accent-fill text-[var(--on-accent)] cushion-control"
                 : "bg-surface text-ink-muted cushion-field hover:text-ink"
             }`}
           >
@@ -152,8 +152,8 @@ export default async function PlayersPage({
                     <div className="flex flex-wrap items-center gap-x-2 text-xs tabular-nums text-ink-muted">
                       {p.rec.games > 0 && (
                         <span>
-                          {p.rec.games} игр · <span className="text-emerald-400">{p.rec.wins}</span>–
-                          <span className="text-rose-400">{p.rec.losses}</span>
+                          {p.rec.games} игр · <span className="text-emerald-700">{p.rec.wins}</span>–
+                          <span className="text-rose-700">{p.rec.losses}</span>
                         </span>
                       )}
                       {p.tp > 0 && <span className="font-semibold text-accent-bright">{p.tp} TP</span>}
@@ -167,7 +167,7 @@ export default async function PlayersPage({
                   )}
                   {/* чек-лист анкеты: что осталось добить из CRM (пусто для посетителя) */}
                   {gaps.length > 0 && (
-                    <div className={`truncate text-xs ${playerAccountId(p) ? "text-ink-subtle" : "text-amber-400"}`}>
+                    <div className={`truncate text-xs ${playerAccountId(p) ? "text-ink-subtle" : "text-amber-700"}`}>
                       нет: {gaps.join(", ")}
                     </div>
                   )}

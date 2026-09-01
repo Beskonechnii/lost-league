@@ -58,7 +58,7 @@ export function DivTabs({
           href={href(base, t.key, keep)}
           className={`inline-flex items-center rounded-[14px] px-3.5 py-[7px] text-[13px] font-black transition-[box-shadow,transform,background] ${TOUCH_TARGET} ${
             current === t.key
-              ? "bg-purple text-[var(--on-accent)] cushion-control"
+              ? "bg-accent-fill text-[var(--on-accent)] cushion-control"
               : "bg-surface text-ink-muted cushion-field hover:text-ink"
           }`}
         >

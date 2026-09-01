@@ -58,7 +58,7 @@ export function MatchForm() {
           Из Steam
         </Button>
       </div>
-      {error && <p className="mt-2 text-sm font-bold text-rose-300">{error}</p>}
+      {error && <p className="mt-2 text-sm font-bold text-rose-700">{error}</p>}
     </div>
   );
 }

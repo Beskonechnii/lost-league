@@ -1,5 +1,5 @@
 import { listPlayers } from "@/lib/roster-data";
-import { SITE_MAX_W } from "@/app/_components/ui";
+import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { TpAdmin } from "./_components/tp-admin";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 import { currentTournament } from "@/lib/tournaments";

@@ -9,13 +9,13 @@ import {
   TOURNAMENT_STATUS_LABELS,
   type TournamentStatus,
 } from "@/lib/tournaments";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/pouf/Button";
 import { denyUnlessPermission } from "../../../_components/permission-gate";
 import { Field, STATUS_TONE } from "../_components/fields";
 import { DeleteTournament } from "../_components/delete-tournament";
 import { SaveForm } from "../_components/save-form";
 import { addDivision, assignTeam, autoDraw, changeStatus, removeDivision, removeTournament, saveDivision, saveDraw, saveTournament } from "../actions";
-import { FORM_MAX_W } from "@/app/_components/ui";
+import { FORM_MAX_W } from "@/components/pouf/blocks";
 
 export const dynamic = "force-dynamic";
 
@@ -87,7 +87,7 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
               <input type="hidden" name="id" value={tournament.id} />
               <input type="hidden" name="slug" value={tournament.slug} />
               <input type="hidden" name="status" value={s} />
-              <Button type="submit" size="sm" variant={tournament.status === s ? "default" : "outline"}>
+              <Button type="submit" size="sm" variant={tournament.status === s ? "solid" : "quiet"}>
                 {TOURNAMENT_STATUS_LABELS[s]}
               </Button>
             </form>
@@ -174,7 +174,7 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
                             placeholder="№"
                             className="h-8 w-14 rounded-md border border-hairline bg-surface-2 px-2 text-center text-xs"
                           />
-                          <Button type="submit" size="sm" variant="ghost">Сохранить</Button>
+                          <Button type="submit" size="sm" variant="quiet">Сохранить</Button>
                         </form>
                         {/* Снимаем из ЭТОГО турнира: без явного id экшен брал «текущий», и кнопка
                             на карточке нового сезона убирала команду из идущего. */}
@@ -183,7 +183,7 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
                           <input type="hidden" name="divisionId" value="" />
                           <input type="hidden" name="tournamentId" value={tournament.id} />
                           <input type="hidden" name="tournamentSlug" value={tournament.slug} />
-                          <Button type="submit" size="sm" variant="ghost">Убрать</Button>
+                          <Button type="submit" size="sm" variant="quiet">Убрать</Button>
                         </form>
                       </li>
                     ))}
@@ -203,7 +203,7 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
                       className="mt-1 h-9 w-20 rounded-md border border-hairline bg-surface-2 px-2 text-sm"
                     />
                   </label>
-                  <Button type="submit" size="sm" variant="outline" disabled={entries.length === 0}>
+                  <Button type="submit" size="sm" variant="quiet" disabled={entries.length === 0}>
                     Жеребьёвка змейкой
                   </Button>
                   <span className="text-[11px] text-ink-subtle">
@@ -232,7 +232,7 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
                       ))}
                     </select>
                   </label>
-                  <Button type="submit" size="sm" variant="outline" disabled={free.length === 0}>
+                  <Button type="submit" size="sm" variant="quiet" disabled={free.length === 0}>
                     Добавить
                   </Button>
                 </form>
@@ -241,7 +241,7 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
               <form action={removeDivision} className="mt-3 border-t border-hairline pt-3">
                 <input type="hidden" name="id" value={d.id} />
                 <input type="hidden" name="tournamentSlug" value={tournament.slug} />
-                <Button type="submit" size="sm" variant="ghost" disabled={entries.length > 0}>
+                <Button type="submit" size="sm" variant="quiet" disabled={entries.length > 0}>
                   Удалить дивизион
                 </Button>
                 {entries.length > 0 && (
@@ -272,8 +272,8 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
 
       {/* Опасная зона — внизу и отдельной рамкой: удаление сносит сезон целиком, и нажать его
           по дороге к формам выше не должно быть легко. */}
-      <section className="mt-8 rounded-lg border border-red-900/60 bg-surface-1 p-4">
-        <h2 className="text-sm font-semibold text-red-300">Удалить турнир</h2>
+      <section className="mt-8 rounded-lg border border-red-200 bg-surface-1 p-4">
+        <h2 className="text-sm font-semibold text-red-700">Удалить турнир</h2>
         <p className="mt-1 text-xs text-ink-subtle">
           Уедет весь сезон: дивизионы, участие команд, составы этого турнира, сетка встреч с картами
           и начисления TP. Команды и игроки останутся в ростере.

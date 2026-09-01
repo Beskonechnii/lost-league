@@ -2,14 +2,14 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { divisionTeams, tournamentBySlug } from "@/lib/tournaments";
 import { teamTag } from "@/lib/profiles";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/pouf/Button";
 import { denyUnlessPermission } from "../../../../_components/permission-gate";
 import { Field } from "../../_components/fields";
 import { addDivision, autoDraw, removeDivision, saveDivision, saveDraw } from "../../actions";
 import { finishWizard, goToStep, saveDraft } from "../actions";
 import { ImportForm } from "../../[slug]/import/import-form";
 import { Steps, isStep, stepIndex, WIZARD_STEPS, type StepKey } from "../_components/steps";
-import { FORM_MAX_W } from "@/app/_components/ui";
+import { FORM_MAX_W } from "@/components/pouf/blocks";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Новый турнир" };
@@ -30,13 +30,13 @@ function StepLink({
   step,
   slug,
   children,
-  variant = "outline",
+  variant = "quiet",
   disabled = false,
 }: {
   step: StepKey;
   slug: string;
   children: React.ReactNode;
-  variant?: "default" | "outline";
+  variant?: "solid" | "quiet";
   disabled?: boolean;
 }) {
   return (
@@ -159,7 +159,7 @@ export default async function WizardStep({
               <form action={removeDivision} className="mt-3 border-t border-hairline pt-3">
                 <input type="hidden" name="id" value={d.id} />
                 <input type="hidden" name="tournamentSlug" value={tournament.slug} />
-                <Button type="submit" size="sm" variant="ghost" disabled={rosters[i].length > 0}>
+                <Button type="submit" size="sm" variant="quiet" disabled={rosters[i].length > 0}>
                   Удалить дивизион
                 </Button>
                 {rosters[i].length > 0 && <span className="ml-2 text-[11px] text-ink-subtle">сначала уберите команды</span>}
@@ -244,7 +244,7 @@ export default async function WizardStep({
                     className="mt-1 h-9 w-20 rounded-md border border-hairline bg-surface-2 px-2 text-sm"
                   />
                 </label>
-                <Button type="submit" size="sm" variant="outline" disabled={rosters[i].length === 0}>
+                <Button type="submit" size="sm" variant="quiet" disabled={rosters[i].length === 0}>
                   Жеребьёвка змейкой
                 </Button>
               </form>
@@ -271,7 +271,7 @@ export default async function WizardStep({
                           placeholder="№"
                           className="h-8 w-14 rounded-md border border-hairline bg-surface-2 px-2 text-center text-xs"
                         />
-                        <Button type="submit" size="sm" variant="ghost">Сохранить</Button>
+                        <Button type="submit" size="sm" variant="quiet">Сохранить</Button>
                       </form>
                     </li>
                   ))}
@@ -285,8 +285,8 @@ export default async function WizardStep({
       {/* ── Шаг 5: готово ─────────────────────────────────────────────────── */}
       {step === "done" && tournament && (
         <section className="mt-5 space-y-3">
-          <div className="rounded-lg border border-emerald-900 bg-emerald-950/30 p-4">
-            <h2 className="text-sm font-semibold text-emerald-300">Турнир готов</h2>
+          <div className="rounded-lg border border-emerald-200 bg-emerald-100 p-4">
+            <h2 className="text-sm font-semibold text-emerald-700">Турнир готов</h2>
             <p className="mt-1 text-sm text-ink-muted">
               Заведён черновиком. Он не виден публично, пока вы не переключите статус на «Приём
               заявок» или «Идёт» — это делается на карточке турнира.
@@ -340,7 +340,7 @@ export default async function WizardStep({
               <StepLink
                 step={WIZARD_STEPS[stepIndex(step) + 1].key}
                 slug={tournament.slug}
-                variant="default"
+                variant="solid"
                 // Дальше не пускаем только там, где следующий шаг осмысленно невозможен: без
                 // дивизионов команду ставить некуда. Импорт и жеребьёвку пропустить можно —
                 // составы приезжают и заявками капитанов, а развести группы можно позже.

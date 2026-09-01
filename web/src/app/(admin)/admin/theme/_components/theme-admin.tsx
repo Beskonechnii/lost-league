@@ -60,16 +60,14 @@ function ColorRow({
   );
 }
 
-/** Демонстрационная панель: те же утилиты, что на реальном сайте, под цветами черновика. Обёртка
-    несёт класс pouf-lost + data-theme=dark и сырые токены (lost и lost-pouf) инлайном — так
-    globals.css раздаёт из них pouf-переменные прямо тут, и второй слой (бейджи, статусы) тоже
-    виден вживую. */
+/** Демонстрационная панель: те же утилиты, что на реальном сайте, под цветами черновика.
+    Сырые токены --lost-* стоят инлайном на обёртке — @theme inline в globals.css читает их
+    в рантайме, поэтому весь блок ниже перекрашивается без сохранения. */
 function Preview({ theme }: { theme: Theme }) {
   return (
     <div
       style={themeToStyle(theme)}
-      data-theme="dark"
-      className="pouf-lost overflow-hidden rounded-xl border border-hairline-strong"
+      className="overflow-hidden rounded-xl border border-hairline-strong"
     >
       <div className="space-y-4 bg-canvas p-5">
         <div className="space-y-1">
@@ -110,7 +108,8 @@ function Preview({ theme }: { theme: Theme }) {
           </div>
         </div>
 
-        {/* Слой 1st-Pouf: студия, архив, заглушки, бейджи. Текст наследует pouf-ink от .pouf-lost. */}
+        {/* Подушка Кита: карточка, бейджи-тоны, кнопка. Тени и радиусы приезжают из pouf.css
+            и панелью не правятся — она управляет только цветом. */}
         <div className="rounded-card bg-surface p-4 font-pouf cushion-card">
           <div className="text-sm font-black">Поверхность pouf — карточка студии</div>
           <div className="mt-1 text-sm font-bold text-muted">Приглушённый текст pouf под ней.</div>
@@ -168,7 +167,7 @@ export function ThemeAdmin({ initial }: { initial: Theme }) {
   };
 
   return (
-    <div className="pouf-lost space-y-6" data-theme="dark">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <Eyebrow>Служебная часть · оформление</Eyebrow>

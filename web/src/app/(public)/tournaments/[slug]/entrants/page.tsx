@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { getDivisions, tournamentBySlug } from "@/lib/tournaments";
 import { listTeamRosters } from "@/lib/roster-data";
-import { SectionHeader } from "@/app/_components/ui";
+import { SectionHeader } from "@/components/pouf/blocks";
 import { TeamCards } from "@/app/(public)/roster/_components/team-cards";
 import { DivTabs, parseDiv } from "@/app/(public)/roster/_components/div-tabs";
 

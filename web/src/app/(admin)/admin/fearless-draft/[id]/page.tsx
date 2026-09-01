@@ -8,7 +8,7 @@ import { teamAccent } from "@/lib/profiles";
 import { FEARLESS_VERSION, type FearlessState } from "@/lib/fearless";
 import { FearlessBoard, type HeroRef, type TeamRef } from "../_components/fearless-board";
 import { denyUnlessPermission } from "../../../_components/permission-gate";
-import { SITE_MAX_W } from "@/app/_components/ui";
+import { SITE_MAX_W } from "@/components/pouf/blocks";
 
 export const dynamic = "force-dynamic";
 

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { listResponses, parseOptions, quizBySlug, responsesTable } from "@/lib/quizzes";
 import { denyUnlessPermission } from "../../../_components/permission-gate";
-import { READ_MAX_W } from "@/app/_components/ui";
+import { READ_MAX_W } from "@/components/pouf/blocks";
 import { QuizSettings } from "./_components/quiz-settings";
 import { QuestionList } from "./_components/question-list";
 import { Responses } from "./_components/responses";

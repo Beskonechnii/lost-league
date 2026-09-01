@@ -6,16 +6,15 @@ import { sendApplication, sendClaim, type ApplyState } from "./actions";
 import { PlayerPicker, type LinkablePlayer } from "./onboarding";
 import { EMPTY_INPUT, applicationToInput, type Application } from "@/lib/application";
 import { ROLES } from "@/lib/roles";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/components/pouf/Button";
+import { FormInput, Label } from "@/components/pouf/Input";
 
 // Анкета-заявка: единственное, что видит человек в кабинете до одобрения (требование 6).
 // Развилка та же, что в онбординге, но обе ветки заканчиваются не профилем, а заявкой на модерацию:
 // «я новый игрок» → анкета JSON, «я уже в ростере» → заявка на привязку. Player при этом не заводится
 // (docs/archive/ACCOUNTS-PLAN.md §2.1) — иначе неодобренный сразу попал бы в публичный ростер.
 
-const errorBox = "rounded-md border border-rose-900 bg-rose-950/40 px-3 py-2 text-sm text-rose-300";
+const errorBox = "rounded-md border border-rose-200 bg-rose-100 px-3 py-2 text-sm text-rose-700";
 
 function Field({
   label,
@@ -81,8 +80,8 @@ export function ApplicationFlow({
   return (
     <div className="space-y-3">
       {rejectedReason && (
-        <div className="rounded-xl border border-rose-900 bg-rose-950/30 px-4 py-3">
-          <p className="text-xs uppercase tracking-wide text-rose-400/80">Заявку вернули</p>
+        <div className="rounded-xl border border-rose-200 bg-rose-100 px-4 py-3">
+          <p className="text-xs uppercase tracking-wide text-rose-700">Заявку вернули</p>
           {/* Причина — не приговор, а список правок: ниже сразу открыта та же анкета с прежними
               ответами, поправить нужное и отправить снова. */}
           <p className="mt-1 whitespace-pre-line text-sm text-ink">{rejectedReason}</p>
@@ -152,23 +151,23 @@ function ApplicationForm({ application }: { application: Application | null }) {
       </p>
 
       <Field label="Ник в лиге" hint="Под ним вас увидят в таблицах и на витрине.">
-        <Input name="nickname" defaultValue={v.nickname} required autoFocus placeholder="Например, Miracle-" />
+        <FormInput name="nickname" defaultValue={v.nickname} required autoFocus placeholder="Например, Miracle-" />
       </Field>
 
       <Field label="Имя">
-        <Input name="realName" defaultValue={v.realName} required placeholder="Как вас зовут" />
+        <FormInput name="realName" defaultValue={v.realName} required placeholder="Как вас зовут" />
       </Field>
 
       <Field label="Дата рождения">
-        <Input name="birthday" type="date" defaultValue={v.birthday} required />
+        <FormInput name="birthday" type="date" defaultValue={v.birthday} required />
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
         <Field label="Город">
-          <Input name="city" defaultValue={v.city} required />
+          <FormInput name="city" defaultValue={v.city} required />
         </Field>
         <Field label="Страна">
-          <Input name="country" defaultValue={v.country} required />
+          <FormInput name="country" defaultValue={v.country} required />
         </Field>
       </div>
 
@@ -189,7 +188,7 @@ function ApplicationForm({ application }: { application: Application | null }) {
           </select>
         </Field>
         <Field label="MMR" hint="Со слов игрока — проверит организатор.">
-          <Input name="mmr" inputMode="numeric" defaultValue={v.mmr} required placeholder="Например, 4200" />
+          <FormInput name="mmr" inputMode="numeric" defaultValue={v.mmr} required placeholder="Например, 4200" />
         </Field>
       </div>
 
@@ -201,20 +200,20 @@ function ApplicationForm({ application }: { application: Application | null }) {
         </p>
 
         <Field label="Dotabuff">
-          <Input name="dotabuff" defaultValue={v.dotabuff} placeholder="https://www.dotabuff.com/players/…" />
+          <FormInput name="dotabuff" defaultValue={v.dotabuff} placeholder="https://www.dotabuff.com/players/…" />
         </Field>
 
         <Field label="Stratz">
-          <Input name="stratz" defaultValue={v.stratz} placeholder="https://stratz.com/players/…" />
+          <FormInput name="stratz" defaultValue={v.stratz} placeholder="https://stratz.com/players/…" />
         </Field>
 
         <Field label="Steam">
-          <Input name="steam" defaultValue={v.steam} placeholder="https://steamcommunity.com/profiles/…" />
+          <FormInput name="steam" defaultValue={v.steam} placeholder="https://steamcommunity.com/profiles/…" />
         </Field>
       </div>
 
       <Field label="Telegram" hint="Можно с @ или ссылкой — приведём к хендлу.">
-        <Input name="telegram" defaultValue={v.telegram} required placeholder="@nickname" />
+        <FormInput name="telegram" defaultValue={v.telegram} required placeholder="@nickname" />
       </Field>
 
       <Field label="Достижения" optional hint="Свободный список — одна строка на достижение.">
@@ -228,7 +227,7 @@ function ApplicationForm({ application }: { application: Application | null }) {
 
       <PolicyCheck />
 
-      <Button type="submit" disabled={pending} className="w-full">
+      <Button type="submit" disabled={pending} block>
         {pending ? "Отправляю…" : "Отправить заявку"}
       </Button>
 
@@ -247,7 +246,7 @@ function ClaimApplicationForm({ players }: { players: LinkablePlayer[] }) {
       <input type="hidden" name="playerId" value={picked?.id ?? ""} />
       <PlayerPicker players={players} picked={picked} onPick={setPicked} />
       <PolicyCheck />
-      <Button type="submit" disabled={pending || !picked} className="w-full">
+      <Button type="submit" disabled={pending || !picked} block>
         {pending ? "Отправляю…" : "Подать заявку на привязку"}
       </Button>
       {state?.error && <p className={errorBox}>{state.error}</p>}

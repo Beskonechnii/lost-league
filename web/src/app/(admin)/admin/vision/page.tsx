@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { SITE_MAX_W } from "@/app/_components/ui";
+import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { VisionMap } from "@/app/_components/postgame/vision-map";
 import { listTeamsWithWards, teamVision, mapVision } from "@/lib/vision";
 import { denyUnlessPermission } from "../../_components/permission-gate";
@@ -17,7 +17,7 @@ const fmtDate = (iso: string | null) =>
 const chip = (active: boolean) =>
   `rounded-[14px] px-3.5 py-[9px] text-[13px] font-black transition-[box-shadow,transform,background] ${
     active
-      ? "bg-purple text-[var(--on-accent)] cushion-control"
+      ? "bg-accent-fill text-[var(--on-accent)] cushion-control"
       : "bg-surface text-ink-muted cushion-field hover:text-ink"
   }`;
 

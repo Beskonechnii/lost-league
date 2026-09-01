@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { divisionOfTournament } from "@/lib/tournaments";
 import { getLeaders, METRICS, type Subject } from "@/lib/leaders";
 import { BRACKETS, isBracket, isStage, STAGES } from "@/lib/stages";
-import { SectionHeader } from "@/app/_components/ui";
+import { SectionHeader } from "@/components/pouf/blocks";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ function Chip({ href, active, children }: { href: string; active: boolean; child
       href={href}
       className={`rounded-[14px] px-3.5 py-[7px] text-[13px] font-black transition-[box-shadow,transform,background] ${
         active
-          ? "bg-purple text-[var(--on-accent)] cushion-control-active [transform:translateY(1px)]"
+          ? "bg-accent-fill text-[var(--on-accent)] cushion-control-active [transform:translateY(1px)]"
           : "bg-surface text-ink-muted cushion-field hover:text-ink hover:cushion-field-focus"
       }`}
     >
@@ -49,7 +49,7 @@ function Board({
   const top = rows[0]?.value ?? 0;
   return (
     <section className="overflow-hidden rounded-card bg-surface font-pouf cushion-card">
-      <div className="border-b border-hairline bg-gradient-to-r from-purple/[0.16] to-transparent px-4 py-3">
+      <div className="border-b border-hairline bg-gradient-to-r from-accent-fill/[0.16] to-transparent px-4 py-3">
         <div className="text-sm font-black tracking-[-0.2px] text-ink">{title}</div>
         <div className="text-[11px] font-bold text-muted">{hint}</div>
       </div>
@@ -65,13 +65,13 @@ function Board({
               >
                 {/* полоса-доля от лидера: строку читаешь глазами, не сравнивая цифры */}
                 <span
-                  className={`absolute inset-y-0 left-0 ${leader ? "bg-purple/[0.20]" : "bg-purple/[0.09]"}`}
+                  className={`absolute inset-y-0 left-0 ${leader ? "bg-accent-fill/[0.20]" : "bg-accent-fill/[0.09]"}`}
                   style={{ width: `${top > 0 ? Math.max(2, (r.value / top) * 100) : 0}%` }}
                   aria-hidden
                 />
                 <span
                   className={`relative grid h-6 w-6 shrink-0 place-items-center rounded-[10px] text-[11px] font-black tabular-nums ${
-                    leader ? "bg-purple text-[var(--on-accent)]" : "text-ink-subtle"
+                    leader ? "bg-accent-fill text-[var(--on-accent)]" : "text-ink-subtle"
                   }`}
                 >
                   {i + 1}
@@ -81,7 +81,7 @@ function Board({
                 </span>
                 <Link
                   href={r.subject.kind === "team" ? `/roster/teams/${r.subject.id}` : `/roster/players/${r.subject.id}`}
-                  className="relative truncate text-sm font-black transition-colors group-hover:text-[var(--purple)]"
+                  className="relative truncate text-sm font-black transition-colors group-hover:text-[var(--accent-ink)]"
                 >
                   {r.subject.name}
                 </Link>
@@ -144,7 +144,7 @@ export default async function StatsPage({
           <>
             Карт в разрезе: <span className="text-ink-muted">{data.games}</span>
             {data.games > 0 && data.parsedGames < data.games && (
-              <span className="text-amber-400"> · распарсено {data.parsedGames}</span>
+              <span className="text-amber-700"> · распарсено {data.parsedGames}</span>
             )}
           </>
         }
@@ -205,7 +205,7 @@ export default async function StatsPage({
       {data.games === 0 ?
         <p className="rounded-card bg-surface p-6 text-sm font-bold text-muted cushion-field">
           В этом разрезе нет ни одной карты. Карты попадают сюда, когда их привязывают к встрече —{" "}
-          <Link href="/admin/series" className="text-[var(--purple)] hover:underline">
+          <Link href="/admin/series" className="text-[var(--accent-ink)] hover:underline">
             архив серий
           </Link>
           .

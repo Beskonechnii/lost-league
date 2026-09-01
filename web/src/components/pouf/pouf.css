@@ -71,18 +71,6 @@
   --color-info: #98c5e4;
   --color-info-ink: #1e4a66;
 
-  /* -- Устаревшие имена-по-оттенку. Их зовут утилитами (bg-mint, text-pink)
-   *    ~20 компонентов из трёх параллельных библиотек; вычищаются на Э3
-   *    вместе со слиянием. До тех пор — алиасы на семантику выше, чтобы
-   *    значение жило в одном месте. -------------------------------------- */
-  --color-mint: var(--color-accent-fill);
-  --color-purple: var(--color-accent-fill);
-  --color-pink: var(--color-err);
-  --color-blue: var(--color-info);
-  --color-yellow: var(--color-warn);
-  /* Оранжевого в Ките нет: внимание там жёлтое. Алиас на warn до Э3. */
-  --color-orange: var(--color-warn);
-
   /* -- Шрифт. Nunito из Кита; 'Nunito Variable' ПЕРВЫМ и не взаимозаменяем
    *    с 'Nunito': пакет @fontsource-variable/nunito (он и подключён в
    *    layout.tsx) регистрирует @font-face именно под этим именем. Стек
@@ -126,14 +114,6 @@
   --r-chip: var(--radius-chip);
   --r-pill: var(--radius-pill);
 
-  /* Устаревшие имена-по-оттенку — см. блок в @theme. */
-  --mint: var(--color-mint);
-  --purple: var(--color-purple);
-  --pink: var(--color-pink);
-  --blue: var(--color-blue);
-  --yellow: var(--color-yellow);
-  --orange: var(--color-orange);
-
   /* -- Градиенты Кита. В Ките ни одна поверхность не заливается плоским
    *    цветом: свет идёт ↖, поэтому у подушки есть светлая и теневая
    *    сторона. Плоские --surface/--accent-fill выше — это их «средний»
@@ -146,6 +126,11 @@
   --grad-err: linear-gradient(135deg, #f5c8c8, #e39191);
   --grad-info: linear-gradient(135deg, #c4e2f3, #98c5e4);
 
+  /* -- Акцентный ТЕКСТ на бумаге: ссылка, число-победа, «капитан». Мятная
+   *    заливка --accent-fill для этого не годится (1.6:1 на бумаге) — акцент
+   *    в тексте несёт тёмный мятный ink Кита. Отдельное имя, потому что роль
+   *    другая: --on-accent это надпись ВНУТРИ акцентной плашки. ------------ */
+  --accent-ink: var(--color-on-accent);
   /* -- Текст на акцентной заливке. Отдельный токен не ради светлой темы (тут
    *    он просто мятный ink), а ради второй палитры: акценты остаются
    *    пастельными в обеих темах — это бренд, — поэтому надпись на них обязана
@@ -264,125 +249,37 @@
   --pouf-field-focus: var(--sh-carve), var(--sh-focus);
 }
 
+
 /* ============================================================================
- * ТЁМНАЯ ТЕМА — тот самый «один блок переопределений».
+ * ТЁМНАЯ ТЕМА — снята на Э3 (RELEASE-PLAN §B, решение от 01.09).
  *
- * По решению от 01.09 (RELEASE-PLAN §B) на релиз идёт ОДНА тема — светлый Кит
- * выше. Этот блок пока остаётся не как вторая палитра продукта, а как рабочее
- * состояние прода: `data-theme="dark"` ещё висит на <html> и на нескольких
- * обёртках (layout.tsx, site-nav.tsx, admin-sidebar.tsx…), а панель /admin/theme
- * дописывает поверх свои --lost-pouf-*. Пока это так, сайт выглядит как прежде,
- * и переезд на Кит не размазывается по двум этапам. Снимается на Э3 вместе со
- * слиянием UI-библиотек; после релиза сюда же вернётся настоящая тёмная тема —
- * и вся её цена будет в этом блоке, потому что имена токенов семантические.
+ * На релиз идёт ОДНА тема — светлый Кит выше. До Э3 здесь стоял блок
+ * [data-theme='dark'] со сливово-фиолетовой палитрой: он держал прод тёмным,
+ * пока токены Кита въезжали в код. Прод переехал — блок убран целиком.
  *
- * Значения ниже — прежняя сливово-фиолетовая палитра pouf, не Кит: их задача —
- * ничего не сломать до Э3.
+ * Тёмная тема вернётся отдельной задачей после релиза, и вся её цена будет
+ * ровно в этом месте: имена токенов семантические (--bg / --surface / --ink /
+ * --accent-fill), поэтому вторая палитра — блок переопределений, а не правка
+ * компонентов. Что придётся переопределить, кроме цветов, стоит записать
+ * заранее — подушка это утверждение о свете, и три её тени не перекрашиваются
+ * механически:
  *
- * Палитра — лёгкая половина. Тяжёлая в том, что подушка — это утверждение
- * о свете, и ниже расписано, почему её три тени нельзя просто перекрасить.
+ *   - CARD / ROW / FIELD оборачивают --surface, который уезжает из почти белого
+ *     в почти чёрный. Верхний блик 0.95 белым там читается выбитым хромом —
+ *     он падает до ~0.06, а работу берёт на себя нижний приступочек.
+ *   - CONTROL / BLOB лежат на пастельном акценте, который в обеих темах ОДИН.
+ *     Их внутренний блик и пол почти не трогаются — иначе расплющится кнопка,
+ *     которая цвета не меняла. Глубже становится только внешний отброс: это
+ *     единственная часть, которая падает на тёмную бумагу.
  *
- * The palette is the easy half. The hard half is that a cushion is a claim
- * about light: an inner top highlight (light from above), an inner floor
- * shadow (the slab's own thickness), and an outer drop (its cast on the page).
- * Those cannot simply be recoloured, because the surfaces they describe do not
- * all change:
- *
- *   - CARD / ROW / FIELD wrap a --surface that goes from white to near-black.
- *     A 0.9-alpha white top highlight there reads as a blown-out chrome rim,
- *     so it drops to ~0.06 and the floor does the work instead.
- *   - CONTROL / BLOB sit on a PASTEL accent that is identical in both themes.
- *     Their inner highlight and floor are therefore left almost untouched —
- *     changing them would flatten a button that never changed colour. Only the
- *     outer drop deepens, because that is the part cast onto the dark page.
- *
- * Get that distinction wrong and everything reads flat, which is the usual way
- * a claymorphism dark mode fails.
+ * Ошибиться здесь — обычный способ провалить тёмный claymorphism: всё плоское.
  * ========================================================================= */
-[data-theme='dark'],
-.dark {
-  /* Neutral plum-black foundations keep the pastel accents colourful instead
-   * of tinting every square inch purple. Surfaces are separated by luminance,
-   * not by a second saturated hue. */
-  --color-bg: #12111a;
-  --color-surface: #211f2b;
-  --color-clay-ink: #f7f3ff;
-  --color-clay-muted: #b8afcb;
-  /* Accents deliberately unchanged: they are the brand, they carry
-   * --on-accent text, and re-tinting them would be a different product. */
 
-  --bg: var(--color-bg);
-  --surface: var(--color-surface);
-  --ink: var(--color-clay-ink);
-  --muted: var(--color-clay-muted);
-
-  /* Приступочек прежней толщины. В Ките он 3px, у сливовой подушки был 10/6 —
-   * и на нём же сидит вертикальный padding компонентов (±lip/2). Пиним, чтобы
-   * до Э3 прод не поехал по высотам. Уйдёт вместе с блоком. */
-  --lip: 10px;
-  --lip-row: 6px;
-
-  /* Новые токены Кита (--carve, --subtle, --line*, --grad-*) здесь нарочно не
-   * дублируются: пока их никто не читает, а блок временный. Настоящая тёмная
-   * тема после релиза заведёт их разом. */
-
-  /* Pinned, not inherited: --ink is light here, and this must stay dark. */
-  --on-accent: #2a2145;
-  --inverse-surface: #0d0c13;
-  --inverse-ink: #f7f3ff;
-  --code-surface: #0d0c13;
-  --code-ink: #eee8fa;
-
-  /* Surface cushions — re-derived, per the note above. */
-  --pouf-card:
-    inset 0 calc(-1 * var(--lip)) 0 rgba(156, 124, 220, 0.16),
-    inset 0 6px 0 rgba(255, 255, 255, 0.07),
-    0 20px 40px rgba(0, 0, 0, 0.38);
-  --pouf-row:
-    inset 0 calc(-1 * var(--lip-row)) 0 rgba(156, 124, 220, 0.14),
-    inset 0 4px 0 rgba(255, 255, 255, 0.06),
-    0 8px 18px rgba(0, 0, 0, 0.3);
-  --pouf-row-hover:
-    inset 0 calc(-1 * var(--lip-row)) 0 rgba(180, 146, 238, 0.22),
-    inset 0 4px 0 rgba(255, 255, 255, 0.09),
-    0 12px 24px rgba(0, 0, 0, 0.38);
-  --pouf-field:
-    inset 0 -4px 0 rgba(0, 0, 0, 0.25), inset 0 4px 0 rgba(255, 255, 255, 0.05),
-    inset 0 0 0 2px rgba(201, 168, 255, 0.22);
-  --pouf-field-focus:
-    inset 0 -4px 0 rgba(0, 0, 0, 0.25), inset 0 4px 0 rgba(255, 255, 255, 0.06),
-    inset 0 0 0 3px var(--purple);
-
-  /* Accent cushions — inner recipe kept, outer drop deepened only. */
-  --pouf-control:
-    inset 0 -6px 0 rgba(0, 0, 0, 0.18), inset 0 4px 0 rgba(255, 255, 255, 0.35),
-    0 8px 16px rgba(0, 0, 0, 0.34);
-  --pouf-control-active:
-    inset 0 -3px 0 rgba(0, 0, 0, 0.18), inset 0 2px 0 rgba(255, 255, 255, 0.35),
-    0 4px 10px rgba(0, 0, 0, 0.3);
-  --pouf-blob:
-    inset 0 -8px 0 rgba(0, 0, 0, 0.15), inset 0 4px 0 rgba(255, 255, 255, 0.4),
-    0 10px 20px rgba(0, 0, 0, 0.34);
-}
-
-/* Dark is opt-in via an attribute or the conventional shadcn `dark` class —
- * there is deliberately no `@media (prefers-color-scheme: dark)` rule here.
- *
- * Reading the OS preference in CSS would make the theme a property of the
- * visitor's machine rather than of the document, which (a) makes every
- * screenshot test environment-dependent, including this repo's own 168-demo
- * gate, and (b) takes the choice away from the host app, which usually already
- * owns a theme toggle. Deciding from the OS is a one-line job for whoever
- * mounts the app — see the inline script in the site's Site.astro for the
- * standard no-flash version:
- *
- *   <html data-theme={prefersDark ? 'dark' : 'light'}>
- *   <html className={prefersDark ? 'dark' : 'light'}>
- */
-[data-theme='dark'],
-.dark { color-scheme: dark; }
-[data-theme='light'],
-.light { color-scheme: light; }
+/* Схема цвета фиксирована светлой: тема у нас свойство документа, а не машины
+ * посетителя. Медиазапроса prefers-color-scheme нет намеренно — иначе браузер
+ * перекрасил бы нативный хром (скроллбары, поля) под системную тёмную, тогда
+ * как страница осталась бы бумажной. */
+:root { color-scheme: light; }
 
 /* ============================================================================
  * Base. — LOST: удалён.
@@ -463,7 +360,7 @@
   /* Compact portal scale: page chrome tops out at 45, then backdrop 50 →
    * modal 60 → floating content 70 → toast 80. */
   z-index: 50;
-  background: rgba(58, 46, 92, 0.35);
+  background: rgba(120, 108, 78, 0.35);
   backdrop-filter: blur(2px);
 }
 /* Enter AND exit are CSS animations keyed off Radix's data-state. Radix's own
@@ -754,7 +651,7 @@
   font-weight: 800;
   border-radius: 12px;
   padding: var(--s2) var(--s3);
-  box-shadow: 0 10px 20px rgba(58, 46, 92, 0.25);
+  box-shadow: 0 10px 20px rgba(120, 108, 78, 0.25);
   z-index: 70;
   transform-origin: var(--radix-tooltip-content-transform-origin);
 }
@@ -802,7 +699,7 @@
   box-shadow: var(--pouf-field);
 }
 .pouf-option[data-state='checked'] {
-  background: var(--purple);
+  background: var(--accent-fill);
   color: var(--on-accent);
 }
 
@@ -862,11 +759,11 @@
 }
 .pouf-menu__sep {
   height: 1px;
-  background: rgba(201, 168, 255, 0.3);
+  background: rgba(178, 164, 132, 0.3);
   margin: var(--s1) var(--s2);
 }
 .pouf-menubar__trigger:focus-visible {
-  outline: 3px solid var(--purple);
+  outline: 3px solid var(--accent-fill);
   outline-offset: 2px;
 }
 
@@ -913,12 +810,12 @@
   top: 4px;
   bottom: 4px;
   border-radius: 999px;
-  background: rgba(201, 168, 255, 0.15);
+  background: rgba(178, 164, 132, 0.15);
 }
 .pouf-scroll__thumb {
   flex: 1;
   border-radius: 999px;
-  background: rgba(201, 168, 255, 0.45);
+  background: rgba(178, 164, 132, 0.45);
   position: relative;
 }
 
@@ -938,38 +835,57 @@
  * TONES — one class per palette entry. Every tonal primitive composes these,
  * so a colour lives in exactly one place.
  * ========================================================================= */
+/* Имена тонов остались по-оттеночными — это API компонентов (`tone="mint"`),
+ * и переименовывать его Э3 не стал. А вот ЗНАЧЕНИЯ семантические: у Кита нет
+ * ни фиолетового, ни розового, ни оранжевого, поэтому «purple» это акцент,
+ * «pink» — ошибка, «orange» и «yellow» — одно и то же внимание. */
+/* Кроме заливки тон несёт --tone-ink: у Кита к каждому статусу идёт СВОЙ цвет
+ * надписи (мятный ink на зелёном, винный на розовом, охра на жёлтом). Один ink
+ * на все заливки — то, из-за чего «удалить» на розовой плашке приходилось
+ * красить классом на месте: белым по красному, мимо системы. */
 .tone-pink {
-  --tone: var(--pink);
+  --tone: var(--down);
+  --tone-ink: var(--color-err-ink);
 }
 .tone-purple {
-  --tone: var(--purple);
+  --tone: var(--accent-fill);
+  --tone-ink: var(--color-on-accent);
 }
 .tone-blue {
-  --tone: var(--blue);
+  --tone: var(--info);
+  --tone-ink: var(--color-info-ink);
 }
 .tone-mint {
-  --tone: var(--mint);
+  --tone: var(--up);
+  --tone-ink: var(--color-ok-ink);
 }
 .tone-yellow {
-  --tone: var(--yellow);
+  --tone: var(--warn);
+  --tone-ink: var(--color-warn-ink);
 }
 .tone-orange {
-  --tone: var(--orange);
+  --tone: var(--warn);
+  --tone-ink: var(--color-warn-ink);
 }
 .tone-up {
   --tone: var(--up);
+  --tone-ink: var(--color-ok-ink);
 }
 .tone-down {
   --tone: var(--down);
+  --tone-ink: var(--color-err-ink);
 }
 .tone-warn {
   --tone: var(--warn);
+  --tone-ink: var(--color-warn-ink);
 }
 .tone-info {
   --tone: var(--info);
+  --tone-ink: var(--color-info-ink);
 }
 .tone-idle {
   --tone: var(--idle);
+  --tone-ink: var(--color-on-accent);
 }
 
 /* Child Text primitives normally own their page/surface colours. A selected
@@ -990,8 +906,10 @@
   gap: var(--s3);
   font-size: 14px;
   font-weight: 700;
-  color: var(--on-accent);
-  background: var(--orange);
+  /* Свой ink, не --on-accent: тот тёмно-мятный и на розовой плашке ошибки
+     читается грязно. У Кита к каждому статусу идёт собственный цвет надписи. */
+  color: var(--color-err-ink);
+  background: var(--down);
   border-radius: 20px;
   padding: 14px var(--s4);
     /* Bias the vertical padding by half the lip: the floor inset paints INSIDE
@@ -1001,7 +919,7 @@
   padding-block: calc(14px - 4px) calc(14px + 4px);
   box-shadow:
     inset 0 -8px 0 rgba(0, 0, 0, 0.05), inset 0 5px 0 rgba(255, 255, 255, 0.45),
-    0 12px 26px rgba(58, 46, 92, 0.15);
+    0 12px 26px rgba(120, 108, 78, 0.15);
   align-self: start;
   max-width: 100%;
 }
@@ -1012,10 +930,10 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  color: var(--on-accent);
+  color: var(--color-err-ink);
   background: #fff;
   box-shadow:
-    inset 0 -3px 0 rgba(0, 0, 0, 0.08), inset 0 2px 0 #fff, 0 3px 6px rgba(58, 46, 92, 0.22);
+    inset 0 -3px 0 rgba(0, 0, 0, 0.08), inset 0 2px 0 #fff, 0 3px 6px rgba(120, 108, 78, 0.22);
 }
 .pouf-error-note__text {
   min-width: 0;
@@ -1118,7 +1036,7 @@
  * one screen and "you are here" on another. The active tab answers one question
  * — where am I — and one colour answers it. */
 .pouf-tab--active {
-  background: var(--purple);
+  background: var(--accent-fill);
   color: var(--on-accent);
   font-weight: 800;
   /* The lighter of the two clay recipes: the heavy one turned the active tab
@@ -1175,7 +1093,7 @@
   width: 44px;
   height: 5px;
   border-radius: 999px;
-  background: rgba(58, 46, 92, 0.2);
+  background: rgba(120, 108, 78, 0.2);
   margin: 0 auto;
   flex: none;
 }
@@ -1207,14 +1125,14 @@
   box-shadow: var(--pouf-row);
 }
 .pouf-navlink--active {
-  background: var(--tone, var(--purple));
+  background: var(--tone, var(--accent-fill));
   box-shadow: var(--pouf-control);
   /* The base rule is --ink on a transparent row; once filled with an accent
    * the label has to follow the accent's ink instead. */
   color: var(--on-accent);
 }
 .pouf-navlink--active:hover {
-  background: var(--tone, var(--purple));
+  background: var(--tone, var(--accent-fill));
   box-shadow: var(--pouf-control);
 }
 .pouf-navlink:active {
@@ -1239,7 +1157,7 @@
      * optically centred content — the convention stated at the top of this
      * file, and what .pouf-bell__button already did. */
   padding-block: calc(var(--s3) - 3px) calc(var(--s3) + 3px);
-  background: var(--tone, var(--blue));
+  background: var(--tone, var(--info));
   color: var(--on-accent);
   box-shadow: var(--pouf-control);
 }
@@ -1250,7 +1168,7 @@
   50% {
     box-shadow:
       var(--pouf-control),
-      0 0 0 6px rgba(255, 179, 138, 0.35);
+      0 0 0 6px rgba(232, 197, 110, 0.4);
   }
 }
 
@@ -1266,7 +1184,7 @@
   text-align: center;
 }
 .pouf-skeleton {
-  background: linear-gradient(90deg, var(--bg) 25%, rgba(201, 168, 255, 0.35) 50%, var(--bg) 75%);
+  background: linear-gradient(90deg, var(--bg) 25%, rgba(178, 164, 132, 0.35) 50%, var(--bg) 75%);
   background-size: 200% 100%;
   animation: pouf-shimmer 1.4s ease-in-out infinite;
   border-radius: var(--r-control);
@@ -1348,12 +1266,12 @@
    * shadow give the fill depth (the "puffy fill" the mockup settled on). */
   box-shadow:
     inset 0 -9px 0 rgba(0, 0, 0, 0.05), inset 0 6px 0 rgba(255, 255, 255, 0.5),
-    0 14px 30px rgba(58, 46, 92, 0.18);
+    0 14px 30px rgba(120, 108, 78, 0.18);
   /* Entrance/exit are owned by framer-motion (a 3D swing-in from the side); the
    * old CSS keyframe was removed so the two don't fight over `transform`. */
 }
 .pouf-toast--default {
-  background: var(--purple);
+  background: var(--accent-fill);
 }
 .pouf-toast--success {
   background: var(--up);
@@ -1379,7 +1297,7 @@
   color: var(--on-accent);
   background: #fff;
   box-shadow:
-    inset 0 -3px 0 rgba(0, 0, 0, 0.08), inset 0 2px 0 #fff, 0 3px 6px rgba(58, 46, 92, 0.25);
+    inset 0 -3px 0 rgba(0, 0, 0, 0.08), inset 0 2px 0 #fff, 0 3px 6px rgba(120, 108, 78, 0.25);
 }
 .pouf-toast__body {
   flex: 1;
@@ -1572,7 +1490,7 @@
   /* Routine alerts stay quiet; a critical one keeps its tone in the list, so
    * scanning the history surfaces the one that mattered without reading every
    * line. */
-  background: var(--tone, rgba(201, 168, 255, 0.15));
+  background: var(--tone, rgba(178, 164, 132, 0.15));
 }
 .pouf-bell__itembody {
   flex: 1;
@@ -1776,7 +1694,7 @@
   height: 100%;
   transform-origin: left center;
   border-radius: 999px;
-  background: var(--tone, var(--purple));
+  background: var(--tone, var(--accent-fill));
   /* The same floor shadow as .pouf-dot: the fill is a bead of clay lying in a
    * recessed channel, not a flat paint bar. */
   box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.12);
@@ -1796,7 +1714,7 @@
 }
 .pouf-table th {
   padding: var(--s2) var(--s3);
-  border-bottom: 2px solid rgba(201, 168, 255, 0.3);
+  border-bottom: 2px solid rgba(178, 164, 132, 0.3);
   text-align: left;
   font-weight: 800;
 }
@@ -1807,7 +1725,7 @@
   padding: var(--s3);
 }
 .pouf-table__row td {
-  border-bottom: 1px solid rgba(201, 168, 255, 0.15);
+  border-bottom: 1px solid rgba(178, 164, 132, 0.15);
 }
 .pouf-table__cell--right {
   text-align: right;
@@ -1822,7 +1740,7 @@
   cursor: pointer;
 }
 .pouf-table__row--click:hover td {
-  background: rgba(201, 168, 255, 0.12);
+  background: rgba(178, 164, 132, 0.12);
 }
 .pouf-table__rowaction {
   display: inline-flex;
@@ -1837,7 +1755,7 @@
   cursor: pointer;
 }
 .pouf-table__rowaction:focus-visible {
-  outline: 3px solid var(--focus, rgba(155, 106, 255, 0.55));
+  outline: 3px solid var(--focus, var(--focus-ring));
   outline-offset: 3px;
   border-radius: 6px;
 }
@@ -1870,7 +1788,7 @@
   opacity: 1;
 }
 .pouf-table__sort:focus-visible {
-  outline: 3px solid var(--focus, rgba(155, 106, 255, 0.55));
+  outline: 3px solid var(--focus, var(--focus-ring));
   outline-offset: 3px;
   border-radius: 6px;
 }
@@ -1926,13 +1844,13 @@ th[aria-sort='descending'] .pouf-table__caret {
   padding: 2px 4px;
   margin: -2px -4px;
   text-decoration: underline;
-  text-decoration-color: rgba(201, 168, 255, 0.7);
+  text-decoration-color: rgba(178, 164, 132, 0.7);
   text-decoration-thickness: 2px;
   text-underline-offset: 3px;
   transition: text-decoration-color 140ms ease;
 }
 .pouf-breadcrumb__link:hover {
-  text-decoration-color: var(--purple);
+  text-decoration-color: var(--accent-fill);
 }
 .pouf-breadcrumb__current {
   font-weight: 900;
@@ -1978,7 +1896,7 @@ th[aria-sort='descending'] .pouf-table__caret {
   flex: none;
 }
 .pouf-chart__grid line {
-  stroke: rgba(201, 168, 255, 0.25);
+  stroke: rgba(178, 164, 132, 0.25);
 }
 .pouf-chart__grid path {
   stroke: none;
@@ -1993,7 +1911,7 @@ th[aria-sort='descending'] .pouf-table__caret {
   fill: var(--muted);
 }
 .pouf-chart .recharts-tooltip-cursor {
-  stroke: rgba(201, 168, 255, 0.3);
+  stroke: rgba(178, 164, 132, 0.3);
 }
 /* Pie labels */
 .pouf-chart .recharts-pie-label-text {

@@ -1,7 +1,7 @@
 "use client";
 
 import { Label } from "@/app/_components/form";
-import { Input } from "@/components/ui/input";
+import { FormInput } from "@/components/pouf/Input";
 
 // Мелкие контролы инспектора: число и цвет. Текст/селект берём из общего app/_components/form.
 
@@ -15,7 +15,7 @@ export function NumberField(props: {
   return (
     <label className="block">
       <Label>{props.label}</Label>
-      <Input
+      <FormInput
         type="number"
         value={Number.isFinite(props.value) ? props.value : 0}
         step={props.step ?? 1}
@@ -38,7 +38,7 @@ export function ColorField(props: { label: string; value: string; onChange: (v: 
           onChange={(e) => props.onChange(e.target.value)}
           className="h-9 w-10 shrink-0 cursor-pointer rounded border border-hairline bg-surface-1"
         />
-        <Input value={props.value} onChange={(e) => props.onChange(e.target.value)} />
+        <FormInput value={props.value} onChange={(e) => props.onChange(e.target.value)} />
       </div>
     </label>
   );

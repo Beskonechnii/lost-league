@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-// Страница в стиле 1st-Pouf (claymorphism), как архив серий: обёртка .pouf-lost + data-theme="dark".
+// Страница на компонентах Кита («подушки» claymorphism), как архив серий.
 import { Button as PoufButton } from "@/components/pouf/Button";
 import { Input as PoufInput } from "@/components/pouf/Input";
 import { Card } from "@/components/pouf/surface";
@@ -77,7 +77,7 @@ function TpRow({ row }: { row: Row }) {
             ✓ сохранено
           </Text>
         ) : !valid ? (
-          <span className="text-[13px] font-bold text-[var(--orange)]">только целое ≥ 0</span>
+          <span className="text-[13px] font-bold text-[var(--warn)]">только целое ≥ 0</span>
         ) : null}
       </div>
       {error && <span className="text-[13px] font-bold text-[var(--down)]">{error}</span>}
@@ -190,7 +190,7 @@ function AwardSheet({ players, open, onOpenChange, onSaved }: {
                     className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2 text-left hover:bg-[var(--surface-2,rgba(255,255,255,0.06))]"
                   >
                     <span className="font-bold">{p.nickname}</span>
-                    {p.tp > 0 && <span className="text-[13px] font-bold text-[var(--purple)]">{p.tp} TP</span>}
+                    {p.tp > 0 && <span className="text-[13px] font-bold text-[var(--accent-ink)]">{p.tp} TP</span>}
                   </button>
                 ))
               )}
@@ -220,7 +220,7 @@ export function TpAdmin({ players, title = "TP" }: { players: Row[]; title?: str
   const scored = players.filter((p) => p.tp > 0).length;
 
   return (
-    <div className="pouf-lost space-y-6" data-theme="dark">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <Eyebrow>Служебная часть · зачёт</Eyebrow>
@@ -229,7 +229,7 @@ export function TpAdmin({ players, title = "TP" }: { players: Row[]; title?: str
         <div className="flex flex-wrap items-center gap-4">
           <Text size="sm" muted>
             Идут в{" "}
-            <Link href="/tp" className="font-bold text-[var(--purple)] hover:underline">
+            <Link href="/tp" className="font-bold text-[var(--accent-ink)] hover:underline">
               публичный зачёт
             </Link>
             . Набрали: {scored} · всего {total} TP

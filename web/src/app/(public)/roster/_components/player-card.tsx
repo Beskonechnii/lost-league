@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { countryCode } from "@/lib/profiles";
-import { Chip } from "@/app/_components/ui";
+import { Chip } from "@/components/pouf/blocks";
 import { PlayerAvatar } from "./avatar";
 
 // Мини-карточка игрока — общий кирпич для витрины, тиммейтов и состава команды. Один вид на все
@@ -44,17 +44,17 @@ export function PlayerMiniCard({
     <Link
       href={`/roster/players/${id}`}
       className={`group flex items-center gap-3 rounded-control p-2.5 font-pouf transition duration-200 hover:-translate-y-0.5 ${
-        flagged ? "bg-orange/[0.10] [box-shadow:var(--pouf-field),inset_0_0_0_2px_var(--orange)]" : "bg-surface cushion-row hover:cushion-row-hover"
+        flagged ? "bg-warn/[0.10] [box-shadow:var(--pouf-field),inset_0_0_0_2px_var(--warn)]" : "bg-surface cushion-row hover:cushion-row-hover"
       }`}
     >
       <PlayerAvatar photo={photo} nickname={nickname} color={accent} size={size} className="rounded-xl" />
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <span className="truncate font-black text-ink transition-colors group-hover:text-[var(--purple)]">
+          <span className="truncate font-black text-ink transition-colors group-hover:text-[var(--accent-ink)]">
             {nickname}
           </span>
-          {isCaptain && <span className="shrink-0 text-[11px] font-black text-[var(--purple)]">C</span>}
+          {isCaptain && <span className="shrink-0 text-[11px] font-black text-[var(--accent-ink)]">C</span>}
           {code && <span className="shrink-0 text-[10px] font-bold text-ink-subtle">{code}</span>}
         </div>
 

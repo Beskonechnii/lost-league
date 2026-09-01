@@ -2,9 +2,8 @@
 
 import { useActionState } from "react";
 import { saveProfile, type SaveState } from "./actions";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/components/pouf/Button";
+import { FormInput, Label } from "@/components/pouf/Input";
 
 // Форма правки своей анкеты. Только поля, которые игрок ведёт сам; MMR/роль/TP/фото сюда не входят —
 // их правит оператор. Ник — с оговоркой про лимит «раз в сезон» (проверку делает server-action).
@@ -23,8 +22,8 @@ export type ProfileValues = {
 };
 
 const box = {
-  error: "rounded-md border border-rose-900 bg-rose-950/40 px-3 py-2 text-sm text-rose-300",
-  done: "rounded-md border border-emerald-900 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-300",
+  error: "rounded-md border border-rose-200 bg-rose-100 px-3 py-2 text-sm text-rose-700",
+  done: "rounded-md border border-emerald-200 bg-emerald-100 px-3 py-2 text-sm text-emerald-700",
 };
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -43,40 +42,40 @@ export function ProfileForm({ values }: { values: ProfileValues }) {
   return (
     <form action={action} className="space-y-4">
       <Field label="Ник в лиге" hint="Отображаемое имя. Менять можно раз в сезон.">
-        <Input name="nickname" defaultValue={values.nickname} required />
+        <FormInput name="nickname" defaultValue={values.nickname} required />
       </Field>
 
       <Field label="Имя">
-        <Input name="realName" defaultValue={values.realName} placeholder="Как вас зовут" />
+        <FormInput name="realName" defaultValue={values.realName} placeholder="Как вас зовут" />
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
         <Field label="Город">
-          <Input name="city" defaultValue={values.city} />
+          <FormInput name="city" defaultValue={values.city} />
         </Field>
         <Field label="Страна">
-          <Input name="country" defaultValue={values.country} />
+          <FormInput name="country" defaultValue={values.country} />
         </Field>
       </div>
 
       <Field label="Дата рождения">
-        <Input name="birthday" type="date" defaultValue={values.birthday} />
+        <FormInput name="birthday" type="date" defaultValue={values.birthday} />
       </Field>
 
       <Field label="Telegram" hint="Можно с @ или ссылкой — приведём к хендлу.">
-        <Input name="telegram" defaultValue={values.telegram} placeholder="@nickname" />
+        <FormInput name="telegram" defaultValue={values.telegram} placeholder="@nickname" />
       </Field>
 
       <Field label="Dotabuff" hint="Из ссылок определяем ваш account_id — по нему вас находят в матчах лиги.">
-        <Input name="dotabuffUrl" defaultValue={values.dotabuffUrl} placeholder="https://www.dotabuff.com/players/…" />
+        <FormInput name="dotabuffUrl" defaultValue={values.dotabuffUrl} placeholder="https://www.dotabuff.com/players/…" />
       </Field>
 
       <Field label="Stratz">
-        <Input name="stratzUrl" defaultValue={values.stratzUrl} placeholder="https://stratz.com/players/…" />
+        <FormInput name="stratzUrl" defaultValue={values.stratzUrl} placeholder="https://stratz.com/players/…" />
       </Field>
 
       <Field label="Steam">
-        <Input name="steamUrl" defaultValue={values.steamUrl} placeholder="https://steamcommunity.com/profiles/…" />
+        <FormInput name="steamUrl" defaultValue={values.steamUrl} placeholder="https://steamcommunity.com/profiles/…" />
       </Field>
 
       <Field label="Достижения" hint="Свободный список — одна строка на достижение.">
@@ -92,7 +91,7 @@ export function ProfileForm({ values }: { values: ProfileValues }) {
         MMR, роль в составе, TP, номер и фото ведёт оператор — этих полей здесь нет.
       </div>
 
-      <Button type="submit" disabled={pending} className="w-full">
+      <Button type="submit" disabled={pending} block>
         {pending ? "Сохраняю…" : "Сохранить анкету"}
       </Button>
 

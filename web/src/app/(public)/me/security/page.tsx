@@ -20,7 +20,7 @@ function MethodRow({ label, on, onText, offText }: { label: string; on: boolean;
       <span
         className={`rounded-full border px-2.5 py-0.5 text-xs ${
           on
-            ? "border-emerald-800/60 bg-emerald-950/30 text-emerald-400"
+            ? "border-emerald-200 bg-emerald-100 text-emerald-700"
             : "border-hairline bg-surface-2/40 text-ink-subtle"
         }`}
       >

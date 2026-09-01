@@ -13,7 +13,7 @@ import { roleLabel } from "@/lib/roles";
 import { ApplicationSummary } from "@/app/_components/application-summary";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 import { EditReviewForms, ReviewForms } from "./review-forms";
-import { FORM_MAX_W } from "@/app/_components/ui";
+import { FORM_MAX_W } from "@/components/pouf/blocks";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Модерация" };
@@ -71,7 +71,7 @@ export default async function ModerationPage({ searchParams }: { searchParams: P
 
   return (
     <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-300/80">Служебная часть</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-700">Служебная часть</p>
       <h1 className="mt-1.5 text-xl font-bold tracking-tight">Модерация</h1>
       <p className="mt-1.5 text-sm text-ink-muted">
         Всё, что пришло снаружи: анкеты игроков, привязки к профилю и заявки команд на турниры.
@@ -94,7 +94,7 @@ export default async function ModerationPage({ searchParams }: { searchParams: P
             {t.label}
             {/* Индикатор новых: цветом и числом, чтобы вторая вкладка не терялась из виду. */}
             {counts[t.key] > 0 && (
-              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-semibold text-amber-300">
+              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-semibold text-amber-700">
                 {counts[t.key]}
               </span>
             )}
@@ -142,13 +142,13 @@ function Card({ account }: { account: PendingRegistration }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="rounded-md border border-emerald-900 bg-emerald-950/40 px-2 py-0.5 text-xs text-emerald-300">
+        <span className="rounded-md border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
           новая анкета
         </span>
         {/* Источник виден сразу: у телеграмной анкеты почты нет вовсе, и пустая колонка иначе
             выглядела бы поломкой. Связь с человеком у неё — хендл, его и показываем. */}
         {account.source === "telegram" && (
-          <span className="rounded-md border border-sky-900 bg-sky-950/40 px-2 py-0.5 text-xs text-sky-300">
+          <span className="rounded-md border border-sky-200 bg-sky-100 px-2 py-0.5 text-xs text-sky-700">
             телеграм
           </span>
         )}
@@ -164,7 +164,7 @@ function Card({ account }: { account: PendingRegistration }) {
           <ApplicationSummary application={application} />
         </div>
       ) : (
-        <p className="rounded-md border border-rose-900 bg-rose-950/30 px-3 py-2 text-sm text-rose-300">
+        <p className="rounded-md border border-rose-200 bg-rose-100 px-3 py-2 text-sm text-rose-700">
           Заявка пустая: анкеты нет. Верните её с причиной.
         </p>
       )}
@@ -194,7 +194,7 @@ function TeamApplications({ rows }: { rows: Awaited<ReturnType<typeof pendingApp
         return (
           <li key={a.id} className="rounded-lg border border-hairline bg-surface-1 p-4">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="rounded-md border border-sky-900 bg-sky-950/40 px-2 py-0.5 text-xs text-sky-300">
+              <span className="rounded-md border border-sky-200 bg-sky-100 px-2 py-0.5 text-xs text-sky-700">
                 {a.tournament.short ?? a.tournament.name}
               </span>
               <span className="text-sm font-semibold text-ink">{draft?.name ?? "заявка"}</span>
@@ -246,7 +246,7 @@ function Claims({ claims }: { claims: PendingClaim[] }) {
         return (
           <li key={c.id} className="space-y-3 rounded-lg border border-hairline bg-surface-1 p-4">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="rounded-md border border-sky-900 bg-sky-950/40 px-2 py-0.5 text-xs text-sky-300">
+              <span className="rounded-md border border-sky-200 bg-sky-100 px-2 py-0.5 text-xs text-sky-700">
                 {waiting ? "привязка · регистрация" : "привязка"}
               </span>
               <span className="min-w-0 truncate text-sm text-ink-muted">
@@ -293,7 +293,7 @@ function ProfileEdits({ rows }: { rows: PendingProfileEdit[] }) {
       {rows.map((row) => (
         <li key={row.id} className="space-y-3 rounded-lg border border-hairline bg-surface-1 p-4">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="rounded-md border border-sky-900 bg-sky-950/40 px-2 py-0.5 text-xs text-sky-300">
+            <span className="rounded-md border border-sky-200 bg-sky-100 px-2 py-0.5 text-xs text-sky-700">
               телеграм
             </span>
             {/* адрес карточки игрока — числовой id, не slug (см. /roster/players/[id]) */}

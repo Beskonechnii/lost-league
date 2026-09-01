@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SITE_MAX_W } from "../../_components/ui";
+import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { denyUnlessPermission } from "../_components/permission-gate";
 
 // UNDERBEER 2.0 — сборка шоу-команд из живого ростера. Операторский инструмент эфира:

@@ -7,6 +7,10 @@ import {
 } from 'react'
 import { toneClass, type Tone } from './tone'
 
+/** xs — плотные служебные панели (инспектор студии, список слоёв), где строка
+ *  ниже 38px. В продукте её нет: там кнопка всегда md или sm. */
+export type ButtonSize = 'xs' | 'sm' | 'md' | 'lg'
+
 interface ButtonProps
   extends Omit<
     ButtonHTMLAttributes<HTMLButtonElement>,
@@ -15,11 +19,15 @@ interface ButtonProps
   children: ReactNode
   onClick?: MouseEventHandler<HTMLButtonElement>
   tone?: Tone
-  size?: 'sm' | 'md' | 'lg'
+  size?: ButtonSize
   /** quiet: no cushion until hover — for tertiary actions that shouldn't
    *  compete with the primary cushion on the same row. */
   variant?: 'solid' | 'quiet'
   block?: boolean
+  /** ТОЛЬКО раскладка: отступ, выравнивание, порядок в гриде (`ml-auto`, `mt-1`).
+   *  Цвет, тень и радиус приезжают из токенов — кнопка, перекрашенная классом
+   *  на месте, это второй источник правды, ровно то, что Э3 и убирал. */
+  className?: string
   disabled?: boolean
   /** Shows a spinner and blocks the click. A submit that fires twice because
    *  it looked idle is a real double-write, so pending state is not
@@ -57,15 +65,16 @@ const button = cva(
         /* Centre labels in the complete cushion silhouette. The old 6px
          * top/bottom bias placed type visibly high once the floor lip and
          * drop-shadow were read as part of the control. */
+        xs: 'text-[12px] px-[10px] py-[5px] min-h-[28px] rounded-[12px]',
         sm: 'text-[13px] px-4 py-[9px] min-h-[38px] rounded-[14px]',
         md: 'text-[15px] px-[26px] py-[14px] min-h-12 rounded-control',
         lg: 'text-[17px] px-8 py-[18px] min-h-14 rounded-control',
       },
       variant: {
         solid:
-          'text-[var(--on-accent)] bg-[var(--tone,var(--purple))] cushion-control disabled:cushion-control-active disabled:[transform:translateY(2px)]',
+          'text-[var(--tone-ink,var(--on-accent))] bg-[var(--tone,var(--accent-fill))] cushion-control disabled:cushion-control-active disabled:[transform:translateY(2px)]',
         quiet:
-          'text-[var(--quiet-ink,var(--ink))] bg-transparent [box-shadow:inset_0_0_0_2px_rgba(201,168,255,0.55)] enabled:hover:bg-bg enabled:hover:text-[var(--ink)] enabled:hover:cushion-field disabled:[box-shadow:none]',
+          'text-[var(--quiet-ink,var(--ink))] bg-transparent [box-shadow:inset_0_0_0_2px_var(--line-strong)] enabled:hover:bg-bg enabled:hover:text-[var(--ink)] enabled:hover:cushion-field disabled:[box-shadow:none]',
       },
       block: {
         true: 'flex w-full',
@@ -77,6 +86,7 @@ const button = cva(
       },
     },
     compoundVariants: [
+      { size: 'xs', shape: 'icon', className: 'w-[28px] px-0' },
       { size: 'sm', shape: 'icon', className: 'w-[38px] px-0' },
       { size: 'md', shape: 'icon', className: 'w-12 px-0' },
       { size: 'lg', shape: 'icon', className: 'w-14 px-0' },
@@ -91,14 +101,16 @@ const button = cva(
 export function buttonClasses(
   opts: {
     tone?: Tone
-    size?: 'sm' | 'md' | 'lg'
+    size?: ButtonSize
     variant?: 'solid' | 'quiet'
     block?: boolean
     shape?: 'label' | 'icon'
+    /** Раскладка вызывающего — тот же уговор, что у пропа className кнопки. */
+    className?: string
   } = {},
 ): string {
-  const { tone = 'purple', size, variant, block, shape } = opts
-  return cx(button({ size, variant, block, shape }), toneClass(tone))
+  const { tone = 'purple', size, variant, block, shape, className } = opts
+  return cx(button({ size, variant, block, shape }), toneClass(tone), className)
 }
 
 function LoadingSpinner() {
@@ -122,6 +134,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     loading,
     type = 'button',
     label,
+    className,
     ...nativeProps
   },
   ref,
@@ -131,7 +144,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ref={ref}
       {...nativeProps}
       type={type}
-      className={buttonClasses({ tone, size, variant, block })}
+      className={buttonClasses({ tone, size, variant, block, className })}
       onClick={onClick}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
@@ -153,7 +166,9 @@ interface IconButtonProps
   label: string
   onClick?: MouseEventHandler<HTMLButtonElement>
   tone?: Tone
-  size?: 'sm' | 'md' | 'lg'
+  size?: ButtonSize
+  /** Только раскладка — см. тот же проп у Button. */
+  className?: string
   variant?: 'solid' | 'quiet'
   disabled?: boolean
   loading?: boolean
@@ -173,6 +188,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
     disabled,
     loading,
     type = 'button',
+    className,
     ...nativeProps
   },
   ref,
@@ -182,7 +198,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       ref={ref}
       {...nativeProps}
       type={type}
-      className={buttonClasses({ tone, size, variant, shape: 'icon' })}
+      className={buttonClasses({ tone, size, variant, shape: 'icon', className })}
       onClick={onClick}
       disabled={disabled || loading}
       aria-busy={loading || undefined}

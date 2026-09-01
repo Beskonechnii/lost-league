@@ -2,7 +2,7 @@ import Link from "next/link";
 import { loadQuizForEditor } from "@/lib/quiz-config";
 import { loadBotSettingsForEditor } from "@/lib/bot-settings";
 import { denyUnlessPermission } from "../../_components/permission-gate";
-import { READ_MAX_W } from "@/app/_components/ui";
+import { READ_MAX_W } from "@/components/pouf/blocks";
 import { BotAdmin } from "./_components/bot-admin";
 import { BotSettingsAdmin } from "./_components/bot-settings-admin";
 

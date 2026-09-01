@@ -4,7 +4,7 @@ import { getGroupStage, groupStageDone, groupStageProgress } from "@/lib/group-s
 import { QUALIFICATION } from "@/lib/qualification";
 import { divisionOfTournament } from "@/lib/tournaments";
 import { can } from "@/lib/account";
-import { Chip, SectionHeader } from "@/app/_components/ui";
+import { Chip, SectionHeader } from "@/components/pouf/blocks";
 import { GroupStage } from "../../_components/group-stage";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +31,7 @@ export default async function StandingsPage({ params }: { params: Promise<{ slug
         title={division.label ?? division.name}
         aside={
           expected > 0 ? (
-            <span className={done ? "text-emerald-400" : "text-amber-400"}>
+            <span className={done ? "text-emerald-700" : "text-amber-700"}>
               сыграно {decided} из {expected} встреч{done ? " · стадия завершена" : ""}
             </span>
           ) : (
@@ -67,7 +67,7 @@ export default async function StandingsPage({ params }: { params: Promise<{ slug
         <GroupStage tables={tables} />
       )}
 
-      <Link href={`/tournaments/${slug}/${division.slug}/playoff`} className="inline-block font-pouf text-xs font-bold text-muted hover:text-[var(--purple)]">
+      <Link href={`/tournaments/${slug}/${division.slug}/playoff`} className="inline-block font-pouf text-xs font-bold text-muted hover:text-[var(--accent-ink)]">
         {done ? "Дальше — плей-офф с посевом из групп →" : "Плей-офф: посев встанет после последней встречи группы →"}
       </Link>
     </div>

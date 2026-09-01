@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { currentTournament, getDivisions } from "@/lib/tournaments";
-import { SITE_MAX_W } from "@/app/_components/ui";
+import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { Card } from "@/components/pouf/surface";
 import { Heading, Eyebrow } from "@/components/pouf/text";
 
@@ -83,7 +83,7 @@ export default async function Home() {
                 <div className="flex h-full flex-col gap-3">
                   <Heading level={3}>{s.title}</Heading>
                   <p className="flex-1 text-sm font-bold leading-relaxed text-muted">{s.text}</p>
-                  <span className="inline-flex items-center gap-1 text-sm font-black text-[var(--purple)]">
+                  <span className="inline-flex items-center gap-1 text-sm font-black text-[var(--accent-ink)]">
                     {s.cta}
                     <span className="transition-transform duration-200 group-hover:translate-x-0.5">→</span>
                   </span>
@@ -95,7 +95,7 @@ export default async function Home() {
 
         <p className="mt-10 text-sm font-bold text-muted">
           Основной сайт лиги и анонсы сезона —{" "}
-          <a href={SITE} target="_blank" rel="noreferrer" className="text-[var(--purple)] hover:underline">
+          <a href={SITE} target="_blank" rel="noreferrer" className="text-[var(--accent-ink)] hover:underline">
             leagueofspirits.ru
           </a>
           .

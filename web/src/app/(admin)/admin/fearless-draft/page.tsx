@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { Eyebrow, SITE_MAX_W } from "@/app/_components/ui";
+import { Eyebrow } from "@/components/pouf/text";
+import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { NewFearlessButton } from "./_components/new-fearless-button";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 
@@ -43,7 +44,7 @@ export default async function FearlessHome() {
                 обновлён {s.updatedAt.toLocaleString("ru-RU", { dateStyle: "short", timeStyle: "short" })}
               </div>
             </div>
-            <span className={`shrink-0 rounded-pill px-2.5 py-0.5 text-xs font-black ${s.status === "done" ? "bg-mint text-[var(--on-accent)]" : "bg-surface-2 text-ink-muted"}`}>
+            <span className={`shrink-0 rounded-pill px-2.5 py-0.5 text-xs font-black ${s.status === "done" ? "bg-ok text-[var(--on-accent)]" : "bg-surface-2 text-ink-muted"}`}>
               {s.status === "done" ? "готов" : "черновик"}
             </span>
           </Link>

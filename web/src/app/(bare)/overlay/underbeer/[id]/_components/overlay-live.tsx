@@ -83,7 +83,7 @@ export function OverlayLive({
                       <div className="flex items-center gap-1.5">
                         <span className="truncate font-semibold">{p.nickname}</span>
                         {team.captainId === p.id && (
-                          <span className="rounded bg-amber-500/25 px-1 text-[10px] font-bold text-amber-300">КАП</span>
+                          <span className="rounded bg-amber-500/25 px-1 text-[10px] font-bold text-amber-700">КАП</span>
                         )}
                         {team.locked.includes(p.id) && <span title="Закреплён">🔒</span>}
                       </div>

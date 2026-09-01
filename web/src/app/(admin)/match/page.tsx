@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SITE_MAX_W } from "@/app/_components/ui";
+import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { ArchiveShelf } from "./_components/archive-shelf";
 import { MatchForm } from "./_components/match-form";
 import { denyUnlessPermission } from "../_components/permission-gate";

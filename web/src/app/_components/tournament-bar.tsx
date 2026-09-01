@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { DropdownMenu } from "@/components/pouf/menu";
-import { SITE_MAX_W } from "./ui";
+import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { TOUCH_TARGET, useScrollActiveIntoView } from "./nav-scroll";
 
 // Строка контекста турнира — вторая и последняя строка хрома внутри /tournaments/<slug>.
@@ -17,14 +17,14 @@ import { TOUCH_TARGET, useScrollActiveIntoView } from "./nav-scroll";
 export type BarDivision = { slug: string; short: string };
 export type BarTournament = { slug: string; name: string; status: string };
 
-const focus = "outline-none focus-visible:ring-[3px] focus-visible:ring-purple";
+const focus = "outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]";
 
 /** Пилюля строки: активная вжата внутрь, спокойная поднимается на hover. Один вид на L2 и L3 —
  *  разделяет их не форма, а разделитель между группами. */
 function pill(active: boolean) {
   return `inline-flex shrink-0 rounded-[14px] px-3.5 py-[9px] text-[13px] font-black transition-[box-shadow,transform,background] ${TOUCH_TARGET} ${focus} ${
     active
-      ? "bg-purple text-[var(--on-accent)] cushion-control"
+      ? "bg-accent-fill text-[var(--on-accent)] cushion-control"
       : "text-ink-muted hover:bg-surface-1 hover:text-ink hover:cushion-field"
   }`;
 }
@@ -90,8 +90,7 @@ export function TournamentBar({
   return (
     // 57px = высота верхней строки (h-14) вместе с её границей — иначе при скролле щель в 1px.
     <div
-      className="pouf-lost sticky top-[57px] z-40 border-b border-hairline bg-canvas/85 font-pouf backdrop-blur"
-      data-theme="dark"
+      className="sticky top-[57px] z-40 border-b border-hairline bg-canvas/85 font-pouf backdrop-blur"
     >
       <div className={`mx-auto flex ${SITE_MAX_W} items-center gap-2 overflow-x-auto px-4 py-2 md:px-6`}>
         {tournaments.length > 0 ? (

@@ -2,8 +2,8 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { createProfile, claim } from "./actions";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/pouf/Button";
+import { FormInput } from "@/components/pouf/Input";
 
 // Онбординг УЖЕ ОДОБРЕННОГО аккаунта, у которого почему-то нет профиля: «новый игрок» заводит
 // Player сразу, «уже в ростере» подаёт заявку на привязку. Путь новичка (draft → анкета → модерация)
@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 
 export type LinkablePlayer = { id: number; nickname: string; slug: string };
 
-const errorBox = "rounded-md border border-rose-900 bg-rose-950/40 px-3 py-2 text-sm text-rose-300";
+const errorBox = "rounded-md border border-rose-200 bg-rose-100 px-3 py-2 text-sm text-rose-700";
 
 export function Onboarding({ players }: { players: LinkablePlayer[] }) {
   const [mode, setMode] = useState<"pick" | "new" | "existing">("pick");
@@ -58,9 +58,9 @@ function NewProfileForm() {
     <form action={action} className="space-y-3">
       <div>
         <label className="mb-1 block text-sm text-ink-muted">Ник в лиге</label>
-        <Input name="nickname" autoFocus placeholder="Например, Miracle-" />
+        <FormInput name="nickname" autoFocus placeholder="Например, Miracle-" />
       </div>
-      <Button type="submit" disabled={pending} className="w-full">
+      <Button type="submit" disabled={pending} block>
         {pending ? "Создаю…" : "Создать профиль"}
       </Button>
       {error && <p className={errorBox}>{error}</p>}
@@ -76,7 +76,7 @@ function ClaimForm({ players }: { players: LinkablePlayer[] }) {
     <form action={action} className="space-y-3">
       <input type="hidden" name="playerId" value={picked?.id ?? ""} />
       <PlayerPicker players={players} picked={picked} onPick={setPicked} />
-      <Button type="submit" disabled={pending || !picked} className="w-full">
+      <Button type="submit" disabled={pending || !picked} block>
         {pending ? "Отправляю…" : "Подать заявку на привязку"}
       </Button>
       {error && <p className={errorBox}>{error}</p>}
@@ -106,7 +106,7 @@ export function PlayerPicker({
   return (
     <div>
       <label className="mb-1 block text-sm text-ink-muted">Ваш ник в ростере</label>
-      <Input
+      <FormInput
         autoFocus
         placeholder="Начните вводить ник"
         value={picked ? picked.nickname : query}

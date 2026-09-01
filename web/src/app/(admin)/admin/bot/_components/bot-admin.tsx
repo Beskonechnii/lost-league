@@ -17,7 +17,7 @@ const INPUT =
 function Note({ state }: { state: BotState }) {
   if (!state) return null;
   return (
-    <span className={`text-xs ${state.error ? "text-red-400" : "text-emerald-400"}`}>{state.error ?? state.ok}</span>
+    <span className={`text-xs ${state.error ? "text-red-700" : "text-emerald-700"}`}>{state.error ?? state.ok}</span>
   );
 }
 
@@ -37,7 +37,7 @@ function StepCard({ slot }: { slot: QuizEditor["slots"][number] }) {
             <button
               type="submit"
               className={`rounded-md border px-2 py-0.5 text-xs ${
-                slot.enabled ? "border-emerald-800 text-emerald-400" : "border-hairline text-ink-subtle"
+                slot.enabled ? "border-emerald-200 text-emerald-700" : "border-hairline text-ink-subtle"
               }`}
             >
               {slot.enabled ? "спрашивать" : "не спрашивать"}
@@ -128,7 +128,7 @@ function CustomCard({ question, first, last }: { question: QuizEditor["custom"][
           <button
             type="submit"
             className={`rounded-md border px-2 py-0.5 text-xs ${
-              question.enabled ? "border-emerald-800 text-emerald-400" : "border-hairline text-ink-subtle"
+              question.enabled ? "border-emerald-200 text-emerald-700" : "border-hairline text-ink-subtle"
             }`}
           >
             {question.enabled ? "спрашивать" : "не спрашивать"}
@@ -136,7 +136,7 @@ function CustomCard({ question, first, last }: { question: QuizEditor["custom"][
         </form>
         <form action={deleteCustom}>
           <input type="hidden" name="key" value={question.key} />
-          <button type="submit" className="rounded-md border border-hairline px-2 py-0.5 text-xs text-red-400 hover:border-red-800">
+          <button type="submit" className="rounded-md border border-hairline px-2 py-0.5 text-xs text-red-700 hover:border-red-200">
             удалить
           </button>
         </form>

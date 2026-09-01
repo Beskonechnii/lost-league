@@ -15,7 +15,7 @@ const INPUT =
 
 function Note({ state }: { state: BotState }) {
   if (!state) return null;
-  return <span className={`text-xs ${state.error ? "text-red-400" : "text-emerald-400"}`}>{state.error ?? state.ok}</span>;
+  return <span className={`text-xs ${state.error ? "text-red-700" : "text-emerald-700"}`}>{state.error ?? state.ok}</span>;
 }
 
 function SettingCard({ field }: { field: BotSettingsEditor[number] }) {

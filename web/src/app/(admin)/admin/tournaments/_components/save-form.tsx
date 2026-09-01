@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/pouf/Button";
 
 // Обёртка формы админки турниров с обратной связью. Голая server-action молчит: оператор жал
 // «Сохранить», страница выглядела ровно так же, и понять, применилось ли, было нельзя. Здесь —
@@ -35,8 +35,8 @@ export function SaveForm({
         </Button>
         {/* Ответ показываем только когда запрос уже отработал: иначе на повторном сохранении
             рядом с «Сохраняю…» висел бы прошлый результат */}
-        {!pending && state?.ok === true && <span className="text-xs text-emerald-400">Сохранено</span>}
-        {!pending && state?.ok === false && <span className="text-xs text-rose-400">{state.error}</span>}
+        {!pending && state?.ok === true && <span className="text-xs text-emerald-700">Сохранено</span>}
+        {!pending && state?.ok === false && <span className="text-xs text-rose-700">{state.error}</span>}
       </div>
     </form>
   );

@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { ArrowDownIcon, ArrowUpIcon, EyeIcon, EyeOffIcon, TrashIcon } from "lucide-react";
 import { Label } from "@/app/_components/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { FormInput } from "@/components/pouf/Input";
+import { IconButton } from "@/components/pouf/Button";
 import type { Element } from "./model";
 
 // Панель слоёв: список элементов сверху-вниз по z-order (верхний слой — первым). Клик выделяет,
@@ -52,21 +52,19 @@ export function LayersPanel({
                 el.id === selectedId ? "bg-accent/15 text-accent-bright" : "text-ink-muted hover:bg-surface-2"
               } ${el.hidden ? "opacity-50" : ""}`}
             >
-              <Button
+              <IconButton
                 type="button"
-                variant="ghost"
-                size="icon-xs"
-                title={el.hidden ? "Показать" : "Скрыть"}
+                size="xs"
+                label={el.hidden ? "Показать" : "Скрыть"}
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggleHidden(el.id, !el.hidden);
                 }}
-                className="shrink-0 text-ink-subtle hover:text-ink"
-              >
-                {el.hidden ? <EyeOffIcon /> : <EyeIcon />}
-              </Button>
+                className="shrink-0"
+                icon={el.hidden ? <EyeOffIcon /> : <EyeIcon />}
+              />
               {editing === el.id ? (
-                <Input
+                <FormInput
                   autoFocus
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
@@ -97,45 +95,36 @@ export function LayersPanel({
                   el.id === selectedId ? "flex" : "hidden group-hover:flex"
                 }`}
               >
-                <Button
+                <IconButton
                   type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  title="Выше"
+                  size="xs"
+                  label="Выше"
                   onClick={(e) => {
                     e.stopPropagation();
                     onOrder(el.id, "up");
                   }}
-                  className="text-ink-subtle hover:text-ink"
-                >
-                  <ArrowUpIcon />
-                </Button>
-                <Button
+                  icon={<ArrowUpIcon />}
+                />
+                <IconButton
                   type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  title="Ниже"
+                  size="xs"
+                  label="Ниже"
                   onClick={(e) => {
                     e.stopPropagation();
                     onOrder(el.id, "down");
                   }}
-                  className="text-ink-subtle hover:text-ink"
-                >
-                  <ArrowDownIcon />
-                </Button>
-                <Button
+                  icon={<ArrowDownIcon />}
+                />
+                <IconButton
                   type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  title="Удалить"
+                  size="xs" tone="down"
+                  label="Удалить"
                   onClick={(e) => {
                     e.stopPropagation();
                     onRemove(el.id);
                   }}
-                  className="text-ink-subtle hover:text-rose-400"
-                >
-                  <TrashIcon />
-                </Button>
+                  icon={<TrashIcon />}
+                />
               </div>
             </li>
           ))}

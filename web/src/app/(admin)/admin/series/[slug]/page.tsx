@@ -6,7 +6,7 @@ import { tournamentBySlug } from "@/lib/tournaments";
 import { listSeries } from "@/lib/series";
 import { leagueMatches } from "@/lib/league-matches";
 import { resolveBracket } from "@/lib/playoff";
-import { SITE_MAX_W } from "@/app/_components/ui";
+import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { pendingForAdminView } from "@/lib/match-request";
 import { SeriesAdmin, type SlotOptions } from "../_components/series-admin";
 import { denyUnlessPermission } from "../../../_components/permission-gate";
@@ -114,7 +114,7 @@ export default async function TournamentSeriesPage({ params }: { params: Promise
                     <input type="hidden" name="slug" value={tournament.slug} />
                     <button
                       type="submit"
-                      className="rounded-md bg-purple px-3 py-1.5 text-sm font-semibold text-[var(--on-accent)]"
+                      className="rounded-md bg-accent-fill px-3 py-1.5 text-sm font-semibold text-[var(--on-accent)]"
                     >
                       Подтвердить
                     </button>
@@ -174,7 +174,7 @@ export default async function TournamentSeriesPage({ params }: { params: Promise
               className="mt-1 w-full rounded-md border border-hairline bg-surface-2 px-3 py-1.5 text-sm text-ink"
             />
           </div>
-          <button type="submit" className="rounded-md bg-purple px-3 py-1.5 text-sm font-semibold text-[var(--on-accent)]">
+          <button type="submit" className="rounded-md bg-accent-fill px-3 py-1.5 text-sm font-semibold text-[var(--on-accent)]">
             Сохранить
           </button>
           {tournament.matchesUrl && (
@@ -199,7 +199,7 @@ export default async function TournamentSeriesPage({ params }: { params: Promise
       {league && (
         <section className="mt-3 rounded-lg border border-hairline bg-surface-1 p-3">
           {!league.ok ? (
-            <p className="text-xs text-amber-300">{league.error}</p>
+            <p className="text-xs text-amber-700">{league.error}</p>
           ) : missing.length === 0 ? (
             <p className="text-xs text-ink-subtle">
               Матчи лиги {tournament.leagueId}: все {league.matches.length} уже привязаны к встречам.

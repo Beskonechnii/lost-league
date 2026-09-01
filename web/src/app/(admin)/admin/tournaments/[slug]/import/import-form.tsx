@@ -12,9 +12,8 @@ import {
 } from "./actions";
 import { rankLabel } from "@/lib/dota-rank";
 import { roleLabel } from "@/lib/roles";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/pouf/Button";
+import { FormInput, FormTextarea } from "@/components/pouf/Input";
 
 // Мастер импорта: три пронумерованных шага, назад можно на любой. Раньше все три жили на одном
 // экране простынёй, и было непонятно, что уже сделано, а что ещё нет.
@@ -23,7 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 // же JSON, который оператор видел в превью. Что показали, то и запишется.
 
 const box = "rounded-lg border border-hairline bg-surface-1 p-4";
-const errorBox = "rounded-md border border-rose-900 bg-rose-950/40 px-3 py-2 text-sm text-rose-300";
+const errorBox = "rounded-md border border-rose-200 bg-rose-100 px-3 py-2 text-sm text-rose-700";
 
 const STEPS = ["Источник", "Разбор", "Запись"] as const;
 
@@ -40,7 +39,7 @@ function Steps({ step, onGo }: { step: number; onGo: (n: number) => void }) {
               disabled={!done}
               className={`flex items-center gap-2 rounded-[12px] px-3 py-1.5 text-xs font-black ${
                 i === step
-                  ? "bg-purple text-[var(--on-accent)]"
+                  ? "bg-accent-fill text-[var(--on-accent)]"
                   : done
                     ? "bg-surface-2 text-ink hover:text-accent-bright"
                     : "bg-surface-2 text-ink-subtle"
@@ -102,22 +101,22 @@ export function ImportForm({
         >
           <div>
             <label htmlFor="file" className="text-xs text-ink-muted">Файл (.xlsx, .csv, .tsv)</label>
-            <Input id="file" name="file" type="file" accept=".xlsx,.csv,.tsv,text/csv" className="mt-1" />
+            <FormInput id="file" name="file" type="file" accept=".xlsx,.csv,.tsv,text/csv" className="mt-1" />
           </div>
           <div>
             <label htmlFor="link" className="text-xs text-ink-muted">…или ссылка на гугл-таблицу</label>
-            <Input id="link" name="link" placeholder="https://docs.google.com/spreadsheets/d/…" className="mt-1" />
+            <FormInput id="link" name="link" placeholder="https://docs.google.com/spreadsheets/d/…" className="mt-1" />
             <span className="mt-1 block text-[11px] text-ink-subtle">
               Доступ к таблице должен быть открыт по ссылке — скачиваем её экспортом в xlsx.
             </span>
           </div>
           <div>
             <label htmlFor="pasted" className="text-xs text-ink-muted">…или вставьте таблицу текстом</label>
-            <Textarea id="pasted" name="pasted" rows={4} className="mt-1" placeholder="Команда;Ник;Роль;MMR;Ссылка" />
+            <FormTextarea id="pasted" name="pasted" rows={4} className="mt-1" placeholder="Команда;Ник;Роль;MMR;Ссылка" />
           </div>
           <div>
             <label htmlFor="sheet" className="text-xs text-ink-muted">Только листы с названием, содержащим</label>
-            <Input id="sheet" name="sheet" placeholder="команды" className="mt-1" />
+            <FormInput id="sheet" name="sheet" placeholder="команды" className="mt-1" />
             <span className="mt-1 block text-[11px] text-ink-subtle">
               Пусто — берём все листы книги. Пригодится, когда в таблице есть и составы, и расписание.
             </span>
@@ -170,7 +169,7 @@ export function ImportForm({
 
               <form action={enrichAction} className="flex flex-wrap items-center gap-3">
                 <input type="hidden" name="teams" value={JSON.stringify(teams)} />
-                <Button type="submit" size="sm" variant="outline" disabled={enriching}>
+                <Button type="submit" size="sm" variant="quiet" disabled={enriching}>
                   {enriching ? "Тяну из Steam и OpenDota…" : "Подтянуть данные"}
                 </Button>
                 <span className="text-[11px] text-ink-subtle">
@@ -182,7 +181,7 @@ export function ImportForm({
               {enriched?.notes && enriched.notes.length > 0 && (
                 <ul className="max-h-40 space-y-0.5 overflow-y-auto rounded-md border border-hairline bg-surface-2 p-2">
                   {enriched.notes.map((n, i) => (
-                    <li key={i} className={`text-[11px] ${n.level === "warn" ? "text-amber-300" : "text-ink-subtle"}`}>
+                    <li key={i} className={`text-[11px] ${n.level === "warn" ? "text-amber-700" : "text-ink-subtle"}`}>
                       {n.nickname}: {n.text}
                     </li>
                   ))}
@@ -190,8 +189,8 @@ export function ImportForm({
               )}
 
               {unresolved.length > 0 && (
-                <details className="rounded-md border border-amber-900 bg-amber-950/30 p-3">
-                  <summary className="cursor-pointer text-xs font-semibold text-amber-300">
+                <details className="rounded-md border border-amber-200 bg-amber-100 p-3">
+                  <summary className="cursor-pointer text-xs font-semibold text-amber-700">
                     Без account_id: {unresolved.length} — этих игроков не найдёт ни один матч
                   </summary>
                   <ul className="mt-2 space-y-0.5">
@@ -228,7 +227,7 @@ export function ImportForm({
                           {p.realName && <span className="text-ink-subtle"> · {p.realName}</span>}
                           <span className="text-ink-subtle"> · {roleLabel(p.role) ?? "роль не разобрана"}</span>
                           {p.mmr && <span className="text-ink-subtle"> · {p.mmr} MMR</span>}
-                          <span className={p.accountId ? "text-emerald-400" : "text-amber-400"}>
+                          <span className={p.accountId ? "text-emerald-700" : "text-amber-700"}>
                             {p.accountId ? ` · id ${p.accountId}` : " · без account_id"}
                           </span>
                           {rankLabel(p.rank) && <span className="text-ink-subtle"> · {rankLabel(p.rank)}</span>}
@@ -243,8 +242,8 @@ export function ImportForm({
               </ul>
 
               {parsed?.skipped && parsed.skipped.length > 0 && (
-                <details className="rounded-md border border-amber-900 bg-amber-950/30 p-3">
-                  <summary className="cursor-pointer text-xs font-semibold text-amber-300">
+                <details className="rounded-md border border-amber-200 bg-amber-100 p-3">
+                  <summary className="cursor-pointer text-xs font-semibold text-amber-700">
                     Не разобрано строк: {parsed.skipped.length} — проверьте, не потерялись ли игроки
                   </summary>
                   <ul className="mt-2 space-y-0.5">
@@ -258,7 +257,7 @@ export function ImportForm({
           )}
 
           <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" variant="outline" onClick={() => setStep(0)}>
+            <Button type="button" size="sm" variant="quiet" onClick={() => setStep(0)}>
               ← Назад
             </Button>
             <Button type="button" size="sm" onClick={() => setStep(2)} disabled={picked.length === 0}>
@@ -301,7 +300,7 @@ export function ImportForm({
           </p>
 
           <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" variant="outline" onClick={() => setStep(1)}>
+            <Button type="button" size="sm" variant="quiet" onClick={() => setStep(1)}>
               ← Назад
             </Button>
             <Button type="submit" size="sm" disabled={saving || divisions.length === 0}>
@@ -312,7 +311,7 @@ export function ImportForm({
           {saved?.error && <p className={errorBox}>{saved.error}</p>}
           {saved?.results && (
             <div className="space-y-2">
-              <p className="text-sm text-emerald-400">
+              <p className="text-sm text-emerald-700">
                 Записано команд: {saved.results.filter((r) => r.ok).length} из {saved.results.length}.{" "}
                 <Link href={`/admin/tournaments/${tournamentSlug}`} className="underline">
                   Открыть турнир
@@ -323,7 +322,7 @@ export function ImportForm({
                   <li
                     key={r.team}
                     className={`rounded-md border px-2 py-1 text-xs ${
-                      r.ok ? "border-hairline bg-surface-2 text-ink-subtle" : "border-rose-900 bg-rose-950/40 text-rose-300"
+                      r.ok ? "border-hairline bg-surface-2 text-ink-subtle" : "border-rose-200 bg-rose-100 text-rose-700"
                     }`}
                   >
                     <span className="font-semibold">{r.team}</span>

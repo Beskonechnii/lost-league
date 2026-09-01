@@ -30,7 +30,7 @@ export default async function DivisionLayout({
     division.slug === "d2"
       ? ({
           "--accent": "var(--lost-d2, #14c6cb)",
-          "--accent-bright": "var(--lost-d2-bright, #5eead4)",
+          "--accent-bright": "var(--lost-d2-bright, #0b6c70)",
           "--accent-contrast": "var(--lost-d2-contrast, #000000)",
         } as React.CSSProperties)
       : undefined;

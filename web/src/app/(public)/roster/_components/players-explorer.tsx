@@ -31,7 +31,7 @@ export function PlayersExplorer({ players, canFlag }: { players: PoolPlayer[]; c
   }, [players, q, tournament]);
 
   const field =
-    "rounded-[14px] bg-surface px-3.5 py-2 text-sm font-semibold text-ink cushion-field outline-none placeholder:text-ink-subtle focus-visible:ring-[3px] focus-visible:ring-purple";
+    "rounded-[14px] bg-surface px-3.5 py-2 text-sm font-semibold text-ink cushion-field outline-none placeholder:text-ink-subtle focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]";
 
   return (
     <div className="space-y-4">

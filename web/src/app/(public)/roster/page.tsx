@@ -2,7 +2,7 @@ import Link from "next/link";
 import { listPoolTeams } from "@/lib/roster-data";
 import { can } from "@/lib/account";
 import { prisma } from "@/lib/prisma";
-import { SectionHeader } from "@/app/_components/ui";
+import { SectionHeader } from "@/components/pouf/blocks";
 import { PoolExplorer } from "./_components/pool-explorer";
 import { PoolSwitch } from "./_components/pool-switch";
 
@@ -27,7 +27,7 @@ export default async function RosterPoolPage({
 
   const tab = (active: boolean) =>
     `inline-flex shrink-0 rounded-[14px] px-4 py-[9px] text-[13px] font-black transition ${
-      active ? "bg-purple text-[var(--on-accent)] cushion-control" : "bg-surface text-ink-muted cushion-field hover:text-ink"
+      active ? "bg-accent-fill text-[var(--on-accent)] cushion-control" : "bg-surface text-ink-muted cushion-field hover:text-ink"
     }`;
 
   return (

@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from "@/components/pouf/alert-dialog";
 
 // Удаление документа редактора. Подтверждение — Radix AlertDialog, а не window.confirm():
 // нативный диалог подавляется в webview и кнопка «молча не работала» (тот же приём, что в
@@ -86,7 +86,7 @@ export function DeleteDesign({
               void remove();
             }}
             disabled={busy}
-            className="bg-red-600 text-white hover:bg-red-500"
+            tone="down"
           >
             {busy ? "…" : "Удалить"}
           </AlertDialogAction>

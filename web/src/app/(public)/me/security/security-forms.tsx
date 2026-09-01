@@ -2,15 +2,14 @@
 
 import { useActionState, useState } from "react";
 import { savePassword, deleteAccount, type SecState } from "./actions";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "@/components/pouf/Button";
+import { FormInput, Label } from "@/components/pouf/Input";
 
 // Формы вкладки «Вход и защита»: смена/задание пароля и удаление аккаунта.
 
 const box = {
-  error: "rounded-md border border-rose-900 bg-rose-950/40 px-3 py-2 text-sm text-rose-300",
-  done: "rounded-md border border-emerald-900 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-300",
+  error: "rounded-md border border-rose-200 bg-rose-100 px-3 py-2 text-sm text-rose-700",
+  done: "rounded-md border border-emerald-200 bg-emerald-100 px-3 py-2 text-sm text-emerald-700",
 };
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -29,16 +28,16 @@ export function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
     <form action={action} className="space-y-3">
       {hasPassword && (
         <Field label="Текущий пароль">
-          <Input name="current" type="password" autoComplete="current-password" required />
+          <FormInput name="current" type="password" autoComplete="current-password" required />
         </Field>
       )}
       <Field label="Новый пароль">
-        <Input name="next" type="password" autoComplete="new-password" placeholder="Минимум 8 символов" required />
+        <FormInput name="next" type="password" autoComplete="new-password" placeholder="Минимум 8 символов" required />
       </Field>
       <Field label="Повторите новый пароль">
-        <Input name="confirm" type="password" autoComplete="new-password" required />
+        <FormInput name="confirm" type="password" autoComplete="new-password" required />
       </Field>
-      <Button type="submit" disabled={pending} className="w-full">
+      <Button type="submit" disabled={pending} block>
         {pending ? "Сохраняю…" : hasPassword ? "Сменить пароль" : "Задать пароль"}
       </Button>
       {state?.error && <p className={box.error}>{state.error}</p>}
@@ -61,11 +60,7 @@ export function DeleteAccount() {
         />
         <span>Понимаю: вход к профилю оборвётся. Профиль игрока и статистика в лиге останутся.</span>
       </label>
-      <Button
-        type="submit"
-        disabled={!confirmed}
-        className="w-full bg-rose-600 text-white hover:bg-rose-500 disabled:opacity-50"
-      >
+      <Button type="submit" disabled={!confirmed} block tone="down">
         Удалить аккаунт
       </Button>
     </form>

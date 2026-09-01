@@ -39,7 +39,7 @@ export default async function NewGraphicPage({
   return (
     <div className="space-y-6 font-pouf">
       <div>
-        <Link href="/studio" className="text-sm font-bold text-muted hover:text-[var(--purple)]">
+        <Link href="/studio" className="text-sm font-bold text-muted hover:text-[var(--accent-ink)]">
           ← Шаблоны
         </Link>
         <h1 className="mt-2 text-[28px] font-black tracking-[-0.5px] text-ink md:text-4xl">{template.title}</h1>

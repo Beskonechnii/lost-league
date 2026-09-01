@@ -96,7 +96,7 @@ export function GraphicsShelf({ rows }: { rows: Row[] }) {
             const card = (
               <div
                 className={`block rounded-card p-4 pr-12 transition ${
-                  isSel ? "bg-purple/[0.14] cushion-field" : "bg-surface cushion-card"
+                  isSel ? "bg-accent-fill/[0.14] cushion-field" : "bg-surface cushion-card"
                 } ${selecting ? "cursor-pointer" : "hover:-translate-y-1"}`}
               >
                 <div className="flex items-center gap-2">
@@ -120,7 +120,7 @@ export function GraphicsShelf({ rows }: { rows: Row[] }) {
                 {selecting && (
                   <span
                     className={`pointer-events-none absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-[8px] ${
-                      isSel ? "bg-purple text-[var(--on-accent)]" : "bg-canvas/70 text-transparent cushion-field"
+                      isSel ? "bg-accent-fill text-[var(--on-accent)]" : "bg-canvas/70 text-transparent cushion-field"
                     }`}
                   >
                     <CheckIcon className="h-4 w-4" />

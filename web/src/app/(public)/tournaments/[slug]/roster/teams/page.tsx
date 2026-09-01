@@ -1,6 +1,6 @@
 import { listTeamRosters } from "@/lib/roster-data";
 import { can } from "@/lib/account";
-import { SectionHeader } from "@/app/_components/ui";
+import { SectionHeader } from "@/components/pouf/blocks";
 import { notFound } from "next/navigation";
 import { TeamCards } from "@/app/(public)/roster/_components/team-cards";
 import { DivTabs, parseDiv } from "@/app/(public)/roster/_components/div-tabs";
@@ -51,7 +51,7 @@ export default async function TeamsPage({
         aside={
           <>
             {teams.length} команд
-            {authed && noId > 0 && <span className="ml-2 text-amber-400">{noId} без account_id</span>}
+            {authed && noId > 0 && <span className="ml-2 text-amber-700">{noId} без account_id</span>}
           </>
         }
       />

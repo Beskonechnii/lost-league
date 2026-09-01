@@ -2,8 +2,8 @@
 
 import { TrashIcon } from "lucide-react";
 import { Label, SelectField, TextField } from "@/app/_components/form";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/pouf/Button";
+import { Checkbox } from "@/components/pouf/checkbox";
 import { ColorField, NumberField } from "./controls";
 import type { FontDef } from "./fonts";
 import type { Binding, BindingField, Element } from "./model";
@@ -32,13 +32,7 @@ export function Inspector({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-widest text-ink-subtle">{typeLabel(el)}</span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="xs"
-          onClick={onRemove}
-          className="text-ink-subtle hover:text-rose-400"
-        >
+        <Button type="button" variant="quiet" size="xs" tone="down" onClick={onRemove}>
           <TrashIcon />
           Удалить
         </Button>
@@ -159,16 +153,16 @@ export function Inspector({
       <div className="border-t border-hairline pt-3">
         <Label>Порядок слоёв</Label>
         <div className="mt-1 grid grid-cols-2 gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => onOrder("front")}>
+          <Button type="button" variant="quiet" size="sm" onClick={() => onOrder("front")}>
             На передний план
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => onOrder("back")}>
+          <Button type="button" variant="quiet" size="sm" onClick={() => onOrder("back")}>
             На задний план
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => onOrder("up")}>
+          <Button type="button" variant="quiet" size="sm" onClick={() => onOrder("up")}>
             Выше
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => onOrder("down")}>
+          <Button type="button" variant="quiet" size="sm" onClick={() => onOrder("down")}>
             Ниже
           </Button>
         </div>

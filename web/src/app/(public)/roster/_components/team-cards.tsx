@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { RosterMember, TeamWithRoster, PoolTournament } from "@/lib/roster-data";
 import { countryCode, teamAccent, teamTag } from "@/lib/profiles";
 import { roleLabel } from "@/lib/roles";
-import { Chip, Meter } from "@/app/_components/ui";
+import { Chip, Meter } from "@/components/pouf/blocks";
 import { PlayerAvatar } from "./avatar";
 import { TeamManageBar } from "./team-manage-bar";
 
@@ -42,7 +42,7 @@ function Tab({
       onClick={onClick}
       className={`flex-1 rounded-[14px] px-3 py-1.5 text-xs font-black transition-[box-shadow,transform,background] ${
         active
-          ? "bg-purple text-[var(--on-accent)] cushion-control-active [transform:translateY(1px)]"
+          ? "bg-accent-fill text-[var(--on-accent)] cushion-control-active [transform:translateY(1px)]"
           : "bg-surface text-ink-subtle cushion-field hover:text-ink"
       }`}
     >
@@ -69,7 +69,7 @@ function PlayerRow({ player, accent }: { player: RosterMember; accent: string })
           {code && <span className="shrink-0 text-[10px] font-medium text-ink-subtle">{code}</span>}
           {/* пока добиваем ростер: точка вместо строки, чтобы не ломать ряд */}
           {!player.accountId && (
-            <span className="shrink-0 text-amber-400" title="нет account_id">
+            <span className="shrink-0 text-amber-700" title="нет account_id">
               •
             </span>
           )}
@@ -139,7 +139,7 @@ function TeamCard({
         </div>
 
         <Link href={`/roster/teams/${team.id}`} className="group/link min-w-0 flex-1">
-          <div className="truncate font-black tracking-[-0.2px] text-ink group-hover/link:text-[var(--purple)]">
+          <div className="truncate font-black tracking-[-0.2px] text-ink group-hover/link:text-[var(--accent-ink)]">
             {team.name}
           </div>
           <div className="mt-0.5 flex items-center gap-1.5 truncate text-xs font-bold text-muted">
@@ -151,7 +151,7 @@ function TeamCard({
         </Link>
 
         {team.mmrAverage !== null && (
-          <div className="shrink-0 rounded-[14px] bg-purple px-3 py-1.5 text-right text-[var(--on-accent)] cushion-control">
+          <div className="shrink-0 rounded-[14px] bg-accent-fill px-3 py-1.5 text-right text-[var(--on-accent)] cushion-control">
             <div className="text-[9px] font-black uppercase tracking-[0.1em] text-[var(--on-accent-muted)]">ср. MMR</div>
             <div className="text-base font-black tabular-nums">{team.mmrAverage.toLocaleString("ru")}</div>
           </div>
@@ -161,7 +161,7 @@ function TeamCard({
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? "Свернуть состав" : "Развернуть состав"}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-[14px] bg-surface text-ink-subtle cushion-field transition hover:text-[var(--purple)]"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-[14px] bg-surface text-ink-subtle cushion-field transition hover:text-[var(--accent-ink)]"
         >
           <svg
             viewBox="0 0 16 16"
@@ -244,7 +244,7 @@ export function TeamCards({
             setCollapsed((v) => !v);
             setGeneration((g) => g + 1);
           }}
-          className="shrink-0 text-xs font-bold text-muted transition-colors hover:text-[var(--purple)]"
+          className="shrink-0 text-xs font-bold text-muted transition-colors hover:text-[var(--accent-ink)]"
         >
           {collapsed ? "Развернуть все составы" : "Свернуть все составы"}
         </button>

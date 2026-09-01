@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { SectionHeader } from "./ui";
+import { SectionHeader } from "@/components/pouf/blocks";
 import { Card } from "@/components/pouf/surface";
 import { Heading } from "@/components/pouf/text";
 import { Badge } from "@/components/pouf/media";
@@ -33,7 +33,7 @@ function TileGrid({ tiles, cols }: { tiles: HubTile[]; cols: 2 | 3 | 4 }) {
           <Link key={t.href} href={t.href} className="group block">
             <Card motion="lift">
               <div className="flex items-start gap-3">
-                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-purple text-xl text-[var(--on-accent)] cushion-blob">
+                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-accent-fill text-xl text-[var(--on-accent)] cushion-blob">
                   <span className="[transform:translateY(-1px)]">{t.icon}</span>
                 </div>
                 <div className="min-w-0 flex-1">

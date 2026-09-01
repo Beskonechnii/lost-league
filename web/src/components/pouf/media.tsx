@@ -24,7 +24,7 @@ interface BlobProps {
 const blob = cva(
   [
     'pouf-blob inline-flex items-center justify-center flex-none text-[var(--on-accent)]',
-    'bg-[var(--tone,var(--purple))] cushion-blob [&>svg]:[transform:translateY(-2px)]',
+    'bg-[var(--tone,var(--accent-fill))] cushion-blob [&>svg]:[transform:translateY(-2px)]',
   ],
   {
     variants: {
@@ -63,7 +63,7 @@ export function Badge({ children, tone = 'purple' }: { children: ReactNode; tone
     <span
       className={cx(
         'pouf-badge inline-flex items-center gap-[6px] text-[12px] font-black tracking-[0.4px] uppercase',
-        'text-[var(--on-accent)] bg-[var(--tone,var(--purple))] rounded-pill px-3 py-[5px] [box-shadow:none]',
+        'text-[var(--on-accent)] bg-[var(--tone,var(--accent-fill))] rounded-pill px-3 py-[5px] [box-shadow:none]',
         'flex-none whitespace-nowrap self-start',
         toneClass(tone),
       )}
@@ -78,7 +78,7 @@ export function Dot({ tone = 'purple' }: { tone?: Tone }) {
   return (
     <span
       className={cx(
-        'pouf-dot w-[9px] h-[9px] rounded-[50%] bg-[var(--tone,var(--purple))]',
+        'pouf-dot w-[9px] h-[9px] rounded-[50%] bg-[var(--tone,var(--accent-fill))]',
         '[box-shadow:inset_0_-2px_0_rgba(0,0,0,0.15)] flex-none',
         toneClass(tone),
       )}

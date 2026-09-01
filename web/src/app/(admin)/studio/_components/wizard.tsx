@@ -16,7 +16,7 @@ import {
   type TemplateDef,
 } from "@/studio/types";
 import { Label, SelectField, TextField } from "../../../_components/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/pouf/select";
 import { Button } from "@/components/pouf/Button";
 
 // Мастер генерации: форма строится из schema шаблона, справа — живое превью,
@@ -24,7 +24,7 @@ import { Button } from "@/components/pouf/Button";
 
 export function Wizard(props: { templateId: string; refs: Refs; matches: MatchOption[]; initial?: RawPayload }) {
   const template = getTemplate(props.templateId);
-  if (!template) return <p className="text-rose-400">Шаблон «{props.templateId}» не найден.</p>;
+  if (!template) return <p className="text-rose-700">Шаблон «{props.templateId}» не найден.</p>;
   return <WizardForm {...props} template={template} />;
 }
 
@@ -209,7 +209,7 @@ function WizardForm({
         )}
 
         {boardBusy && <p className="text-sm font-bold text-muted">Собираю скорборд…</p>}
-        {boardError && <p className="text-sm font-bold text-rose-400">{boardError}</p>}
+        {boardError && <p className="text-sm font-bold text-rose-700">{boardError}</p>}
 
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <Button type="button" loading={busy} onClick={() => void exportPng()}>
@@ -321,7 +321,7 @@ function GroupField({
       <div className="flex items-center justify-between">
         <Label>{field.label}</Label>
         {rows.length < field.max && (
-          <button type="button" onClick={onAdd} className="text-xs font-black text-[var(--purple)] hover:underline">
+          <button type="button" onClick={onAdd} className="text-xs font-black text-[var(--accent-ink)] hover:underline">
             + добавить
           </button>
         )}
@@ -330,7 +330,7 @@ function GroupField({
         <div key={i} className="space-y-3 rounded-card bg-surface p-4 cushion-field">
           <div className="flex items-center justify-between text-xs font-bold text-muted">
             <span>#{i + 1}</span>
-            <button type="button" onClick={() => onRemove(i)} className="hover:text-rose-400">
+            <button type="button" onClick={() => onRemove(i)} className="hover:text-rose-700">
               убрать
             </button>
           </div>

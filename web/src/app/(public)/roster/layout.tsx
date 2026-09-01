@@ -1,4 +1,4 @@
-import { SITE_MAX_W } from "@/app/_components/ui";
+import { SITE_MAX_W } from "@/components/pouf/blocks";
 
 // Карточки ростера — команда и игрок — живут вне турнира: они сущности лиги, а не сезона
 // (списки переехали в /tournaments/<slug>/roster). Своей обёртки у них не было: страница

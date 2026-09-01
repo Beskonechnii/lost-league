@@ -1,4 +1,4 @@
-import { SectionHeader, SITE_MAX_W } from "@/app/_components/ui";
+import { SITE_MAX_W, SectionHeader } from "@/components/pouf/blocks";
 import { SingleDraft } from "./_components/single-draft";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 

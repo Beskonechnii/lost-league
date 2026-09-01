@@ -25,7 +25,7 @@ export function Breadcrumbs({ items, className = "" }: { items: Crumb[]; classNa
             )}
             <Link
               href={c.href}
-              className="rounded-control text-muted transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-purple"
+              className="rounded-control text-muted transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]"
             >
               {c.label}
             </Link>

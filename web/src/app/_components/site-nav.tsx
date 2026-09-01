@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SITE_MAX_W } from "./ui";
+import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { TOUCH_TARGET, useScrollActiveIntoView } from "./nav-scroll";
 
 // Навигация. Две верхние строки, по одной на группу маршрутов:
@@ -65,7 +65,7 @@ function matchScore(pathname: string, item: NavItem) {
   return all.reduce((best, h) => Math.max(best, h.length), 0);
 }
 
-const focus = "outline-none focus-visible:ring-[3px] focus-visible:ring-purple";
+const focus = "outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]";
 
 /** Общая раскладка верхней строки — отличаются только наполнением и акцентом.
  *  Визуал 1st-Pouf: пилюли-«подушки», Nunito, лого-Blob. Активный раздел вжат внутрь
@@ -87,7 +87,7 @@ function Bar({
     .sort((a, b) => b.score - a.score)[0]?.href;
 
   return (
-    <header className="pouf-lost sticky top-0 z-50 border-b border-hairline bg-canvas/85 font-pouf backdrop-blur" data-theme="dark">
+    <header className="sticky top-0 z-50 border-b border-hairline bg-canvas/85 font-pouf backdrop-blur">
       <div className={`mx-auto flex h-14 ${SITE_MAX_W} items-center gap-4 px-4 md:px-6`}>
         {brand}
 
@@ -102,7 +102,7 @@ function Bar({
                 aria-current={current ? "page" : undefined}
                 className={`inline-flex shrink-0 rounded-[14px] px-4 py-[9px] text-[13px] font-black transition-[box-shadow,transform,background] ${TOUCH_TARGET} ${focus} ${
                   current
-                    ? "bg-purple text-[var(--on-accent)] cushion-control"
+                    ? "bg-accent-fill text-[var(--on-accent)] cushion-control"
                     : "text-ink-muted hover:bg-surface-1 hover:text-ink hover:cushion-field"
                 }`}
               >
@@ -132,8 +132,15 @@ const brand = (
   <Link href="/" className={`flex shrink-0 items-center gap-2.5 rounded-control ${focus}`} title="SPIRIT/CTRL">
     {/* eslint-disable-next-line @next/next/no-img-element */}
     <img src="/assets/brand/mark.svg" alt="" aria-hidden className="h-8 w-auto" />
-    {/* eslint-disable-next-line @next/next/no-img-element */}
-    <img src="/assets/brand/wordmark.svg" alt="SPIRIT/CTRL" className="hidden h-[15px] w-auto sm:block" />
+    {/* Вордмарк не картинкой, а МАСКОЙ: в svg зашит светлый #E3E7FF, и на бумаге Кита его
+        просто не видно. Через mask цвет берётся из --ink, поэтому надпись читается в любой
+        теме и не требует второго файла-ассета под каждую. Ширина задана явно: у маски нет
+        собственных размеров (viewBox 1467×180 → 8.15:1 от высоты). */}
+    <span
+      role="img"
+      aria-label="SPIRIT/CTRL"
+      className="hidden h-[15px] w-[122px] shrink-0 bg-ink sm:block [mask:url(/assets/brand/wordmark.svg)_center/contain_no-repeat]"
+    />
   </Link>
 );
 
@@ -178,7 +185,7 @@ export function SubNav({ items }: { items: NavItem[] }) {
 
   return (
     // 57px = высота верхней строки (h-14) вместе с её нижней границей — иначе при скролле щель в 1px
-    <div className="pouf-lost sticky top-[57px] z-40 border-b border-hairline bg-canvas/85 font-pouf backdrop-blur" data-theme="dark">
+    <div className="sticky top-[57px] z-40 border-b border-hairline bg-canvas/85 font-pouf backdrop-blur">
       <nav className={`mx-auto flex ${SITE_MAX_W} gap-2 overflow-x-auto px-4 py-2 md:px-6`}>
         {items.map((t) => (
           <Link
@@ -189,7 +196,7 @@ export function SubNav({ items }: { items: NavItem[] }) {
             aria-current={t.href === active ? "page" : undefined}
             className={`inline-flex shrink-0 rounded-[14px] px-4 py-[9px] text-[13px] font-black transition-[box-shadow,transform,background] ${TOUCH_TARGET} ${focus} ${
               t.href === active
-                ? "bg-purple text-[var(--on-accent)] cushion-control"
+                ? "bg-accent-fill text-[var(--on-accent)] cushion-control"
                 : "text-ink-muted hover:bg-surface-1 hover:text-ink hover:cushion-field"
             }`}
           >

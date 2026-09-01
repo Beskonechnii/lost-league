@@ -2,7 +2,8 @@ import Link from "next/link";
 import { getLeaders, METRICS, type Subject } from "@/lib/leaders";
 import { getDivisions } from "@/lib/tournaments";
 import { isStage } from "@/lib/stages";
-import { Eyebrow, SITE_MAX_W } from "@/app/_components/ui";
+import { Eyebrow } from "@/components/pouf/text";
+import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 
 export const dynamic = "force-dynamic";
@@ -44,7 +45,7 @@ function Board({ label, hint, rows, decimals, perLabel }: {
         <ol className="space-y-1.5">
           {rows.map((r, i) => (
             <li key={`${r.name}-${i}`} className="flex items-center gap-2 text-sm">
-              <span className={`w-4 shrink-0 text-right text-xs tabular-nums ${i === 0 ? "font-black text-[var(--purple)]" : "text-ink-subtle"}`}>{i + 1}</span>
+              <span className={`w-4 shrink-0 text-right text-xs tabular-nums ${i === 0 ? "font-black text-[var(--accent-ink)]" : "text-ink-subtle"}`}>{i + 1}</span>
               <span className="min-w-0 flex-1 truncate">
                 <span className="font-bold text-ink">{r.name}</span>
                 {r.tag && <span className="ml-1 text-xs text-muted">{r.tag}</span>}
@@ -93,7 +94,7 @@ export default async function AdminStatsPage({ searchParams }: { searchParams: P
       href={href}
       className={`rounded-[14px] px-3.5 py-[7px] text-[13px] font-black transition-[box-shadow,transform,background] ${
         active
-          ? "bg-purple text-[var(--on-accent)] cushion-control"
+          ? "bg-accent-fill text-[var(--on-accent)] cushion-control"
           : "bg-surface text-ink-muted cushion-field hover:text-ink"
       }`}
     >

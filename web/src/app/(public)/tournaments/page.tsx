@@ -8,7 +8,8 @@ import {
   type TournamentStatus,
 } from "@/lib/tournaments";
 import { buttonClasses } from "@/components/pouf/Button";
-import { Eyebrow, SITE_MAX_W } from "../../_components/ui";
+import { Eyebrow } from "@/components/pouf/text";
+import { SITE_MAX_W } from "@/components/pouf/blocks";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Турниры" };
@@ -22,9 +23,9 @@ const date = new Intl.DateTimeFormat("ru", { day: "numeric", month: "long", year
 /** Цвет плашки статуса — тот же смысл, что в админке и на хабе турнира. */
 const TONE: Record<TournamentStatus, string> = {
   draft: "bg-surface-2 text-ink-subtle",
-  registration: "bg-sky-500/20 text-sky-300",
-  running: "bg-emerald-500/20 text-emerald-300",
-  finished: "bg-amber-500/20 text-amber-300",
+  registration: "bg-sky-500/20 text-sky-700",
+  running: "bg-emerald-500/20 text-emerald-700",
+  finished: "bg-amber-500/20 text-amber-700",
 };
 
 type Row = Awaited<ReturnType<typeof listTournaments>>[number];
@@ -60,14 +61,14 @@ function TournamentCard({ t, teams, current = false }: { t: Row; teams: number; 
       <div className="flex flex-wrap items-center gap-2">
         <StatusChip t={t} />
         {current && (
-          <span className="rounded-[12px] bg-purple px-3 py-1 text-xs font-black text-[var(--on-accent)]">
+          <span className="rounded-[12px] bg-accent-fill px-3 py-1 text-xs font-black text-[var(--on-accent)]">
             Открывается вкладкой в шапке
           </span>
         )}
       </div>
 
       <h2 className={`mt-3 font-black tracking-tight ${current ? "text-2xl" : "text-lg"}`}>
-        <Link href={`/tournaments/${t.slug}`} className="hover:text-[var(--purple)]">
+        <Link href={`/tournaments/${t.slug}`} className="hover:text-[var(--accent-ink)]">
           {t.name}
         </Link>
       </h2>
@@ -80,7 +81,7 @@ function TournamentCard({ t, teams, current = false }: { t: Row; teams: number; 
             <li key={d.id}>
               <Link
                 href={`/tournaments/${t.slug}/${d.slug}`}
-                className="rounded-[12px] bg-surface-2 px-3 py-1.5 text-sm font-bold hover:text-[var(--purple)]"
+                className="rounded-[12px] bg-surface-2 px-3 py-1.5 text-sm font-bold hover:text-[var(--accent-ink)]"
               >
                 {d.label ?? d.name}
               </Link>

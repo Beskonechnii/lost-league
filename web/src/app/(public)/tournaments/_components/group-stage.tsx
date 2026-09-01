@@ -68,13 +68,13 @@ function StandingsCard({ t }: { t: GroupTable }) {
                   </Link>
                 </td>
                 <td className="w-12 py-2.5 text-center tabular-nums">
-                  <span className="font-medium text-emerald-400/90">{r.wins}</span>
+                  <span className="font-medium text-emerald-700">{r.wins}</span>
                   <span className="text-ink-subtle">–{r.losses}</span>
                 </td>
                 <td className="w-12 py-2.5 pr-3 text-center">
                   <span
                     className={`inline-block min-w-7 rounded-pill px-2.5 py-0.5 text-sm font-black tabular-nums ${
-                      leader ? "bg-purple text-[var(--on-accent)]" : "bg-surface-2 text-ink"
+                      leader ? "bg-accent-fill text-[var(--on-accent)]" : "bg-surface-2 text-ink"
                     }`}
                   >
                     {r.points}
@@ -119,8 +119,8 @@ function HeadToHeadCard({ t }: { t: GroupTable }) {
                       cell == null
                         ? "text-ink-subtle/30"
                         : win
-                          ? "bg-emerald-500/12 text-emerald-300"
-                          : "bg-rose-500/12 text-rose-300"
+                          ? "bg-emerald-500/12 text-emerald-700"
+                          : "bg-rose-500/12 text-rose-700"
                     } ${cell?.guessed ? "opacity-60" : ""}`}
                   >
                     {cell ? cell.score : "—"}

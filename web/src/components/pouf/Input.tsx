@@ -3,6 +3,7 @@ import {
   forwardRef,
   useId,
   type InputHTMLAttributes,
+  type LabelHTMLAttributes,
   type ReactNode,
   type TextareaHTMLAttributes,
 } from 'react'
@@ -38,7 +39,7 @@ export function Field({ label, children, hint, error }: FieldProps) {
         * message rather than stretch to fill a flex/grid cell. */}
       {error && (
         <span
-          className="pouf-error text-[13px] font-extrabold text-[var(--on-accent)] bg-orange rounded-xl py-(--s2) px-(--s3) [align-self:start] max-w-full"
+          className="pouf-error text-[13px] font-extrabold text-[var(--color-err-ink)] bg-err rounded-xl py-(--s2) px-(--s3) [align-self:start] max-w-full"
           id={`${id}-err`}
           role="alert"
         >
@@ -79,7 +80,7 @@ export const inputClasses = cva(
         bare: false,
         invalid: true,
         className:
-          '[box-shadow:var(--pouf-field),inset_0_0_0_3px_var(--orange)] focus:[box-shadow:var(--pouf-field-focus)]',
+          '[box-shadow:var(--pouf-field),inset_0_0_0_3px_var(--down)] focus:[box-shadow:var(--pouf-field-focus)]',
       },
     ],
     defaultVariants: { bare: false, invalid: false, mono: false },
@@ -194,3 +195,78 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
     />
   )
 })
+
+/* ------------------------------------------------------------------ */
+/* Поля формы (неконтролируемые)                                       */
+/* ------------------------------------------------------------------ */
+
+/* Одно поле — две эргономики, и это не второй компонент, а второй вход в тот же
+ * `inputClasses`. Хром (вдавленная подушка, фокус-кольцо, невалидное состояние)
+ * описан ровно один раз выше; здесь меняется только способ достать значение.
+ *
+ * Почему нельзя одним: Input выше КОНТРОЛИРУЕМЫЙ — требует value и отдаёт
+ * строку. Формы служебной части и /me отправляются серверным экшеном и читают
+ * значения из FormData по `name`, безо всякого состояния в React. Заставить их
+ * держать состояние ради единого компонента — это лишний ре-рендер на букву и
+ * два десятка useState там, где хватало `<form action>`.
+ *
+ * До Э3 эту роль играл `<Input>` из shadcn — вторая система с собственным
+ * цветом и радиусом. Теперь её нет, а поле выглядит одинаково в обоих случаях. */
+
+interface FormInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'className'> {
+  invalid?: boolean
+  mono?: boolean
+  /** Только раскладка (ширина, отступ) — см. тот же уговор у Button. */
+  className?: string
+}
+
+export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(function FormInput(
+  { invalid, mono, className, type = 'text', ...nativeProps },
+  ref,
+) {
+  return (
+    <input
+      ref={ref}
+      {...nativeProps}
+      type={type}
+      className={`${inputClasses({ invalid: !!invalid, mono })} ${className ?? ''}`}
+      aria-invalid={invalid || undefined}
+    />
+  )
+})
+
+interface FormTextareaProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'className'> {
+  invalid?: boolean
+  mono?: boolean
+  className?: string
+}
+
+export const FormTextarea = forwardRef<HTMLTextAreaElement, FormTextareaProps>(function FormTextarea(
+  { invalid, mono, className, rows = 4, ...nativeProps },
+  ref,
+) {
+  return (
+    <textarea
+      ref={ref}
+      {...nativeProps}
+      rows={rows}
+      className={`${inputClasses({ invalid: !!invalid, mono })} pouf-textarea resize-y min-h-[100px] ${className ?? ''}`}
+      aria-invalid={invalid || undefined}
+    />
+  )
+})
+
+/** Подпись к полю — тот же голос, что у подписи внутри Field (компактный
+ *  uppercase на ink). Отдельный экспорт нужен формам, которые верстают
+ *  сетку сами и не могут отдать разметку render-функции Field. */
+export function Label({
+  className = '',
+  ...nativeProps
+}: LabelHTMLAttributes<HTMLLabelElement> & { className?: string }) {
+  return (
+    <label
+      {...nativeProps}
+      className={`pouf-label block font-pouf text-[13px] font-black tracking-[0.6px] uppercase text-ink ${className}`}
+    />
+  )
+}

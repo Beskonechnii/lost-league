@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { Eyebrow } from "@/app/_components/ui";
+import { Eyebrow } from "@/components/pouf/text";
 import { NewDraftButton } from "./_components/new-draft-button";
 import { DraftList } from "./_components/draft-list";
 

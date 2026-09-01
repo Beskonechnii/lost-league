@@ -56,7 +56,7 @@ export function QuizSettings({ quiz }: { quiz: Quiz }) {
             Сохранить
           </button>
           {state && (
-            <span className={`text-xs ${state.error ? "text-red-400" : "text-emerald-400"}`}>
+            <span className={`text-xs ${state.error ? "text-red-700" : "text-emerald-700"}`}>
               {state.error ?? state.ok}
             </span>
           )}
@@ -68,7 +68,7 @@ export function QuizSettings({ quiz }: { quiz: Quiz }) {
           <form action={removeQuiz} className="flex flex-wrap items-center gap-2">
             <input type="hidden" name="id" value={quiz.id} />
             <span className="text-xs text-ink-muted">Анкета удалится вместе со всеми ответами.</span>
-            <button type="submit" className="rounded-md border border-red-800 px-3 py-1 text-xs text-red-300 hover:bg-red-950/40">
+            <button type="submit" className="rounded-md border border-red-200 px-3 py-1 text-xs text-red-700 hover:bg-red-100">
               Удалить
             </button>
             <button type="button" onClick={() => setArmed(false)} className="text-xs text-ink-subtle hover:text-ink">
@@ -76,7 +76,7 @@ export function QuizSettings({ quiz }: { quiz: Quiz }) {
             </button>
           </form>
         ) : (
-          <button type="button" onClick={() => setArmed(true)} className="text-xs text-ink-subtle hover:text-red-400">
+          <button type="button" onClick={() => setArmed(true)} className="text-xs text-ink-subtle hover:text-red-700">
             Удалить анкету
           </button>
         )}

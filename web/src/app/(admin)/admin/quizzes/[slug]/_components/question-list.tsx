@@ -14,7 +14,7 @@ type Question = { id: number; text: string; options: string[]; required: boolean
 
 function Note({ state }: { state: QuizState }) {
   if (!state) return null;
-  return <span className={`text-xs ${state.error ? "text-red-400" : "text-emerald-400"}`}>{state.error ?? state.ok}</span>;
+  return <span className={`text-xs ${state.error ? "text-red-700" : "text-emerald-700"}`}>{state.error ?? state.ok}</span>;
 }
 
 function QuestionForm({
@@ -95,7 +95,7 @@ export function QuestionList({ slug, quizId, questions }: { slug: string; quizId
               <form action={removeQuestion}>
                 <input type="hidden" name="slug" value={slug} />
                 <input type="hidden" name="id" value={question.id} />
-                <button type="submit" className="rounded-md border border-hairline px-2 py-0.5 text-xs text-red-400 hover:border-red-800">
+                <button type="submit" className="rounded-md border border-hairline px-2 py-0.5 text-xs text-red-700 hover:border-red-200">
                   удалить
                 </button>
               </form>

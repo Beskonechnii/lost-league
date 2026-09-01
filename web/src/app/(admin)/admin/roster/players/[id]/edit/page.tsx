@@ -21,11 +21,11 @@ export default async function PlayerEditPage({ params }: { params: Promise<{ id:
   return (
     <div className="space-y-6 font-pouf">
       <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-muted">
-        <Link href="/roster/players" className="hover:text-[var(--purple)]">
+        <Link href="/roster/players" className="hover:text-[var(--accent-ink)]">
           Игроки
         </Link>
         <span className="text-ink-subtle">/</span>
-        <Link href={`/roster/players/${player.id}`} className="hover:text-[var(--purple)]">
+        <Link href={`/roster/players/${player.id}`} className="hover:text-[var(--accent-ink)]">
           {player.nickname}
         </Link>
         <span className="text-ink-subtle">/</span>
@@ -34,7 +34,7 @@ export default async function PlayerEditPage({ params }: { params: Promise<{ id:
 
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <h1 className="text-[28px] font-black tracking-[-0.5px] text-ink md:text-4xl">{player.nickname}</h1>
-        <Link href={`/roster/players/${player.id}`} className="text-sm font-bold text-muted hover:text-[var(--purple)]">
+        <Link href={`/roster/players/${player.id}`} className="text-sm font-bold text-muted hover:text-[var(--accent-ink)]">
           ← к профилю
         </Link>
       </div>

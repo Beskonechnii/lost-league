@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { tournamentBySlug } from "@/lib/tournaments";
 import { denyUnlessPermission } from "../../../../_components/permission-gate";
 import { ImportForm } from "./import-form";
-import { FORM_MAX_W } from "@/app/_components/ui";
+import { FORM_MAX_W } from "@/components/pouf/blocks";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Импорт составов" };
