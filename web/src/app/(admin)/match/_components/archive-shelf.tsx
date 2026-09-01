@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { MatchArchive, useArchive } from "@/app/_components/match-archive";
 
 // Полка выгруженных картинок — операторский инструмент, поэтому страница подключает её
-// только вошедшему (isAdmin). Здесь — обвязка: загрузка полки и переход в отчёт по клику.
+// только вошедшему. Здесь — обвязка: загрузка полки и переход в отчёт по клику.
 
 export function ArchiveShelf() {
   const router = useRouter();

@@ -51,6 +51,8 @@ import {
   IconLock,
   IconSend,
   IconHome,
+  IconLogout,
+  IconBook,
   IconTrophy,
   IconFlame,
   IconSparkles,
@@ -146,6 +148,10 @@ const ICONS = {
   lock: IconLock,
   send: IconSend,
   home: IconHome,
+  /** Выход из аккаунта — последний пункт сайдбара. */
+  logout: IconLogout,
+  /** Регламент, правила, документ, который читают. */
+  book: IconBook,
   trophy: IconTrophy,
   flame: IconFlame,
   sparkle: IconSparkles,

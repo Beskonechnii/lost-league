@@ -6,13 +6,15 @@ import { DropdownMenu } from "@/components/pouf/menu";
 import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { TOUCH_TARGET, useScrollActiveIntoView } from "./nav-scroll";
 
-// Строка контекста турнира — вторая и последняя строка хрома внутри /tournaments/<slug>.
+// Строка контекста турнира — единственная строка хрома внутри /tournaments/<slug>.
 // В ней сразу два уровня навигации (UI-GUIDELINES §2):
 //   L2 — какой турнир и какой дивизион (переключатель + сегменты);
 //   L3 — какой этап внутри него (таблица / плей-офф / статистика / ростер / TP / о турнире).
-// Отдельными строками их не разносим: L1 + L2 + L3 — это три ряда хрома, а до данных их
-// разрешено два. Раньше на месте этой строки стояли два экрана плиток — хаб турнира и хаб
-// дивизиона; они и были главной причиной, по которой до таблицы приходилось идти пятью кликами.
+// Отдельными строками их не разносим: два ряда над данными вместо одного ничего не добавляют.
+// Раньше на месте этой строки стояли два экрана плиток — хаб турнира и хаб дивизиона; они и были
+// главной причиной, по которой до таблицы приходилось идти пятью кликами.
+//
+// Глобального уровня L1 в ней нет: с Э4b он целиком в сайдбаре слева.
 
 export type BarDivision = { slug: string; short: string };
 export type BarTournament = { slug: string; name: string; status: string };
@@ -88,10 +90,9 @@ export function TournamentBar({
   ];
 
   return (
-    // 57px = высота верхней строки (h-14) вместе с её границей — иначе при скролле щель в 1px.
-    <div
-      className="sticky top-[57px] z-40 border-b border-hairline bg-canvas/85 font-pouf backdrop-blur"
-    >
+    // Липнет к верху окна: верхней строки сайта над содержимым больше нет — вся глобальная
+    // навигация уехала в сайдбар (DECISIONS, 02.09), и эта строка стала единственным рядом хрома.
+    <div className="sticky top-0 z-40 border-b border-hairline bg-canvas/85 font-pouf backdrop-blur">
       <div className={`mx-auto flex ${SITE_MAX_W} items-center gap-2 overflow-x-auto px-4 py-2 md:px-6`}>
         {tournaments.length > 0 ? (
           <DropdownMenu

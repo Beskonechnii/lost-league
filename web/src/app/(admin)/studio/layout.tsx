@@ -1,4 +1,4 @@
-import { SubNav } from "../../_components/site-nav";
+import { SubNav } from "../../_components/sub-nav";
 import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { denyUnlessPermission } from "../_components/permission-gate";
 

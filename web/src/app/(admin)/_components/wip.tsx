@@ -1,7 +1,7 @@
 import { SITE_MAX_W, SectionHeader } from "@/components/pouf/blocks";
 import { Badge } from "@/components/pouf/media";
 
-// Заглушка раздела в разработке. Место в навигации уже держится (см. ADMIN_SECTIONS в site-nav),
+// Заглушка раздела в разработке. Место в навигации уже держится (флаг `soon` в _components/tools.ts),
 // а самого инструмента ещё нет — показываем честное «в стадии разработки», а не пустую страницу.
 export function WorkInProgress({ title, note }: { title: string; note?: string }) {
   return (

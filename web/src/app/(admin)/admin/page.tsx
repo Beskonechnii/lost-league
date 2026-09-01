@@ -1,6 +1,6 @@
 import { HubGroupedTiles } from "@/app/_components/hub-tiles";
 import { currentPermissions, pendingClaims, pendingRegistrations } from "@/lib/account";
-import { QUEUE_TOOL, toolGroupsFor } from "../_components/tools";
+import { QUEUE_TOOL, toolGroupsFor } from "@/app/_components/tools";
 import { SITE_MAX_W } from "@/components/pouf/blocks";
 
 export const dynamic = "force-dynamic";
