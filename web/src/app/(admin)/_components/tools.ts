@@ -1,4 +1,5 @@
 import type { PermissionKey } from "@/lib/permissions";
+import type { IconName } from "@/components/pouf/Icon";
 
 // Реестр инструментов операторской — ОДИН на сайдбар и на плитки хаба /admin. Пока списка было два,
 // новый инструмент попадал в одно место и не попадал в другое; теперь добавить его можно только
@@ -11,7 +12,9 @@ export type Tool = {
   href: string;
   perm: PermissionKey;
   label: string;
-  icon: string;
+  /** Роль из словаря Кита (`pouf/Icon`), а не эмодзи: у эмодзи своя форма и цвет
+   *  в каждой ОС, они не берут currentColor и дерутся с пастелью Light Clay. */
+  icon: IconName;
   desc: string;
   /** «В разработке» — заглушка, держащая место в ряду. */
   soon?: boolean;
@@ -23,48 +26,48 @@ export const TOOL_GROUPS: ToolGroup[] = [
   {
     title: "Showmatch",
     tools: [
-      { href: "/underbeer", perm: "underbeer", label: "UNDERBEER 2.0", icon: "🍺", desc: "Шоу-драфт: капитаны по очереди собирают команды из ростера." },
-      { href: "/admin/single-draft", perm: "tools", label: "single draft", icon: "🎲", desc: "Случайный герой по каждой характеристике." },
-      { href: "/admin/1x1", perm: "tools", label: "1х1", icon: "🛠️", desc: "Турнир 1х1.", soon: true },
-      { href: "/admin/fearless-draft", perm: "tools", label: "fearless draft", icon: "🚫", desc: "Драфт героев без повторов по серии: баны, пики, fearless-пул." },
+      { href: "/underbeer", perm: "underbeer", label: "UNDERBEER 2.0", icon: "flame", desc: "Шоу-драфт: капитаны по очереди собирают команды из ростера." },
+      { href: "/admin/single-draft", perm: "tools", label: "single draft", icon: "wand", desc: "Случайный герой по каждой характеристике." },
+      { href: "/admin/1x1", perm: "tools", label: "1х1", icon: "sword", desc: "Турнир 1х1.", soon: true },
+      { href: "/admin/fearless-draft", perm: "tools", label: "fearless draft", icon: "off", desc: "Драфт героев без повторов по серии: баны, пики, fearless-пул." },
     ],
   },
   {
     title: "Модерация",
     tools: [
-      { href: "/admin/tournaments", perm: "tournaments.edit", label: "Турниры", icon: "🏟️", desc: "Завести турнир, описать его, раздать дивизионы и составы." },
-      { href: "/admin/moderation", perm: "accounts.approve", label: "Модерация", icon: "📝", desc: "Анкеты новых игроков и привязки к профилю: одобрить с заведением профиля или вернуть с причиной." },
-      { href: "/admin/staff", perm: "accounts.admins", label: "Команда лиги", icon: "🛡️", desc: "Владелец и админы: назначение роли и раздача прав по галочкам." },
-      { href: "/admin/tp", perm: "tp.edit", label: "TP", icon: "🏅", desc: "Начисление сезонных очков MVP игрокам." },
-      { href: "/admin/bot", perm: "tournaments.edit", label: "Телеграм-бот", icon: "🤖", desc: "Что бот спрашивает у капитана и что пишет о встречах: тексты шагов, свои вопросы, тайминги напоминаний." },
-      { href: "/admin/duplicates", perm: "roster.edit", label: "Дубли профилей", icon: "👥", desc: "Похожие профили одного человека: объединить, переименовать или развести." },
-      { href: "/admin/quizzes", perm: "quizzes", label: "Анкеты", icon: "📋", desc: "Опросы и записи на ивенты: бот собирает ответы в телеграме." },
+      { href: "/admin/tournaments", perm: "tournaments.edit", label: "Турниры", icon: "trophy", desc: "Завести турнир, описать его, раздать дивизионы и составы." },
+      { href: "/admin/moderation", perm: "accounts.approve", label: "Модерация", icon: "log", desc: "Анкеты новых игроков и привязки к профилю: одобрить с заведением профиля или вернуть с причиной." },
+      { href: "/admin/staff", perm: "accounts.admins", label: "Команда лиги", icon: "shield", desc: "Владелец и админы: назначение роли и раздача прав по галочкам." },
+      { href: "/admin/tp", perm: "tp.edit", label: "TP", icon: "star", desc: "Начисление сезонных очков MVP игрокам." },
+      { href: "/admin/bot", perm: "tournaments.edit", label: "Телеграм-бот", icon: "send", desc: "Что бот спрашивает у капитана и что пишет о встречах: тексты шагов, свои вопросы, тайминги напоминаний." },
+      { href: "/admin/duplicates", perm: "roster.edit", label: "Дубли профилей", icon: "users", desc: "Похожие профили одного человека: объединить, переименовать или развести." },
+      { href: "/admin/quizzes", perm: "quizzes", label: "Анкеты", icon: "comment", desc: "Опросы и записи на ивенты: бот собирает ответы в телеграме." },
     ],
   },
   {
     title: "Аналитика",
     tools: [
-      { href: "/match", perm: "tools", label: "Разбор матча", icon: "📊", desc: "Постгейм-отчёт по ID матча из Dota 2." },
-      { href: "/admin/vision", perm: "tools", label: "Варды", icon: "👁️", desc: "Карта расстановки вардов команды по архиву." },
-      { href: "/admin/stats", perm: "tools", label: "Показатели", icon: "📈", desc: "Топ-5 по каждой метрике: разрез дивизион / стадия / игроки или команды." },
+      { href: "/match", perm: "tools", label: "Разбор матча", icon: "chart", desc: "Постгейм-отчёт по ID матча из Dota 2." },
+      { href: "/admin/vision", perm: "tools", label: "Варды", icon: "pin", desc: "Карта расстановки вардов команды по архиву." },
+      { href: "/admin/stats", perm: "tools", label: "Показатели", icon: "performance", desc: "Топ-5 по каждой метрике: разрез дивизион / стадия / игроки или команды." },
     ],
   },
   {
     title: "Архив",
     tools: [
-      { href: "/admin/series", perm: "series.edit", label: "Архив серий", icon: "🗂️", desc: "Встречи турнира и карты в них — отсюда стата идёт в статистику." },
+      { href: "/admin/series", perm: "series.edit", label: "Архив серий", icon: "history", desc: "Встречи турнира и карты в них — отсюда стата идёт в статистику." },
     ],
   },
   {
     title: "Графика",
     tools: [
-      { href: "/studio/editor", perm: "studio", label: "Студия", icon: "🎨", desc: "Сборка турнирной графики по данным ростера." },
+      { href: "/studio/editor", perm: "studio", label: "Студия", icon: "photo", desc: "Сборка турнирной графики по данным ростера." },
     ],
   },
   {
     title: "UI",
     tools: [
-      { href: "/admin/theme", perm: "theme", label: "Тема", icon: "🎛️", desc: "Цвета UI проекта: акцент, поверхности, текст. Правится и едет в data/theme.json." },
+      { href: "/admin/theme", perm: "theme", label: "Тема", icon: "settings", desc: "Цвета UI проекта: акцент, поверхности, текст. Правится и едет в data/theme.json." },
     ],
   },
 ];

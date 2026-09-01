@@ -63,11 +63,25 @@ export function SectionHeader({
 
 /** Небольшой чип-метка (роль, тег, статус). Тихая «подушка»-капсула: поверхность
     с внутренним cushion-field, без акцентной заливки — чтобы много чипов в ряду
-    не кричали, но читались как один набор с остальным визуалом. */
-export function Chip({ children, className = "" }: { children: ReactNode; className?: string }) {
+    не кричали, но читались как один набор с остальным визуалом.
+
+    `accent` — вторая пара чипа из Кита (`.chip.sel`): выделенный в наборе. Пропом,
+    а не классом снаружи: у чипа заливка и тень задаются двумя утилитами разом,
+    и переопределить их одной строкой из вызова нельзя — они не каскадируют. */
+export function Chip({
+  children,
+  accent = false,
+  className = "",
+}: {
+  children: ReactNode;
+  accent?: boolean;
+  className?: string;
+}) {
   return (
     <span
-      className={`inline-flex w-fit shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-pill bg-surface-2 px-3 py-1 font-pouf text-[11px] font-bold text-ink-muted cushion-field ${className}`}
+      className={`inline-flex w-fit shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-pill px-3 py-1 font-pouf text-[11px] font-bold ${
+        accent ? "bg-accent-fill text-[var(--on-accent)] cushion-blob" : "bg-surface-2 text-ink-muted cushion-field"
+      } ${className}`}
     >
       {children}
     </span>

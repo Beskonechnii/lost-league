@@ -16,12 +16,15 @@ export function PlayerAvatar({
   nickname,
   color,
   size = 160,
+  shape = "square",
   className = "",
 }: {
   photo: string | null;
   nickname: string;
   color?: string | null;
   size?: number;
+  /** Круглая — для рельса состава в профиле (Кит, артборд «Профиль · атомы»). */
+  shape?: "square" | "circle";
   className?: string;
 }) {
   const accent = color?.trim() || ACCENT;
@@ -32,7 +35,9 @@ export function PlayerAvatar({
 
   return (
     <div
-      className={`relative grid shrink-0 place-items-center overflow-hidden rounded-2xl border border-white/10 ${className}`}
+      className={`relative grid shrink-0 place-items-center overflow-hidden border border-white/10 ${
+        shape === "circle" ? "rounded-pill" : "rounded-2xl"
+      } ${className}`}
       style={{ width: size, height: size, background }}
     >
       {photo ? (
