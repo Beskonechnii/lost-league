@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { loadQuizForEditor } from "@/lib/quiz-config";
 import { loadBotSettingsForEditor } from "@/lib/bot-settings";
+import { telegramConfigured } from "@/lib/telegram";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 import { READ_MAX_W } from "@/components/pouf/blocks";
 import { BotAdmin } from "./_components/bot-admin";
@@ -52,7 +53,7 @@ export default async function BotPage({ searchParams }: { searchParams: Promise<
         ))}
       </div>
 
-      {quiz ? <BotAdmin quiz={quiz} /> : settings ? <BotSettingsAdmin settings={settings} /> : null}
+      {quiz ? <BotAdmin quiz={quiz} /> : settings ? <BotSettingsAdmin settings={settings} digestOff={!telegramConfigured()} /> : null}
     </main>
   );
 }

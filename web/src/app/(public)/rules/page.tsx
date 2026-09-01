@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { Breadcrumbs } from "@/app/_components/breadcrumbs";
+import { FORM_MAX_W } from "@/components/pouf/blocks";
 
 export const metadata = {
   title: "Правила лиги",
@@ -122,10 +123,12 @@ const GROUPS: { title: string; items: React.ReactNode[] }[] = [
 export default function RulesPage() {
   return (
     <main className="flex-1 px-4 py-10 md:py-16">
-      <div className="mx-auto w-full max-w-2xl">
-        <Link href="/me" className="text-sm text-ink-subtle transition-colors hover:text-ink">
-          ← Кабинет
-        </Link>
+      {/* Колонка формы, а не чтения: правила читают сверху вниз, но строка в 72rem под текст
+          длинновата — 48rem держит меру абзаца и совпадает с анкетой, из которой сюда и приходят. */}
+      <div className={`mx-auto w-full ${FORM_MAX_W}`}>
+        {/* Крошки вместо «← Кабинет»: страница открыта и без входа, ссылка из формы регистрации
+            ведёт сюда напрямую (UI-GUIDELINES §3). */}
+        <Breadcrumbs items={[{ href: "/me", label: "Кабинет" }]} />
 
         <h1 className="mt-4 text-3xl font-bold tracking-tight">Правила лиги</h1>
         <p className="mt-2 text-sm text-ink-muted">

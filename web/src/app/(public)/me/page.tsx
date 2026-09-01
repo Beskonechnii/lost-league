@@ -3,6 +3,7 @@ import { googleConfigured } from "@/lib/google-oauth";
 import { currentAccount, linkablePlayers, effectiveRole, accountStatus, accountApplication } from "@/lib/account";
 import type { Role } from "@/lib/player-auth";
 import { buttonClasses } from "@/components/pouf/Button";
+import { AUTH_MAX_W } from "@/components/pouf/blocks";
 import { ApplicationSummary } from "@/app/_components/application-summary";
 import { Onboarding } from "./onboarding";
 import { ApplicationFlow } from "./application-form";
@@ -52,7 +53,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
 
   return (
     <main className="flex-1 px-4 py-10 md:py-16">
-      <div className="mx-auto w-full max-w-md">
+      <div className={`mx-auto w-full ${AUTH_MAX_W}`}>
         {/* Шапка-марка: делает страницу входа «лицом», а не голой формой */}
         <div className="mb-6 text-center">
           {/* Знак вместо буквы в градиентном квадрате: у бренда своя лента, и рисовать её

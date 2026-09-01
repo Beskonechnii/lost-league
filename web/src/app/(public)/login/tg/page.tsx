@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { currentAccountId } from "@/lib/player-session";
+import { currentAccount } from "@/lib/account";
+import { AUTH_MAX_W } from "@/components/pouf/blocks";
 import { CODE_TTL_MIN } from "@/lib/tg-login";
 import { MENU } from "@/lib/tg-menu";
 import { CodeForm } from "./code-form";
@@ -16,7 +17,11 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Вход через Telegram" };
 
 export default async function TelegramLoginPage() {
-  const signedIn = (await currentAccountId()) != null;
+  // «Вошёл» = аккаунт нашёлся в базе, а не «кука расшифровалась». Кука подписана и живёт 30 дней,
+  // так что она переживает удаление аккаунта, сброс базы и смену устройства: страница показывала
+  // «вы уже вошли», а `/me` в соседней вкладке — форму входа, потому что кабинет спрашивает
+  // `currentAccount()`. Оба экрана теперь спрашивают одно и то же.
+  const signedIn = (await currentAccount()) != null;
 
   // Окно входа — по канону «Вход» из скилла `kit`: подушка-карточка с марочной шапкой
   // (знак и заголовок по центру) и разделителем перед «другим способом войти».
@@ -26,7 +31,7 @@ export default async function TelegramLoginPage() {
   // одноразовый код из бота, которого в макете нет.
   return (
     <main className="flex-1 px-4 py-10 font-pouf md:py-16">
-      <div className="mx-auto w-full max-w-[420px] rounded-[36px] bg-surface px-8 pb-7 pt-8 cushion-card">
+      <div className={`mx-auto w-full ${AUTH_MAX_W} rounded-[36px] bg-surface px-8 pb-7 pt-8 cushion-card`}>
         <div className="mb-6 flex flex-col items-center gap-3">
           {/* Знак вместо буквы в градиентном квадрате: у бренда своя лента, и рисовать её
               градиентом Tailwind значит держать вторую версию логотипа в классах. */}

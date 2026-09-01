@@ -1,6 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentAccount } from "@/lib/account";
+import { AUTH_MAX_W } from "@/components/pouf/blocks";
+import { Breadcrumbs } from "@/app/_components/breadcrumbs";
 import { PasswordForm, DeleteAccount } from "./security-forms";
 
 export const dynamic = "force-dynamic";
@@ -49,11 +50,10 @@ export default async function SecurityPage() {
 
   return (
     <main className="flex-1 px-4 py-10 md:py-16">
-      <div className="mx-auto w-full max-w-md space-y-4">
+      <div className={`mx-auto w-full ${AUTH_MAX_W} space-y-4`}>
         <div className="mb-2">
-          <Link href="/me" className="text-sm text-ink-subtle transition-colors hover:text-ink">
-            ← Кабинет
-          </Link>
+          {/* Крошки вместо «← Кабинет» — см. UI-GUIDELINES §3. */}
+          <Breadcrumbs items={[{ href: "/me", label: "Кабинет" }]} />
           <h1 className="mt-3 text-2xl font-bold tracking-tight">Вход и защита</h1>
           {/* Почты может не быть: аккаунт из бота входит по телеграму (BOT-PLAN.md, Э1–Э2). */}
           <p className="mt-1 text-sm text-ink-muted">

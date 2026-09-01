@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentAccount } from "@/lib/account";
+import { AUTH_MAX_W } from "@/components/pouf/blocks";
+import { Breadcrumbs } from "@/app/_components/breadcrumbs";
 import { buttonClasses } from "@/components/pouf/Button";
 import { ProfileForm, type ProfileValues } from "./profile-form";
 
@@ -33,11 +35,11 @@ export default async function EditProfilePage() {
 
   return (
     <main className="flex-1 px-4 py-10 md:py-16">
-      <div className="mx-auto w-full max-w-md">
-        <div className="mb-6 flex items-center justify-between">
-          <Link href="/me" className="text-sm text-ink-subtle transition-colors hover:text-ink">
-            ← Кабинет
-          </Link>
+      <div className={`mx-auto w-full ${AUTH_MAX_W}`}>
+        <div className="mb-6 flex items-center justify-between gap-3">
+          {/* Крошки, а не «← Кабинет»: путь виден целиком, и он же работает при заходе по прямой
+              ссылке, откуда «назад» вело бы наугад (UI-GUIDELINES §3). */}
+          <Breadcrumbs items={[{ href: "/me", label: "Кабинет" }]} />
           <Link href={`/roster/players/${p.id}`} className={buttonClasses({ variant: "quiet", size: "sm" })}>
             Моя витрина
           </Link>

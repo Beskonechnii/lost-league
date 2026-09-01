@@ -69,12 +69,31 @@ function SettingCard({ field }: { field: BotSettingsEditor[number] }) {
   );
 }
 
-export function BotSettingsAdmin({ settings }: { settings: BotSettingsEditor }) {
+export function BotSettingsAdmin({
+  settings,
+  digestOff,
+}: {
+  settings: BotSettingsEditor;
+  /** Служебный чат (`TG_CHAT_ID`) в окружении не задан — дайджест встреч без времени никуда не уходит. */
+  digestOff: boolean;
+}) {
   const timing = settings.filter((f) => f.kind !== "text");
   const texts = settings.filter((f) => f.kind === "text");
 
   return (
     <>
+      {/* Без служебного чата дайджест молча ничего не делает: время «когда слать» тут настраивается,
+          а адресата нет. Молчание оператор читает как «работает» — поэтому говорим вслух. Значение
+          переменной здесь не показываем: окружение в UI не светим, только факт «задана / нет». */}
+      {digestOff && (
+        <p className="mt-8 rounded-md border border-amber-200 bg-amber-100 px-3 py-2 text-sm text-amber-700">
+          Дайджест встреч без времени сейчас никуда не отправляется: в окружении сервера не заданы{" "}
+          <code>TG_BOT_TOKEN</code> и/или <code>TG_CHAT_ID</code>. Впишите их в <code>web/.env</code>{" "}
+          (образец — <code>web/.env.example</code>) и перезапустите приложение. Остальные настройки
+          ниже действуют и без этого: входящий поток бота отвечает в чат отправителя.
+        </p>
+      )}
+
       <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-ink-subtle">Тайминги</h2>
       <p className="mt-1 max-w-2xl text-sm text-ink-muted">
         За сколько бот напоминает о встрече, кому пишет и какие времена начала предлагает капитану.
