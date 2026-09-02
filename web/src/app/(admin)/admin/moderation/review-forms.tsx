@@ -3,12 +3,12 @@
 import { useActionState } from "react";
 import { approve, approveEdit, approveLink, reject, rejectEdit, rejectLink, type ReviewState } from "./actions";
 import { Button } from "@/components/pouf/Button";
-import { FormInput } from "@/components/pouf/Input";
+import { FormInput, Label } from "@/components/pouf/Input";
+import { Alert } from "@/components/pouf/feedback";
+import { QueueDecision } from "@/components/pouf/queue-card";
 
 // Решение по одной заявке. Две формы рядом, а не одна с двумя кнопками: у отказа причина
 // обязательна, и браузерная проверка `required` не должна мешать одобрению.
-
-const errorBox = "rounded-md border border-rose-200 bg-rose-100 px-3 py-2 text-sm text-rose-700";
 
 export function ReviewForms({
   accountId,
@@ -38,13 +38,20 @@ export function ReviewForms({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-end gap-2">
+      <QueueDecision>
         <form action={approveAction} className="flex items-end gap-2">
           <input type="hidden" name="accountId" value={accountId} />
           {mmr !== undefined && (
-            <div className="w-28 space-y-1">
-              <label className="block text-xs text-ink-subtle">MMR в лигу</label>
-              <FormInput name="mmr" inputMode="numeric" defaultValue={mmr == null ? "" : String(mmr)} />
+            <div className="w-28">
+              <Label htmlFor={`mmr-${accountId}`}>MMR в лигу</Label>
+              <FormInput
+                id={`mmr-${accountId}`}
+                name="mmr"
+                size="sm"
+                inputMode="numeric"
+                defaultValue={mmr == null ? "" : String(mmr)}
+                className="mt-1.5"
+              />
             </div>
           )}
           <Button type="submit" size="sm" disabled={busy}>
@@ -57,18 +64,27 @@ export function ReviewForms({
           {/* Поля причины нет там, где отказ никому не показывается: у открытого аккаунта отклонённая
               привязка просто снимается, и просить формулировку «в никуда» незачем. */}
           {reasonRequired && (
-            <div className="min-w-[12rem] flex-1 space-y-1">
-              <label className="block text-xs text-ink-subtle">Причина возврата</label>
-              <FormInput name="reason" required placeholder={link ? "Почему это не он" : "Чего не хватает в анкете"} />
+            <div className="min-w-[12rem] flex-1">
+              <Label htmlFor={`reason-${accountId}`}>Причина возврата</Label>
+              <FormInput
+                id={`reason-${accountId}`}
+                name="reason"
+                size="sm"
+                required
+                placeholder={link ? "Почему это не он" : "Чего не хватает в анкете"}
+                className="mt-1.5"
+              />
             </div>
           )}
           <Button type="submit" size="sm" variant="quiet" disabled={busy}>
             {rejecting ? (reasonRequired ? "Возвращаю…" : "Отклоняю…") : reasonRequired ? "Вернуть" : "Отклонить"}
           </Button>
         </form>
-      </div>
+      </QueueDecision>
 
-      {(okState?.error || noState?.error) && <p className={errorBox}>{okState?.error ?? noState?.error}</p>}
+      {(okState?.error || noState?.error) && (
+        <Alert tone="err" block>{okState?.error ?? noState?.error}</Alert>
+      )}
     </div>
   );
 }
@@ -84,7 +100,7 @@ export function EditReviewForms({ editId }: { editId: number }) {
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-end gap-2">
+      <QueueDecision>
         <form action={approveAction}>
           <input type="hidden" name="editId" value={editId} />
           <Button type="submit" size="sm" disabled={busy}>
@@ -94,17 +110,26 @@ export function EditReviewForms({ editId }: { editId: number }) {
 
         <form action={rejectAction} className="flex flex-1 items-end gap-2">
           <input type="hidden" name="editId" value={editId} />
-          <div className="min-w-[12rem] flex-1 space-y-1">
-            <label className="block text-xs text-ink-subtle">Причина возврата</label>
-            <FormInput name="reason" required placeholder="Почему так нельзя" />
+          <div className="min-w-[12rem] flex-1">
+            <Label htmlFor={`edit-reason-${editId}`}>Причина возврата</Label>
+            <FormInput
+              id={`edit-reason-${editId}`}
+              name="reason"
+              size="sm"
+              required
+              placeholder="Почему так нельзя"
+              className="mt-1.5"
+            />
           </div>
           <Button type="submit" size="sm" variant="quiet" disabled={busy}>
             {rejecting ? "Возвращаю…" : "Вернуть"}
           </Button>
         </form>
-      </div>
+      </QueueDecision>
 
-      {(okState?.error || noState?.error) && <p className={errorBox}>{okState?.error ?? noState?.error}</p>}
+      {(okState?.error || noState?.error) && (
+        <Alert tone="err" block>{okState?.error ?? noState?.error}</Alert>
+      )}
     </div>
   );
 }

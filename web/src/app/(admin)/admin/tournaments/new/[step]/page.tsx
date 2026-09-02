@@ -3,13 +3,19 @@ import { notFound, redirect } from "next/navigation";
 import { divisionTeams, tournamentBySlug } from "@/lib/tournaments";
 import { teamTag } from "@/lib/profiles";
 import { Button } from "@/components/pouf/Button";
+import { FormInput, Label } from "@/components/pouf/Input";
+import { Alert, EmptyState } from "@/components/pouf/feedback";
+import { Stepper } from "@/components/pouf/stepper";
+import { DataCell, DataRow, DataTable, RowActions } from "@/components/pouf/data-table";
+import { Chip, FORM_MAX_W, StatTile } from "@/components/pouf/blocks";
 import { denyUnlessPermission } from "../../../../_components/permission-gate";
+import { AdminHeader } from "../../../../_components/admin-header";
+import { Panel } from "../../../../_components/panel";
 import { Field } from "../../_components/fields";
 import { addDivision, autoDraw, removeDivision, saveDivision, saveDraw } from "../../actions";
 import { finishWizard, goToStep, saveDraft } from "../actions";
 import { ImportForm } from "../../[slug]/import/import-form";
-import { Steps, isStep, stepIndex, WIZARD_STEPS, type StepKey } from "../_components/steps";
-import { FORM_MAX_W } from "@/components/pouf/blocks";
+import { isStep, stepIndex, wizardSteps, WIZARD_STEPS, type StepKey } from "../_components/steps";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Новый турнир" };
@@ -74,266 +80,275 @@ export default async function WizardStep({
 
   return (
     <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
-      <Link href="/admin/tournaments" className="text-xs text-ink-subtle hover:text-ink">
-        ← Все турниры
-      </Link>
+      <AdminHeader
+        crumbs={[{ href: "/admin/tournaments", label: "Турниры" }]}
+        eyebrow="Новый турнир"
+        title={tournament ? tournament.name : "Новый турнир"}
+        aside={<Chip>шаг {stepIndex(step) + 1} из {WIZARD_STEPS.length}</Chip>}
+      />
 
-      <h1 className="mt-2 text-xl font-bold tracking-tight">
-        {tournament ? tournament.name : "Новый турнир"}
-        <span className="ml-2 text-sm font-normal text-ink-subtle">
-          шаг {stepIndex(step) + 1} из {WIZARD_STEPS.length}
-        </span>
-      </h1>
-
-      <div className="mt-4">
-        <Steps current={step} slug={tournament?.slug ?? null} />
+      <div className="mt-6">
+        <Stepper steps={wizardSteps(tournament?.slug ?? null)} current={stepIndex(step)} />
       </div>
 
-      {/* ── Шаг 1: описание. Он же создаёт черновик ───────────────────────── */}
-      {step === "describe" && (
-        <section className="mt-5 rounded-lg border border-hairline bg-surface-1 p-4">
-          <h2 className="text-sm font-semibold">Описание</h2>
-          <p className="mt-1 text-xs text-ink-subtle">
-            Достаточно названия — остальное можно дописать потом на карточке турнира. Турнир
-            заводится черновиком: публично он не виден, пока вы сами не откроете приём заявок.
-          </p>
-
-          <form action={saveDraft} className="mt-3 grid gap-3 sm:grid-cols-2">
-            {tournament && <input type="hidden" name="id" value={tournament.id} />}
-            <input type="hidden" name="current" value={tournament?.slug ?? ""} />
-            <Field name="name" label="Название" value={tournament?.name} required placeholder="LOST Season 3" />
-            <Field name="slug" label="Слаг" value={tournament?.slug} placeholder="s3" hint="Живёт в адресе: /tournaments/s3" />
-            <Field name="short" label="Короткое имя" value={tournament?.short} placeholder="S3" />
-            <Field name="format" label="Формат" value={tournament?.format} placeholder="2 дивизиона, группа + плей-офф" />
-            <Field name="prize" label="Призовой фонд" value={tournament?.prize} />
-            <Field name="startAt" label="Старт" type="date" value={forInput(tournament?.startAt ?? null)} />
-            <Field name="endAt" label="Финиш" type="date" value={forInput(tournament?.endAt ?? null)} />
-            <Field name="regOpenAt" label="Заявки с" type="date" value={forInput(tournament?.regOpenAt ?? null)} />
-            <Field name="regCloseAt" label="Заявки до" type="date" value={forInput(tournament?.regCloseAt ?? null)} />
-            <div className="sm:col-span-2">
-              <Field name="description" label="Описание и регламент" value={tournament?.description} textarea />
-            </div>
-            <div className="sm:col-span-2">
-              <Button type="submit" size="sm">
-                {tournament ? "Сохранить и дальше →" : "Создать черновик и дальше →"}
-              </Button>
-            </div>
-          </form>
-        </section>
-      )}
-
-      {/* ── Шаг 2: дивизионы ──────────────────────────────────────────────── */}
-      {step === "divisions" && tournament && (
-        <section className="mt-5 space-y-3">
-          <div className="rounded-lg border border-hairline bg-surface-1 p-4">
-            <h2 className="text-sm font-semibold">Дивизионы</h2>
-            <p className="mt-1 text-xs text-ink-subtle">
-              Команда встаёт не в турнир, а в дивизион — поэтому без дивизионов дальше идти некуда.
-              Один дивизион тоже нормально.
-            </p>
-          </div>
-
-          {tournament.divisions.map((d, i) => (
-            <div key={d.id} className="rounded-lg border border-hairline bg-surface-1 p-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-md border border-hairline bg-surface-2 px-2 py-0.5 text-xs">{d.short ?? d.slug}</span>
-                <span className="text-sm font-semibold">{d.name}</span>
-                <span className="text-xs text-ink-subtle">
-                  /tournaments/{tournament.slug}/{d.slug} · команд: {rosters[i].length}
-                </span>
-              </div>
-
-              <form action={saveDivision} className="mt-3 grid gap-3 sm:grid-cols-3">
-                <input type="hidden" name="id" value={d.id} />
-                <input type="hidden" name="tournamentSlug" value={tournament.slug} />
-                <Field name="name" label="Название" value={d.name} required />
-                <Field name="slug" label="Слаг" value={d.slug} />
-                <Field name="short" label="Коротко" value={d.short} />
-                <Field name="label" label="Подпись раздела" value={d.label} placeholder="LOST D1" />
-                <Field name="orderNo" label="Порядок" type="number" value={d.orderNo} />
-                <div className="flex items-end gap-2">
-                  <Button type="submit" size="sm">Сохранить</Button>
-                </div>
-              </form>
-
-              <form action={removeDivision} className="mt-3 border-t border-hairline pt-3">
-                <input type="hidden" name="id" value={d.id} />
-                <input type="hidden" name="tournamentSlug" value={tournament.slug} />
-                <Button type="submit" size="sm" variant="quiet" disabled={rosters[i].length > 0}>
-                  Удалить дивизион
+      <div className="space-y-4">
+        {/* ── Шаг 1: описание. Он же создаёт черновик ───────────────────────── */}
+        {step === "describe" && (
+          <Panel
+            title="Описание"
+            hint="Достаточно названия — остальное можно дописать потом на карточке турнира. Турнир заводится черновиком: публично он не виден, пока вы сами не откроете приём заявок."
+          >
+            <form action={saveDraft} className="grid gap-4 sm:grid-cols-2">
+              {tournament && <input type="hidden" name="id" value={tournament.id} />}
+              <input type="hidden" name="current" value={tournament?.slug ?? ""} />
+              <Field name="name" label="Название" value={tournament?.name} required placeholder="LOST Season 3" />
+              <Field name="slug" label="Слаг" value={tournament?.slug} placeholder="s3" hint="Живёт в адресе: /tournaments/s3" />
+              <Field name="short" label="Короткое имя" value={tournament?.short} placeholder="S3" />
+              <Field name="format" label="Формат" value={tournament?.format} placeholder="2 дивизиона, группа + плей-офф" />
+              <Field name="prize" label="Призовой фонд" value={tournament?.prize} />
+              <Field name="startAt" label="Старт" type="date" value={forInput(tournament?.startAt ?? null)} />
+              <Field name="endAt" label="Финиш" type="date" value={forInput(tournament?.endAt ?? null)} />
+              <Field name="regOpenAt" label="Заявки с" type="date" value={forInput(tournament?.regOpenAt ?? null)} />
+              <Field name="regCloseAt" label="Заявки до" type="date" value={forInput(tournament?.regCloseAt ?? null)} />
+              <Field name="description" label="Описание и регламент" value={tournament?.description} textarea span={2} />
+              <div className="sm:col-span-2">
+                <Button type="submit" size="sm">
+                  {tournament ? "Сохранить и дальше" : "Создать черновик и дальше"}
                 </Button>
-                {rosters[i].length > 0 && <span className="ml-2 text-[11px] text-ink-subtle">сначала уберите команды</span>}
-              </form>
-            </div>
-          ))}
-
-          <div className="rounded-lg border border-hairline bg-surface-1 p-4">
-            <h3 className="text-sm font-semibold">Новый дивизион</h3>
-            <form action={addDivision} className="mt-3 grid gap-3 sm:grid-cols-3">
-              <input type="hidden" name="tournamentId" value={tournament.id} />
-              <input type="hidden" name="tournamentSlug" value={tournament.slug} />
-              <Field name="name" label="Название" required placeholder="Division 1" />
-              <Field name="slug" label="Слаг" placeholder="d1" />
-              <Field name="short" label="Коротко" placeholder="D1" />
-              <Field name="label" label="Подпись раздела" placeholder="LOST D1" />
-              <Field name="mmrFrom" label="MMR от" type="number" />
-              <Field name="mmrTo" label="MMR до" type="number" />
-              <div className="sm:col-span-3">
-                <Button type="submit" size="sm">Добавить дивизион</Button>
               </div>
             </form>
-          </div>
-        </section>
-      )}
+          </Panel>
+        )}
 
-      {/* ── Шаг 3: импорт составов ────────────────────────────────────────── */}
-      {step === "import" && tournament && (
-        <section className="mt-5 space-y-3">
-          <div className="rounded-lg border border-hairline bg-surface-1 p-4">
-            <h2 className="text-sm font-semibold">Импорт составов</h2>
-            <p className="mt-1 text-xs text-ink-subtle">
+        {/* ── Шаг 2: дивизионы ──────────────────────────────────────────────── */}
+        {step === "divisions" && tournament && (
+          <>
+            <Alert tone="info" block>
+              Команда встаёт не в турнир, а в дивизион — поэтому без дивизионов дальше идти некуда.
+              Один дивизион тоже нормально.
+            </Alert>
+
+            {tournament.divisions.map((d, i) => (
+              <Panel
+                key={d.id}
+                title={
+                  <span className="flex flex-wrap items-center gap-2">
+                    <Chip>{d.short ?? d.slug}</Chip>
+                    {d.name}
+                  </span>
+                }
+                aside={
+                  <span className="font-pouf text-xs font-bold tabular-nums text-muted">
+                    команд: {rosters[i].length}
+                  </span>
+                }
+                hint={`/tournaments/${tournament.slug}/${d.slug}`}
+              >
+                <form action={saveDivision} className="grid gap-4 sm:grid-cols-3">
+                  <input type="hidden" name="id" value={d.id} />
+                  <input type="hidden" name="tournamentSlug" value={tournament.slug} />
+                  <Field name="name" label="Название" value={d.name} required />
+                  <Field name="slug" label="Слаг" value={d.slug} />
+                  <Field name="short" label="Коротко" value={d.short} />
+                  <Field name="label" label="Подпись раздела" value={d.label} placeholder="LOST D1" />
+                  <Field name="orderNo" label="Порядок" type="number" value={d.orderNo} />
+                  <div className="flex items-end">
+                    <Button type="submit" size="sm">Сохранить</Button>
+                  </div>
+                </form>
+
+                <form action={removeDivision} className="mt-4 flex flex-wrap items-center gap-2 border-t border-hairline pt-4">
+                  <input type="hidden" name="id" value={d.id} />
+                  <input type="hidden" name="tournamentSlug" value={tournament.slug} />
+                  <Button type="submit" size="sm" variant="quiet" disabled={rosters[i].length > 0}>
+                    Удалить дивизион
+                  </Button>
+                  {rosters[i].length > 0 && (
+                    <span className="font-pouf text-[11px] font-bold text-muted">сначала уберите команды</span>
+                  )}
+                </form>
+              </Panel>
+            ))}
+
+            <Panel title="Новый дивизион">
+              <form action={addDivision} className="grid gap-4 sm:grid-cols-3">
+                <input type="hidden" name="tournamentId" value={tournament.id} />
+                <input type="hidden" name="tournamentSlug" value={tournament.slug} />
+                <Field name="name" label="Название" required placeholder="Division 1" />
+                <Field name="slug" label="Слаг" placeholder="d1" />
+                <Field name="short" label="Коротко" placeholder="D1" />
+                <Field name="label" label="Подпись раздела" placeholder="LOST D1" />
+                <Field name="mmrFrom" label="MMR от" type="number" />
+                <Field name="mmrTo" label="MMR до" type="number" />
+                <div className="sm:col-span-3">
+                  <Button type="submit" size="sm">Добавить дивизион</Button>
+                </div>
+              </form>
+            </Panel>
+          </>
+        )}
+
+        {/* ── Шаг 3: импорт составов ────────────────────────────────────────── */}
+        {step === "import" && tournament && (
+          <>
+            <Alert tone="info" block>
               Таблица оператора пишется в ростер сразу — подтверждать себе нечего. Шаг можно
               пропустить: составы приедут заявками капитанов.
-            </p>
-          </div>
-
-          <div className="rounded-lg border border-hairline bg-surface-1 p-4">
+            </Alert>
             <ImportForm
               tournamentSlug={tournament.slug}
               divisions={tournament.divisions.map((d) => ({ id: d.id, name: d.name, short: d.short ?? d.slug }))}
             />
-          </div>
-        </section>
-      )}
+          </>
+        )}
 
-      {/* ── Шаг 4: жеребьёвка ─────────────────────────────────────────────── */}
-      {step === "draw" && tournament && (
-        <section className="mt-5 space-y-3">
-          <div className="rounded-lg border border-hairline bg-surface-1 p-4">
-            <h2 className="text-sm font-semibold">Жеребьёвка</h2>
-            <p className="mt-1 text-xs text-ink-subtle">
+        {/* ── Шаг 4: жеребьёвка ─────────────────────────────────────────────── */}
+        {step === "draw" && tournament && (
+          <>
+            <Alert tone="info" block>
               Змейка разводит команды по группам по среднему MMR основы: сильнейшие расходятся.
-              Группу и посев любой команды потом можно поправить руками здесь же. Команд ещё нет —
-              шаг можно пропустить и развести группы позже на карточке турнира.
-            </p>
-          </div>
+              Группу и посев любой команды потом можно поправить руками здесь же — или позже на
+              карточке турнира.
+            </Alert>
 
-          {tournament.divisions.length === 0 && (
-            <p className="rounded-md border border-hairline bg-surface-1 px-3 py-4 text-sm text-ink-subtle">
-              Дивизионов нет — вернитесь на шаг «Дивизионы».
-            </p>
-          )}
+            {tournament.divisions.length === 0 && (
+              <EmptyState icon="users" title="Дивизионов нет">
+                Вернитесь на шаг «Дивизионы»: разводить по группам пока нечего.
+              </EmptyState>
+            )}
 
-          {tournament.divisions.map((d, i) => (
-            <div key={d.id} className="rounded-lg border border-hairline bg-surface-1 p-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-semibold">{d.name}</span>
-                <span className="text-xs text-ink-subtle">команд: {rosters[i].length}</span>
-              </div>
+            {tournament.divisions.map((d, i) => (
+              <Panel
+                key={d.id}
+                title={d.name}
+                aside={
+                  <span className="font-pouf text-xs font-bold tabular-nums text-muted">
+                    команд: {rosters[i].length}
+                  </span>
+                }
+              >
+                <form action={autoDraw} className="flex flex-wrap items-end gap-3">
+                  <input type="hidden" name="divisionId" value={d.id} />
+                  <input type="hidden" name="tournamentSlug" value={tournament.slug} />
+                  <div>
+                    <Label htmlFor={`groups-${d.id}`}>Разбить на группы</Label>
+                    <FormInput
+                      id={`groups-${d.id}`}
+                      name="groups"
+                      type="number"
+                      min={1}
+                      size="sm"
+                      defaultValue={2}
+                      className="mt-1.5 w-24"
+                    />
+                  </div>
+                  <Button type="submit" size="sm" variant="quiet" disabled={rosters[i].length === 0}>
+                    Жеребьёвка змейкой
+                  </Button>
+                </form>
 
-              <form action={autoDraw} className="mt-3 flex flex-wrap items-end gap-2">
-                <input type="hidden" name="divisionId" value={d.id} />
-                <input type="hidden" name="tournamentSlug" value={tournament.slug} />
-                <label className="block">
-                  <span className="text-xs text-ink-muted">Разбить на группы</span>
-                  <input
-                    name="groups"
-                    type="number"
-                    min={1}
-                    defaultValue={2}
-                    className="mt-1 h-9 w-20 rounded-md border border-hairline bg-surface-2 px-2 text-sm"
-                  />
-                </label>
-                <Button type="submit" size="sm" variant="quiet" disabled={rosters[i].length === 0}>
-                  Жеребьёвка змейкой
-                </Button>
-              </form>
+                <div className="mt-4">
+                  <DataTable
+                    caption={`Жеребьёвка дивизиона ${d.name}`}
+                    columns={[
+                      { label: "Команда" },
+                      { label: "Тег", hideOnNarrow: true },
+                      { label: "Группа", align: "center", width: "96px" },
+                      { label: "Посев", align: "center", width: "96px" },
+                      { label: "", align: "right", width: "1%" },
+                    ]}
+                    empty={
+                      <EmptyState icon="users" title="Команд пока нет">
+                        Шаг можно пропустить: составы приедут импортом или заявками капитанов.
+                      </EmptyState>
+                    }
+                  >
+                    {rosters[i].map((e) => (
+                      <DataRow key={e.id}>
+                        <DataCell>{e.team.name}</DataCell>
+                        <DataCell muted hideOnNarrow>{teamTag(e.team)}</DataCell>
+                        <DataCell align="center">
+                          <FormInput
+                            form={`wdraw-${e.id}`}
+                            name="group"
+                            size="sm"
+                            defaultValue={e.group ?? ""}
+                            placeholder="гр."
+                            aria-label="Группа"
+                            className="text-center uppercase"
+                          />
+                        </DataCell>
+                        <DataCell align="center">
+                          <FormInput
+                            form={`wdraw-${e.id}`}
+                            name="seed"
+                            type="number"
+                            size="sm"
+                            defaultValue={e.seed ?? ""}
+                            placeholder="№"
+                            aria-label="Посев"
+                            className="text-center"
+                          />
+                        </DataCell>
+                        <DataCell align="right" nowrap>
+                          <RowActions>
+                            <form id={`wdraw-${e.id}`} action={saveDraw}>
+                              <input type="hidden" name="entryId" value={e.id} />
+                              <input type="hidden" name="tournamentSlug" value={tournament.slug} />
+                              <Button type="submit" size="xs" variant="quiet">Сохранить</Button>
+                            </form>
+                          </RowActions>
+                        </DataCell>
+                      </DataRow>
+                    ))}
+                  </DataTable>
+                </div>
+              </Panel>
+            ))}
+          </>
+        )}
 
-              {rosters[i].length > 0 && (
-                <ul className="mt-3 space-y-1.5 border-t border-hairline pt-3">
-                  {rosters[i].map((e) => (
-                    <li key={e.id} className="flex flex-wrap items-center gap-2 text-sm">
-                      <span className="min-w-0 truncate">{e.team.name}</span>
-                      <span className="text-xs text-ink-subtle">{teamTag(e.team)}</span>
-                      <form action={saveDraw} className="ml-auto flex items-center gap-1">
-                        <input type="hidden" name="entryId" value={e.id} />
-                        <input type="hidden" name="tournamentSlug" value={tournament.slug} />
-                        <input
-                          name="group"
-                          defaultValue={e.group ?? ""}
-                          placeholder="гр."
-                          className="h-8 w-12 rounded-md border border-hairline bg-surface-2 px-2 text-center text-xs uppercase"
-                        />
-                        <input
-                          name="seed"
-                          type="number"
-                          defaultValue={e.seed ?? ""}
-                          placeholder="№"
-                          className="h-8 w-14 rounded-md border border-hairline bg-surface-2 px-2 text-center text-xs"
-                        />
-                        <Button type="submit" size="sm" variant="quiet">Сохранить</Button>
-                      </form>
-                    </li>
-                  ))}
-                </ul>
-              )}
+        {/* ── Шаг 5: готово ─────────────────────────────────────────────────── */}
+        {step === "done" && tournament && (
+          <>
+            <Alert tone="ok" block>
+              Турнир заведён черновиком. Публично он не виден, пока вы не переключите статус на
+              «Приём заявок» или «Идёт» — это делается на карточке турнира.
+            </Alert>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <StatTile label="Дивизионов" value={tournament.divisions.length} />
+              <StatTile label="Команд заявлено" value={teamsTotal} />
+              <StatTile label="Разведено по группам" value={drawn} hint={`из ${teamsTotal}`} />
             </div>
-          ))}
-        </section>
-      )}
 
-      {/* ── Шаг 5: готово ─────────────────────────────────────────────────── */}
-      {step === "done" && tournament && (
-        <section className="mt-5 space-y-3">
-          <div className="rounded-lg border border-emerald-200 bg-emerald-100 p-4">
-            <h2 className="text-sm font-semibold text-emerald-700">Турнир готов</h2>
-            <p className="mt-1 text-sm text-ink-muted">
-              Заведён черновиком. Он не виден публично, пока вы не переключите статус на «Приём
-              заявок» или «Идёт» — это делается на карточке турнира.
-            </p>
-          </div>
-
-          <ul className="rounded-lg border border-hairline bg-surface-1 p-4 text-sm">
-            <li className="flex justify-between border-b border-hairline/60 py-1.5">
-              <span className="text-ink-muted">Дивизионов</span>
-              <span className="font-semibold tabular-nums">{tournament.divisions.length}</span>
-            </li>
-            <li className="flex justify-between border-b border-hairline/60 py-1.5">
-              <span className="text-ink-muted">Команд заявлено</span>
-              <span className="font-semibold tabular-nums">{teamsTotal}</span>
-            </li>
-            <li className="flex justify-between py-1.5">
-              <span className="text-ink-muted">Разведено по группам</span>
-              <span className="font-semibold tabular-nums">
-                {drawn} из {teamsTotal}
-              </span>
-            </li>
-          </ul>
-
-          <div className="flex flex-wrap gap-3 text-sm">
-            <Link href={`/tournaments/${tournament.slug}`} className="text-accent-bright hover:underline">
-              Публичная страница турнира →
-            </Link>
-            <Link href={`/admin/series/${tournament.slug}`} className="text-accent-bright hover:underline">
-              Архив серий турнира →
-            </Link>
-          </div>
-        </section>
-      )}
+            <Panel title="Куда дальше">
+              <nav className="flex flex-wrap gap-3 font-pouf text-sm font-bold">
+                <Link href={`/tournaments/${tournament.slug}`} className="text-[var(--accent-ink)] hover:underline">
+                  Публичная страница турнира
+                </Link>
+                <Link href={`/admin/series/${tournament.slug}`} className="text-[var(--accent-ink)] hover:underline">
+                  Архив серий турнира
+                </Link>
+              </nav>
+            </Panel>
+          </>
+        )}
+      </div>
 
       {/* ── Навигация мастера ─────────────────────────────────────────────── */}
       {tournament && (
         <div className="mt-6 flex flex-wrap items-center gap-2">
           {stepIndex(step) > 0 && (
             <StepLink step={WIZARD_STEPS[stepIndex(step) - 1].key} slug={tournament.slug}>
-              ← Назад
+              Назад
             </StepLink>
           )}
 
           {step === "done" ? (
             <form action={finishWizard}>
               <input type="hidden" name="t" value={tournament.slug} />
-              <Button type="submit" size="sm">Открыть карточку турнира →</Button>
+              <Button type="submit" size="sm">Открыть карточку турнира</Button>
             </form>
           ) : (
             step !== "describe" && (
@@ -347,15 +362,15 @@ export default async function WizardStep({
                 disabled={step === "divisions" && tournament.divisions.length === 0}
               >
                 {(step === "import" && teamsTotal === 0) || (step === "draw" && teamsTotal === 0)
-                  ? "Пропустить →"
-                  : "Дальше →"}
+                  ? "Пропустить"
+                  : "Дальше"}
               </StepLink>
             )
           )}
 
           <Link
             href={`/admin/tournaments/${tournament.slug}`}
-            className="ml-auto text-xs text-ink-subtle hover:text-ink"
+            className="ml-auto font-pouf text-xs font-bold text-muted hover:text-ink"
           >
             Выйти в карточку турнира
           </Link>

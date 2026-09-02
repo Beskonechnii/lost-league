@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { tournamentBySlug } from "@/lib/tournaments";
 import { denyUnlessPermission } from "../../../../_components/permission-gate";
+import { AdminHeader } from "../../../../_components/admin-header";
 import { ImportForm } from "./import-form";
 import { FORM_MAX_W } from "@/components/pouf/blocks";
 
@@ -22,16 +22,18 @@ export default async function ImportPage({ params }: { params: Promise<{ slug: s
 
   return (
     <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
-      <Link href={`/admin/tournaments/${tournament.slug}`} className="text-xs text-ink-subtle hover:text-ink">
-        ← {tournament.name}
-      </Link>
-      <h1 className="mt-2 text-xl font-bold tracking-tight">Импорт составов</h1>
-      <p className="mt-1.5 text-sm text-ink-muted">
+      <AdminHeader
+        crumbs={[
+          { href: "/admin/tournaments", label: "Турниры" },
+          { href: `/admin/tournaments/${tournament.slug}`, label: tournament.name },
+        ]}
+        title="Импорт составов"
+      >
         Понимаем два вида таблиц: с шапкой колонок («Команда», «Ник», «Роль», «MMR», «Ссылка») и
         блочную раскладку сезонной таблицы LOST — пробуем обе и берём ту, где игроков нашлось больше.
         Ссылки читаем и из текста ячейки, и из гиперссылки, из них же выводится account_id.
         В ростер ничего не попадёт, пока вы не дойдёте до шага «Запись».
-      </p>
+      </AdminHeader>
 
       <div className="mt-6">
         <ImportForm

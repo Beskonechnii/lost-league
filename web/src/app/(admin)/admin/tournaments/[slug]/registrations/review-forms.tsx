@@ -3,13 +3,13 @@
 import { useActionState } from "react";
 import { approve, reject, type ReviewState } from "./actions";
 import { Button } from "@/components/pouf/Button";
-import { FormInput } from "@/components/pouf/Input";
+import { FormInput, Label } from "@/components/pouf/Input";
+import { Alert } from "@/components/pouf/feedback";
+import { QueueDecision } from "@/components/pouf/queue-card";
 
 // Решение по одной заявке команды: одобрить или вернуть с причиной. Две формы рядом, а не одна с
 // двумя кнопками — у возврата причина обязательна, и браузерная проверка `required` не должна
 // мешать одобрению (тот же приём, что в очереди регистраций игроков).
-
-const errorBox = "rounded-md border border-rose-200 bg-rose-100 px-3 py-2 text-sm text-rose-700";
 
 export function ReviewForms({
   id,
@@ -27,7 +27,7 @@ export function ReviewForms({
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-end gap-2">
+      <QueueDecision>
         <form action={approveAction} className="flex items-end gap-2">
           <input type="hidden" name="id" value={id} />
           <input type="hidden" name="tournamentSlug" value={tournamentSlug} />
@@ -39,23 +39,32 @@ export function ReviewForms({
         <form action={rejectAction} className="flex flex-1 items-end gap-2">
           <input type="hidden" name="id" value={id} />
           <input type="hidden" name="tournamentSlug" value={tournamentSlug} />
-          <div className="min-w-[12rem] flex-1 space-y-1">
-            <label className="block text-xs text-ink-subtle">Причина возврата</label>
-            <FormInput name="reason" required placeholder="Чего не хватает в заявке" />
+          <div className="min-w-[12rem] flex-1">
+            <Label htmlFor={`reason-${id}`}>Причина возврата</Label>
+            <FormInput
+              id={`reason-${id}`}
+              name="reason"
+              size="sm"
+              required
+              placeholder="Чего не хватает в заявке"
+              className="mt-1.5"
+            />
           </div>
           <Button type="submit" size="sm" variant="quiet" disabled={busy}>
             {rejecting ? "Возвращаю…" : "Вернуть"}
           </Button>
         </form>
-      </div>
+      </QueueDecision>
 
       {blocked && (
-        <p className="text-xs text-rose-700">
+        <Alert tone="err" block>
           Одобрение закрыто, пока есть красные замечания — их видно в списке выше.
-        </p>
+        </Alert>
       )}
-      {(okState?.error || noState?.error) && <p className={errorBox}>{okState?.error ?? noState?.error}</p>}
-      {(okState?.ok || noState?.ok) && <p className="text-sm text-emerald-700">{okState?.ok ?? noState?.ok}</p>}
+      {(okState?.error || noState?.error) && (
+        <Alert tone="err" block>{okState?.error ?? noState?.error}</Alert>
+      )}
+      {(okState?.ok || noState?.ok) && <Alert tone="ok" block>{okState?.ok ?? noState?.ok}</Alert>}
     </div>
   );
 }

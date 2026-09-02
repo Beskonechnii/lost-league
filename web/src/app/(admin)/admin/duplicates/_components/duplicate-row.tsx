@@ -3,16 +3,25 @@
 import { useActionState, useState } from "react";
 import { CLUE_LABELS, type Candidate, type Impact, type Pair } from "@/lib/duplicate-clues";
 import { merge, rename, dismiss, type DupState } from "../actions";
+import { Button } from "@/components/pouf/Button";
+import { FormInput } from "@/components/pouf/Input";
+import { Alert } from "@/components/pouf/feedback";
+import { QueueCard, QueueDecision, QueueNote } from "@/components/pouf/queue-card";
+import { Chip } from "@/components/pouf/blocks";
 
 // Карточка пары. Клиентская ради двух вещей: подтверждение слияния в два клика (оно необратимо, а
 // window.confirm подавляется в webview — см. решение про удаление генераций в ARCHITECTURE.md) и
 // показ результата у той формы, которую нажали.
-
-const CARD = "rounded-lg border border-hairline bg-surface-1 p-4";
+//
+// С Э9 карточка носит рисунок очереди Кита (`QueueCard`): дубли — такая же очередь решений, как
+// модерация, и до этого этапа они рисовали её своими руками, включая кнопки, сделанные из
+// `<button className="rounded-md border …">` мимо кнопки Кита вовсе.
 
 function Note({ state }: { state: DupState }) {
   if (!state) return null;
-  return <span className={`text-xs ${state.error ? "text-red-700" : "text-emerald-700"}`}>{state.error ?? state.ok}</span>;
+  return (
+    <Alert tone={state.error ? "err" : "ok"}>{state.error ?? state.ok}</Alert>
+  );
 }
 
 /** Чем профиль наполнен — по этому оператор понимает, какой из двух оставлять. */
@@ -26,13 +35,13 @@ function Facts({ p }: { p: Candidate }) {
   ].filter(Boolean);
 
   return (
-    <div>
-      <div className="text-sm font-semibold text-ink">{p.nickname}</div>
-      {facts.length > 0 && <div className="text-xs text-ink-subtle">{facts.join(" · ")}</div>}
-      <div className="mt-1 text-xs text-ink-muted">
+    <div className="font-pouf">
+      <div className="text-[15px] font-black tracking-[-0.2px] text-ink">{p.nickname}</div>
+      {facts.length > 0 && <div className="text-xs font-bold text-muted">{facts.join(" · ")}</div>}
+      <div className="mt-1 text-xs font-bold text-ink-muted">
         мест в составах: {p.spots} · карт в статистике: {p.stats}
       </div>
-      {p.teams.length > 0 && <div className="text-xs text-ink-subtle">{p.teams.join(", ")}</div>}
+      {p.teams.length > 0 && <div className="text-xs font-bold text-muted">{p.teams.join(", ")}</div>}
     </div>
   );
 }
@@ -41,20 +50,18 @@ function Facts({ p }: { p: Candidate }) {
 function RenameForm({ p }: { p: Candidate }) {
   const [state, action, pending] = useActionState(rename, null);
   return (
-    <form action={action} className="mt-2 flex flex-wrap items-center gap-2">
+    <form action={action} className="mt-3 flex flex-wrap items-center gap-2">
       <input type="hidden" name="id" value={p.id} />
-      <input
+      <FormInput
         name="nickname"
+        size="sm"
         defaultValue={p.nickname}
-        className="min-w-0 flex-1 rounded-md border border-hairline bg-surface-2 px-2 py-1 text-xs text-ink outline-none focus:border-accent-bright"
+        aria-label={`Ник профиля ${p.nickname}`}
+        className="min-w-[10rem] flex-1"
       />
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-md border border-hairline px-2 py-1 text-xs text-ink hover:border-accent-bright disabled:opacity-50"
-      >
+      <Button type="submit" size="sm" variant="quiet" disabled={pending}>
         Переименовать
-      </button>
+      </Button>
       <Note state={state} />
     </form>
   );
@@ -73,13 +80,9 @@ function MergeButton({ winner, loser, impact }: { winner: Candidate; loser: Cand
 
   if (!armed) {
     return (
-      <button
-        type="button"
-        onClick={() => setArmed(true)}
-        className="rounded-md border border-hairline px-3 py-1 text-xs text-ink hover:border-accent-bright"
-      >
+      <Button type="button" size="sm" variant="quiet" onClick={() => setArmed(true)}>
         Оставить «{winner.nickname}»
-      </button>
+      </Button>
     );
   }
 
@@ -87,21 +90,18 @@ function MergeButton({ winner, loser, impact }: { winner: Candidate; loser: Cand
     <form action={action} className="flex flex-wrap items-center gap-2">
       <input type="hidden" name="winnerId" value={winner.id} />
       <input type="hidden" name="loserId" value={loser.id} />
-      <span className="text-xs text-ink-muted">
+      <span className="font-pouf text-xs font-bold text-ink-muted">
         «{loser.nickname}» будет удалён
         {moving.length ? `, переедет: ${moving.join(", ")}` : ", переносить нечего"}
         {impact.dropped ? `; дублей схлопнется: ${impact.dropped}` : ""}.
       </span>
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-md border border-red-200 px-3 py-1 text-xs text-red-700 hover:bg-red-100 disabled:opacity-50"
-      >
+      {/* tone="down" — то же слово, каким Кит красит необратимое в диалогах удаления. */}
+      <Button type="submit" size="sm" tone="down" disabled={pending}>
         Объединить
-      </button>
-      <button type="button" onClick={() => setArmed(false)} className="text-xs text-ink-subtle hover:text-ink">
-        отмена
-      </button>
+      </Button>
+      <Button type="button" size="sm" variant="quiet" onClick={() => setArmed(false)}>
+        Отмена
+      </Button>
       <Note state={state} />
     </form>
   );
@@ -109,37 +109,34 @@ function MergeButton({ winner, loser, impact }: { winner: Candidate; loser: Cand
 
 export function DuplicateRow({ pair, intoA, intoB }: { pair: Pair; intoA: Impact; intoB: Impact }) {
   return (
-    <li className={CARD}>
-      <div className="flex flex-wrap items-center gap-2">
-        {pair.clues.map((clue) => (
-          <span key={clue} className="rounded-md border border-hairline px-2 py-0.5 text-xs text-ink-muted">
-            {CLUE_LABELS[clue]}
-          </span>
+    <li>
+      <QueueCard
+        tags={pair.clues.map((clue) => (
+          <Chip key={clue}>{CLUE_LABELS[clue]}</Chip>
         ))}
-      </div>
-
-      <div className="mt-3 grid gap-4 md:grid-cols-2">
-        <div>
-          <Facts p={pair.a} />
-          <RenameForm p={pair.a} />
+        title={`${pair.a.nickname} ↔ ${pair.b.nickname}`}
+      >
+        <div className="grid gap-3 md:grid-cols-2">
+          <QueueNote>
+            <Facts p={pair.a} />
+            <RenameForm p={pair.a} />
+          </QueueNote>
+          <QueueNote>
+            <Facts p={pair.b} />
+            <RenameForm p={pair.b} />
+          </QueueNote>
         </div>
-        <div>
-          <Facts p={pair.b} />
-          <RenameForm p={pair.b} />
-        </div>
-      </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-hairline pt-3">
-        <MergeButton winner={pair.a} loser={pair.b} impact={intoA} />
-        <MergeButton winner={pair.b} loser={pair.a} impact={intoB} />
-        <form action={dismiss}>
-          <input type="hidden" name="aId" value={pair.a.id} />
-          <input type="hidden" name="bId" value={pair.b.id} />
-          <button type="submit" className="rounded-md border border-hairline px-3 py-1 text-xs text-ink-subtle hover:text-ink">
-            Разные люди
-          </button>
-        </form>
-      </div>
+        <QueueDecision>
+          <MergeButton winner={pair.a} loser={pair.b} impact={intoA} />
+          <MergeButton winner={pair.b} loser={pair.a} impact={intoB} />
+          <form action={dismiss}>
+            <input type="hidden" name="aId" value={pair.a.id} />
+            <input type="hidden" name="bId" value={pair.b.id} />
+            <Button type="submit" size="sm" variant="quiet">Разные люди</Button>
+          </form>
+        </QueueDecision>
+      </QueueCard>
     </li>
   );
 }

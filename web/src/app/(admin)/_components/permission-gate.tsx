@@ -1,6 +1,8 @@
 import { can } from "@/lib/account";
 import { permissionLabel, type PermissionKey } from "@/lib/permissions";
 import { FORM_MAX_W } from "@/components/pouf/blocks";
+import { Alert } from "@/components/pouf/feedback";
+import { AdminHeader } from "./admin-header";
 
 // Гейт раздела служебной части по гранулярному праву.
 //
@@ -18,11 +20,11 @@ export async function denyUnlessPermission(key: PermissionKey, title: string) {
 
   return (
     <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
-      <h1 className="text-xl font-bold tracking-tight">{title}</h1>
-      <p className="mt-4 rounded-md border border-amber-200 bg-amber-100 px-3 py-2 text-sm text-amber-700">
+      <AdminHeader title={title} />
+      <Alert tone="warn" block className="mt-6">
         Раздел открывает право «{permissionLabel(key)}» (<code>{key}</code>). Попросите владельца лиги
         выдать его вашему аккаунту в разделе «Команда лиги».
-      </p>
+      </Alert>
     </main>
   );
 }

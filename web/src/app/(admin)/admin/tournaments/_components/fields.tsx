@@ -1,8 +1,11 @@
-import { FormInput, FormTextarea } from "@/components/pouf/Input";
-import type { TournamentStatus } from "@/lib/tournaments";
+import type { ReactNode } from "react";
+import { FormInput, FormSelect, FormTextarea, Label } from "@/components/pouf/Input";
 
 // Общие куски форм админки турниров: подпись + поле. Формы здесь простые (server actions, без
 // клиентского состояния), поэтому вместо компонента-обёртки на каждый случай — одно поле на все.
+//
+// Подпись — китовая (`Label`): до Э9 здесь стоял свой `<span className="text-xs text-ink-muted">`,
+// то есть третий голос подписи поля на сайте рядом с `Field` и `Label` из Кита.
 
 export function Field({
   name,
@@ -13,6 +16,8 @@ export function Field({
   required = false,
   textarea = false,
   hint,
+  children,
+  span,
 }: {
   name: string;
   label: string;
@@ -22,6 +27,10 @@ export function Field({
   required?: boolean;
   textarea?: boolean;
   hint?: string;
+  /** Варианты `<option>` — поле становится выпадающим списком. */
+  children?: ReactNode;
+  /** Занять несколько колонок сетки формы. */
+  span?: 2 | 3;
 }) {
   const common = {
     name,
@@ -31,22 +40,20 @@ export function Field({
     defaultValue: value ?? undefined,
   };
   return (
-    <label htmlFor={`f-${name}`} className="block">
-      <span className="text-xs text-ink-muted">{label}</span>
-      {textarea ? (
-        <FormTextarea {...common} rows={4} className="mt-1" />
-      ) : (
-        <FormInput {...common} type={type} className="mt-1" />
-      )}
-      {hint && <span className="mt-1 block text-[11px] text-ink-subtle">{hint}</span>}
-    </label>
+    <div className={span === 3 ? "sm:col-span-3" : span === 2 ? "sm:col-span-2" : undefined}>
+      <Label htmlFor={`f-${name}`}>{label}</Label>
+      <div className="mt-1.5">
+        {children ? (
+          <FormSelect {...common} size="sm">
+            {children}
+          </FormSelect>
+        ) : textarea ? (
+          <FormTextarea {...common} rows={4} />
+        ) : (
+          <FormInput {...common} type={type} size="sm" />
+        )}
+      </div>
+      {hint && <span className="mt-1.5 block font-pouf text-[11px] font-bold text-muted">{hint}</span>}
+    </div>
   );
 }
-
-/** Цвет плашки статуса: «идёт» и «приём заявок» должны читаться с одного взгляда в списке. */
-export const STATUS_TONE: Record<TournamentStatus, string> = {
-  draft: "border-hairline bg-surface-2 text-ink-subtle",
-  registration: "border-sky-200 bg-sky-100 text-sky-700",
-  running: "border-emerald-200 bg-emerald-100 text-emerald-700",
-  finished: "border-amber-200 bg-amber-100 text-amber-700",
-};

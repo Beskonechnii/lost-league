@@ -12,8 +12,13 @@ import { parseDraft, pendingApplications } from "@/lib/team-application";
 import { roleLabel } from "@/lib/roles";
 import { ApplicationSummary } from "@/app/_components/application-summary";
 import { denyUnlessPermission } from "../../_components/permission-gate";
+import { AdminHeader } from "../../_components/admin-header";
 import { EditReviewForms, ReviewForms } from "./review-forms";
-import { FORM_MAX_W } from "@/components/pouf/blocks";
+import { Alert, EmptyState, StatusPill } from "@/components/pouf/feedback";
+import { QueueCard, QueueNote } from "@/components/pouf/queue-card";
+import { PillLink } from "@/components/pouf/tabs";
+import { Chip, FORM_MAX_W } from "@/components/pouf/blocks";
+import { Button } from "@/components/pouf/Button";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Модерация" };
@@ -28,9 +33,12 @@ export const metadata = { title: "Модерация" };
 //
 // Право accounts.approve: proxy пускает в /admin любого админа, поэтому конкретный раздел закрываем
 // здесь. Не право — не ошибка, а плашка: админ, который ведёт архив серий, просто сюда не ходит.
+//
+// Все четыре очереди рисует один атом Кита — `QueueCard` (Э9): до него каждая вкладка верстала
+// свою карточку, и «принять / вернуть с причиной» выглядело в них по-разному.
 
 const TABS = [
-  { key: "profiles", label: "Регистрация личного профиля" },
+  { key: "profiles", label: "Регистрация профиля" },
   { key: "links", label: "Привязка к профилю" },
   { key: "teams", label: "Заявки команд" },
   // Правки профиля живут под своим правом (roster.edit): это правка ростера, а не решение
@@ -68,49 +76,44 @@ export default async function ModerationPage({ searchParams }: { searchParams: P
     edits: edits.length,
   };
   const tabs = TABS.filter((t) => !("permission" in t) || mayEdit);
+  const total = counts.profiles + counts.links + counts.teams + counts.edits;
 
   return (
     <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-700">Служебная часть</p>
-      <h1 className="mt-1.5 text-xl font-bold tracking-tight">Модерация</h1>
-      <p className="mt-1.5 text-sm text-ink-muted">
+      <AdminHeader
+        title="Модерация"
+        aside={total > 0 ? <Chip accent>ждут решения: {total}</Chip> : undefined}
+      >
         Всё, что пришло снаружи: анкеты игроков, привязки к профилю и заявки команд на турниры.
         Одобрение заводит профиль в ростере (или привязывает существующий) и открывает кабинет;
         возврат с причиной — анкету можно поправить и прислать снова.
-      </p>
+      </AdminHeader>
 
       {/* Разрез живёт в query, как и везде на сайте: ссылку на нужную вкладку можно кинуть в чат. */}
-      <div className="mt-5 flex flex-wrap gap-2">
+      <nav className="mt-5 flex flex-wrap gap-2">
         {tabs.map((t) => (
-          <Link
+          <PillLink
             key={t.key}
             href={t.key === "profiles" ? "/admin/moderation" : `/admin/moderation?tab=${t.key}`}
-            className={`flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm ${
-              tab === t.key
-                ? "border-accent bg-surface-2 text-ink"
-                : "border-hairline bg-surface-1 text-ink-muted hover:text-ink"
-            }`}
+            active={tab === t.key}
+            count={counts[t.key]}
           >
             {t.label}
-            {/* Индикатор новых: цветом и числом, чтобы вторая вкладка не терялась из виду. */}
-            {counts[t.key] > 0 && (
-              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-semibold text-amber-700">
-                {counts[t.key]}
-              </span>
-            )}
-          </Link>
+          </PillLink>
         ))}
-      </div>
+      </nav>
 
-      {tab === "profiles" ? (
-        <Registrations queue={queue} />
-      ) : tab === "links" ? (
-        <Claims claims={claims} />
-      ) : tab === "teams" ? (
-        <TeamApplications rows={teams} />
-      ) : (
-        <ProfileEdits rows={edits} />
-      )}
+      <div className="mt-6">
+        {tab === "profiles" ? (
+          <Registrations queue={queue} />
+        ) : tab === "links" ? (
+          <Claims claims={claims} />
+        ) : tab === "teams" ? (
+          <TeamApplications rows={teams} />
+        ) : (
+          <ProfileEdits rows={edits} />
+        )}
+      </div>
     </main>
   );
 }
@@ -119,58 +122,46 @@ export default async function ModerationPage({ searchParams }: { searchParams: P
 function Registrations({ queue }: { queue: PendingRegistration[] }) {
   if (queue.length === 0) {
     return (
-      <p className="mt-6 rounded-md border border-hairline bg-surface-1 px-3 py-6 text-center text-sm text-ink-subtle">
-        Новых заявок нет.
-      </p>
+      <EmptyState icon="user" title="Новых анкет нет">
+        Здесь появятся игроки, заполнившие анкету в кабинете или в боте.
+      </EmptyState>
     );
   }
   return (
-    <ul className="mt-6 space-y-3">
-      {queue.map((account) => (
-        <li key={account.id} className="rounded-lg border border-hairline bg-surface-1 p-4">
-          <Card account={account} />
-        </li>
-      ))}
+    <ul className="space-y-3">
+      {queue.map((account) => {
+        const application = accountApplication(account);
+        const sent = account.submittedAt ? dateTime.format(account.submittedAt) : null;
+        return (
+          <li key={account.id}>
+            <QueueCard
+              tags={
+                <>
+                  <StatusPill tone="info">новая анкета</StatusPill>
+                  {/* Источник виден сразу: у телеграмной анкеты почты нет вовсе, и пустая колонка
+                      иначе выглядела бы поломкой. Связь с человеком у неё — хендл, его и показываем. */}
+                  {account.source === "telegram" && <Chip>телеграм</Chip>}
+                </>
+              }
+              title={account.email ?? (account.tgUsername ? `@${account.tgUsername}` : "контакта нет")}
+              meta={sent ? `отправлено ${sent}` : undefined}
+            >
+              {account.name && <p className="font-pouf text-sm font-bold text-muted">{account.name}</p>}
+              {application ? (
+                <QueueNote>
+                  <ApplicationSummary application={application} />
+                </QueueNote>
+              ) : (
+                <Alert tone="err" block>
+                  Заявка пустая: анкеты нет. Верните её с причиной.
+                </Alert>
+              )}
+              <ReviewForms accountId={account.id} mmr={application?.mmr ?? null} />
+            </QueueCard>
+          </li>
+        );
+      })}
     </ul>
-  );
-}
-
-function Card({ account }: { account: PendingRegistration }) {
-  const application = accountApplication(account);
-  const sent = account.submittedAt ? dateTime.format(account.submittedAt) : null;
-
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="rounded-md border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
-          новая анкета
-        </span>
-        {/* Источник виден сразу: у телеграмной анкеты почты нет вовсе, и пустая колонка иначе
-            выглядела бы поломкой. Связь с человеком у неё — хендл, его и показываем. */}
-        {account.source === "telegram" && (
-          <span className="rounded-md border border-sky-200 bg-sky-100 px-2 py-0.5 text-xs text-sky-700">
-            телеграм
-          </span>
-        )}
-        <span className="min-w-0 truncate text-sm text-ink-muted">
-          {account.email ?? (account.tgUsername ? `@${account.tgUsername}` : "контакта нет")}
-        </span>
-        {account.name && <span className="truncate text-sm text-ink-subtle">· {account.name}</span>}
-        {sent && <span className="ml-auto shrink-0 text-xs text-ink-subtle">отправлено {sent}</span>}
-      </div>
-
-      {application ? (
-        <div className="rounded-md border border-hairline bg-surface-2/40 px-3 py-2">
-          <ApplicationSummary application={application} />
-        </div>
-      ) : (
-        <p className="rounded-md border border-rose-200 bg-rose-100 px-3 py-2 text-sm text-rose-700">
-          Заявка пустая: анкеты нет. Верните её с причиной.
-        </p>
-      )}
-
-      <ReviewForms accountId={account.id} mmr={application?.mmr ?? null} />
-    </div>
   );
 }
 
@@ -182,40 +173,36 @@ function Card({ account }: { account: PendingRegistration }) {
 function TeamApplications({ rows }: { rows: Awaited<ReturnType<typeof pendingApplications>> }) {
   if (rows.length === 0) {
     return (
-      <p className="mt-6 rounded-md border border-hairline bg-surface-1 px-3 py-6 text-center text-sm text-ink-subtle">
-        Заявок команд нет.
-      </p>
+      <EmptyState icon="trophy" title="Заявок команд нет">
+        Они появятся, когда у турнира открыт приём и капитан отправит состав.
+      </EmptyState>
     );
   }
   return (
-    <ul className="mt-6 space-y-2">
+    <ul className="space-y-3">
       {rows.map((a) => {
         const draft = parseDraft(a.payload);
         return (
-          <li key={a.id} className="rounded-lg border border-hairline bg-surface-1 p-4">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="rounded-md border border-sky-200 bg-sky-100 px-2 py-0.5 text-xs text-sky-700">
-                {a.tournament.short ?? a.tournament.name}
-              </span>
-              <span className="text-sm font-semibold text-ink">{draft?.name ?? "заявка"}</span>
-              <span className="text-xs text-ink-subtle">
-                {a.division ? a.division.name : "дивизион не выбран"} · {draft?.players.length ?? 0} игрок(ов)
-              </span>
-              <span className="ml-auto shrink-0 text-xs text-ink-subtle">
-                отправлено {dateTime.format(a.submittedAt)}
-              </span>
-            </div>
-            {draft && (
-              <p className="mt-1 line-clamp-2 text-xs text-ink-subtle">
-                {draft.players.map((p) => `${p.nickname} (${roleLabel(p.role) ?? "роль не указана"})`).join(", ")}
-              </p>
-            )}
-            <Link
-              href={`/admin/tournaments/${a.tournament.slug}/registrations`}
-              className="mt-2 inline-block text-xs font-semibold text-accent-bright hover:underline"
+          <li key={a.id}>
+            <QueueCard
+              tags={<Chip>{a.tournament.short ?? a.tournament.name}</Chip>}
+              title={draft?.name ?? "заявка"}
+              meta={`отправлено ${dateTime.format(a.submittedAt)}`}
             >
-              Разобрать заявку →
-            </Link>
+              <QueueNote>
+                <p className="text-xs">
+                  {a.division ? a.division.name : "дивизион не выбран"} · {draft?.players.length ?? 0} игрок(ов)
+                </p>
+                {draft && (
+                  <p className="mt-1 line-clamp-2 text-[11px] text-muted">
+                    {draft.players.map((p) => `${p.nickname} (${roleLabel(p.role) ?? "роль не указана"})`).join(", ")}
+                  </p>
+                )}
+              </QueueNote>
+              <Link href={`/admin/tournaments/${a.tournament.slug}/registrations`}>
+                <Button type="button" size="sm">Разобрать заявку</Button>
+              </Link>
+            </QueueCard>
           </li>
         );
       })}
@@ -231,43 +218,38 @@ function TeamApplications({ rows }: { rows: Awaited<ReturnType<typeof pendingApp
 function Claims({ claims }: { claims: PendingClaim[] }) {
   if (claims.length === 0) {
     return (
-      <p className="mt-6 rounded-md border border-hairline bg-surface-1 px-3 py-6 text-center text-sm text-ink-subtle">
-        Открытых заявок нет.
-      </p>
+      <EmptyState icon="user" title="Открытых заявок нет">
+        Здесь появятся те, кто вошёл и заявил, что он — такой-то игрок в ростере.
+      </EmptyState>
     );
   }
   return (
-    <ul className="mt-6 space-y-3">
+    <ul className="space-y-3">
       {claims.map((c) => {
         // Аккаунт в pending пришёл из регистрации: одобрение откроет ему кабинет, отказ вернётся к
         // нему причиной. У открытого аккаунта решение касается только самой привязки.
         const waiting = c.status === "pending";
         const sent = c.submittedAt ? dateTime.format(c.submittedAt) : null;
         return (
-          <li key={c.id} className="space-y-3 rounded-lg border border-hairline bg-surface-1 p-4">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="rounded-md border border-sky-200 bg-sky-100 px-2 py-0.5 text-xs text-sky-700">
-                {waiting ? "привязка · регистрация" : "привязка"}
-              </span>
-              <span className="min-w-0 truncate text-sm text-ink-muted">
-                {c.email ?? (c.tgUsername ? `@${c.tgUsername}` : "контакта нет")}
-              </span>
-              {c.name && <span className="truncate text-sm text-ink-subtle">· {c.name}</span>}
-              {sent && <span className="ml-auto shrink-0 text-xs text-ink-subtle">отправлено {sent}</span>}
-            </div>
-
-            <div className="rounded-md border border-hairline bg-surface-2/40 px-3 py-2 text-sm">
-              Заявляет, что он —{" "}
-              {/* адрес карточки игрока — числовой id, не slug (см. /roster/players/[id]) */}
-              <Link href={`/roster/players/${c.claim!.id}`} className="font-semibold text-accent-bright hover:underline">
-                {c.claim!.nickname}
-              </Link>
-              . Сверьте по профилю: анкеты у этой ветки нет — все данные уже в ростере.
-              {waiting && " Одобрение заодно открывает кабинет."}
-            </div>
-
-            {/* mmr не передаём: профиль уже заведён, его цифры апрув не трогает. */}
-            <ReviewForms accountId={c.id} link reasonRequired={waiting} />
+          <li key={c.id}>
+            <QueueCard
+              tags={<StatusPill tone="info">{waiting ? "привязка · регистрация" : "привязка"}</StatusPill>}
+              title={c.email ?? (c.tgUsername ? `@${c.tgUsername}` : "контакта нет")}
+              meta={sent ? `отправлено ${sent}` : undefined}
+            >
+              {c.name && <p className="font-pouf text-sm font-bold text-muted">{c.name}</p>}
+              <QueueNote>
+                Заявляет, что он —{" "}
+                {/* адрес карточки игрока — числовой id, не slug (см. /roster/players/[id]) */}
+                <Link href={`/roster/players/${c.claim!.id}`} className="font-black text-[var(--accent-ink)] hover:underline">
+                  {c.claim!.nickname}
+                </Link>
+                . Сверьте по профилю: анкеты у этой ветки нет — все данные уже в ростере.
+                {waiting && " Одобрение заодно открывает кабинет."}
+              </QueueNote>
+              {/* mmr не передаём: профиль уже заведён, его цифры апрув не трогает. */}
+              <ReviewForms accountId={c.id} link reasonRequired={waiting} />
+            </QueueCard>
           </li>
         );
       })}
@@ -283,43 +265,46 @@ function Claims({ claims }: { claims: PendingClaim[] }) {
 function ProfileEdits({ rows }: { rows: PendingProfileEdit[] }) {
   if (rows.length === 0) {
     return (
-      <p className="mt-6 rounded-md border border-hairline bg-surface-1 px-3 py-6 text-center text-sm text-ink-subtle">
-        Правок профиля нет.
-      </p>
+      <EmptyState icon="draft" title="Правок профиля нет">
+        Здесь появится то, что игроки меняют у себя в карточке через бота.
+      </EmptyState>
     );
   }
   return (
-    <ul className="mt-6 space-y-3">
+    <ul className="space-y-3">
       {rows.map((row) => (
-        <li key={row.id} className="space-y-3 rounded-lg border border-hairline bg-surface-1 p-4">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="rounded-md border border-sky-200 bg-sky-100 px-2 py-0.5 text-xs text-sky-700">
-              телеграм
-            </span>
-            {/* адрес карточки игрока — числовой id, не slug (см. /roster/players/[id]) */}
-            <Link href={`/roster/players/${row.player.id}`} className="text-sm font-semibold text-accent-bright hover:underline">
-              {row.player.nickname}
-            </Link>
-            <span className="text-sm text-ink-muted">· {fieldLabel(row.field)}</span>
-            <span className="ml-auto shrink-0 text-xs text-ink-subtle">отправлено {dateTime.format(row.submittedAt)}</span>
-          </div>
-
-          <div className="rounded-md border border-hairline bg-surface-2/40 px-3 py-2 text-sm">
-            {row.field === "photo" ? (
-              <div className="flex items-end gap-3">
-                <Photo src={row.oldValue} caption="было" />
-                <Photo src={row.newValue} caption="стало" />
-              </div>
-            ) : (
-              <p className="break-words">
-                <span className="text-ink-subtle">{row.oldValue || "пусто"}</span>
-                <span className="px-2 text-ink-subtle">→</span>
-                <span className="font-semibold text-ink">{row.newValue}</span>
-              </p>
-            )}
-          </div>
-
-          <EditReviewForms editId={row.id} />
+        <li key={row.id}>
+          <QueueCard
+            tags={
+              <>
+                <Chip>телеграм</Chip>
+                <Chip>{fieldLabel(row.field)}</Chip>
+              </>
+            }
+            title={
+              // адрес карточки игрока — числовой id, не slug (см. /roster/players/[id])
+              <Link href={`/roster/players/${row.player.id}`} className="hover:text-[var(--accent-ink)]">
+                {row.player.nickname}
+              </Link>
+            }
+            meta={`отправлено ${dateTime.format(row.submittedAt)}`}
+          >
+            <QueueNote>
+              {row.field === "photo" ? (
+                <div className="flex items-end gap-3">
+                  <Photo src={row.oldValue} caption="было" />
+                  <Photo src={row.newValue} caption="стало" />
+                </div>
+              ) : (
+                <p className="break-words">
+                  <span className="text-muted">{row.oldValue || "пусто"}</span>
+                  <span className="px-2 text-muted">→</span>
+                  <span className="font-black text-ink">{row.newValue}</span>
+                </p>
+              )}
+            </QueueNote>
+            <EditReviewForms editId={row.id} />
+          </QueueCard>
         </li>
       ))}
     </ul>
@@ -333,13 +318,13 @@ function Photo({ src, caption }: { src: string | null; caption: string }) {
       {src ? (
         // локальный файл из public/uploads — оптимизация next/image здесь не нужна
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={caption} className="h-28 w-28 rounded-md border border-hairline object-cover" />
+        <img src={src} alt={caption} className="h-28 w-28 rounded-blob bg-surface object-cover cushion-row" />
       ) : (
-        <div className="grid h-28 w-28 place-items-center rounded-md border border-hairline bg-surface-2 text-xs text-ink-subtle">
+        <div className="grid h-28 w-28 place-items-center rounded-blob bg-surface text-xs font-bold text-muted cushion-row">
           нет
         </div>
       )}
-      <figcaption className="text-xs text-ink-subtle">{caption}</figcaption>
+      <figcaption className="text-[11px] font-bold text-muted">{caption}</figcaption>
     </figure>
   );
 }

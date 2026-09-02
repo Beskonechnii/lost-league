@@ -1,12 +1,18 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTeam } from "@/lib/roster-data";
 import { TeamEditor } from "@/app/_components/roster-editors";
+import { FORM_MAX_W } from "@/components/pouf/blocks";
 import { denyUnlessPermission } from "../../../../../_components/permission-gate";
+import { AdminHeader } from "../../../../../_components/admin-header";
 
 export const dynamic = "force-dynamic";
 
 // Как и у игрока: страница команды — витрина, формы живут отдельно.
+//
+// На Э9 экран получил свою колонку (`<main>` + `FORM_MAX_W`): до этого он рисовался голым
+// `<div>` прямо в оболочке — без ширины и без полей, то есть на широком мониторе поля формы
+// растягивались во весь экран. Ссылка «← к команде» ушла в крошки (UI-GUIDELINES §3).
+
 export default async function TeamEditPage({ params }: { params: Promise<{ id: string }> }) {
   const denied = await denyUnlessPermission("roster.edit", "Правка команды");
   if (denied) return denied;
@@ -16,46 +22,38 @@ export default async function TeamEditPage({ params }: { params: Promise<{ id: s
   if (!team) notFound();
 
   return (
-    <div className="space-y-6 font-pouf">
-      <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-muted">
-        <Link href="/roster/teams" className="hover:text-[var(--accent-ink)]">
-          Команды
-        </Link>
-        <span className="text-ink-subtle">/</span>
-        <Link href={`/roster/teams/${team.id}`} className="hover:text-[var(--accent-ink)]">
-          {team.name}
-        </Link>
-        <span className="text-ink-subtle">/</span>
-        <span className="text-ink-muted">правка</span>
+    <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
+      <AdminHeader
+        crumbs={[
+          { href: "/roster/teams", label: "Команды" },
+          { href: `/roster/teams/${team.id}`, label: team.name },
+        ]}
+        eyebrow="Правка команды"
+        title={team.name}
+      >
+        Слаг <span className="text-ink">{team.slug}</span> — ключ импорта составов и подбора файлов:
+        по нему находятся лого и обложка, даже когда поле пустое.
+      </AdminHeader>
+
+      <div className="mt-6 space-y-6">
+        <TeamEditor
+          id={team.id}
+          initial={{
+            name: team.name,
+            tag: team.tag ?? "",
+            group: team.group ?? "",
+            color: team.color ?? "",
+            logo: team.logo,
+            wordmark: team.wordmark,
+            photo: team.photo,
+            banner: team.banner,
+          }}
+        />
+
+        <p className="font-pouf text-sm font-bold text-muted">
+          Состав правится на карточках игроков: роль и капитанство принадлежат месту в составе.
+        </p>
       </div>
-
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <div>
-          <h1 className="text-[28px] font-black tracking-[-0.5px] text-ink md:text-4xl">{team.name}</h1>
-          <p className="text-xs font-bold text-muted">slug: {team.slug} — ключ импорта составов и подбора файлов</p>
-        </div>
-        <Link href={`/roster/teams/${team.id}`} className="text-sm font-bold text-muted hover:text-[var(--accent-ink)]">
-          ← к команде
-        </Link>
-      </div>
-
-      <TeamEditor
-        id={team.id}
-        initial={{
-          name: team.name,
-          tag: team.tag ?? "",
-          group: team.group ?? "",
-          color: team.color ?? "",
-          logo: team.logo,
-          wordmark: team.wordmark,
-          photo: team.photo,
-          banner: team.banner,
-        }}
-      />
-
-      <p className="text-sm font-bold text-muted">
-        Состав правится на карточках игроков: роль и капитанство принадлежат месту в составе.
-      </p>
-    </div>
+    </main>
   );
 }

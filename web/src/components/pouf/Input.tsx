@@ -5,6 +5,7 @@ import {
   type InputHTMLAttributes,
   type LabelHTMLAttributes,
   type ReactNode,
+  type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from 'react'
 
@@ -266,6 +267,57 @@ export const FormTextarea = forwardRef<HTMLTextAreaElement, FormTextareaProps>(f
       className={`${inputClasses({ invalid: !!invalid, mono })} pouf-textarea resize-y min-h-[100px] ${className ?? ''}`}
       aria-invalid={invalid || undefined}
     />
+  )
+})
+
+interface FormSelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'className' | 'size'> {
+  invalid?: boolean
+  size?: 'sm' | 'md'
+  className?: string
+}
+
+/**
+ * Выпадающий список для форм, которые отправляются серверным экшеном.
+ *
+ * Зачем он рядом с китовым `Select` (radix). Радиксовый список — не `<select>`,
+ * а кнопка с попапом: в FormData он ничего не кладёт, и рядом с ним всегда
+ * приходится держать скрытое поле и состояние. Формам служебной части
+ * («поставить команду в дивизион», «выбрать дивизион заявке») состояние не
+ * нужно вовсе — они целиком `<form action={serverAction}>` и работают даже без JS.
+ *
+ * Поэтому здесь настоящий `<select>`, одетый в тот же хром поля: до Э9 он стоял
+ * в админке голым и в Light Clay рисовался системной серой полоской — единственным
+ * местом на экране, о котором Кит ничего не знает. Собственная стрелка нужна
+ * потому, что `appearance:none` снимает системную вместе с системным видом.
+ *
+ * Правило выбора: значение уходит серверным экшеном — `FormSelect`; значение
+ * живёт в состоянии клиента (фильтр, разрез) — китовый `Select`.
+ */
+export const FormSelect = forwardRef<HTMLSelectElement, FormSelectProps>(function FormSelect(
+  { invalid, size, className, children, ...nativeProps },
+  ref,
+) {
+  return (
+    <div className={`relative ${className ?? ''}`}>
+      <select
+        ref={ref}
+        {...nativeProps}
+        className={`${inputClasses({ invalid: !!invalid, size })} appearance-none cursor-pointer pr-11`}
+        aria-invalid={invalid || undefined}
+      >
+        {children}
+      </select>
+      <svg
+        aria-hidden
+        viewBox="0 0 24 24"
+        className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.6"
+      >
+        <path d="M6 9l6 6 6-6" />
+      </svg>
+    </div>
   )
 })
 

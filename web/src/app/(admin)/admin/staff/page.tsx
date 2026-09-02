@@ -2,10 +2,15 @@ import Link from "next/link";
 import { currentAccount, effectiveRole, listAccounts, ownerEmail, type StaffAccount } from "@/lib/account";
 import { PERMISSIONS, PERMISSION_GROUPS } from "@/lib/permissions";
 import { Button } from "@/components/pouf/Button";
+import { Checkbox } from "@/components/pouf/checkbox";
+import { DataCell, DataRow, DataTable, RowActions } from "@/components/pouf/data-table";
+import { EmptyState, StatusPill } from "@/components/pouf/feedback";
+import { FORM_MAX_W } from "@/components/pouf/blocks";
 import { denyUnlessPermission } from "../../_components/permission-gate";
+import { AdminHeader } from "../../_components/admin-header";
+import { Panel } from "../../_components/panel";
 import { makeAdmin, removeAdmin, removeAccount, savePermissions } from "./actions";
 import { DeleteAccount } from "./_components/delete-account";
-import { FORM_MAX_W } from "@/components/pouf/blocks";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Команда лиги" };
@@ -15,18 +20,18 @@ export const metadata = { title: "Команда лиги" };
 // «пускать ли в служебную часть вообще», а чем человек там занимается — вопрос прав.
 //
 // Новый админ получает ноль прав: владелец отмечает нужное осознанно, а не выдаёт всё скопом.
+//
+// Владелец и админы — карточки (у админа внутри полтора десятка прав), остальные аккаунты —
+// таблица с действиями: это записи, а не сущности со своей страницей (UI-GUIDELINES §4).
 
 /** Ссылка на профиль ростера — по числовому id: карточка живёт на /roster/players/<id>, не на slug
  *  (в /admin/roles тут был баг — ссылка вела на slug и упиралась в 404). */
 function ProfileLink({ account }: { account: StaffAccount }) {
   if (!account.player) return null;
   return (
-    <p className="mt-0.5 truncate text-xs text-ink-subtle">
-      профиль:{" "}
-      <Link href={`/roster/players/${account.player.id}`} className="text-accent-bright hover:underline">
-        {account.player.nickname}
-      </Link>
-    </p>
+    <Link href={`/roster/players/${account.player.id}`} className="text-[var(--accent-ink)] hover:underline">
+      {account.player.nickname}
+    </Link>
   );
 }
 
@@ -37,13 +42,18 @@ function whoLabel(account: StaffAccount): string {
 
 function Who({ account, me }: { account: StaffAccount; me: number | null }) {
   return (
-    <div className="min-w-0 flex-1">
-      <p className="truncate text-sm">
-        <span className="text-ink-muted">{account.email ?? (account.tgUsername ? `@${account.tgUsername}` : "без почты")}</span>
-        {account.name && <span className="text-ink-subtle"> · {account.name}</span>}
-        {account.id === me && <span className="text-ink-subtle"> · это вы</span>}
+    <div className="min-w-0 flex-1 font-pouf">
+      {/* Перенос, а не обрезка: почта — это и есть имя аккаунта, обрезанная «stani…» не опознаётся. */}
+      <p className="text-sm font-black text-ink [overflow-wrap:anywhere]">
+        {account.email ?? (account.tgUsername ? `@${account.tgUsername}` : "без почты")}
+        {account.name && <span className="font-bold text-muted"> · {account.name}</span>}
+        {account.id === me && <span className="font-bold text-muted"> · это вы</span>}
       </p>
-      <ProfileLink account={account} />
+      {account.player && (
+        <p className="mt-0.5 text-xs font-bold text-muted [overflow-wrap:anywhere]">
+          профиль: <ProfileLink account={account} />
+        </p>
+      )}
     </div>
   );
 }
@@ -61,75 +71,84 @@ function AdminCard({ account, me, isOwner }: { account: StaffAccount; me: number
   const granted = new Set<string>(account.perms);
 
   return (
-    <li className="rounded-lg border border-hairline bg-surface-1 p-4">
-      <div className="flex items-start gap-3">
-        <span className="shrink-0 rounded-md border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
-          Админ
-        </span>
-        <Who account={account} me={me} />
-        {!self && (
-          <div className="flex shrink-0 items-center gap-2">
-            <form action={removeAdmin}>
-              <input type="hidden" name="accountId" value={account.id} />
-              <Button type="submit" size="sm" variant="quiet">Снять админа</Button>
-            </form>
-            {isOwner && <DeleteAccount id={account.id} who={whoLabel(account)} action={removeAccount} />}
-          </div>
-        )}
-      </div>
-
-      {/* Права свёрнуты по умолчанию: чекбоксов полтора десятка, и в развёрнутом виде каждая
-          карточка админа занимала экран — список команды лиги переставал читаться. Что выдано,
-          видно и в свёрнутом виде: строкой подписей. */}
-      <form action={savePermissions} className="mt-3 border-t border-hairline pt-3">
-        <input type="hidden" name="accountId" value={account.id} />
-        <details className="group">
-          <summary className="flex cursor-pointer flex-wrap items-center gap-2 text-xs text-ink-muted">
-            <span className="font-semibold text-ink">Права</span>
-            <span className="text-ink-subtle">
-              {account.perms.length ? `${account.perms.length} из ${PERMISSIONS.length}` : "прав пока нет"}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-ink-subtle group-open:hidden">{grantedLabels(granted)}</span>
-            <span className="shrink-0 text-accent-bright">
-              <span className="group-open:hidden">развернуть</span>
-              <span className="hidden group-open:inline">свернуть</span>
-            </span>
-          </summary>
-
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          {PERMISSION_GROUPS.map((group) => (
-            <div key={group}>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-subtle">{group}</p>
-              <div className="mt-1.5 space-y-1.5">
-                {PERMISSIONS.filter((p) => p.group === group).map((p) => (
-                  <label key={p.key} className="flex items-start gap-2 text-xs text-ink-muted" title={p.hint}>
-                    <input
-                      type="checkbox"
-                      name="perm"
-                      value={p.key}
-                      defaultChecked={granted.has(p.key)}
-                      disabled={self}
-                      className="mt-0.5 size-4 shrink-0 accent-accent"
-                    />
-                    <span>
-                      {p.label}
-                      <span className="block text-ink-subtle">{p.hint}</span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          ))}
+    <li>
+      <Panel>
+        <div className="flex flex-wrap items-start gap-3">
+          <StatusPill tone="ok">Админ</StatusPill>
+          <Who account={account} me={me} />
+          {!self && (
+            <RowActions>
+              <form action={removeAdmin}>
+                <input type="hidden" name="accountId" value={account.id} />
+                <Button type="submit" size="sm" variant="quiet">Снять админа</Button>
+              </form>
+              {isOwner && <DeleteAccount id={account.id} who={whoLabel(account)} action={removeAccount} />}
+            </RowActions>
+          )}
         </div>
-        {self ? (
-          <p className="mt-3 text-xs text-ink-subtle">Свои права здесь не меняются — их правит владелец лиги.</p>
-        ) : (
-          <div className="mt-3">
-            <Button type="submit" size="sm">Сохранить права</Button>
-          </div>
-        )}
-        </details>
-      </form>
+
+        {/* Права свёрнуты по умолчанию: чекбоксов полтора десятка, и в развёрнутом виде каждая
+            карточка админа занимала экран — список команды лиги переставал читаться. Что выдано,
+            видно и в свёрнутом виде: строкой подписей. */}
+        <form action={savePermissions} className="mt-4 border-t border-hairline pt-4 font-pouf">
+          <input type="hidden" name="accountId" value={account.id} />
+          <details className="group">
+            <summary className="flex cursor-pointer flex-wrap items-center gap-2 text-xs font-bold text-muted">
+              <span className="font-black text-ink">Права</span>
+              <span>
+                {account.perms.length ? `${account.perms.length} из ${PERMISSIONS.length}` : "прав пока нет"}
+              </span>
+              <span className="min-w-0 flex-1 truncate group-open:hidden">{grantedLabels(granted)}</span>
+              <span className="shrink-0 font-black text-[var(--accent-ink)]">
+                <span className="group-open:hidden">развернуть</span>
+                <span className="hidden group-open:inline">свернуть</span>
+              </span>
+            </summary>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              {PERMISSION_GROUPS.map((group) => (
+                <div key={group}>
+                  <p className="text-[11px] font-extrabold uppercase tracking-[1px] text-muted">{group}</p>
+                  <div className="mt-2 space-y-2">
+                    {PERMISSIONS.filter((p) => p.group === group).map((p) => (
+                      // Флажок Кита — <button> radix, поэтому подпись стоит рядом отдельным
+                      // <label for>, а не обёрткой: внутри обёртки клик по тексту уходил бы в
+                      // его скрытый input (тот же приём, что в /me/security).
+                      <div key={p.key} className="flex items-start gap-2" title={p.hint}>
+                        <Checkbox
+                          id={`perm-${account.id}-${p.key}`}
+                          name="perm"
+                          value={p.key}
+                          defaultChecked={granted.has(p.key)}
+                          disabled={self}
+                          className="mt-0.5"
+                        />
+                        <label
+                          htmlFor={`perm-${account.id}-${p.key}`}
+                          className={`text-xs font-bold ${self ? "text-muted" : "cursor-pointer text-ink-muted"}`}
+                        >
+                          {p.label}
+                          <span className="block font-bold text-muted">{p.hint}</span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {self ? (
+              <p className="mt-4 text-xs font-bold text-muted">
+                Свои права здесь не меняются — их правит владелец лиги.
+              </p>
+            ) : (
+              <div className="mt-4">
+                <Button type="submit" size="sm">Сохранить права</Button>
+              </div>
+            )}
+          </details>
+        </form>
+      </Panel>
     </li>
   );
 }
@@ -147,81 +166,108 @@ export default async function StaffPage() {
 
   return (
     <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-700">Служебная часть</p>
-      <h1 className="mt-1.5 text-xl font-bold tracking-tight">Команда лиги</h1>
-      <p className="mt-1.5 text-sm text-ink-muted">
+      <AdminHeader title="Команда лиги">
         Роль решает, пускать ли в служебную часть вообще; чем человек там занимается — решают права.
         Права действуют сразу, роль — со следующего входа (она вшита в сессию).
-      </p>
+      </AdminHeader>
 
-      <h2 className="mt-6 text-sm font-semibold text-ink">Владелец</h2>
-      <p className="mt-1 text-xs text-ink-subtle">
-        Назначается почтой в <code>OWNER_EMAIL</code>
-        {owner ? <> (<span className="text-ink">{owner}</span>)</> : null}: все права всегда, отобрать их
-        из панели нельзя.
-      </p>
-      <ul className="mt-2 space-y-2">
-        {owners.length === 0 ? (
-          <li className="rounded-lg border border-hairline bg-surface-1 px-4 py-3 text-sm text-ink-subtle">
-            Владелец ещё ни разу не входил — аккаунта с этой почтой в базе нет.
-          </li>
+      <div className="mt-6 space-y-4">
+        <Panel
+          title="Владелец"
+          hint={
+            <>
+              Назначается почтой в <code>OWNER_EMAIL</code>
+              {owner ? <> (<span className="text-ink">{owner}</span>)</> : null}: все права всегда,
+              отобрать их из панели нельзя.
+            </>
+          }
+        >
+          {owners.length === 0 ? (
+            <EmptyState icon="user" title="Владелец ещё ни разу не входил">
+              Аккаунта с почтой из <code>OWNER_EMAIL</code> в базе пока нет — он заведётся при первом входе.
+            </EmptyState>
+          ) : (
+            <ul className="space-y-2">
+              {owners.map((a) => (
+                // На узком экране строка становится столбиком: в ряд почта, пилюля роли и
+                // «все права» делят 300px, и почта ломается по три буквы в строке.
+                <li
+                  key={a.id}
+                  className="flex flex-col items-start gap-2 rounded-blob bg-surface-2 px-4 py-3 cushion-field sm:flex-row sm:items-center sm:gap-3"
+                >
+                  <StatusPill tone="info">Владелец</StatusPill>
+                  <Who account={a} me={me?.id ?? null} />
+                  <span className="shrink-0 font-pouf text-xs font-bold text-muted">все права</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+
+        <h2 className="pt-2 font-pouf text-[13px] font-extrabold uppercase tracking-[1.5px] text-muted">
+          Админы{admins.length > 0 && <span className="ml-2 tabular-nums">{admins.length}</span>}
+        </h2>
+
+        {admins.length === 0 ? (
+          <EmptyState icon="users" title="Админов нет">
+            Вся служебная часть на владельце. Назначьте админа в списке аккаунтов ниже.
+          </EmptyState>
         ) : (
-          owners.map((a) => (
-            <li key={a.id} className="flex items-center gap-3 rounded-lg border border-hairline bg-surface-1 px-4 py-3">
-              <span className="shrink-0 rounded-md border border-fuchsia-200 bg-fuchsia-100 px-2 py-0.5 text-xs text-fuchsia-700">
-                Владелец
-              </span>
-              <Who account={a} me={me?.id ?? null} />
-              <span className="shrink-0 text-xs text-ink-subtle">все права</span>
-            </li>
-          ))
+          <ul className="space-y-4">
+            {admins.map((a) => (
+              <AdminCard key={a.id} account={a} me={me?.id ?? null} isOwner={isOwner} />
+            ))}
+          </ul>
         )}
-      </ul>
 
-      <h2 className="mt-8 text-sm font-semibold text-ink">
-        Админы{admins.length > 0 && <span className="ml-2 font-normal text-ink-subtle">{admins.length}</span>}
-      </h2>
-      {admins.length === 0 ? (
-        <p className="mt-2 rounded-lg border border-hairline bg-surface-1 px-4 py-6 text-center text-sm text-ink-subtle">
-          Админов нет — вся служебная часть на владельце.
-        </p>
-      ) : (
-        <ul className="mt-2 space-y-3">
-          {admins.map((a) => (
-            <AdminCard key={a.id} account={a} me={me?.id ?? null} isOwner={isOwner} />
-          ))}
-        </ul>
-      )}
-
-      <h2 className="mt-8 text-sm font-semibold text-ink">
-        Остальные аккаунты{others.length > 0 && <span className="ml-2 font-normal text-ink-subtle">{others.length}</span>}
-      </h2>
-      <p className="mt-1 text-xs text-ink-subtle">Игроки лиги. Назначенный админ начинает с нуля прав — отметьте нужные в его карточке.</p>
-      {others.length === 0 ? (
-        <p className="mt-2 rounded-lg border border-hairline bg-surface-1 px-4 py-6 text-center text-sm text-ink-subtle">
-          Других аккаунтов пока нет.
-        </p>
-      ) : (
-        <ul className="mt-2 space-y-2">
-          {others.map((a) => (
-            <li key={a.id} className="flex items-center gap-3 rounded-lg border border-hairline bg-surface-1 px-4 py-3">
-              <span className="shrink-0 rounded-md border border-hairline bg-surface-2 px-2 py-0.5 text-xs text-ink-muted">
-                Игрок
-              </span>
-              <Who account={a} me={me?.id ?? null} />
-              {a.id !== me?.id && (
-                <div className="flex shrink-0 items-center gap-2">
-                  <form action={makeAdmin}>
-                    <input type="hidden" name="accountId" value={a.id} />
-                    <Button type="submit" size="sm">Сделать админом</Button>
-                  </form>
-                  {isOwner && <DeleteAccount id={a.id} who={whoLabel(a)} action={removeAccount} />}
-                </div>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+        <Panel
+          title="Остальные аккаунты"
+          hint="Игроки лиги. Назначенный админ начинает с нуля прав — отметьте нужные в его карточке."
+          aside={
+            others.length > 0 ? (
+              <span className="font-pouf text-xs font-bold tabular-nums text-muted">{others.length}</span>
+            ) : undefined
+          }
+        >
+          <DataTable
+            caption="Аккаунты игроков"
+            columns={[
+              { label: "Аккаунт" },
+              { label: "Профиль в ростере", hideOnNarrow: true },
+              { label: "", align: "right", width: "1%" },
+            ]}
+            empty={
+              <EmptyState icon="users" title="Других аккаунтов пока нет">
+                Они появятся, когда игроки начнут заводить кабинет.
+              </EmptyState>
+            }
+          >
+            {others.map((a) => (
+              <DataRow key={a.id}>
+                <DataCell>
+                  {a.email ?? (a.tgUsername ? `@${a.tgUsername}` : "без почты")}
+                  {a.name && <span className="font-bold text-muted"> · {a.name}</span>}
+                  {a.id === me?.id && <span className="font-bold text-muted"> · это вы</span>}
+                </DataCell>
+                <DataCell muted hideOnNarrow>
+                  {a.player ? <ProfileLink account={a} /> : "—"}
+                </DataCell>
+                <DataCell align="right" nowrap>
+                  {a.id !== me?.id && (
+                    <RowActions>
+                      <form action={makeAdmin}>
+                        <input type="hidden" name="accountId" value={a.id} />
+                        <Button type="submit" size="xs">Сделать админом</Button>
+                      </form>
+                      {isOwner && <DeleteAccount id={a.id} who={whoLabel(a)} action={removeAccount} />}
+                    </RowActions>
+                  )}
+                </DataCell>
+              </DataRow>
+            ))}
+          </DataTable>
+        </Panel>
+      </div>
     </main>
   );
 }

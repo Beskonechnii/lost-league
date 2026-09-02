@@ -4,11 +4,15 @@ import { tournamentBySlug } from "@/lib/tournaments";
 import { applicationProblems, listApplications, parseAnswers, parseDraft, type Problem } from "@/lib/team-application";
 import { roleLabel } from "@/lib/roles";
 import { Button } from "@/components/pouf/Button";
+import { FormSelect, Label } from "@/components/pouf/Input";
+import { Alert, EmptyState, StatusPill, type AlertTone } from "@/components/pouf/feedback";
+import { QueueCard, QueueNote } from "@/components/pouf/queue-card";
+import { Chip, FORM_MAX_W } from "@/components/pouf/blocks";
 import { denyUnlessPermission } from "../../../../_components/permission-gate";
+import { AdminHeader } from "../../../../_components/admin-header";
 import { ReviewForms } from "./review-forms";
 import { enrich, remove, setDivision } from "./actions";
 import { rankLabel } from "@/lib/dota-rank";
-import { FORM_MAX_W } from "@/components/pouf/blocks";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Заявки команд" };
@@ -22,16 +26,18 @@ export const metadata = { title: "Заявки команд" };
 
 const dateTime = new Intl.DateTimeFormat("ru", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
-const TONE: Record<Problem["level"], string> = {
-  block: "border-rose-200 bg-rose-100 text-rose-700",
-  warn: "border-amber-200 bg-amber-100 text-amber-700",
-  info: "border-hairline bg-surface-2 text-ink-subtle",
+/** Уровень замечания — тон алерта Кита. Раньше здесь была своя таблица сырых оттенков. */
+const PROBLEM_TONE: Record<Problem["level"], AlertTone> = {
+  block: "err",
+  warn: "warn",
+  info: "info",
 };
 
-const STATUS: Record<string, { label: string; tone: string }> = {
-  pending: { label: "Ждёт решения", tone: "border-sky-200 bg-sky-100 text-sky-700" },
-  approved: { label: "Одобрена", tone: "border-emerald-200 bg-emerald-100 text-emerald-700" },
-  rejected: { label: "Возвращена", tone: "border-amber-200 bg-amber-100 text-amber-700" },
+/** Состояние заявки — статус-пилюля Кита: это свойство заявки, а не событие. */
+const STATUS: Record<string, { label: string; tone: AlertTone | "neutral" }> = {
+  pending: { label: "Ждёт решения", tone: "info" },
+  approved: { label: "Одобрена", tone: "ok" },
+  rejected: { label: "Возвращена", tone: "warn" },
 };
 
 export default async function TeamRegistrationsPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -52,134 +58,157 @@ export default async function TeamRegistrationsPage({ params }: { params: Promis
       return draft ? applicationProblems(draft, a.divisionId) : [];
     }),
   );
+  const waiting = applications.filter((a) => a.status === "pending").length;
 
   return (
     <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
-      <Link href={`/admin/tournaments/${tournament.slug}`} className="text-xs text-ink-subtle hover:text-ink">
-        ← {tournament.name}
-      </Link>
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-bold tracking-tight">Заявки команд</h1>
-
-      </div>
-      <p className="mt-1.5 text-sm text-ink-muted">
+      <AdminHeader
+        crumbs={[
+          { href: "/admin/tournaments", label: "Турниры" },
+          { href: `/admin/tournaments/${tournament.slug}`, label: tournament.name },
+        ]}
+        title="Заявки команд"
+        aside={waiting > 0 ? <Chip accent>ждут решения: {waiting}</Chip> : undefined}
+      >
         Заявки капитанов с сайта. Одобрение заводит команду, игроков и состав и ставит команду в
         выбранный дивизион — до него в ростере не появляется ничего. Составы, которые вы заводите
         сами, идут мимо очереди: импортом таблицы.
-      </p>
+      </AdminHeader>
 
-      {applications.length === 0 ? (
-        <p className="mt-6 rounded-md border border-hairline bg-surface-1 px-3 py-6 text-center text-sm text-ink-subtle">
-          Заявок с сайта пока нет.
-        </p>
-      ) : (
-        <ul className="mt-6 space-y-3">
-          {applications.map((a, i) => {
-            const draft = parseDraft(a.payload);
-            const answers = parseAnswers(a.payload);
-            const status = STATUS[a.status] ?? { label: a.status, tone: "border-hairline text-ink-subtle" };
-            const blocked = problems[i].some((p) => p.level === "block") || !a.divisionId;
+      <div className="mt-6">
+        {applications.length === 0 ? (
+          <EmptyState icon="mail" title="Заявок с сайта пока нет">
+            Они появятся, когда у турнира открыт приём и капитан отправит состав со страницы заявки.
+          </EmptyState>
+        ) : (
+          <ul className="space-y-3">
+            {applications.map((a, i) => {
+              const draft = parseDraft(a.payload);
+              const answers = parseAnswers(a.payload);
+              const status = STATUS[a.status] ?? { label: a.status, tone: "neutral" as const };
+              const blocked = problems[i].some((p) => p.level === "block") || !a.divisionId;
 
-            return (
-              <li key={a.id} className="rounded-lg border border-hairline bg-surface-1 p-4">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className={`rounded-md border px-2 py-0.5 text-xs ${status.tone}`}>{status.label}</span>
-                  <span className="text-sm font-semibold">{draft?.name ?? "заявка не читается"}</span>
-                  {draft?.tag && <span className="text-xs text-ink-subtle">{draft.tag}</span>}
-                  <span className="text-xs text-ink-subtle">
-                    /{draft?.slug} · {a.source} · {dateTime.format(a.submittedAt)}
-                  </span>
-                  {a.team && (
-                    <Link href={`/roster/teams/${a.team.id}`} className="text-xs text-accent-bright hover:underline">
-                      в ростере →
-                    </Link>
-                  )}
-                </div>
-
-                {draft && (
-                  <ul className="mt-2 space-y-0.5">
-                    {draft.players.map((p, j) => (
-                      <li key={j} className="text-xs text-ink-muted">
-                        <span className="text-ink">{p.nickname}</span>
-                        {p.realName && <span className="text-ink-subtle"> · {p.realName}</span>}
-                        <span className="text-ink-subtle"> · {roleLabel(p.role) ?? "роль не разобрана"}</span>
-                        {p.mmr ? <span className="text-ink-subtle"> · {p.mmr} MMR (заявленный)</span> : null}
-                        {p.accountId ? <span className="text-ink-subtle"> · id {p.accountId}</span> : null}
-                        {rankLabel(p.rank) ? <span className="text-ink-subtle"> · {rankLabel(p.rank)}</span> : null}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-
-                {answers.length > 0 && (
-                  // Ответы на свои вопросы оператора (квиз бота) — их нет ни у импорта, ни у формы
-                  // с сайта, поэтому блок появляется только когда есть что показать.
-                  <dl className="mt-2 space-y-1 border-l-2 border-hairline pl-3">
-                    {answers.map((ans, j) => (
-                      <div key={j}>
-                        <dt className="text-xs text-ink-subtle">{ans.question}</dt>
-                        <dd className="text-xs text-ink">{ans.answer}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                )}
-
-                {a.status === "pending" && (
-                  <>
-                    <form action={setDivision} className="mt-3 flex flex-wrap items-end gap-2">
-                      <input type="hidden" name="id" value={a.id} />
-                      <input type="hidden" name="tournamentSlug" value={tournament.slug} />
-                      <label className="block">
-                        <span className="text-xs text-ink-muted">Дивизион</span>
-                        <select
-                          name="divisionId"
-                          defaultValue={a.divisionId ?? ""}
-                          className="mt-1 h-9 rounded-md border border-hairline bg-surface-2 px-2 text-sm"
-                        >
-                          <option value="">— не выбран —</option>
-                          {tournament.divisions.map((d) => (
-                            <option key={d.id} value={d.id}>{d.name}</option>
+              return (
+                <li key={a.id}>
+                  <QueueCard
+                    tags={
+                      <>
+                        <StatusPill tone={status.tone}>{status.label}</StatusPill>
+                        {draft?.tag && <Chip>{draft.tag}</Chip>}
+                      </>
+                    }
+                    title={draft?.name ?? "заявка не читается"}
+                    meta={`${a.source} · ${dateTime.format(a.submittedAt)}`}
+                  >
+                    {draft && (
+                      <QueueNote>
+                        <ul className="space-y-0.5">
+                          {draft.players.map((p, j) => (
+                            <li key={j} className="text-xs">
+                              <span className="font-black text-ink">{p.nickname}</span>
+                              {p.realName && <span> · {p.realName}</span>}
+                              <span> · {roleLabel(p.role) ?? "роль не разобрана"}</span>
+                              {p.mmr ? <span> · {p.mmr} MMR (заявленный)</span> : null}
+                              {p.accountId ? <span> · id {p.accountId}</span> : null}
+                              {rankLabel(p.rank) ? <span> · {rankLabel(p.rank)}</span> : null}
+                            </li>
                           ))}
-                        </select>
-                      </label>
-                      <Button type="submit" size="sm" variant="quiet">Сохранить дивизион</Button>
-                    </form>
+                        </ul>
+                        <p className="mt-2 text-[11px] text-muted">
+                          /{draft.slug}
+                          {a.team && (
+                            <>
+                              {" · "}
+                              <Link href={`/roster/teams/${a.team.id}`} className="text-[var(--accent-ink)] hover:underline">
+                                уже в ростере
+                              </Link>
+                            </>
+                          )}
+                        </p>
+                      </QueueNote>
+                    )}
 
-                    <form action={enrich} className="mt-2">
+                    {answers.length > 0 && (
+                      // Ответы на свои вопросы оператора (квиз бота) — их нет ни у импорта, ни у формы
+                      // с сайта, поэтому блок появляется только когда есть что показать.
+                      <QueueNote>
+                        <dl className="space-y-1.5">
+                          {answers.map((ans, j) => (
+                            <div key={j}>
+                              <dt className="text-[11px] text-muted">{ans.question}</dt>
+                              <dd className="text-[13px] text-ink">{ans.answer}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </QueueNote>
+                    )}
+
+                    {a.status === "pending" && (
+                      <>
+                        {problems[i].length > 0 && (
+                          <div className="flex flex-col gap-1.5">
+                            {problems[i].map((p, j) => (
+                              <Alert key={j} tone={PROBLEM_TONE[p.level]} block>
+                                {p.text}
+                              </Alert>
+                            ))}
+                          </div>
+                        )}
+                        {!a.divisionId && (
+                          <Alert tone="err" block>
+                            Дивизион не выбран — команде некуда встать.
+                          </Alert>
+                        )}
+
+                        <div className="flex flex-wrap items-end gap-3">
+                          <form action={setDivision} className="flex flex-wrap items-end gap-2">
+                            <input type="hidden" name="id" value={a.id} />
+                            <input type="hidden" name="tournamentSlug" value={tournament.slug} />
+                            <div className="w-[13rem]">
+                              <Label htmlFor={`div-${a.id}`}>Дивизион</Label>
+                              <FormSelect
+                                id={`div-${a.id}`}
+                                name="divisionId"
+                                size="sm"
+                                defaultValue={a.divisionId ?? ""}
+                                className="mt-1.5"
+                              >
+                                <option value="">— не выбран —</option>
+                                {tournament.divisions.map((d) => (
+                                  <option key={d.id} value={d.id}>{d.name}</option>
+                                ))}
+                              </FormSelect>
+                            </div>
+                            <Button type="submit" size="sm" variant="quiet">Сохранить дивизион</Button>
+                          </form>
+
+                          <form action={enrich}>
+                            <input type="hidden" name="id" value={a.id} />
+                            <input type="hidden" name="tournamentSlug" value={tournament.slug} />
+                            <Button type="submit" size="sm" variant="quiet">
+                              Подтянуть данные из Steam и OpenDota
+                            </Button>
+                          </form>
+                        </div>
+
+                        <ReviewForms id={a.id} tournamentSlug={tournament.slug} blocked={blocked} />
+                      </>
+                    )}
+
+                    {a.notes && <Alert tone="warn" block>Причина возврата: {a.notes}</Alert>}
+
+                    <form action={remove}>
                       <input type="hidden" name="id" value={a.id} />
                       <input type="hidden" name="tournamentSlug" value={tournament.slug} />
-                      <Button type="submit" size="sm" variant="quiet">Подтянуть данные из Steam и OpenDota</Button>
+                      <Button type="submit" size="xs" variant="quiet">Удалить заявку</Button>
                     </form>
-
-                    {problems[i].length > 0 && (
-                      <ul className="mt-3 space-y-1">
-                        {problems[i].map((p, j) => (
-                          <li key={j} className={`rounded-md border px-2 py-1 text-xs ${TONE[p.level]}`}>{p.text}</li>
-                        ))}
-                      </ul>
-                    )}
-                    {!a.divisionId && (
-                      <p className="mt-2 text-xs text-rose-700">Дивизион не выбран — команде некуда встать.</p>
-                    )}
-
-                    <div className="mt-3">
-                      <ReviewForms id={a.id} tournamentSlug={tournament.slug} blocked={blocked} />
-                    </div>
-                  </>
-                )}
-
-                {a.notes && <p className="mt-2 text-xs text-amber-700">Причина возврата: {a.notes}</p>}
-
-                <form action={remove} className="mt-3">
-                  <input type="hidden" name="id" value={a.id} />
-                  <input type="hidden" name="tournamentSlug" value={tournament.slug} />
-                  <Button type="submit" size="sm" variant="quiet">Удалить заявку</Button>
-                </form>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                  </QueueCard>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
     </main>
   );
 }

@@ -1,6 +1,8 @@
 import { findDuplicates, mergeImpact } from "@/lib/duplicates";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 import { READ_MAX_W } from "@/components/pouf/blocks";
+import { EmptyState } from "@/components/pouf/feedback";
+import { AdminHeader } from "../../_components/admin-header";
 import { DuplicateRow } from "./_components/duplicate-row";
 
 export const metadata = { title: "Дубли профилей" };
@@ -25,17 +27,18 @@ export default async function DuplicatesPage() {
 
   return (
     <main className={`mx-auto w-full ${READ_MAX_W} flex-1 px-4 py-8 md:px-6`}>
-      <h1 className="text-xl font-bold tracking-tight">Дубли профилей</h1>
-      <p className="mt-2 max-w-2xl text-sm text-ink-muted">
+      <AdminHeader title="Дубли профилей">
         Один человек попадает в ростер дважды, когда меняет ник между сезонами: импорт таблицы узнаёт
         его по нику, а не по account_id. Здесь решается, что с такой парой делать. Объединение
         необратимо — профиль-донор удаляется, а его места, статистика и баллы переезжают.
-      </p>
+      </AdminHeader>
 
       {rows.length === 0 ? (
-        <p className="mt-6 rounded-md border border-hairline bg-surface-1 px-3 py-6 text-center text-sm text-ink-subtle">
-          Похожих профилей нет.
-        </p>
+        <div className="mt-6">
+          <EmptyState icon="ok" title="Похожих профилей нет">
+            Ростер чистый: пар, которые могли бы оказаться одним человеком, не нашлось.
+          </EmptyState>
+        </div>
       ) : (
         <ul className="mt-6 space-y-3">
           {rows.map(({ pair, intoA, intoB }) => (
