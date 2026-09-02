@@ -6,6 +6,7 @@ import { roleLabel } from "@/lib/roles";
 import { playerAccountId, playerGaps, teamAccent } from "@/lib/profiles";
 import { can } from "@/lib/account";
 import { SectionHeader } from "@/components/pouf/blocks";
+import { PillLink } from "@/components/pouf/tabs";
 import { notFound } from "next/navigation";
 import { PlayerMiniCard } from "@/app/(public)/roster/_components/player-card";
 import { DivTabs, parseDiv } from "@/app/(public)/roster/_components/div-tabs";
@@ -89,8 +90,8 @@ export default async function PlayersPage({
         aside={
           <>
             {players.length} игроков
-            {authed && noId > 0 && <span className="ml-2 text-amber-700">{noId} без account_id</span>}
-            {authed && incomplete > 0 && <span className="ml-2 text-ink-subtle">{incomplete} с неполной анкетой</span>}
+            {authed && noId > 0 && <span className="ml-2 text-warn-ink">{noId} без account_id</span>}
+            {authed && incomplete > 0 && <span className="ml-2 text-muted">{incomplete} с неполной анкетой</span>}
           </>
         }
       />
@@ -110,17 +111,9 @@ export default async function PlayersPage({
           // а тот редиректит на текущий сезон — со страницы S3 сортировка уносила в S2.
           const base = `/tournaments/${slug}/roster/players`;
           return (
-          <Link
-            key={s.key}
-            href={qs ? `${base}?${qs}` : base}
-            className={`rounded-[14px] px-3.5 py-[7px] text-[13px] font-black transition-[box-shadow,transform,background] ${
-              sort === s.key
-                ? "bg-accent-fill text-[var(--on-accent)] cushion-control"
-                : "bg-surface text-ink-muted cushion-field hover:text-ink"
-            }`}
-          >
-            {s.label}
-          </Link>
+            <PillLink key={s.key} href={qs ? `${base}?${qs}` : base} active={sort === s.key}>
+              {s.label}
+            </PillLink>
           );
         })}
       </div>
@@ -145,29 +138,29 @@ export default async function PlayersPage({
               flagged={flagId}
               subtitle={
                 <div className="mt-1 space-y-0.5">
-                  <div className="truncate text-xs text-ink-subtle">{p.main?.team.name ?? "без команды"}</div>
+                  <div className="truncate text-xs font-bold text-muted">{p.main?.team.name ?? "без команды"}</div>
                   {/* Турнирная карьерка и TP — то, по чему сортируется список. Показываем только
                       непустое: у игрока без турнирных карт строки нет, ноль-плашки не нужны. */}
                   {(p.rec.games > 0 || p.tp > 0) && (
                     <div className="flex flex-wrap items-center gap-x-2 text-xs tabular-nums text-ink-muted">
                       {p.rec.games > 0 && (
                         <span>
-                          {p.rec.games} игр · <span className="text-emerald-700">{p.rec.wins}</span>–
-                          <span className="text-rose-700">{p.rec.losses}</span>
+                          {p.rec.games} игр · <span className="text-ok-ink">{p.rec.wins}</span>–
+                          <span className="text-err-ink">{p.rec.losses}</span>
                         </span>
                       )}
-                      {p.tp > 0 && <span className="font-semibold text-accent-bright">{p.tp} TP</span>}
+                      {p.tp > 0 && <span className="font-black text-[var(--accent-ink)]">{p.tp} TP</span>}
                     </div>
                   )}
                   {/* стоит ещё где-то (обычно заменой) — показываем, чтобы не выглядело потерянным */}
                   {p.spots.length > 1 && (
-                    <div className="truncate text-xs text-ink-subtle">
+                    <div className="truncate text-xs font-bold text-muted">
                       ещё в {p.spots.slice(1).map((s) => s.team.name).join(", ")}
                     </div>
                   )}
                   {/* чек-лист анкеты: что осталось добить из CRM (пусто для посетителя) */}
                   {gaps.length > 0 && (
-                    <div className={`truncate text-xs ${playerAccountId(p) ? "text-ink-subtle" : "text-amber-700"}`}>
+                    <div className={`truncate text-xs font-bold ${playerAccountId(p) ? "text-muted" : "text-warn-ink"}`}>
                       нет: {gaps.join(", ")}
                     </div>
                   )}

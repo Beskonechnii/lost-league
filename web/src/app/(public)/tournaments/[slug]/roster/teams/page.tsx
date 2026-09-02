@@ -51,7 +51,7 @@ export default async function TeamsPage({
         aside={
           <>
             {teams.length} команд
-            {authed && noId > 0 && <span className="ml-2 text-amber-700">{noId} без account_id</span>}
+            {authed && noId > 0 && <span className="ml-2 text-warn-ink">{noId} без account_id</span>}
           </>
         }
       />

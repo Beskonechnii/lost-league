@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import type { PoolTeam } from "@/lib/roster-data";
+import { EmptyState } from "@/components/pouf/feedback";
+import { FilterBar } from "./filter-bar";
 import { TeamCards } from "./team-cards";
 
 // Клиентская витрина пула: фильтр по турниру и поиск считаются в памяти по уже загруженному списку —
@@ -35,44 +37,30 @@ export function PoolExplorer({ teams, manage }: { teams: PoolTeam[]; manage?: { 
 
   const onManaged = (id: number) => setRemoved((prev) => new Set(prev).add(id));
 
-  const field =
-    "rounded-[14px] bg-surface px-3.5 py-2 text-sm font-semibold text-ink cushion-field outline-none placeholder:text-ink-subtle focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]";
-
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <input
-          type="search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Поиск команды…"
-          className={`${field} min-w-[12rem] flex-1`}
-          aria-label="Поиск команды"
-        />
-        <select
-          value={tournament}
-          onChange={(e) => setTournament(e.target.value)}
-          className={`${field} shrink-0`}
-          aria-label="Фильтр по турниру"
-        >
-          <option value="">Все турниры</option>
-          {options.map((o) => (
-            <option key={o.slug} value={o.slug}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <span className="shrink-0 text-sm font-bold text-muted tabular-nums">{filtered.length} команд</span>
-      </div>
+      <FilterBar
+        query={q}
+        onQuery={setQ}
+        placeholder="Поиск команды…"
+        label="Поиск команды"
+        options={options}
+        tournament={tournament}
+        onTournament={setTournament}
+        count={`${filtered.length} команд`}
+      />
 
       {filtered.length === 0 ? (
-        <p className="rounded-card bg-surface px-4 py-10 text-center text-sm text-ink-subtle cushion-card">
-          {teams.length === 0
-            ? manage?.archived
-              ? "Архив пуст."
-              : "В пуле пока нет команд."
-            : "Ничего не найдено — измените запрос или фильтр."}
-        </p>
+        teams.length === 0 ? (
+          <EmptyState
+            icon="users"
+            title={manage?.archived ? "Архив пуст" : "В пуле пока нет команд"}
+          >
+            Команда попадает в пул, когда её заводит оператор или принимает заявку капитана.
+          </EmptyState>
+        ) : (
+          <EmptyState title="Ничего не найдено">Измените запрос или снимите фильтр по турниру.</EmptyState>
+        )
       ) : (
         <TeamCards teams={filtered} manage={manage} onManaged={onManaged} />
       )}

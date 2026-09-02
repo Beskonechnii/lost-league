@@ -6,6 +6,8 @@ import type { RosterMember, TeamWithRoster, PoolTournament } from "@/lib/roster-
 import { countryCode, teamAccent, teamTag } from "@/lib/profiles";
 import { roleLabel } from "@/lib/roles";
 import { Chip, Meter } from "@/components/pouf/blocks";
+import { Icon } from "@/components/pouf/Icon";
+import { pillClasses } from "@/components/pouf/tabs";
 import { PlayerAvatar } from "./avatar";
 import { TeamManageBar } from "./team-manage-bar";
 
@@ -40,11 +42,11 @@ function Tab({
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 rounded-[14px] px-3 py-1.5 text-xs font-black transition-[box-shadow,transform,background] ${
-        active
-          ? "bg-accent-fill text-[var(--on-accent)] cushion-control-active [transform:translateY(1px)]"
-          : "bg-surface text-ink-subtle cushion-field hover:text-ink"
-      }`}
+      aria-pressed={active}
+      // Разрез состава — та же пилюля Кита, что у вкладок дивизиона: раньше здесь стоял свой
+      // рисунок с ВДАВЛЕННОЙ активной вкладкой, и на странице ростера рядом жили два ответа
+      // на вопрос «где я сейчас». `flex-1` — только раскладка (две вкладки делят ширину).
+      className={pillClasses({ active, className: "flex-1 justify-center" })}
     >
       {children}
     </button>
@@ -58,18 +60,20 @@ function PlayerRow({ player, accent }: { player: RosterMember; accent: string })
   return (
     <Link
       href={`/roster/players/${player.id}`}
-      className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[linear-gradient(90deg,rgba(124,58,237,0.08),transparent)]"
+      // Подсветка строки — мятная полоса Кита; раньше здесь лежал сырой фиолетовый
+      // rgba(124,58,237,…) из тёмной темы, мимо токенов акцента.
+      className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[linear-gradient(90deg,color-mix(in_srgb,var(--accent-fill)_55%,transparent),transparent)]"
     >
       <PlayerAvatar photo={player.photo} nickname={player.nickname} color={accent} size={30} className="rounded-[10px]" />
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <span className="truncate text-[13px] font-semibold text-ink">{player.nickname}</span>
-          {player.isCaptain && <span className="shrink-0 text-[11px] font-bold text-accent-bright">C</span>}
-          {code && <span className="shrink-0 text-[10px] font-medium text-ink-subtle">{code}</span>}
+          {player.isCaptain && <span className="shrink-0 text-[11px] font-black text-[var(--accent-ink)]">C</span>}
+          {code && <span className="shrink-0 text-[10px] font-bold text-muted">{code}</span>}
           {/* пока добиваем ростер: точка вместо строки, чтобы не ломать ряд */}
           {!player.accountId && (
-            <span className="shrink-0 text-amber-700" title="нет account_id">
+            <span className="shrink-0 text-warn-ink" title="нет account_id">
               •
             </span>
           )}
@@ -161,19 +165,12 @@ function TeamCard({
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? "Свернуть состав" : "Развернуть состав"}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-[14px] bg-surface text-ink-subtle cushion-field transition hover:text-[var(--accent-ink)]"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-[14px] bg-surface text-muted cushion-field transition hover:text-[var(--accent-ink)]"
         >
-          <svg
-            viewBox="0 0 16 16"
-            className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M4 6l4 4 4-4" />
-          </svg>
+          {/* Значок Кита вместо своего path: стрелка «развернуть» рисуется в проекте одна. */}
+          <span className={`grid transition-transform ${open ? "rotate-180" : ""}`}>
+            <Icon name="expand" size="sm" />
+          </span>
         </button>
       </div>
 
@@ -200,7 +197,7 @@ function TeamCard({
 
           <div className="divide-y divide-hairline border-t border-hairline pb-1">
             {shown.length === 0 ? (
-              <p className="px-4 py-4 text-xs text-ink-subtle">
+              <p className="px-4 py-4 text-xs font-bold text-muted">
                 {tab === "main" ? "Основа не заведена." : "Ни замен, ни тренера."}
               </p>
             ) : (

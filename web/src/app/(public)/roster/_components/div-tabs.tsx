@@ -1,6 +1,5 @@
-import Link from "next/link";
 import type { Division } from "@/lib/divisions";
-import { TOUCH_TARGET } from "@/app/_components/nav-scroll";
+import { PillLink } from "@/components/pouf/tabs";
 
 // Вкладки дивизиона для страниц ростера: D1 / D2 / Все. Разрез живёт в query (?div=d1),
 // как и в /standings и в рейтингах — ссылку с нужным дивизионом можно кинуть в чат.
@@ -51,24 +50,16 @@ export function DivTabs({
     { key: null, label: "Все" },
   ];
   return (
-    <div className="flex flex-wrap gap-2 font-pouf">
+    <div className="flex flex-wrap gap-2">
       {tabs.map((t) => (
-        <Link
+        <PillLink
           key={t.key ?? "all"}
           href={href(base, t.key, keep)}
-          className={`inline-flex items-center rounded-[14px] px-3.5 py-[7px] text-[13px] font-black transition-[box-shadow,transform,background] ${TOUCH_TARGET} ${
-            current === t.key
-              ? "bg-accent-fill text-[var(--on-accent)] cushion-control"
-              : "bg-surface text-ink-muted cushion-field hover:text-ink"
-          }`}
+          active={current === t.key}
+          count={counts ? counts[t.key ?? "all"] ?? 0 : undefined}
         >
           {t.label}
-          {counts && (
-            <span className={`ml-1.5 text-xs ${current === t.key ? "text-[var(--on-accent-muted)]" : "text-ink-subtle"}`}>
-              {counts[t.key ?? "all"] ?? 0}
-            </span>
-          )}
-        </Link>
+        </PillLink>
       ))}
     </div>
   );

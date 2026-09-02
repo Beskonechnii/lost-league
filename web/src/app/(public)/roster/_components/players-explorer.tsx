@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import type { PoolPlayer } from "@/lib/roster-data";
 import { teamAccent } from "@/lib/profiles";
 import { roleLabel } from "@/lib/roles";
+import { EmptyState } from "@/components/pouf/feedback";
+import { FilterBar } from "./filter-bar";
 import { PlayerMiniCard } from "./player-card";
 
 // Клиентская витрина пула игроков: фильтр по турниру и поиск — в памяти по загруженному списку
@@ -30,40 +32,27 @@ export function PlayersExplorer({ players, canFlag }: { players: PoolPlayer[]; c
     });
   }, [players, q, tournament]);
 
-  const field =
-    "rounded-[14px] bg-surface px-3.5 py-2 text-sm font-semibold text-ink cushion-field outline-none placeholder:text-ink-subtle focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]";
-
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <input
-          type="search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Поиск игрока…"
-          className={`${field} min-w-[12rem] flex-1`}
-          aria-label="Поиск игрока"
-        />
-        <select
-          value={tournament}
-          onChange={(e) => setTournament(e.target.value)}
-          className={`${field} shrink-0`}
-          aria-label="Фильтр по турниру"
-        >
-          <option value="">Все турниры</option>
-          {options.map((o) => (
-            <option key={o.slug} value={o.slug}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <span className="shrink-0 text-sm font-bold text-muted tabular-nums">{filtered.length} игроков</span>
-      </div>
+      <FilterBar
+        query={q}
+        onQuery={setQ}
+        placeholder="Поиск игрока…"
+        label="Поиск игрока"
+        options={options}
+        tournament={tournament}
+        onTournament={setTournament}
+        count={`${filtered.length} игроков`}
+      />
 
       {filtered.length === 0 ? (
-        <p className="rounded-card bg-surface px-4 py-10 text-center text-sm text-ink-subtle cushion-card">
-          {players.length === 0 ? "В пуле пока нет игроков." : "Ничего не найдено — измените запрос или фильтр."}
-        </p>
+        players.length === 0 ? (
+          <EmptyState icon="user" title="В пуле пока нет игроков">
+            Игрок появляется здесь, когда его заводит оператор или одобряет анкету новичка.
+          </EmptyState>
+        ) : (
+          <EmptyState title="Ничего не найдено">Измените запрос или снимите фильтр по турниру.</EmptyState>
+        )
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((p) => (

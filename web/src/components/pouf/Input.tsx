@@ -59,12 +59,20 @@ export function Field({ label, children, hint, error }: FieldProps) {
  * cascade; a focused invalid input shows the focus ring (pseudo specificity),
  * matching the original selector order. */
 export const inputClasses = cva(
-  'pouf-input font-bold text-[15px] text-ink border-none rounded-control w-full placeholder:text-muted',
+  'pouf-input font-bold text-ink border-none rounded-control w-full placeholder:text-muted',
   {
     variants: {
       bare: {
-        false: 'bg-bg px-5 pt-[14px] pb-[18px] min-h-[52px] focus:outline-none focus-visible:outline-none disabled:opacity-55 disabled:cursor-not-allowed',
-        true: 'bg-transparent flex-1 min-w-0 min-h-0 text-center px-0 pt-[6px] pb-[10px] [box-shadow:none] focus:[box-shadow:none] focus:outline-none focus-visible:outline-none disabled:opacity-100 disabled:cursor-not-allowed',
+        false: 'bg-bg focus:outline-none focus-visible:outline-none disabled:opacity-55 disabled:cursor-not-allowed',
+        true: 'bg-transparent flex-1 min-w-0 min-h-0 text-center px-0 pt-[6px] pb-[10px] text-[15px] [box-shadow:none] focus:[box-shadow:none] focus:outline-none focus-visible:outline-none disabled:opacity-100 disabled:cursor-not-allowed',
+      },
+      /* Компактное поле нужно ПАНЕЛИ ФИЛЬТРОВ (поиск + разрез над списком), где
+       * полноразмерная 52px-подушка спорит с рядом пилюль рядом. Высота 42px
+       * совпадает с `SelectTrigger size="sm"` — иначе поиск и селект в одной
+       * строке читаются как два разных элемента управления. */
+      size: {
+        md: 'text-[15px]',
+        sm: 'text-[14px]',
       },
       invalid: { true: '', false: '' },
       /* mono OWNS font-family — a base font-pouf would fight it (same-property
@@ -75,6 +83,9 @@ export const inputClasses = cva(
       },
     },
     compoundVariants: [
+      /* Отступы принадлежат паре bare+size: у «голого» поля капсула носит хром сама. */
+      { bare: false, size: 'md', className: 'px-5 pt-[14px] pb-[18px] min-h-[52px]' },
+      { bare: false, size: 'sm', className: 'px-4 pt-[10px] pb-[13px] min-h-[42px]' },
       { bare: false, invalid: false, className: 'cushion-field focus:[box-shadow:var(--pouf-field-focus)]' },
       {
         bare: false,
@@ -83,7 +94,7 @@ export const inputClasses = cva(
           '[box-shadow:var(--pouf-field),inset_0_0_0_3px_var(--down)] focus:[box-shadow:var(--pouf-field-focus)]',
       },
     ],
-    defaultVariants: { bare: false, invalid: false, mono: false },
+    defaultVariants: { bare: false, size: 'md', invalid: false, mono: false },
   },
 )
 
@@ -213,15 +224,17 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
  * До Э3 эту роль играл `<Input>` из shadcn — вторая система с собственным
  * цветом и радиусом. Теперь её нет, а поле выглядит одинаково в обоих случаях. */
 
-interface FormInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'className'> {
+interface FormInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'className' | 'size'> {
   invalid?: boolean
   mono?: boolean
+  /** sm — компактное поле панели фильтров (см. inputClasses). */
+  size?: 'sm' | 'md'
   /** Только раскладка (ширина, отступ) — см. тот же уговор у Button. */
   className?: string
 }
 
 export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(function FormInput(
-  { invalid, mono, className, type = 'text', ...nativeProps },
+  { invalid, mono, size, className, type = 'text', ...nativeProps },
   ref,
 ) {
   return (
@@ -229,7 +242,7 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(function F
       ref={ref}
       {...nativeProps}
       type={type}
-      className={`${inputClasses({ invalid: !!invalid, mono })} ${className ?? ''}`}
+      className={`${inputClasses({ invalid: !!invalid, mono, size })} ${className ?? ''}`}
       aria-invalid={invalid || undefined}
     />
   )
