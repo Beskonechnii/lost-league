@@ -71,22 +71,36 @@ export function InfoWell({ children, big = false }: { children: ReactNode; big?:
   );
 }
 
-/** Карты серии: выигранная — мятная, остальные — лунки. Кит: `.maps`/`.map`. */
-export function MapPills({ maps }: { maps: ("w" | "l" | null)[] }) {
+/** Одна карта серии: исход глазами стороны и, если карта разобрана, адрес её отчёта. */
+export type MapPill = { result: "w" | "l" | null; href?: string };
+
+/** Карты серии: выигранная — мятная, остальные — лунки. Кит: `.maps`/`.map`.
+ *  Разобранная карта — ссылка на отчёт: до Э7 номер карты рисовался статикой, и с витрины
+ *  к разбору вёл только «Отчёт» справа, хотя палец сам тянется к номеру. */
+export function MapPills({ maps }: { maps: MapPill[] }) {
   if (maps.length === 0) return null;
   return (
     <span className="flex gap-1.5">
-      {maps.map((m, i) => (
-        <span
-          key={i}
-          title={m === "w" ? `карта ${i + 1} — выиграна` : m === "l" ? `карта ${i + 1} — проиграна` : `карта ${i + 1} — не сыграна`}
-          className={`grid h-[26px] min-w-[34px] place-items-center rounded-[10px] px-1.5 text-[11px] font-black ${
-            m === "w" ? "bg-accent-fill text-[var(--on-accent)] cushion-blob" : "bg-surface-2 text-muted cushion-field"
-          }`}
-        >
-          {i + 1}
-        </span>
-      ))}
+      {maps.map((m, i) => {
+        const title = m.result === "w" ? `карта ${i + 1} — выиграна` : m.result === "l" ? `карта ${i + 1} — проиграна` : `карта ${i + 1} — не сыграна`;
+        const cls = `grid h-[26px] min-w-[34px] place-items-center rounded-[10px] px-1.5 text-[11px] font-black ${
+          m.result === "w" ? "bg-accent-fill text-[var(--on-accent)] cushion-blob" : "bg-surface-2 text-muted cushion-field"
+        }`;
+        return m.href ? (
+          <Link
+            key={i}
+            href={m.href}
+            title={`${title} · открыть отчёт`}
+            className={`${cls} transition-transform hover:-translate-y-px active:translate-y-0`}
+          >
+            {i + 1}
+          </Link>
+        ) : (
+          <span key={i} title={title} className={cls}>
+            {i + 1}
+          </span>
+        );
+      })}
     </span>
   );
 }

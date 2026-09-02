@@ -185,23 +185,29 @@ export default async function Home() {
       {/* Афиша и результаты — карточки Кита. Пусто у обоих блоков только до жеребьёвки; тогда
           вместо двух пустых заголовков показываем одно объяснение, почему встреч ещё нет. */}
       {current && (upcoming.length > 0 || recent.length > 0) && (
-        // Две колонки только когда есть оба блока: одинокая колонка из двух режет карточку встречи
-        // пополам, и названия команд в ней обрезаются многоточием.
+        // Карточки всегда стоят в две колонки, а не одной лентой во всю ширину витрины: на 1440px
+        // одинокая карточка встречи растягивается на 1200px и превращается в две команды по краям
+        // экрана с пустотой между ними. Когда оба блока есть — колонку делят они, когда блок один —
+        // его собственные карточки (`lg:grid-cols-2`).
         <div className={`grid gap-6 ${upcoming.length > 0 && recent.length > 0 ? "xl:grid-cols-2" : ""}`}>
           {upcoming.length > 0 && (
             <section className="space-y-3">
               <Eyebrow>Ближайшие встречи</Eyebrow>
-              {upcoming.map((s) => (
-                <SeriesBrief key={s.id} s={s} cut={cut(s)} />
-              ))}
+              <div className={`grid gap-3 ${recent.length > 0 ? "" : "lg:grid-cols-2"}`}>
+                {upcoming.map((s) => (
+                  <SeriesBrief key={s.id} s={s} cut={cut(s)} />
+                ))}
+              </div>
             </section>
           )}
           {recent.length > 0 && (
             <section className="space-y-3">
               <Eyebrow>Последние результаты</Eyebrow>
-              {recent.map((s) => (
-                <SeriesBrief key={s.id} s={s} cut={cut(s)} />
-              ))}
+              <div className={`grid gap-3 ${upcoming.length > 0 ? "" : "lg:grid-cols-2"}`}>
+                {recent.map((s) => (
+                  <SeriesBrief key={s.id} s={s} cut={cut(s)} />
+                ))}
+              </div>
             </section>
           )}
         </div>

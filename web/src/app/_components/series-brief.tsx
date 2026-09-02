@@ -41,7 +41,12 @@ export function SeriesBrief({
   // Карты — глазами teamId, если он задан: карточка стоит на странице команды, и «выиграна»
   // должно означать «выиграна ею». На витрине точки отсчёта нет — считаем глазами хозяев.
   const eyes = teamId ?? s.home.id;
-  const maps = s.games.map((g) => (g.winnerTeamId == null ? null : g.winnerTeamId === eyes ? ("w" as const) : ("l" as const)));
+  const maps = s.games.map((g) => ({
+    result: g.winnerTeamId == null ? null : g.winnerTeamId === eyes ? ("w" as const) : ("l" as const),
+    // Номер карты ведёт прямо в её отчёт — но только если карта разобрана: без матча OpenDota
+    // страницы /match/<id> не существует.
+    href: g.openDotaMatchId ? `/match/${g.openDotaMatchId}` : undefined,
+  }));
   const side = (t: SeriesRow["home"]) => ({
     name: t.name,
     tag: t.tag,

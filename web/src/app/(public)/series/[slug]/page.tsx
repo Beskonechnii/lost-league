@@ -144,7 +144,10 @@ export default async function SeriesPage({ params }: { params: Promise<{ slug: s
   const winner = s.homeScore > s.awayScore ? "home" : s.awayScore > s.homeScore ? "away" : null;
   const bo = s.homeScore + s.awayScore <= 1 ? "Bo1" : "Bo3";
   // Карты глазами хозяев — карточка стоит над списком карт, в котором хозяева всегда слева.
-  const maps = s.games.map((g) => (g.winnerTeamId == null ? null : g.winnerTeamId === s.home.id ? ("w" as const) : ("l" as const)));
+  const maps = s.games.map((g) => ({
+    result: g.winnerTeamId == null ? null : g.winnerTeamId === s.home.id ? ("w" as const) : ("l" as const),
+    // Ссылку с шапки не ставим: разбор каждой карты стоит прямо под ней, на этой же странице.
+  }));
 
   return (
     <main className="flex-1 p-4 font-pouf md:p-8">
