@@ -1,6 +1,7 @@
 import { listTeamRosters } from "@/lib/roster-data";
 import { can } from "@/lib/account";
 import { SectionHeader } from "@/components/pouf/blocks";
+import { EmptyState } from "@/components/pouf/feedback";
 import { notFound } from "next/navigation";
 import { TeamCards } from "@/app/(public)/roster/_components/team-cards";
 import { DivTabs, parseDiv } from "@/app/(public)/roster/_components/div-tabs";
@@ -61,7 +62,13 @@ export default async function TeamsPage({
         <DivTabs divisions={divisions} current={div} base={`/tournaments/${slug}/roster/teams`} counts={counts} />
       </div>
 
-      <TeamCards teams={teams} />
+      {teams.length === 0 ? (
+        <EmptyState icon="users" title="В этом разрезе команд нет">
+          Команды попадают в ростер турнира через приём заявок и жеребьёвку по дивизионам.
+        </EmptyState>
+      ) : (
+        <TeamCards teams={teams} />
+      )}
     </div>
   );
 }

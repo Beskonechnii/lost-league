@@ -63,6 +63,58 @@ export function PillCount({ children, active = false }: { children: ReactNode; a
   );
 }
 
+/** Пилюля-кнопка: тот же рисунок там, где выбор живёт в состоянии клиента,
+ *  а не в адресе (вкладки внутри карточки, режим формы). */
+export function PillButton({
+  active = false,
+  size,
+  variant,
+  onClick,
+  className,
+  children,
+}: {
+  active?: boolean;
+  size?: PillSize;
+  variant?: "field" | "quiet";
+  onClick: () => void;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={pillClasses({ active, size, variant, className })}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * Вдавленная дорожка под ряд пилюль — `.segset` Кита. Нужна там, где выбор из
+ * двух-трёх равных вариантов сам является элементом формы («Вход / Регистрация»
+ * в окне входа): дорожка обводит группу и говорит, что варианты исчерпывающие.
+ * Ряды-фильтры на бумаге дорожки не носят — иначе каждая страница обрастала бы
+ * рамками вокруг каждой тройки пилюль.
+ *
+ * Внутрь кладутся пилюли `variant="quiet"`: подушка внутри вдавленной дорожки даёт
+ * две глубины на одном элементе, и невыбранный вариант начинает спорить с выбранным.
+ * В Ките (`.segset` + `.seg`) невыбранный сегмент — просто подпись.
+ */
+export function PillTrack({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div
+      role="group"
+      aria-label={label}
+      className="flex gap-2 rounded-blob bg-surface-2 p-2 font-pouf cushion-field [&>*]:flex-1 [&>*]:justify-center"
+    >
+      {children}
+    </div>
+  );
+}
+
 /** Пилюля-ссылка: выбор разреза живёт в адресе, поэтому большинство рядов —
  *  именно ссылки (ссылку с нужной вкладкой можно кинуть в чат). */
 export function PillLink({

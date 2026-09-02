@@ -1,5 +1,6 @@
 import { Breadcrumbs } from "@/app/_components/breadcrumbs";
-import { FORM_MAX_W } from "@/components/pouf/blocks";
+import { Chip, FORM_MAX_W } from "@/components/pouf/blocks";
+import { Eyebrow } from "@/components/pouf/text";
 
 export const metadata = {
   title: "Правила лиги",
@@ -122,7 +123,7 @@ const GROUPS: { title: string; items: React.ReactNode[] }[] = [
 
 export default function RulesPage() {
   return (
-    <main className="flex-1 px-4 py-10 md:py-16">
+    <main className="flex-1 px-4 py-10 font-pouf md:py-16">
       {/* Колонка формы, а не чтения: правила читают сверху вниз, но строка в 72rem под текст
           длинновата — 48rem держит меру абзаца и совпадает с анкетой, из которой сюда и приходят. */}
       <div className={`mx-auto w-full ${FORM_MAX_W}`}>
@@ -130,24 +131,36 @@ export default function RulesPage() {
             ведёт сюда напрямую (UI-GUIDELINES §3). */}
         <Breadcrumbs items={[{ href: "/me", label: "Кабинет" }]} />
 
-        <h1 className="mt-4 text-3xl font-bold tracking-tight">Правила лиги</h1>
-        <p className="mt-2 text-sm text-ink-muted">
+        <Eyebrow className="mt-5">Документ лиги</Eyebrow>
+        <h1 className="mt-2 text-[28px] font-black leading-[1.2] tracking-[-0.5px] text-ink md:text-4xl">
+          Правила лиги
+        </h1>
+        <p className="mt-3 text-[15px] font-semibold leading-[1.6] text-muted">
           Условия, на которых работают аккаунт, заявка на вступление и профиль игрока в SPIRIT/CTRL.
           Регистрируясь и отправляя анкету, вы соглашаетесь с ними.
         </p>
-        <p className="mt-1 text-xs text-ink-subtle">{VERSION}</p>
+        <p className="mt-2">
+          <Chip>{VERSION}</Chip>
+        </p>
 
         <div className="mt-8 space-y-4">
           {GROUPS.map((group) => (
-            <section
-              key={group.title}
-              className="rounded-2xl border border-hairline bg-surface-1/60 p-5 shadow-xl shadow-black/20 backdrop-blur"
-            >
-              <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-accent">{group.title}</h2>
-              <ol className="mt-3 list-decimal space-y-2.5 pl-5 text-sm leading-relaxed text-ink-muted marker:text-ink-subtle">
+            // Подушка Кита на раздел. Пункты нумерованы своим кружком, а не list-decimal:
+            // маркер лежит на бумаге и отбивает пункт от пункта лучше, чем точка и отступ —
+            // на длинном тексте это единственное, что даёт глазу опору.
+            <section key={group.title} className="rounded-card bg-surface p-5 cushion-card sm:p-6">
+              <h2 className="text-[11px] font-extrabold uppercase tracking-[2px] text-[var(--accent-ink)]">
+                {group.title}
+              </h2>
+              <ol className="mt-4 space-y-3.5">
                 {group.items.map((item, i) => (
-                  <li key={i}>
-                    <span className="[&_b]:font-semibold [&_b]:text-ink">{item}</span>
+                  <li key={i} className="flex gap-3">
+                    <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-[10px] bg-surface-2 text-[11px] font-black tabular-nums text-muted cushion-field">
+                      {i + 1}
+                    </span>
+                    <span className="min-w-0 text-[15px] font-semibold leading-[1.6] text-muted [&_b]:font-black [&_b]:text-ink">
+                      {item}
+                    </span>
                   </li>
                 ))}
               </ol>
@@ -155,7 +168,7 @@ export default function RulesPage() {
           ))}
         </div>
 
-        <p className="mt-8 text-xs text-ink-subtle">
+        <p className="mt-8 text-[13px] font-bold leading-[1.55] text-muted">
           Вопрос по правилам — к организатору лиги. Правила могут меняться; редакция всегда указана вверху
           страницы.
         </p>

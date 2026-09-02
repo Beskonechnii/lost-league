@@ -1,14 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  divisionTeams,
-  registrationOpen,
-  tournamentBySlug,
-  TOURNAMENT_STATUS_LABELS,
-  type TournamentStatus,
-} from "@/lib/tournaments";
+import { divisionTeams, registrationOpen, tournamentBySlug } from "@/lib/tournaments";
 import { READ_MAX_W, SectionHeader, StatTile } from "@/components/pouf/blocks";
 import { Heading } from "@/components/pouf/text";
+import { TournamentStatus } from "@/app/_components/tournament-status";
 
 export const dynamic = "force-dynamic";
 
@@ -24,21 +19,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 const date = new Intl.DateTimeFormat("ru", { day: "numeric", month: "long", year: "numeric" });
 
-/** Плашка статуса турнира. Кит: статусы турнира на артборде «Данные и обратная связь». */
-const TONE: Record<TournamentStatus, string> = {
-  draft: "bg-surface-2 text-muted cushion-field",
-  registration: "bg-[image:var(--grad-info)] text-[var(--color-info-ink)]",
-  running: "bg-[image:var(--grad-ok)] text-[var(--color-ok-ink)]",
-  finished: "bg-[image:var(--grad-warn)] text-[var(--color-warn-ink)]",
-};
-
 export default async function TournamentAbout({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const tournament = await tournamentBySlug(slug);
   if (!tournament || tournament.status === "draft") notFound();
 
   const rosters = await Promise.all(tournament.divisions.map((d) => divisionTeams(d.id)));
-  const status = (tournament.status as TournamentStatus) ?? "draft";
   const teamsTotal = rosters.reduce((n, r) => n + r.length, 0);
 
   const facts = [
@@ -55,11 +41,7 @@ export default async function TournamentAbout({ params }: { params: Promise<{ sl
       <SectionHeader
         eyebrow="Турнир"
         title={tournament.name}
-        aside={
-          <span className={`inline-block rounded-pill px-4 py-1.5 text-xs font-black ${TONE[status]}`}>
-            {TOURNAMENT_STATUS_LABELS[status] ?? tournament.status}
-          </span>
-        }
+        aside={<TournamentStatus status={tournament.status} />}
       />
 
       {registrationOpen(tournament) && (

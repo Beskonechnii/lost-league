@@ -7,14 +7,18 @@ import { notFound } from "next/navigation";
 import { tournamentBySlug } from "@/lib/tournaments";
 import { tpByTournament } from "@/lib/tp";
 import { SectionHeader } from "@/components/pouf/blocks";
+import { EmptyState } from "@/components/pouf/feedback";
+import { PillLink } from "@/components/pouf/tabs";
 import { PlayerAvatar } from "@/app/(public)/roster/_components/avatar";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "TP" };
 
-// Медали тройки лидеров — только визуальный акцент, порядок задаёт tp.
-const MEDAL = ["🥇", "🥈", "🥉"];
+// Тройку лидеров показываем не эмодзи-медалями, а формой места: у первых трёх номер лежит на
+// акцентной подушке Кита, у остальных — просто цифра. Эмодзи в интерфейсе не осталось с Э3b, и
+// «🥇» рядом с Nunito читался как чужой шрифт.
+const PODIUM = 3;
 
 // Публичный зачёт TP: очки MVP, оператор проставляет их вручную (/admin/tp).
 // Зачёт **турнирный**, поэтому и живёт внутри адреса турнира — вкладкой в его строке контекста.
@@ -51,30 +55,33 @@ export default async function TpPage({
         aside={
           <span className="flex flex-wrap items-center gap-2">
             <span>Очки MVP{all ? " за всё время" : ` · ${current.short ?? current.name}`}</span>
-            <Link
-              href={all ? `/tournaments/${slug}/tp` : `/tournaments/${slug}/tp?all=1`}
-              className="rounded-[12px] bg-surface-2 px-3 py-1 text-xs font-black hover:text-[var(--accent-ink)]"
-            >
-              {all ? "Текущий турнир" : "За всё время"}
-            </Link>
+            {/* Разрез — пара пилюль Кита, а не одна кнопка-переключатель: видно оба варианта
+                и то, в каком из них сейчас стоишь. */}
+            <PillLink href={`/tournaments/${slug}/tp`} active={!all}>
+              Текущий турнир
+            </PillLink>
+            <PillLink href={`/tournaments/${slug}/tp?all=1`} active={all}>
+              За всё время
+            </PillLink>
           </span>
         }
       />
 
       {ranked.length === 0 ? (
-        <div className="rounded-card bg-surface p-8 text-center text-sm font-bold text-muted cushion-field">
-          Пока ни у кого нет TP.
-          {authed && (
+        <EmptyState icon="star" title="Пока ни у кого нет TP">
+          Очки MVP проставляет организатор после игрового дня
+          {authed ? (
             <>
-              {" "}
-              Проставить можно в{" "}
-              <Link href="/admin/tp" className="text-[var(--accent-ink)] hover:underline">
-                админке
+              {" — "}
+              <Link href="/admin/tp" className="font-black text-[var(--accent-ink)] underline-offset-4 hover:underline">
+                панель начисления
               </Link>
               .
             </>
+          ) : (
+            "."
           )}
-        </div>
+        </EmptyState>
       ) : (
         <ol className="space-y-2">
           {ranked.map((p, i) => {
@@ -85,9 +92,13 @@ export default async function TpPage({
                   href={`/roster/players/${p.id}`}
                   className="flex items-center gap-4 rounded-card bg-surface px-4 py-3 cushion-row transition-transform hover:-translate-y-px hover:cushion-row-hover"
                 >
-                  {/* Место: медаль для тройки, номер для остальных — одинаковой ширины, чтобы ники встали в столбец */}
-                  <span className="w-9 shrink-0 text-center text-lg font-black tabular-nums text-ink-muted">
-                    {MEDAL[i] ?? i + 1}
+                  {/* Место всегда одной ширины, чтобы ники встали в столбец; тройка лидеров — на подушке */}
+                  <span
+                    className={`grid h-9 w-9 shrink-0 place-items-center rounded-[14px] text-base font-black tabular-nums ${
+                      i < PODIUM ? "bg-accent-fill text-[var(--on-accent)] cushion-blob" : "text-muted"
+                    }`}
+                  >
+                    {i + 1}
                   </span>
                   <PlayerAvatar photo={p.photo} nickname={p.nickname} color={accent} size={48} />
                   <div className="min-w-0 flex-1">

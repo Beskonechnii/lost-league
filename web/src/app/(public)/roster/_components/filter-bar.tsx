@@ -35,29 +35,34 @@ export function FilterBar({
   count: string;
 }) {
   return (
+    // Ширину держат обёртки, а не сами контролы: у поля и триггера селекта в Ките зашит `w-full`
+    // (в форме они всегда во всю колонку), и `flex-1` на них же схлопывался бы в отдельную строку.
     <div className="flex flex-wrap items-center gap-3">
-      <FormInput
-        type="search"
-        size="sm"
-        value={query}
-        onChange={(e) => onQuery(e.target.value)}
-        placeholder={placeholder}
-        className="min-w-[12rem] flex-1"
-        aria-label={label}
-      />
-      <Select value={tournament || ALL} onValueChange={(v) => onTournament(v === ALL ? "" : v)}>
-        <SelectTrigger size="sm" className="w-auto min-w-[10rem] shrink-0" aria-label="Фильтр по турниру">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={ALL}>Все турниры</SelectItem>
-          {options.map((o) => (
-            <SelectItem key={o.slug} value={o.slug}>
-              {o.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="min-w-[12rem] flex-1">
+        <FormInput
+          type="search"
+          size="sm"
+          value={query}
+          onChange={(e) => onQuery(e.target.value)}
+          placeholder={placeholder}
+          aria-label={label}
+        />
+      </div>
+      <div className="w-[11rem] shrink-0">
+        <Select value={tournament || ALL} onValueChange={(v) => onTournament(v === ALL ? "" : v)}>
+          <SelectTrigger size="sm" aria-label="Фильтр по турниру">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>Все турниры</SelectItem>
+            {options.map((o) => (
+              <SelectItem key={o.slug} value={o.slug}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       <span className="shrink-0 font-pouf text-sm font-bold tabular-nums text-muted">{count}</span>
     </div>
   );

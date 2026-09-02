@@ -3,7 +3,9 @@
 import { useActionState, useMemo, useState } from "react";
 import { createProfile, claim } from "./actions";
 import { Button } from "@/components/pouf/Button";
-import { FormInput } from "@/components/pouf/Input";
+import { Alert } from "@/components/pouf/feedback";
+import { FormInput, Label } from "@/components/pouf/Input";
+import { RowCard } from "@/components/pouf/surface";
 
 // Онбординг УЖЕ ОДОБРЕННОГО аккаунта, у которого почему-то нет профиля: «новый игрок» заводит
 // Player сразу, «уже в ростере» подаёт заявку на привязку. Путь новичка (draft → анкета → модерация)
@@ -13,30 +15,26 @@ import { FormInput } from "@/components/pouf/Input";
 
 export type LinkablePlayer = { id: number; nickname: string; slug: string };
 
-const errorBox = "rounded-md border border-rose-200 bg-rose-100 px-3 py-2 text-sm text-rose-700";
-
 export function Onboarding({ players }: { players: LinkablePlayer[] }) {
   const [mode, setMode] = useState<"pick" | "new" | "existing">("pick");
 
   if (mode === "pick") {
     return (
       <div className="space-y-3">
-        <p className="text-sm text-ink-muted">Вы впервые здесь. Кто вы?</p>
+        <p className="text-[15px] font-black text-ink">Вы впервые здесь. Кто вы?</p>
         <div className="grid gap-2">
-          <button
-            onClick={() => setMode("existing")}
-            className="rounded-lg border border-hairline bg-surface-1 px-4 py-3 text-left transition-colors hover:border-accent"
-          >
-            <span className="block font-medium">Я уже в ростере</span>
-            <span className="mt-0.5 block text-xs text-ink-subtle">Найти себя и привязать профиль (подтвердит оператор).</span>
-          </button>
-          <button
-            onClick={() => setMode("new")}
-            className="rounded-lg border border-hairline bg-surface-1 px-4 py-3 text-left transition-colors hover:border-accent"
-          >
-            <span className="block font-medium">Я новый игрок</span>
-            <span className="mt-0.5 block text-xs text-ink-subtle">Завести личный профиль в лиге.</span>
-          </button>
+          <RowCard onClick={() => setMode("existing")}>
+            <span className="block text-[15px] font-black text-ink">Я уже в ростере</span>
+            <span className="mt-0.5 block text-[13px] font-bold leading-[1.45] text-muted">
+              Найти себя и привязать профиль (подтвердит организатор).
+            </span>
+          </RowCard>
+          <RowCard onClick={() => setMode("new")}>
+            <span className="block text-[15px] font-black text-ink">Я новый игрок</span>
+            <span className="mt-0.5 block text-[13px] font-bold leading-[1.45] text-muted">
+              Завести личный профиль в лиге.
+            </span>
+          </RowCard>
         </div>
       </div>
     );
@@ -44,7 +42,7 @@ export function Onboarding({ players }: { players: LinkablePlayer[] }) {
 
   return (
     <div className="space-y-3">
-      <button onClick={() => setMode("pick")} className="text-xs text-ink-subtle hover:text-ink">
+      <button onClick={() => setMode("pick")} className="text-[13px] font-black text-muted transition-colors hover:text-ink">
         ← назад
       </button>
       {mode === "new" ? <NewProfileForm /> : <ClaimForm players={players} />}
@@ -55,15 +53,15 @@ export function Onboarding({ players }: { players: LinkablePlayer[] }) {
 function NewProfileForm() {
   const [error, action, pending] = useActionState(createProfile, null);
   return (
-    <form action={action} className="space-y-3">
-      <div>
-        <label className="mb-1 block text-sm text-ink-muted">Ник в лиге</label>
+    <form action={action} className="space-y-4">
+      <div className="space-y-2">
+        <Label>Ник в лиге</Label>
         <FormInput name="nickname" autoFocus placeholder="Например, Miracle-" />
       </div>
-      <Button type="submit" disabled={pending} block>
+      <Button type="submit" loading={pending} size="lg" block>
         {pending ? "Создаю…" : "Создать профиль"}
       </Button>
-      {error && <p className={errorBox}>{error}</p>}
+      {error && <Alert tone="err" block>{error}</Alert>}
     </form>
   );
 }
@@ -73,13 +71,13 @@ function ClaimForm({ players }: { players: LinkablePlayer[] }) {
   const [picked, setPicked] = useState<LinkablePlayer | null>(null);
 
   return (
-    <form action={action} className="space-y-3">
+    <form action={action} className="space-y-4">
       <input type="hidden" name="playerId" value={picked?.id ?? ""} />
       <PlayerPicker players={players} picked={picked} onPick={setPicked} />
-      <Button type="submit" disabled={pending || !picked} block>
+      <Button type="submit" disabled={!picked} loading={pending} size="lg" block>
         {pending ? "Отправляю…" : "Подать заявку на привязку"}
       </Button>
-      {error && <p className={errorBox}>{error}</p>}
+      {error && <Alert tone="err" block>{error}</Alert>}
     </form>
   );
 }
@@ -104,8 +102,8 @@ export function PlayerPicker({
   }, [players, query]);
 
   return (
-    <div>
-      <label className="mb-1 block text-sm text-ink-muted">Ваш ник в ростере</label>
+    <div className="space-y-2">
+      <Label>Ваш ник в ростере</Label>
       <FormInput
         autoFocus
         placeholder="Начните вводить ник"
@@ -116,25 +114,25 @@ export function PlayerPicker({
         }}
       />
       {!picked && matches.length > 0 && (
-        <ul className="mt-1 overflow-hidden rounded-md border border-hairline bg-surface-1">
+        // Подсказка — список подушек Кита, а не серый бордер-блок: строка, на которую можно нажать,
+        // в этой системе всегда подушка.
+        <ul className="space-y-1.5">
           {matches.map((p) => (
             <li key={p.id}>
-              <button
-                type="button"
+              <RowCard
                 onClick={() => {
                   onPick(p);
                   setQuery("");
                 }}
-                className="block w-full px-3 py-2 text-left text-sm transition-colors hover:bg-surface-2"
               >
-                {p.nickname}
-              </button>
+                <span className="text-sm font-black text-ink">{p.nickname}</span>
+              </RowCard>
             </li>
           ))}
         </ul>
       )}
       {!picked && query.trim() && matches.length === 0 && (
-        <p className="mt-1 text-xs text-ink-subtle">
+        <p className="text-[13px] font-bold leading-[1.45] text-muted">
           Никого не нашли. Возможно, вас ещё нет в ростере — тогда заполните анкету нового игрока.
         </p>
       )}

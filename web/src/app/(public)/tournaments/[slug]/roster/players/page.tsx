@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { listPlayers } from "@/lib/roster-data";
 import { getPlayerRecords } from "@/lib/player-record";
 import { tpByTournament } from "@/lib/tp";

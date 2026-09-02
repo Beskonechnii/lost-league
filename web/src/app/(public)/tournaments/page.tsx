@@ -1,15 +1,11 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import {
-  currentTournament,
-  listTournaments,
-  registrationOpen,
-  TOURNAMENT_STATUS_LABELS,
-  type TournamentStatus,
-} from "@/lib/tournaments";
+import { currentTournament, listTournaments, registrationOpen } from "@/lib/tournaments";
 import { buttonClasses } from "@/components/pouf/Button";
 import { Eyebrow } from "@/components/pouf/text";
-import { SITE_MAX_W } from "@/components/pouf/blocks";
+import { Chip, SITE_MAX_W } from "@/components/pouf/blocks";
+import { EmptyState } from "@/components/pouf/feedback";
+import { TournamentStatus } from "@/app/_components/tournament-status";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Турниры" };
@@ -20,14 +16,6 @@ export const metadata = { title: "Турниры" };
 
 const date = new Intl.DateTimeFormat("ru", { day: "numeric", month: "long", year: "numeric" });
 
-/** Цвет плашки статуса — тот же смысл, что в админке и на хабе турнира. */
-const TONE: Record<TournamentStatus, string> = {
-  draft: "bg-surface-2 text-ink-subtle",
-  registration: "bg-sky-500/20 text-sky-700",
-  running: "bg-emerald-500/20 text-emerald-700",
-  finished: "bg-amber-500/20 text-amber-700",
-};
-
 type Row = Awaited<ReturnType<typeof listTournaments>>[number];
 
 /** Промежуток турнира словами: обе даты, одна или ничего — пустых тире в строке быть не должно. */
@@ -36,15 +24,6 @@ function period(t: Row) {
   if (t.startAt) return `с ${date.format(t.startAt)}`;
   if (t.endAt) return `до ${date.format(t.endAt)}`;
   return null;
-}
-
-function StatusChip({ t }: { t: Row }) {
-  const status = (t.status as TournamentStatus) ?? "draft";
-  return (
-    <span className={`rounded-[12px] px-3 py-1 text-xs font-black ${TONE[status]}`}>
-      {TOURNAMENT_STATUS_LABELS[status] ?? t.status}
-    </span>
-  );
 }
 
 /**
@@ -59,12 +38,8 @@ function TournamentCard({ t, teams, current = false }: { t: Row; teams: number; 
   return (
     <article className={`rounded-card bg-surface p-5 cushion-card ${current ? "sm:p-6" : ""}`}>
       <div className="flex flex-wrap items-center gap-2">
-        <StatusChip t={t} />
-        {current && (
-          <span className="rounded-[12px] bg-accent-fill px-3 py-1 text-xs font-black text-[var(--on-accent)]">
-            Открывается вкладкой в шапке
-          </span>
-        )}
+        <TournamentStatus status={t.status} />
+        {current && <Chip accent>Открывается вкладкой в шапке</Chip>}
       </div>
 
       <h2 className={`mt-3 font-black tracking-tight ${current ? "text-2xl" : "text-lg"}`}>
@@ -81,7 +56,7 @@ function TournamentCard({ t, teams, current = false }: { t: Row; teams: number; 
             <li key={d.id}>
               <Link
                 href={`/tournaments/${t.slug}/${d.slug}`}
-                className="rounded-[12px] bg-surface-2 px-3 py-1.5 text-sm font-bold hover:text-[var(--accent-ink)]"
+                className="inline-flex rounded-chip bg-surface px-3 py-1.5 text-sm font-black text-ink cushion-field transition hover:text-[var(--accent-ink)]"
               >
                 {d.label ?? d.name}
               </Link>
@@ -91,7 +66,7 @@ function TournamentCard({ t, teams, current = false }: { t: Row; teams: number; 
       )}
 
       {t.description && (
-        <p className={`mt-3 text-sm text-ink-muted ${current ? "line-clamp-4" : "line-clamp-2"}`}>{t.description}</p>
+        <p className={`mt-3 text-sm font-bold leading-[1.55] text-muted ${current ? "line-clamp-4" : "line-clamp-2"}`}>{t.description}</p>
       )}
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -132,7 +107,14 @@ export default async function TournamentsIndex() {
       <Eyebrow>Лига</Eyebrow>
       <h1 className="mt-1.5 text-2xl font-black tracking-tight font-pouf">Турниры</h1>
 
-      {tournaments.length === 0 && <p className="mt-6 text-sm text-ink-subtle">Пока ничего не объявлено.</p>}
+      {tournaments.length === 0 && (
+        <div className="mt-6">
+          <EmptyState icon="trophy" title="Турниров пока нет">
+            Турнир появляется на сайте, когда его открывают на приём заявок — до этого он рабочая
+            заготовка организатора.
+          </EmptyState>
+        </div>
+      )}
 
       {head && (
         <section className="mt-6 font-pouf">

@@ -4,6 +4,8 @@ import { divisionOfTournament } from "@/lib/tournaments";
 import { getLeaders, METRICS, type Subject } from "@/lib/leaders";
 import { BRACKETS, isBracket, isStage, STAGES } from "@/lib/stages";
 import { SectionHeader } from "@/components/pouf/blocks";
+import { EmptyState } from "@/components/pouf/feedback";
+import { PillLink } from "@/components/pouf/tabs";
 
 export const dynamic = "force-dynamic";
 
@@ -15,23 +17,6 @@ type Query = { stage?: string; group?: string; bracket?: string; kind?: string }
 const nf = new Intl.NumberFormat("ru-RU");
 const fmt = (v: number, decimals = 0) =>
   decimals ? v.toLocaleString("ru-RU", { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) : nf.format(Math.round(v));
-
-/** Ссылка-фильтр: тот же адрес с подменённым параметром. `null` — параметр убрать (значение «все»).
- *  Пилюля-«подушка» pouf: активная вжата (cushion-control, фиолет), неактивная — тихий контур. */
-function Chip({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className={`rounded-[14px] px-3.5 py-[7px] text-[13px] font-black transition-[box-shadow,transform,background] ${
-        active
-          ? "bg-accent-fill text-[var(--on-accent)] cushion-control-active [transform:translateY(1px)]"
-          : "bg-surface text-ink-muted cushion-field hover:text-ink hover:cushion-field-focus"
-      }`}
-    >
-      {children}
-    </Link>
-  );
-}
 
 function Board({
   title,
@@ -71,12 +56,12 @@ function Board({
                 />
                 <span
                   className={`relative grid h-6 w-6 shrink-0 place-items-center rounded-[10px] text-[11px] font-black tabular-nums ${
-                    leader ? "bg-accent-fill text-[var(--on-accent)]" : "text-ink-subtle"
+                    leader ? "bg-accent-fill text-[var(--on-accent)]" : "text-muted"
                   }`}
                 >
                   {i + 1}
                 </span>
-                <span className="relative w-9 shrink-0 truncate text-[10px] font-bold text-ink-subtle">
+                <span className="relative w-9 shrink-0 truncate text-[10px] font-bold text-muted">
                   {r.subject.tag}
                 </span>
                 <Link
@@ -144,7 +129,7 @@ export default async function StatsPage({
           <>
             Карт в разрезе: <span className="text-ink-muted">{data.games}</span>
             {data.games > 0 && data.parsedGames < data.games && (
-              <span className="text-amber-700"> · распарсено {data.parsedGames}</span>
+              <span className="text-warn-ink"> · распарсено {data.parsedGames}</span>
             )}
           </>
         }
@@ -153,36 +138,36 @@ export default async function StatsPage({
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="mr-1 text-[10px] font-extrabold uppercase tracking-widest text-muted">Кто</span>
-          <Chip href={link({ kind: undefined })} active={kind === "players"}>
+          <PillLink href={link({ kind: undefined })} active={kind === "players"}>
             Игроки
-          </Chip>
-          <Chip href={link({ kind: "teams" })} active={kind === "teams"}>
+          </PillLink>
+          <PillLink href={link({ kind: "teams" })} active={kind === "teams"}>
             Команды
-          </Chip>
+          </PillLink>
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="mr-1 text-[10px] font-extrabold uppercase tracking-widest text-muted">Стадия</span>
-          <Chip href={link({ stage: undefined, group: undefined, bracket: undefined })} active={!stage}>
+          <PillLink href={link({ stage: undefined, group: undefined, bracket: undefined })} active={!stage}>
             Весь турнир
-          </Chip>
+          </PillLink>
           {STAGES.map((s) => (
-            <Chip key={s.key} href={link({ stage: s.key, group: undefined, bracket: undefined })} active={stage === s.key}>
+            <PillLink key={s.key} href={link({ stage: s.key, group: undefined, bracket: undefined })} active={stage === s.key}>
               {s.label}
-            </Chip>
+            </PillLink>
           ))}
         </div>
 
         {stage === "group" && (
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="mr-1 text-[10px] font-extrabold uppercase tracking-widest text-muted">Группа</span>
-            <Chip href={link({ group: undefined })} active={!group}>
+            <PillLink href={link({ group: undefined })} active={!group}>
               Обе
-            </Chip>
+            </PillLink>
             {["A", "B"].map((g) => (
-              <Chip key={g} href={link({ group: g })} active={group === g}>
+              <PillLink key={g} href={link({ group: g })} active={group === g}>
                 {g}
-              </Chip>
+              </PillLink>
             ))}
           </div>
         )}
@@ -190,26 +175,26 @@ export default async function StatsPage({
         {stage === "playoff" && (
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="mr-1 text-[10px] font-extrabold uppercase tracking-widest text-muted">Сетка</span>
-            <Chip href={link({ bracket: undefined })} active={!bracket}>
+            <PillLink href={link({ bracket: undefined })} active={!bracket}>
               Вся
-            </Chip>
+            </PillLink>
             {BRACKETS.map((b) => (
-              <Chip key={b.key} href={link({ bracket: b.key })} active={bracket === b.key}>
+              <PillLink key={b.key} href={link({ bracket: b.key })} active={bracket === b.key}>
                 {b.short}
-              </Chip>
+              </PillLink>
             ))}
           </div>
         )}
       </div>
 
       {data.games === 0 ?
-        <p className="rounded-card bg-surface p-6 text-sm font-bold text-muted cushion-field">
-          В этом разрезе нет ни одной карты. Карты попадают сюда, когда их привязывают к встрече —{" "}
-          <Link href="/admin/series" className="text-[var(--accent-ink)] hover:underline">
+        <EmptyState icon="chart" title="В этом разрезе нет карт">
+          Карта попадает в рейтинги, когда её привязывают к встрече —{" "}
+          <Link href="/admin/series" className="font-black text-[var(--accent-ink)] underline-offset-4 hover:underline">
             архив серий
           </Link>
           .
-        </p>
+        </EmptyState>
       : <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {METRICS.map((m) => {
             const rows = subjects

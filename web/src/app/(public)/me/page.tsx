@@ -3,7 +3,8 @@ import { googleConfigured } from "@/lib/google-oauth";
 import { currentAccount, linkablePlayers, effectiveRole, accountStatus, accountApplication } from "@/lib/account";
 import type { Role } from "@/lib/player-auth";
 import { buttonClasses } from "@/components/pouf/Button";
-import { AUTH_MAX_W } from "@/components/pouf/blocks";
+import { Alert, StatusPill } from "@/components/pouf/feedback";
+import { AuthCard, AuthDivider } from "@/components/pouf/auth";
 import { ApplicationSummary } from "@/app/_components/application-summary";
 import { Onboarding } from "./onboarding";
 import { ApplicationFlow } from "./application-form";
@@ -20,6 +21,10 @@ export const metadata = { title: "Кабинет" };
 // Что показывать, решает статус воронки (docs/archive/ACCOUNTS-PLAN.md §4): draft/rejected — только анкету
 // (пока она не отправлена, аккаунт в лиге ничего не значит), pending — «на рассмотрении»,
 // active — полноценный кабинет.
+//
+// Оболочка — `AuthCard` Кита (канонический макет «Вход»), общая со входом по коду из бота: до Э8
+// эта страница держала свою тёмную карточку (`bg-surface-1/60 shadow-xl shadow-black/20 backdrop-blur`),
+// оставшуюся от прежней темы, а `/login/tg` рядом уже был Light Clay.
 
 // Даты отправки и решения — одним форматом на весь кабинет.
 const dateTime = new Intl.DateTimeFormat("ru", {
@@ -38,11 +43,12 @@ const ERRORS: Record<string, string> = {
 
 type Account = NonNullable<Awaited<ReturnType<typeof currentAccount>>>;
 
-// Оформление бейджа роли: у каждой роли свой цвет и подпись — роль всегда на виду в карточке.
-const ROLE_META: Record<Role, { label: string; cls: string }> = {
-  owner: { label: "Владелец лиги", cls: "border-amber-200 bg-amber-100 text-amber-700" },
-  admin: { label: "Администратор", cls: "border-fuchsia-200 bg-fuchsia-100 text-fuchsia-700" },
-  player: { label: "Игрок", cls: "border-sky-200 bg-sky-100 text-sky-700" },
+// Роль всегда на виду. Тон — статусной пилюлей Кита: владелец и админ несут право писать
+// (предупреждающий и информационный тона), игрок — нейтральный.
+const ROLE_META: Record<Role, { label: string; tone: "warn" | "info" | "neutral" }> = {
+  owner: { label: "Владелец лиги", tone: "warn" },
+  admin: { label: "Администратор", tone: "info" },
+  player: { label: "Игрок", tone: "neutral" },
 };
 
 export default async function AccountPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
@@ -51,66 +57,60 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
   const role = account ? effectiveRole(account) : null;
   const status = account ? accountStatus(account) : null;
 
+  const signedOut = !account || !role || !status;
+  // Анкета идёт квизом с парами полей — ей нужна колонка пошире, чем окну входа.
+  const wide = !signedOut && status !== "active" && status !== "pending";
+
   return (
-    <main className="flex-1 px-4 py-10 md:py-16">
-      <div className={`mx-auto w-full ${AUTH_MAX_W}`}>
-        {/* Шапка-марка: делает страницу входа «лицом», а не голой формой */}
-        <div className="mb-6 text-center">
-          {/* Знак вместо буквы в градиентном квадрате: у бренда своя лента, и рисовать её
-              градиентом Tailwind значит держать вторую версию логотипа в классах. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/assets/brand/mark.svg" alt="" aria-hidden className="mx-auto h-12 w-auto" />
-          <h1 className="mt-3 text-2xl font-bold tracking-tight">Личный кабинет</h1>
-          <p className="mt-1 text-sm text-ink-muted">SPIRIT/CTRL</p>
+    <AuthCard title={signedOut ? "Вход в лигу" : "Личный кабинет"} subtitle="SPIRIT/CTRL" wide={wide}>
+      {error && ERRORS[error] && (
+        <div className="mb-4">
+          <Alert tone="err" block>
+            {ERRORS[error]}
+          </Alert>
         </div>
+      )}
 
-        <div className="rounded-2xl border border-hairline bg-surface-1/60 p-5 shadow-xl shadow-black/20 backdrop-blur">
-          {error && ERRORS[error] && (
-            <p className="mb-4 rounded-lg border border-rose-200 bg-rose-100 px-3 py-2 text-sm text-rose-700">{ERRORS[error]}</p>
-          )}
-
-          {!account || !role || !status ? (
-            <SignedOut />
-          ) : status === "active" ? (
-            <div className="space-y-4">
-              <ProfileCard account={account} role={role} />
-              <Link
-                href="/me/security"
-                className="flex items-center justify-between gap-2 rounded-xl border border-hairline bg-surface-2/40 px-4 py-3 text-sm transition-colors hover:border-accent"
-              >
-                <span className="text-ink">Вход и защита</span>
-                <span className="text-xs text-ink-subtle">пароль, способы входа →</span>
-              </Link>
-              {role !== "player" && <AdminEntry role={role} />}
-              {account.player ? (
-                <Linked account={account} />
-              ) : account.claim ? (
-                <Pending account={account} />
-              ) : (
-                <Onboarding players={await linkablePlayers()} />
-              )}
-            </div>
-          ) : status === "pending" ? (
-            <div className="space-y-4">
-              <ProfileCard account={account} role={role} />
-              <UnderReview account={account} />
-            </div>
+      {signedOut ? (
+        <SignedOut />
+      ) : status === "active" ? (
+        <div className="space-y-4">
+          <ProfileCard account={account} role={role} />
+          <Link
+            href="/me/security"
+            className="flex items-center justify-between gap-2 rounded-control bg-surface-2 px-4 py-3.5 text-sm font-black text-ink cushion-field transition hover:text-[var(--accent-ink)]"
+          >
+            <span>Вход и защита</span>
+            <span className="text-xs font-bold text-muted">пароль, способы входа →</span>
+          </Link>
+          {role !== "player" && <AdminEntry role={role} />}
+          {account.player ? (
+            <Linked account={account} />
+          ) : account.claim ? (
+            <Pending account={account} />
           ) : (
-            // draft и rejected: кроме анкеты, в кабинете ничего нет — заявку сначала надо отправить
-            <div className="space-y-4">
-              <ProfileCard account={account} role={role} />
-              <ApplicationFlow
-                application={accountApplication(account)}
-                players={await linkablePlayers()}
-                rejectedReason={account.rejectedReason}
-                // Дату решения форматируем на сервере: клиент в другом поясе показал бы своё время
-                rejectedAt={account.rejectedReason && account.reviewedAt ? dateTime.format(account.reviewedAt) : null}
-              />
-            </div>
+            <Onboarding players={await linkablePlayers()} />
           )}
         </div>
-      </div>
-    </main>
+      ) : status === "pending" ? (
+        <div className="space-y-4">
+          <ProfileCard account={account} role={role} />
+          <UnderReview account={account} />
+        </div>
+      ) : (
+        // draft и rejected: кроме анкеты, в кабинете ничего нет — заявку сначала надо отправить
+        <div className="space-y-4">
+          <ProfileCard account={account} role={role} />
+          <ApplicationFlow
+            application={accountApplication(account)}
+            players={await linkablePlayers()}
+            rejectedReason={account.rejectedReason}
+            // Дату решения форматируем на сервере: клиент в другом поясе показал бы своё время
+            rejectedAt={account.rejectedReason && account.reviewedAt ? dateTime.format(account.reviewedAt) : null}
+          />
+        </div>
+      )}
+    </AuthCard>
   );
 }
 
@@ -121,41 +121,40 @@ function ProfileCard({ account, role }: { account: Account; role: Role }) {
   const contact = account.email ?? (account.tgUsername ? `@${account.tgUsername}` : null);
   const initial = (account.name || contact || "").trim().charAt(0).toUpperCase() || "?";
   return (
-    <div className="rounded-xl border border-hairline bg-surface-2/50 p-4">
+    <div className="rounded-card bg-surface-2 p-4 cushion-field">
       <div className="flex items-center gap-3">
         {account.avatar ? (
           // eslint-disable-next-line @next/next/no-img-element -- внешний аватар google, не наш ассет
-          <img src={account.avatar} alt="" className="h-12 w-12 rounded-full object-cover" />
+          <img src={account.avatar} alt="" className="h-12 w-12 rounded-pill object-cover" />
         ) : (
-          <span className="grid h-12 w-12 place-items-center rounded-full bg-gradient-to-br from-accent to-fuchsia-600 text-lg font-bold text-white">
+          // Монограмма на мятной подушке Кита — тот же приём, что у команды без лого.
+          <span className="grid h-12 w-12 place-items-center rounded-pill bg-accent-fill text-lg font-black text-[var(--on-accent)] cushion-blob">
             {initial}
           </span>
         )}
         <div className="min-w-0 flex-1">
-          {account.name && <p className="truncate font-semibold">{account.name}</p>}
-          {contact && <p className="truncate text-sm text-ink-muted">{contact}</p>}
+          {account.name && <p className="truncate font-black text-ink">{account.name}</p>}
+          {contact && <p className="truncate text-[13px] font-bold text-muted">{contact}</p>}
         </div>
         <form action={logout}>
-          <button type="submit" className="shrink-0 text-xs text-ink-subtle transition-colors hover:text-ink">
+          <button
+            type="submit"
+            className="shrink-0 text-xs font-black text-muted transition-colors hover:text-ink"
+          >
             Выйти
           </button>
         </form>
       </div>
 
-      {/* Роль — обязательно на виду */}
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${meta.cls}`}>{meta.label}</span>
+        <StatusPill tone={meta.tone}>{meta.label}</StatusPill>
         {/* Плашка только у подтверждённой почты: её поднимает лишь Google, а «не подтверждена»
             после отказа от писем ничего не значит — подтверждать нечем */}
-        {account.emailVerified && (
-          <span className="rounded-full border border-emerald-200 bg-emerald-100 px-2.5 py-0.5 text-xs text-emerald-700">
-            почта подтверждена
-          </span>
-        )}
+        {account.emailVerified && <StatusPill tone="ok">почта подтверждена</StatusPill>}
       </div>
 
       {/* Способы входа — как «connected accounts» на привычных сайтах */}
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-subtle">
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold text-muted">
         <span>{account.googleSub ? "Google — привязан" : "Google — не привязан"}</span>
         <span>{account.passwordHash ? "Пароль — задан" : "Пароль — не задан"}</span>
       </div>
@@ -168,50 +167,55 @@ function AdminEntry({ role }: { role: "owner" | "admin" }) {
   return (
     <Link
       href="/admin"
-      className="flex items-center justify-between gap-2 rounded-xl border border-fuchsia-200 bg-fuchsia-100 px-4 py-3 transition-colors hover:bg-fuchsia-100"
+      className="flex items-center justify-between gap-2 rounded-control bg-accent-fill px-4 py-3.5 text-[var(--on-accent)] cushion-control transition hover:-translate-y-0.5"
     >
       <span>
-        <span className="block text-sm font-medium text-fuchsia-700">
+        <span className="block text-sm font-black">
           {role === "owner" ? "Вы владелец лиги" : "Вы админ лиги"}
         </span>
-        <span className="block text-xs text-fuchsia-700">Инструменты, заявки{role === "owner" ? ", роли" : ""}</span>
+        <span className="block text-xs font-bold text-[var(--on-accent-muted)]">
+          Инструменты, заявки{role === "owner" ? ", роли" : ""}
+        </span>
       </span>
-      <span className="shrink-0 text-sm text-fuchsia-700">Открыть →</span>
+      <span className="shrink-0 text-sm font-black">Открыть →</span>
     </Link>
   );
 }
 
-/** Не вошёл: формы email/пароль + кнопка Google. */
+/** Круглая иконочная кнопка соц-входа — ряд из макета «Вход» («или через»). */
+function SocialLink({ href, label, children }: { href: string; label: string; children: React.ReactNode }) {
+  return (
+    <a
+      href={href}
+      title={label}
+      aria-label={label}
+      className={buttonClasses({ variant: "quiet", size: "lg", shape: "icon", className: "rounded-pill" })}
+    >
+      {children}
+    </a>
+  );
+}
+
+/** Не вошёл: формы email/пароль + соц-входы. */
 function SignedOut() {
   return (
-    <div className="space-y-5">
+    <div>
       <AuthForms />
 
-      {googleConfigured() && (
-        <>
-          <div className="flex items-center gap-3 text-xs text-ink-subtle">
-            <span className="h-px flex-1 bg-hairline" />
-            или
-            <span className="h-px flex-1 bg-hairline" />
-          </div>
-          <a
-            href="/api/auth/google/start"
-            className="flex w-full items-center justify-center gap-3 rounded-xl border border-hairline-strong bg-white px-4 py-3 text-sm font-medium text-neutral-800 shadow-sm transition-transform hover:scale-[1.01] active:scale-100"
-          >
+      {/* Ряд «или через» из макета. Кроме Google здесь вход по коду из бота: у зарегистрированного
+          через телеграм нет ни почты, ни пароля, и без этой кнопки он бы не догадался, что кабинет
+          для него вообще открыт. */}
+      <AuthDivider>или через</AuthDivider>
+      <div className="flex justify-center gap-3.5">
+        {googleConfigured() && (
+          <SocialLink href="/api/auth/google/start" label="Войти через Google">
             <GoogleIcon />
-            Войти через Google
-          </a>
-        </>
-      )}
-
-      {/* Третий вход — код из бота: у зарегистрированного через телеграм нет ни почты, ни пароля,
-          и без этой строки он бы не догадался, что кабинет для него вообще открыт */}
-      <p className="text-center text-xs text-ink-subtle">
-        Регистрировались через нашего Telegram-бота?{" "}
-        <Link href="/login/tg" className="text-accent underline-offset-4 hover:underline">
-          Войти по коду
-        </Link>
-      </p>
+          </SocialLink>
+        )}
+        <SocialLink href="/login/tg" label="Войти по коду из Telegram">
+          <TelegramIcon />
+        </SocialLink>
+      </div>
     </div>
   );
 }
@@ -221,10 +225,9 @@ function Linked({ account }: { account: Account }) {
   const player = account.player!;
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-emerald-200 bg-emerald-100 px-4 py-3">
-        <p className="text-xs uppercase tracking-wide text-emerald-700">Профиль привязан</p>
-        <p className="mt-1 text-lg font-semibold">{player.nickname}</p>
-      </div>
+      <Alert tone="ok" block>
+        Профиль привязан: <b className="font-black">{player.nickname}</b>
+      </Alert>
       <div className="grid gap-2">
         {/* Ссылка, которая выглядит кнопкой: `buttonClasses` — тот же билдер, что внутри
             Button, поэтому ссылка не может разъехаться с кнопкой рядом. */}
@@ -247,35 +250,35 @@ function UnderReview({ account }: { account: Account }) {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-amber-200 bg-amber-100 px-4 py-3">
-        <p className="text-xs uppercase tracking-wide text-amber-700">Заявка на рассмотрении</p>
-        <p className="mt-1 text-sm text-ink-muted">
-          {account.claim ? (
-            <>
-              Вы заявили привязку к профилю <span className="font-semibold text-ink">{account.claim.nickname}</span>.
-            </>
-          ) : (
-            <>
-              Анкета отправлена
-              {app?.nickname ? (
-                <>
-                  {" "}
-                  под ником <span className="font-semibold text-ink">{app.nickname}</span>
-                </>
-              ) : null}
-              .
-            </>
-          )}{" "}
-          Организатор сверит данные и откроет доступ — до этого в кабинете больше ничего нет.
-        </p>
-        {sent && <p className="mt-2 text-xs text-ink-subtle">Отправлено {sent}</p>}
-      </div>
+      <Alert tone="warn" icon="clock" block>
+        Заявка на рассмотрении
+      </Alert>
+      <p className="text-[13px] font-bold leading-[1.5] text-muted">
+        {account.claim ? (
+          <>
+            Вы заявили привязку к профилю <b className="font-black text-ink">{account.claim.nickname}</b>.
+          </>
+        ) : (
+          <>
+            Анкета отправлена
+            {app?.nickname ? (
+              <>
+                {" "}
+                под ником <b className="font-black text-ink">{app.nickname}</b>
+              </>
+            ) : null}
+            .
+          </>
+        )}{" "}
+        Организатор сверит данные и откроет доступ — до этого в кабинете больше ничего нет.
+        {sent && <> Отправлено {sent}.</>}
+      </p>
 
       {app && (
-        <div className="rounded-xl border border-hairline bg-surface-2/40 px-4 py-3">
-          <p className="mb-1 text-xs uppercase tracking-wide text-ink-subtle">Что вы отправили</p>
+        <div className="rounded-card bg-surface-2 px-4 py-3.5 cushion-field">
+          <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[1px] text-muted">Что вы отправили</p>
           <ApplicationSummary application={app} />
-          <p className="mt-2 text-xs text-ink-subtle">
+          <p className="mt-3 text-[13px] font-bold leading-[1.45] text-muted">
             Ошиблись в данных? Напишите организатору — он вернёт заявку, и анкету можно будет поправить.
           </p>
         </div>
@@ -287,11 +290,13 @@ function UnderReview({ account }: { account: Account }) {
 /** Заявка на существующего игрока подана — ждёт оператора. */
 function Pending({ account }: { account: Account }) {
   return (
-    <div className="rounded-xl border border-amber-200 bg-amber-100 px-4 py-3">
-      <p className="text-xs uppercase tracking-wide text-amber-700">Заявка на подтверждении</p>
-      <p className="mt-1 text-sm text-ink-muted">
-        Вы заявили привязку к профилю <span className="font-semibold text-ink">{account.claim!.nickname}</span>.
-        Оператор подтвердит её в админке — после этого профиль появится здесь.
+    <div className="space-y-2">
+      <Alert tone="warn" icon="clock" block>
+        Заявка на подтверждении
+      </Alert>
+      <p className="text-[13px] font-bold leading-[1.5] text-muted">
+        Вы заявили привязку к профилю <b className="font-black text-ink">{account.claim!.nickname}</b>.
+        Организатор подтвердит её в админке — после этого профиль появится здесь.
       </p>
     </div>
   );
@@ -300,11 +305,20 @@ function Pending({ account }: { account: Account }) {
 /** Официальный «G» четырёх цветов — узнаваемость кнопки входа. */
 function GoogleIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+    <svg width="20" height="20" viewBox="0 0 18 18" aria-hidden="true">
       <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62Z" />
       <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.02-3.7H.96v2.34A9 9 0 0 0 9 18Z" />
       <path fill="#FBBC05" d="M3.98 10.72a5.4 5.4 0 0 1 0-3.44V4.94H.96a9 9 0 0 0 0 8.12l3.02-2.34Z" />
       <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.46 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.94l3.02 2.34C4.68 5.16 6.66 3.58 9 3.58Z" />
+    </svg>
+  );
+}
+
+/** Фирменный самолётик Telegram — вход по коду из бота. */
+function TelegramIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="#229ED9" aria-hidden="true">
+      <path d="M21.9 4.34 3.2 11.3c-.9.35-.88 1.64.03 1.93l4.7 1.47 1.8 5.48c.24.72 1.12.9 1.63.35l2.55-2.68 4.66 3.44c.6.44 1.46.11 1.62-.62l3-14.35c.2-.95-.72-1.72-1.6-1.34zM9.7 15.05l-.28 3.9 2.03-2.83 5.6-5.9c.12-.13-.04-.32-.2-.22l-7.15 5.05z" />
     </svg>
   );
 }

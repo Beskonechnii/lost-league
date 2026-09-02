@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getDivisions, tournamentBySlug } from "@/lib/tournaments";
 import { listTeamRosters } from "@/lib/roster-data";
 import { SectionHeader } from "@/components/pouf/blocks";
+import { EmptyState } from "@/components/pouf/feedback";
 import { TeamCards } from "@/app/(public)/roster/_components/team-cards";
 import { DivTabs, parseDiv } from "@/app/(public)/roster/_components/div-tabs";
 
@@ -53,10 +54,10 @@ export default async function EntrantsPage({
       )}
 
       {teams.length === 0 ? (
-        <p className="rounded-md border border-hairline bg-surface-1 px-3 py-4 text-sm text-ink-muted">
-          Пока ни одной команды в турнире. Принятые на модерации команды появятся здесь — а капитаны
-          могут подать свою команду на странице заявки.
-        </p>
+        <EmptyState icon="users" title="Пока ни одной команды">
+          Команда появляется здесь, когда её заявку принимают на модерации. Капитаны подают состав
+          на странице заявки.
+        </EmptyState>
       ) : (
         <TeamCards teams={teams} />
       )}

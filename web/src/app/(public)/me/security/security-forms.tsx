@@ -1,20 +1,19 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useId, useState } from "react";
 import { savePassword, deleteAccount, type SecState } from "./actions";
 import { Button } from "@/components/pouf/Button";
+import { Checkbox } from "@/components/pouf/checkbox";
+import { Alert } from "@/components/pouf/feedback";
 import { FormInput, Label } from "@/components/pouf/Input";
 
 // Формы вкладки «Вход и защита»: смена/задание пароля и удаление аккаунта.
-
-const box = {
-  error: "rounded-md border border-rose-200 bg-rose-100 px-3 py-2 text-sm text-rose-700",
-  done: "rounded-md border border-emerald-200 bg-emerald-100 px-3 py-2 text-sm text-emerald-700",
-};
+// Сообщения — алерты Кита (Э7): свои `rounded-md border border-rose-200` тут стояли третьей
+// версией одной и той же плашки.
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-1">
+    <div className="space-y-2">
       <Label>{label}</Label>
       {children}
     </div>
@@ -25,7 +24,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 export function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
   const [state, action, pending] = useActionState<SecState, FormData>(savePassword, null);
   return (
-    <form action={action} className="space-y-3">
+    <form action={action} className="space-y-4">
       {hasPassword && (
         <Field label="Текущий пароль">
           <FormInput name="current" type="password" autoComplete="current-password" required />
@@ -40,8 +39,8 @@ export function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
       <Button type="submit" disabled={pending} block>
         {pending ? "Сохраняю…" : hasPassword ? "Сменить пароль" : "Задать пароль"}
       </Button>
-      {state?.error && <p className={box.error}>{state.error}</p>}
-      {state?.ok && <p className={box.done}>{state.ok}</p>}
+      {state?.error && <Alert tone="err" block>{state.error}</Alert>}
+      {state?.ok && <Alert tone="ok" block>{state.ok}</Alert>}
     </form>
   );
 }
@@ -49,17 +48,24 @@ export function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
 /** Удаление аккаунта — за подтверждением галочкой, чтобы не снести вход случайно. */
 export function DeleteAccount() {
   const [confirmed, setConfirmed] = useState(false);
+  const confirmId = useId();
   return (
     <form action={deleteAccount} className="space-y-3">
-      <label className="flex items-start gap-2 text-sm text-ink-muted">
-        <input
-          type="checkbox"
+      {/* Флажок Кита (лунка → акцентная плитка), а не нативный с accent-color: подтверждение
+          сноса аккаунта должно читаться как элемент этой системы, а не как системный квадратик. */}
+      {/* Подпись соседним <label for>, а не обёрткой: флажок Кита — <button>, и клик по тексту
+          доходит до него только через `for` (button — labelable-элемент). */}
+      <div className="flex items-start gap-2.5">
+        <Checkbox
+          id={confirmId}
           checked={confirmed}
-          onChange={(e) => setConfirmed(e.target.checked)}
-          className="mt-0.5 h-4 w-4 accent-rose-500"
+          onCheckedChange={(v) => setConfirmed(v === true)}
+          className="mt-0.5"
         />
-        <span>Понимаю: вход к профилю оборвётся. Профиль игрока и статистика в лиге останутся.</span>
-      </label>
+        <label htmlFor={confirmId} className="text-[13px] font-bold leading-[1.5] text-muted">
+          Понимаю: вход к профилю оборвётся. Профиль игрока и статистика в лиге останутся.
+        </label>
+      </div>
       <Button type="submit" disabled={!confirmed} block tone="down">
         Удалить аккаунт
       </Button>

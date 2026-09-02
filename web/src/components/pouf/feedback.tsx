@@ -71,6 +71,37 @@ export function Alert({
 }
 
 /**
+ * Статус-пилюля Кита (артборд «Данные и обратная связь», ряд «статусы турнира»).
+ *
+ * От `Alert` отличается ролью, а не только видом: алерт — это СОБЫТИЕ («заявку
+ * вернули»), пилюля — постоянное СВОЙСТВО объекта («турнир идёт»). Поэтому у
+ * неё нет значка в лунке и роли `status`: она подпись, а не сообщение, и в
+ * ряду карточек её читают как метку.
+ *
+ * `neutral` — пятый тон сверх четырёх статусных: состояние «никакое»
+ * (черновик, архив), где пастель означала бы смысл, которого нет.
+ */
+export function StatusPill({
+  tone = "neutral",
+  children,
+}: {
+  tone?: AlertTone | "neutral";
+  children: ReactNode;
+}) {
+  const t = tone === "neutral" ? null : TONE[tone];
+  return (
+    <span
+      className={`inline-flex w-fit shrink-0 items-center rounded-pill px-4 py-1.5 font-pouf text-xs font-black ${
+        t ? "" : "bg-surface-2 text-muted cushion-field"
+      }`}
+      style={t ? { backgroundImage: t.bg, color: t.ink } : undefined}
+    >
+      {children}
+    </span>
+  );
+}
+
+/**
  * Пустое состояние Кита (`.empty`): вдавленная лунка, значок, заголовок и одна
  * фраза о том, почему пусто и кто это чинит. Пустой экран без объяснения читается
  * как поломка — поэтому текст обязателен, а не опционален.
