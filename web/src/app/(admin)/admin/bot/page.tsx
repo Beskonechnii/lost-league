@@ -51,6 +51,15 @@ export default async function BotPage({ searchParams }: { searchParams: Promise<
             {t.label}
           </Link>
         ))}
+        {/* Флоу — соседний маршрут, а не третья вкладка: канвасу нужна вся ширина витрины, а здесь
+            колонка чтения. В ряду он стоит рядом с вкладками, потому что для оператора это одна
+            работа — «что бот говорит и как ведёт разговор». */}
+        <Link
+          href="/admin/bot/flow"
+          className="rounded-md border border-hairline bg-surface-1 px-3 py-1.5 text-sm text-ink-muted hover:text-ink"
+        >
+          Флоу →
+        </Link>
       </div>
 
       {quiz ? <BotAdmin quiz={quiz} /> : settings ? <BotSettingsAdmin settings={settings} digestOff={!telegramConfigured()} /> : null}

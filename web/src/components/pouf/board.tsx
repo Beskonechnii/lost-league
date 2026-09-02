@@ -25,6 +25,12 @@ import {
  *   · жеребьёвка того же драфта в фазе настройки — тот же пул → та же колонка,
  *     но бросок означает «капитан», а не «пик».
  *
+ * Четвёртым пришёл канвас нодового флоу бота (`/admin/bot/flow`, Э2). Он не
+ * «пул → слоты» вовсе: цели у него нет, предмет остаётся там, где отпустили.
+ * Общими остались те же три вещи — порог срыва, вид предмета, «что и куда
+ * бросили», — поэтому канвасу хватило двух добавок: смещение в `onDrop`
+ * и `follow` у карточки. Раскладку и связи он рисует сам.
+ *
  * Общего у них НЕ логика (кто куда может попасть — правило экрана, и правила
  * эти разные) и НЕ раскладка (слева/справа против сверху/снизу). Общими
  * оказались ровно три вещи, и атом отвечает только за них:
@@ -59,8 +65,16 @@ export function DragBoard({
   children,
 }: {
   id: string;
-  /** Бросок: откуда тащили и над чем отпустили (`null` — мимо любой цели). */
-  onDrop: (from: string, to: string | null) => void;
+  /**
+   * Бросок: откуда тащили, над чем отпустили (`null` — мимо любой цели) и на
+   * сколько пикселей уехали.
+   *
+   * Смещение нужно четвёртому потребителю атома — канвасу нодового флоу бота
+   * (`/admin/bot/flow`): там предмет не переезжает в чужую лунку, а остаётся
+   * там, где его отпустили, и «куда» у броска вообще нет — есть только «на
+   * сколько». Три прежних экрана третий аргумент просто не читают.
+   */
+  onDrop: (from: string, to: string | null, delta: { x: number; y: number }) => void;
   /** Что показать в «летящей» карточке. Отсутствует — доска тащит без превью. */
   overlay?: (from: string) => ReactNode;
   children: ReactNode;
@@ -76,7 +90,7 @@ export function DragBoard({
       onDragCancel={() => setFrom(null)}
       onDragEnd={(e: DragEndEvent) => {
         setFrom(null);
-        onDrop(String(e.active.id), e.over ? String(e.over.id) : null);
+        onDrop(String(e.active.id), e.over ? String(e.over.id) : null, { x: e.delta.x, y: e.delta.y });
       }}
     >
       {children}
@@ -100,11 +114,17 @@ export function DragBoard({
  * `muted` — «взять нельзя»: карточка не тащится, но остаётся на месте и
  * гаснет. Это видимое состояние, а не запрет мышью: человек должен понимать,
  * почему игрок не берётся, ещё до попытки его взять.
+ *
+ * `follow` — карточка едет за курсором сама, вместо «летящей» копии доски.
+ * Нужно там, где предмет НЕ переезжает в чужую лунку, а просто лежит на новом
+ * месте (канвас нодового флоу): копия поверх оригинала там читается как второй
+ * узел, а связи всё равно продолжают идти в старую точку.
  */
 export function DragCard({
   id,
   muted = false,
   bare = false,
+  follow = false,
   onTap,
   title,
   children,
@@ -113,30 +133,36 @@ export function DragCard({
   muted?: boolean;
   /** Карточка уже лежит внутри подушки цели — своей она не носит, иначе подушка на подушке. */
   bare?: boolean;
+  /** Тащим сам предмет, а не его копию: см. комментарий выше. */
+  follow?: boolean;
   /** Поставить нажатием — второй способ того же действия, для узкого экрана. */
   onTap?: () => void;
   title?: string;
   children: ReactNode;
 }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id, disabled: muted });
+  const { attributes, listeners, setNodeRef, isDragging, transform } = useDraggable({ id, disabled: muted });
   // `bare` живёт внутри чужой подушки, поэтому своей поверхности не носит НИ в каком состоянии:
   // «взять нельзя» у него читается тем, что карточка просто не берётся, а не заливкой.
   const skin = bare
     ? `min-w-0 flex-1 ${muted ? "" : "cursor-grab active:cursor-grabbing"}`
     : muted
       ? "bg-surface-2 opacity-55 cushion-field"
-      : `bg-surface cushion-row hover:-translate-y-px hover:cushion-row-hover active:translate-y-px active:cursor-grabbing ${
-          onTap ? "cursor-pointer" : "cursor-grab"
-        }`;
+      : follow
+        ? "bg-surface cushion-row cursor-grab active:cursor-grabbing"
+        : `bg-surface cushion-row hover:-translate-y-px hover:cushion-row-hover active:translate-y-px active:cursor-grabbing ${
+            onTap ? "cursor-pointer" : "cursor-grab"
+          }`;
   return (
     <div
       ref={setNodeRef}
       {...(muted ? {} : { ...listeners, ...attributes })}
       onClick={muted ? undefined : onTap}
       title={title}
-      className={`rounded-control font-pouf transition-[box-shadow,transform,opacity] ${skin} ${
-        isDragging ? "opacity-30" : ""
-      }`}
+      // Пока карточку несут, переход по transform выключен: иначе она догоняет курсор с задержкой.
+      style={follow && transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined}
+      className={`rounded-control font-pouf ${follow && isDragging ? "" : "transition-[box-shadow,transform,opacity]"} ${skin} ${
+        isDragging && !follow ? "opacity-30" : ""
+      } ${follow && isDragging ? "cushion-row-hover" : ""}`}
     >
       {children}
     </div>

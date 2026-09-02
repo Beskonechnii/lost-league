@@ -1,0 +1,475 @@
+"use client";
+
+import { Button } from "@/components/pouf/Button";
+import { FormInput, FormSelect, FormTextarea, Label } from "@/components/pouf/Input";
+import { Checkbox } from "@/components/pouf/checkbox";
+import { Alert } from "@/components/pouf/feedback";
+import { portsOf, setPort } from "@/lib/bot-flow/editor";
+import type { BotFlowGraph, FlowButton, FlowCondition, FlowNode, FlowOp, NodeId } from "@/lib/bot-flow/types";
+
+/* Инспектор выбранной ноды: всё, чего не видно на карточке канваса.
+ *
+ * Правка идёт «нода целиком»: обработчик получает НОВУЮ ноду и кладёт её в граф. Точечных
+ * `onChangeText`/`onChangeVar` тут нет намеренно — типов нод девять, и на каждый пришлось бы
+ * заводить свой набор колбэков.
+ *
+ * Цель выхода правится в двух местах: мышью на канвасе (быстро) и списком здесь (надёжно, и это
+ * единственный способ связь СНЯТЬ — промах мимо ноды на канвасе ничего не меняет специально).
+ */
+
+const OPS: FlowOp[] = ["=", "≠", ">", "<", "есть", "нет"];
+const REF_LIST = "bot-flow-refs";
+
+export function FlowInspector({
+  node,
+  graph,
+  onChange,
+  onDelete,
+  onMakeStart,
+  ctxKeys,
+  settingKeys,
+}: {
+  node: FlowNode | null;
+  graph: BotFlowGraph;
+  onChange: (next: FlowNode) => void;
+  onDelete: () => void;
+  onMakeStart: () => void;
+  /** Что можно написать после `ctx.` — приходит с сервера (`bot-flow/context.ts`). */
+  ctxKeys: string[];
+  /** Что можно написать после `settings.` — реестры текстов и таймингов бота. */
+  settingKeys: string[];
+}) {
+  if (!node) {
+    return (
+      <p className="text-sm font-bold text-muted">
+        Ноду не выбрали. Нажмите на карточку на канвасе — здесь появятся её текст, переменные и выходы.
+      </p>
+    );
+  }
+
+  const isStart = graph.start === node.id;
+  // Переменные, которые собирает граф: имена вопросов. Подсказка, а не проверка — валидатор на Э3.
+  const varRefs = graph.nodes.filter((n) => n.type === "ask").map((n) => `vars.${n.var}`);
+  const refs = [...new Set([...varRefs, ...ctxKeys.map((k) => `ctx.${k}`), ...settingKeys.map((k) => `settings.${k}`)])];
+
+  const patch = (fields: Partial<FlowNode>) => onChange({ ...node, ...fields } as FlowNode);
+
+  return (
+    <div className="space-y-4 font-pouf">
+      {/* Один datalist на весь инспектор: подсказка ссылок нужна и условиям, и текстам. */}
+      <datalist id={REF_LIST}>
+        {refs.map((r) => (
+          <option key={r} value={r} />
+        ))}
+      </datalist>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-pill bg-surface-2 px-2 py-1 text-[11px] font-black uppercase tracking-[0.4px] text-muted">
+          {node.type}
+        </span>
+        <code className="text-[11px] font-bold text-muted">{node.id}</code>
+        {isStart && <span className="text-[11px] font-black uppercase text-accent-bright">старт</span>}
+      </div>
+
+      <div>
+        <Label htmlFor="flow-title">Заголовок ноды</Label>
+        <FormInput
+          id="flow-title"
+          size="sm"
+          className="mt-1 w-full"
+          value={node.title ?? ""}
+          placeholder="виден только здесь и на канвасе"
+          onChange={(e) => patch({ title: e.target.value })}
+        />
+      </div>
+
+      <Body node={node} onChange={onChange} refs={REF_LIST} />
+
+      <Ports node={node} graph={graph} onChange={onChange} />
+
+      <div className="flex flex-wrap gap-2 pt-1">
+        {!isStart && (
+          <Button size="xs" variant="quiet" onClick={onMakeStart}>
+            Сделать стартовой
+          </Button>
+        )}
+        <Button size="xs" variant="quiet" tone="down" onClick={onDelete} disabled={isStart}>
+          Удалить ноду
+        </Button>
+      </div>
+      {isStart && (
+        <p className="text-xs font-bold text-muted">
+          Стартовую ноду не удалить: без неё диалогу неоткуда начаться. Назначьте стартовой другую — и эта освободится.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* ── Поля, свои у каждого типа ──────────────────────────────────────────────────────────────── */
+
+function Body({ node, onChange, refs }: { node: FlowNode; onChange: (n: FlowNode) => void; refs: string }) {
+  switch (node.type) {
+    case "start":
+      return (
+        <div>
+          <Label htmlFor="flow-payload">Deeplink-payload</Label>
+          <FormInput
+            id="flow-payload"
+            size="sm"
+            className="mt-1 w-full"
+            value={node.payload ?? ""}
+            placeholder="пусто — обычный /start"
+            onChange={(e) => onChange({ ...node, payload: e.target.value || null })}
+          />
+          <Hint>Значение из ссылки вида t.me/бот?start=invite. Пусто — вход для всех остальных.</Hint>
+        </div>
+      );
+
+    case "message":
+    case "menu":
+      return (
+        <>
+          <TextField value={node.text} set={(text) => onChange({ ...node, text })} />
+          <Buttons node={node} onChange={onChange} refs={refs} />
+        </>
+      );
+
+    case "ask":
+      return (
+        <>
+          <TextField value={node.text} set={(text) => onChange({ ...node, text })} />
+          <div>
+            <Label htmlFor="flow-var">Переменная</Label>
+            <FormInput
+              id="flow-var"
+              size="sm"
+              mono
+              className="mt-1 w-full"
+              value={node.var}
+              onChange={(e) => onChange({ ...node, var: e.target.value })}
+            />
+            <Hint>Ответ ляжет в vars.{node.var || "…"} — под этим именем его подставляют дальше по графу.</Hint>
+          </div>
+          <div>
+            <Label htmlFor="flow-check">Проверка ответа</Label>
+            <FormSelect
+              id="flow-check"
+              size="sm"
+              className="mt-1 w-full"
+              value={node.check?.kind ?? "любой"}
+              onChange={(e) => {
+                const kind = e.target.value as NonNullable<typeof node.check>["kind"];
+                onChange({ ...node, check: kind === "любой" ? null : { ...(node.check ?? {}), kind } });
+              }}
+            >
+              {["любой", "число", "ссылка", "телеграм", "regex"].map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </FormSelect>
+            {node.check?.kind === "regex" && (
+              <FormInput
+                size="sm"
+                mono
+                className="mt-2 w-full"
+                value={node.check.pattern ?? ""}
+                placeholder="^[0-9]{4}$"
+                onChange={(e) => onChange({ ...node, check: { ...node.check!, pattern: e.target.value } })}
+              />
+            )}
+            {node.check && (
+              <FormInput
+                size="sm"
+                className="mt-2 w-full"
+                value={node.check.message ?? ""}
+                placeholder="что сказать, когда ответ не прошёл"
+                onChange={(e) => onChange({ ...node, check: { ...node.check!, message: e.target.value } })}
+              />
+            )}
+          </div>
+          <Buttons node={node} onChange={onChange} refs={refs} />
+        </>
+      );
+
+    case "if":
+      return (
+        <div>
+          <Label>Условие</Label>
+          <Condition
+            cond={node.cond}
+            refs={refs}
+            required
+            onChange={(cond) => onChange({ ...node, cond: cond ?? { left: "", op: "есть" } })}
+          />
+        </div>
+      );
+
+    case "action":
+      return (
+        <>
+          <div>
+            <Label htmlFor="flow-action">Действие</Label>
+            <FormInput
+              id="flow-action"
+              size="sm"
+              mono
+              className="mt-1 w-full"
+              value={node.action}
+              onChange={(e) => onChange({ ...node, action: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label htmlFor="flow-params">Параметры</Label>
+            <FormTextarea
+              id="flow-params"
+              mono
+              rows={3}
+              className="mt-1 w-full"
+              value={Object.entries(node.params ?? {})
+                .map(([k, v]) => `${k}=${v}`)
+                .join("\n")}
+              placeholder={"имя=значение\nодна пара в строке"}
+              onChange={(e) => onChange({ ...node, params: parseParams(e.target.value) })}
+            />
+          </div>
+          <Alert tone="warn" block>
+            Реестр действий пуст до Э4 — такая нода сейчас уйдёт в выход «ошибка».
+          </Alert>
+        </>
+      );
+
+    case "subflow":
+      return (
+        <>
+          <div>
+            <Label htmlFor="flow-module">Модуль</Label>
+            <FormInput
+              id="flow-module"
+              size="sm"
+              mono
+              className="mt-1 w-full"
+              value={node.flow}
+              onChange={(e) => onChange({ ...node, flow: e.target.value })}
+            />
+          </div>
+          <Alert tone="warn" block>
+            Модули подключаются на Э5 — пока такая нода отвечает понятной ошибкой и возвращает в меню.
+          </Alert>
+        </>
+      );
+
+    case "goto":
+      return <Hint>Куда ведёт переход — в списке выходов ниже.</Hint>;
+
+    case "end":
+      return (
+        <>
+          <div>
+            <Label htmlFor="flow-bye">Прощание</Label>
+            <FormTextarea
+              id="flow-bye"
+              rows={2}
+              className="mt-1 w-full"
+              value={node.text ?? ""}
+              placeholder="пусто — бот попрощается молча"
+              onChange={(e) => onChange({ ...node, text: e.target.value || null })}
+            />
+          </div>
+          <label className="flex items-center gap-2 text-sm font-bold text-ink">
+            <Checkbox
+              checked={node.toMenu !== false}
+              onCheckedChange={(v) => onChange({ ...node, toMenu: v === true })}
+            />
+            Вернуть в главное меню
+          </label>
+        </>
+      );
+  }
+}
+
+/* ── Общие кусочки ──────────────────────────────────────────────────────────────────────────── */
+
+const Hint = ({ children }: { children: React.ReactNode }) => (
+  <p className="mt-1 text-xs font-bold leading-[1.5] text-muted">{children}</p>
+);
+
+function TextField({ value, set }: { value: string; set: (text: string) => void }) {
+  return (
+    <div>
+      <Label htmlFor="flow-text">Что говорит бот</Label>
+      <FormTextarea id="flow-text" rows={4} className="mt-1 w-full" value={value} onChange={(e) => set(e.target.value)} />
+      <Hint>
+        Разметка как в остальных сообщениях бота: &lt;b&gt;жирный&lt;/b&gt;. Подстановка в фигурных скобках —
+        {" {vars.ник}"}, {"{ctx.игрок}"}, {"{settings.menu}"}; незнакомая скобка останется текстом.
+      </Hint>
+    </div>
+  );
+}
+
+function Condition({
+  cond,
+  refs,
+  required = false,
+  onChange,
+}: {
+  cond: FlowCondition | null | undefined;
+  refs: string;
+  /** У ноды «развилка» условие — сама суть ноды, снимать его нечем. */
+  required?: boolean;
+  onChange: (cond: FlowCondition | null) => void;
+}) {
+  if (!cond) {
+    return (
+      <Button size="xs" variant="quiet" className="mt-1" onClick={() => onChange({ left: "ctx.известен", op: "=", right: "да" })}>
+        Добавить условие
+      </Button>
+    );
+  }
+  const needsRight = cond.op !== "есть" && cond.op !== "нет";
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+      <FormInput
+        size="sm"
+        mono
+        list={refs}
+        className="min-w-0 flex-1"
+        value={cond.left}
+        placeholder="ctx.известен"
+        onChange={(e) => onChange({ ...cond, left: e.target.value })}
+      />
+      <FormSelect size="sm" className="w-[5.5rem]" value={cond.op} onChange={(e) => onChange({ ...cond, op: e.target.value as FlowOp })}>
+        {OPS.map((op) => (
+          <option key={op} value={op}>
+            {op}
+          </option>
+        ))}
+      </FormSelect>
+      {needsRight && (
+        <FormInput
+          size="sm"
+          className="min-w-0 flex-1"
+          value={cond.right ?? ""}
+          placeholder="да"
+          onChange={(e) => onChange({ ...cond, right: e.target.value })}
+        />
+      )}
+      {!required && (
+        <Button size="xs" variant="quiet" onClick={() => onChange(null)}>
+          убрать
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/** Кнопки ноды. Подпись кнопки — она же ключ перехода: именно её человек пришлёт обычным сообщением. */
+function Buttons({
+  node,
+  onChange,
+  refs,
+}: {
+  node: Extract<FlowNode, { type: "message" | "ask" | "menu" }>;
+  onChange: (n: FlowNode) => void;
+  refs: string;
+}) {
+  const buttons: FlowButton[] = node.buttons ?? [];
+  const set = (next: FlowButton[]) => onChange({ ...node, buttons: next } as FlowNode);
+  const patch = (i: number, fields: Partial<FlowButton>) => set(buttons.map((b, j) => (j === i ? { ...b, ...fields } : b)));
+
+  return (
+    <div>
+      <Label>Кнопки</Label>
+      <Hint>
+        Подпись кнопки — ключ перехода: клавиатура у бота обычная, и ответ приезжает текстом. Две одинаковые
+        подписи в одной ноде — ошибка; куда ведёт кнопка, задаётся в выходах ниже или связью на канвасе.
+      </Hint>
+      <ul className="mt-2 space-y-2">
+        {buttons.map((b, i) => (
+          <li key={i} className="rounded-control bg-surface-2 p-2 cushion-field">
+            <div className="flex items-center gap-1.5">
+              <FormInput
+                size="sm"
+                className="min-w-0 flex-1"
+                value={b.label}
+                placeholder="Текст на кнопке"
+                onChange={(e) => patch(i, { label: e.target.value })}
+              />
+              {/* Ширину держит обёртка, а не сам инпут: поле Кита носит `w-full` в базовых классах,
+                  и `w-16` на нём проигрывает — рядом стоящая подпись схлопывалась в точку. */}
+              <div className="w-16 shrink-0">
+                <FormInput
+                  size="sm"
+                  type="number"
+                  value={b.row ?? ""}
+                  placeholder="ряд"
+                  title="Номер ряда: кнопки с одним номером встают в строку"
+                  onChange={(e) => patch(i, { row: e.target.value === "" ? undefined : Number(e.target.value) })}
+                />
+              </div>
+              <Button size="xs" variant="quiet" onClick={() => set(buttons.filter((_, j) => j !== i))}>
+                ×
+              </Button>
+            </div>
+            <Condition cond={b.when} refs={refs} onChange={(when) => patch(i, { when })} />
+          </li>
+        ))}
+      </ul>
+      <Button
+        size="xs"
+        variant="quiet"
+        className="mt-2"
+        onClick={() => set([...buttons, { label: "", next: null }])}
+      >
+        Добавить кнопку
+      </Button>
+    </div>
+  );
+}
+
+/** Выходы ноды списком: единственное место, где связь можно снять. */
+function Ports({ node, graph, onChange }: { node: FlowNode; graph: BotFlowGraph; onChange: (n: FlowNode) => void }) {
+  const ports = portsOf(node);
+  if (!ports.length) return null;
+  return (
+    <div>
+      <Label>Выходы</Label>
+      <ul className="mt-1 space-y-1.5">
+        {ports.map((p) => (
+          <li key={p.key} className="flex items-center gap-2">
+            <span className="w-[8rem] shrink-0 truncate text-xs font-extrabold text-muted" title={p.label}>
+              {p.kind === "button" ? `«${p.label}»` : p.label}
+            </span>
+            <FormSelect
+              size="sm"
+              className="min-w-0 flex-1"
+              value={p.target ?? ""}
+              onChange={(e) => onChange(setPort(node, p.key, (e.target.value || null) as NodeId | null))}
+            >
+              <option value="">— наружу, старому обработчику —</option>
+              {graph.nodes
+                .filter((n) => n.id !== node.id)
+                .map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.title ? `${n.title} (${n.id})` : n.id}
+                  </option>
+                ))}
+            </FormSelect>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** `имя=значение` построчно → объект параметров действия. */
+function parseParams(raw: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const line of raw.split("\n")) {
+    const at = line.indexOf("=");
+    if (at < 1) continue;
+    out[line.slice(0, at).trim()] = line.slice(at + 1).trim();
+  }
+  return out;
+}
