@@ -3,18 +3,17 @@ import { notFound } from "next/navigation";
 import { getTeamProfile, teamRosterHistory, rosterKey, type RosterMember, type TeamSeasonRoster } from "@/lib/roster-data";
 import { prisma } from "@/lib/prisma";
 import { getStandings } from "@/lib/standings";
-import { listSeries, type SeriesRow } from "@/lib/series";
+import { listSeries } from "@/lib/series";
 import { teamDivision } from "@/lib/tournaments";
 import { teamAccent, teamTag } from "@/lib/profiles";
 import { buttonClasses } from "@/components/pouf/Button";
 import { roleLabel } from "@/lib/roles";
-import { playoffLabel } from "@/lib/stages";
 import { QUALIFICATION, qualificationOf } from "@/lib/qualification";
 import { can } from "@/lib/account";
 import { Eyebrow } from "@/components/pouf/text";
-import { Chip, StatTile } from "@/components/pouf/blocks";
+import { StatTile } from "@/components/pouf/blocks";
 import { Hero, HeroChip, HeroFooter, HeroLogo, RosterLine } from "@/components/pouf/hero";
-import { InfoWell, MapPills, ScoreWell, SeriesCard } from "@/components/pouf/series-card";
+import { SeriesBrief } from "@/app/_components/series-brief";
 import { Breadcrumbs } from "@/app/_components/breadcrumbs";
 import { PlayerAvatar } from "../../_components/avatar";
 
@@ -29,58 +28,6 @@ export const dynamic = "force-dynamic";
  * тёмной темы: на бумаге Кита она читалась как дыра. Обложка снята, баннер команды
  * (если он есть) стал верхним слоем той же светлой подушки.
  */
-
-const dateFmt = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" });
-
-/** Подпись разреза встречи: «Группа A» либо «Верхняя сетка · Полуфинал». */
-function cutLabel(s: SeriesRow) {
-  if (s.stage === "group") return s.group ? `Группа ${s.group}` : "Групповая стадия";
-  return playoffLabel(s.bracket, s.round) || "Плей-офф";
-}
-
-/**
- * Встреча команды карточкой Кита. Счёт всегда глазами хозяев (как в архиве), но карты
- * в подвале — глазами ЭТОЙ команды: карточка стоит на её странице, и «выиграна» должно
- * означать «выиграна ею», иначе на странице соперника те же пилюли значили бы обратное.
- */
-function TeamSeriesCard({ s, teamId }: { s: SeriesRow; teamId: number }) {
-  const played = s.homeScore + s.awayScore > 0;
-  const winner = s.homeScore > s.awayScore ? "home" : s.awayScore > s.homeScore ? "away" : null;
-  const maps = s.games.map((g) =>
-    g.winnerTeamId == null ? null : g.winnerTeamId === teamId ? ("w" as const) : ("l" as const),
-  );
-  const side = (t: SeriesRow["home"]) => ({
-    name: t.name,
-    tag: t.tag,
-    logo: t.logo,
-    // Ссылка только на соперника: ссылка на страницу, где ты уже стоишь, никуда не ведёт.
-    href: t.id === teamId ? undefined : `/roster/teams/${t.id}`,
-  });
-  const when = s.playedAt ?? s.startAt;
-
-  return (
-    <SeriesCard
-      badge={<Chip>{played ? "BO3" : "BO?"}</Chip>}
-      cut={cutLabel(s)}
-      aside={when ? dateFmt.format(when) : played ? "дата не заведена" : "время не назначено"}
-      home={side(s.home)}
-      away={side(s.away)}
-      center={
-        played ? (
-          <ScoreWell home={s.homeScore} away={s.awayScore} winner={winner} dim={s.guessed} />
-        ) : (
-          <InfoWell>{s.startAt ? s.startAt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }) : "—:—"}</InfoWell>
-        )
-      }
-      foot={maps.length > 0 ? <MapPills maps={maps} /> : played ? <span>карты не привязаны</span> : undefined}
-      action={
-        <Link href={`/series/${s.slug}`} className={buttonClasses({ variant: "quiet", size: "sm" })}>
-          {played ? "Отчёт" : "Подробнее"}
-        </Link>
-      }
-    />
-  );
-}
 
 export default async function TeamPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -247,7 +194,7 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
         ) : (
           <div className="grid gap-3 xl:grid-cols-2">
             {series.map((s) => (
-              <TeamSeriesCard key={s.id} s={s} teamId={team.id} />
+              <SeriesBrief key={s.id} s={s} teamId={team.id} />
             ))}
           </div>
         )}

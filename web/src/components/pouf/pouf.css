@@ -220,6 +220,14 @@
     0 0 0 1px rgba(255, 255, 255, 0.3),
     inset 3px 4px 8px rgba(40, 105, 76, 0.5),
     inset -1px -1px 2px rgba(255, 255, 255, 0.4);
+  /* Алерт: плита лежит на цветной заливке, поэтому её собственная тень темнее
+   * бежевой (rgba(90,70,40)) — иначе пастель съедает объём (Кит, .alert). */
+  --sh-alert:
+    0 0 0 1px rgba(255, 255, 255, 0.35),
+    inset 2px 3px 4px -1px rgba(255, 255, 255, 0.7),
+    inset -2px -3px 6px -1px rgba(90, 70, 40, 0.16),
+    0 4px 7px rgba(120, 108, 78, 0.14),
+    0 12px 22px -8px rgba(120, 108, 78, 0.22);
   /* Вдавленное: поля ввода, дорожки, лунки, сегмент-группа. */
   --sh-carve:
     inset 2px 3px 5px rgba(120, 108, 78, 0.26),
@@ -321,6 +329,9 @@
 }
 @utility cushion-row-hover {
   box-shadow: var(--pouf-row-hover);
+}
+@utility cushion-alert {
+  box-shadow: var(--sh-alert);
 }
 
 /* Keyframes migrate here alongside their components. */

@@ -6,7 +6,8 @@ import { myApplications, parseDraft } from "@/lib/team-application";
 import { botStartLink } from "@/lib/telegram";
 import { slugify } from "@/lib/profiles";
 import { roleLabel } from "@/lib/roles";
-import { SectionHeader } from "@/components/pouf/blocks";
+import { Chip, SectionHeader } from "@/components/pouf/blocks";
+import { Alert, type AlertTone } from "@/components/pouf/feedback";
 import { ApplyBoard } from "./apply-board";
 import { applyPool, takenSpots, captainReadyTeams, type PoolEntry } from "./pool";
 import { placeByRole } from "./slots";
@@ -20,6 +21,13 @@ export const metadata = { title: "Заявка команды" };
 // Приём открыт, пока турнир в статусе «Приём заявок».
 
 const date = new Intl.DateTimeFormat("ru", { day: "numeric", month: "long" });
+
+/** Состояние заявки словом и тоном Кита: «возвращена» — это не ошибка сайта, а решение модератора. */
+const STATUS: Record<string, { label: string; tone: AlertTone }> = {
+  pending: { label: "На рассмотрении", tone: "info" },
+  approved: { label: "Принята", tone: "ok" },
+  rejected: { label: "Возвращена", tone: "warn" },
+};
 
 /**
  * Прежняя заявка → слоты доски. Игрока ищем в пуле по account_id, затем по слагу ника — теми же
@@ -91,35 +99,39 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
   const readyTeams = needBoard && me!.playerId && !editable ? await captainReadyTeams(me!.playerId, pool) : [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-pouf">
       <SectionHeader
         eyebrow="Заявка команды"
         title={tournament.name}
         aside={tournament.regCloseAt ? `Заявки до ${date.format(tournament.regCloseAt)}` : null}
       />
 
+      {/* Свои заявки на этот турнир — карточками Кита. Статус несёт текст, а не только цвет:
+          плашка «на рассмотрении» рядом с составом отвечает на вопрос «а я вообще подал?». */}
       {mine.length > 0 && (
-        <ul className="space-y-2">
+        <ul className="space-y-3">
           {mine.map((a) => {
             const draft = parseDraft(a.payload);
+            const status = STATUS[a.status] ?? STATUS.pending;
             return (
-              <li key={a.id} className="rounded-lg border border-hairline bg-surface-1 p-4 text-sm">
-                <p>
-                  <span className="font-semibold">{draft?.name ?? "заявка"}</span>{" "}
-                  <span className="text-ink-subtle">
-                    ·{" "}
-                    {a.status === "pending" ? "на рассмотрении"
-                      : a.status === "approved" ? "принята"
-                      : "возвращена"}
-                    {a.division && ` · ${a.division.name}`}
-                  </span>
-                </p>
+              <li key={a.id} className="space-y-2.5 rounded-card bg-surface p-4 cushion-card sm:p-5">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <span className="text-[17px] font-black tracking-[-0.3px] text-ink">{draft?.name ?? "Заявка"}</span>
+                  <Alert tone={status.tone} mini>
+                    {status.label}
+                  </Alert>
+                  {a.division && <Chip>{a.division.name}</Chip>}
+                </div>
                 {draft && (
-                  <p className="mt-1 text-xs text-ink-subtle">
+                  <p className="text-xs font-bold leading-[1.5] text-muted">
                     {draft.players.map((p) => `${p.nickname} (${roleLabel(p.role) ?? "роль не указана"})`).join(", ")}
                   </p>
                 )}
-                {a.notes && <p className="mt-1 text-xs text-amber-700">Причина возврата: {a.notes}</p>}
+                {a.notes && (
+                  <Alert tone="warn" block>
+                    Причина возврата: {a.notes}
+                  </Alert>
+                )}
               </li>
             );
           })}
@@ -127,27 +139,29 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
       )}
 
       {!me ? (
-        <p className="rounded-md border border-hairline bg-surface-1 px-3 py-4 text-sm text-ink-muted">
+        <Alert tone="info" block>
           Заявку подаёт капитан из своего аккаунта.{" "}
-          <Link href="/me" className="text-accent-bright hover:underline">Войти в кабинет</Link>
+          <Link href="/me" className="underline">
+            Войти в кабинет
+          </Link>
           {" — "}или получить одноразовый код в телеграм-боте: «Личный профиль» → «Войти на сайт».
-        </p>
+        </Alert>
       ) : !open ? (
-        <p className="rounded-md border border-hairline bg-surface-1 px-3 py-4 text-sm text-ink-muted">
+        <Alert tone="info" icon="clock" block>
           Приём заявок на этот турнир сейчас закрыт.
-        </p>
+        </Alert>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {/* Свой статус в лиге подаче не мешает (решение 23.08.2026): капитан новой команды часто
               сам ещё не в ростере, а заявка всё равно проходит модерацию. */}
           {me.status !== "active" && (
-            <p className="rounded-md border border-hairline bg-surface-1 px-3 py-2 text-xs text-ink-muted">
+            <Alert tone="info" block>
               Ваша личная анкета ещё на модерации — на заявку команды это не влияет, её рассмотрят
               отдельно.
-            </p>
+            </Alert>
           )}
           {editable && (
-            <p className="rounded-md border border-sky-200 bg-sky-100 px-3 py-2 text-xs text-sky-700">
+            <Alert tone={editable.status === "rejected" ? "warn" : "info"} block>
               {editable.status === "rejected"
                 ? "Заявка возвращена — поправьте состав и отправьте снова, новая строка в очереди не появится."
                 : editable.status === "approved"
@@ -155,7 +169,7 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
                   : "Заявка уже подана и ждёт решения. Правки сохранятся в неё же."}
               {restored && restored.lost > 0 &&
                 ` Из прежнего состава не нашлось в лиге: ${restored.lost} — этих игроков нужно поставить заново.`}
-            </p>
+            </Alert>
           )}
           <ApplyBoard
             tournamentId={tournament.id}

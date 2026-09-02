@@ -5,35 +5,42 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
-  useDraggable,
-  useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { PlayerAvatar, TeamLogo } from "@/app/(public)/roster/_components/avatar";
 import { Button } from "@/components/pouf/Button";
-import { FormInput } from "@/components/pouf/Input";
+import { FormInput, Label } from "@/components/pouf/Input";
+import { Eyebrow } from "@/components/pouf/text";
+import { Alert } from "@/components/pouf/feedback";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/pouf/select";
 import { slugify } from "@/lib/profiles";
-import { ROLES, roleShort } from "@/lib/roles";
 import { submitApplication, type ApplyState } from "./actions";
 import { CORE_KEYS, SLOTS, type RosterInput } from "./slots";
+import { PlayerLine } from "./board-player";
+import { Pool } from "./board-pool";
+import { SlotBoard } from "./board-slots";
+import { ReadyTeamCard } from "./board-ready";
 import type { PoolEntry, TakenSpot, ReadyTeam } from "./pool";
 
-// Доска сборки состава. Слева — пул игроков лиги, справа — слоты позиций: игрок переносится мышью
-// либо ставится кликом в ближайший свободный слот. Раскладка и техника — как у доски драфта
-// UNDERBEER (`src/app/(admin)/underbeer/[id]/_components/draft-board.tsx`), там же обкатан @dnd-kit.
+// Доска сборки состава — оболочка: состояние, перетаскивание, форма. Слева пул игроков лиги,
+// справа слоты позиций: игрок переносится мышью либо ставится кликом в ближайший свободный слот.
+// Раскладка и техника — как у доски драфта UNDERBEER (`app/(admin)/underbeer/[id]/_components/
+// draft-board.tsx`), там же обкатан @dnd-kit.
 //
 // Почему так, а не восемь строк ввода, как было: состав собирается **только из пула** (BOT-PLAN.md,
 // Э5). Свободное поле ника позволяло вписать кого угодно, и лига узнавала о человеке уже на апруве.
 //
 // Состояние доски живёт в клиенте, поэтому ответ сервера ничего не стирает и форму перемонтировать
 // не нужно (старая форма ради этого возила введённое туда-обратно).
+//
+// Э7: файл был на 589 строк и держал в себе пул, слоты, карточку готового состава и строку игрока
+// (§C4 RELEASE-PLAN). Части разъехались по соседям — `board-pool`, `board-slots`, `board-ready`,
+// `board-player`, — а вид переехал на Кит: подушки вместо рамок, алерты вместо цветных плашек.
 
-const errorBox = "rounded-md border border-rose-200 bg-rose-100 px-3 py-2 text-sm text-rose-700";
-const SCROLL =
-  "[scrollbar-width:thin] [scrollbar-color:#404040_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-surface-3";
+/** Значение пункта «дивизион не выбран»: Radix не принимает пустую строку как value. */
+const ANY_DIVISION = "any";
 
 /** Кто в каком слоте: ключ слота → id игрока пула. */
 type Filled = Record<string, number | null>;
@@ -192,50 +199,59 @@ export function ApplyBoard({
     // `id` обязателен: без него @dnd-kit нумерует служебные `aria-describedby` счётчиком, и на
     // сервере с клиентом номера расходятся — React ругается несовпадением гидратации.
     <DndContext id="apply-board" sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-      <form action={formAction} className="space-y-4">
+      <form action={formAction} className="space-y-5 font-pouf">
         <input type="hidden" name="tournamentId" value={tournamentId} />
         <input type="hidden" name="tournamentSlug" value={tournamentSlug} />
         <input type="hidden" name="roster" value={JSON.stringify(roster)} />
 
         {readyTeams.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-xs text-ink-muted">
+          <section className="space-y-3">
+            <Eyebrow>Ваши команды</Eyebrow>
+            <p className="text-sm font-bold text-muted">
               Вы капитан — заявите свою команду как есть, состав уже собран. Дальше его можно поправить
               на доске ниже.
             </p>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               {readyTeams.map((rt) => (
                 <ReadyTeamCard key={rt.teamId} team={rt} onPick={() => fillFrom(rt)} />
               ))}
             </div>
-          </div>
+          </section>
         )}
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        <section className="grid gap-4 rounded-card bg-surface p-4 cushion-card sm:grid-cols-3 sm:p-5">
           <label className="block sm:col-span-2">
-            <span className="text-xs text-ink-muted">Название команды</span>
-            <FormInput value={name} onChange={(e) => setName(e.target.value)} required placeholder="Например: ГУЗЛИКИ" className="mt-1" />
+            <Label className="mb-1.5">Название команды</Label>
+            <FormInput value={name} onChange={(e) => setName(e.target.value)} required placeholder="Например: ГУЗЛИКИ" />
           </label>
           <label className="block">
-            <span className="text-xs text-ink-muted">Тег</span>
-            <FormInput value={tag} onChange={(e) => setTag(e.target.value)} placeholder="ГУЗЛИ" className="mt-1" />
+            <Label className="mb-1.5">Тег</Label>
+            <FormInput value={tag} onChange={(e) => setTag(e.target.value)} placeholder="ГУЗЛИ" />
           </label>
           {divisions.length > 1 && (
-            <label className="block">
-              <span className="text-xs text-ink-muted">Дивизион</span>
-              <select
-                value={divisionId ?? ""}
-                onChange={(e) => setDivisionId(e.target.value ? Number(e.target.value) : null)}
-                className="mt-1 h-9 w-full rounded-md border border-hairline bg-surface-2 px-2 text-sm"
+            <div className="block">
+              <Label className="mb-1.5">Дивизион</Label>
+              {/* «Не знаю» — такой же пункт списка, а не пустое значение: Radix запрещает
+                  SelectItem с пустым value, а вернуться к выбору организаторов капитан должен мочь. */}
+              <Select
+                value={divisionId ? String(divisionId) : ANY_DIVISION}
+                onValueChange={(v) => setDivisionId(v === ANY_DIVISION ? null : Number(v))}
               >
-                <option value="">— на усмотрение организаторов —</option>
-                {divisions.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
-            </label>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ANY_DIVISION}>— на усмотрение организаторов —</SelectItem>
+                  {divisions.map((d) => (
+                    <SelectItem key={d.id} value={String(d.id)}>
+                      {d.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           )}
-        </div>
+        </section>
 
         <div className="grid gap-4 lg:grid-cols-2">
           <Pool
@@ -249,33 +265,15 @@ export function ApplyBoard({
             onTap={tap}
             inviteUrl={inviteUrl}
           />
-
-          {/* min-w-0 обязателен обеим колонкам: без него ячейка грида растягивается по самой длинной
-              строке игрока (min-width: auto), truncate не срабатывает и страница едет вбок. */}
-          <div className="min-w-0 space-y-2">
-            <div className="flex items-baseline justify-between">
-              <h2 className="font-pouf text-sm font-bold uppercase tracking-wide text-ink-muted">Состав</h2>
-              <span className="text-xs text-ink-subtle">
-                основа {coreCount}/5 · всего {totalCount}
-              </span>
-            </div>
-            {SLOTS.map((s) => (
-              <SlotRow
-                key={s.key}
-                slotKey={s.key}
-                label={s.label}
-                core={s.core}
-                player={slots[s.key] ? byId.get(slots[s.key]!) ?? null : null}
-                isCaptain={!!slots[s.key] && slots[s.key] === captainId}
-                onCaptain={() => slots[s.key] && setCaptainId(slots[s.key]!)}
-                onClear={() => clearSlot(s.key)}
-              />
-            ))}
-            <p className="text-xs text-ink-subtle">
-              Капитан — кружком у слота; это тот, с кем организаторы будут договариваться о встречах,
-              а не обязательно тот, кто подаёт заявку. MMR заявленный: итоговую цифру ставит организатор.
-            </p>
-          </div>
+          <SlotBoard
+            slots={slots}
+            byId={byId}
+            captainId={captainId}
+            coreCount={coreCount}
+            totalCount={totalCount}
+            onCaptain={setCaptainId}
+            onClear={clearSlot}
+          />
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -288,7 +286,7 @@ export function ApplyBoard({
             Проверить состав
           </Button>
           {!ready && (
-            <span className="text-xs text-ink-subtle">
+            <span className="text-xs font-bold text-muted">
               {!name.trim()
                 ? "Укажите название команды"
                 : coreCount < 5
@@ -298,25 +296,24 @@ export function ApplyBoard({
           )}
         </div>
 
-        {hint && <p className="text-xs text-amber-700">{hint}</p>}
-        {state?.error && <p className={errorBox}>{state.error}</p>}
-        {state?.ok && <p className="text-sm text-emerald-700">{state.ok}</p>}
+        {hint && <Alert tone="warn">{hint}</Alert>}
+        {state?.error && <Alert tone="err">{state.error}</Alert>}
+        {state?.ok && <Alert tone="ok">{state.ok}</Alert>}
 
         {/* Замечания: красное закрывает отправку, жёлтое — повод перепроверить, серое — просто факт. */}
         {state?.problems && state.problems.length > 0 && (
-          <ul className="space-y-1">
+          <ul className="space-y-2">
             {state.problems.map((p, i) => (
-              <li
-                key={i}
-                className={`rounded-md border px-3 py-1.5 text-xs ${
-                  p.level === "block"
-                    ? "border-rose-200 bg-rose-100 text-rose-700"
-                    : p.level === "warn"
-                      ? "border-amber-200 bg-amber-100 text-amber-700"
-                      : "border-hairline bg-surface-2 text-ink-subtle"
-                }`}
-              >
-                {p.text}
+              <li key={i}>
+                {p.level === "block" ? (
+                  <Alert tone="err">{p.text}</Alert>
+                ) : p.level === "warn" ? (
+                  <Alert tone="warn">{p.text}</Alert>
+                ) : (
+                  <span className="inline-flex rounded-chip bg-surface-2 px-[15px] py-[11px] text-[13px] font-extrabold text-muted cushion-field">
+                    {p.text}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
@@ -325,265 +322,11 @@ export function ApplyBoard({
 
       <DragOverlay>
         {dragId ? (
-          <div className="w-64 rounded-md border border-accent bg-surface-1 opacity-95">
+          <div className="w-64 rounded-control bg-surface opacity-95 cushion-card">
             <PlayerLine player={byId.get(dragId)!} />
           </div>
         ) : null}
       </DragOverlay>
     </DndContext>
-  );
-}
-
-// ── готовый состав капитана ───────────────────────────────────────────────────
-
-/**
- * Карточка команды, где вошедший — капитан: лого, название и весь состав с ролями и MMR. Кнопка
- * переносит состав на доску заявки. Игроков вне пула лиги (без account_id) показываем блёкло и с
- * пометкой — в заявку они не уедут, их капитан добавит вручную.
- */
-function ReadyTeamCard({ team, onPick }: { team: ReadyTeam; onPick: () => void }) {
-  const accent = team.color ?? undefined;
-  return (
-    <div className="overflow-hidden rounded-xl border border-hairline bg-surface-1">
-      <div
-        className="flex items-center gap-3 px-3 py-2.5"
-        style={accent ? { background: `linear-gradient(100deg, ${accent}26, transparent 70%)` } : undefined}
-      >
-        <TeamLogo team={{ name: team.name, tag: team.tag, logo: team.logo }} size={40} className="!rounded-lg" />
-        <div className="min-w-0 flex-1">
-          <div className="truncate font-pouf text-sm font-bold uppercase tracking-wide">{team.name}</div>
-          {team.tag && <div className="truncate text-xs text-ink-subtle">{team.tag}</div>}
-        </div>
-        <span className="shrink-0 text-xs text-ink-subtle">{team.players.length} чел.</span>
-      </div>
-
-      <ul className="divide-y divide-hairline/60">
-        {team.players.map((p) => (
-          <li key={p.id} className={`flex items-center gap-2 px-3 py-1.5 ${p.inPool ? "" : "opacity-45"}`}>
-            <PlayerAvatar photo={p.photo} nickname={p.nickname} color={team.color} size={28} className="!rounded-md" />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className="truncate text-sm font-medium">{p.nickname}</span>
-                {p.isCaptain && <span className="shrink-0 text-[11px] font-black text-accent-bright">C</span>}
-              </div>
-              <div className="truncate text-[11px] text-ink-subtle">
-                {[roleShort(p.role), p.realName].filter(Boolean).join(" · ") || "—"}
-              </div>
-            </div>
-            {p.inPool ? (
-              <span className="shrink-0 text-right text-[11px] text-ink-muted">
-                {p.mmr ? p.mmr.toLocaleString("ru-RU") : "—"}
-                <span className="block text-[10px] text-ink-subtle">MMR</span>
-              </span>
-            ) : (
-              <span className="shrink-0 text-[10px] text-amber-700">нет в пуле</span>
-            )}
-          </li>
-        ))}
-      </ul>
-
-      <div className="flex items-center justify-between gap-2 px-3 py-2.5">
-        <Button type="button" size="sm" onClick={onPick}>Заявить этот состав</Button>
-        {team.lost > 0 && (
-          <span className="text-right text-[11px] text-amber-700">
-            {team.lost} без account_id — добавьте вручную
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── пул ──────────────────────────────────────────────────────────────────────
-
-function Pool({
-  found,
-  query,
-  setQuery,
-  role,
-  setRole,
-  busy,
-  placed,
-  onTap,
-  inviteUrl,
-}: {
-  found: PoolEntry[];
-  query: string;
-  setQuery: (v: string) => void;
-  role: string | null;
-  setRole: (v: string | null) => void;
-  busy: Map<number, string>;
-  placed: Map<number, string>;
-  onTap: (id: number) => void;
-  inviteUrl: string | null;
-}) {
-  return (
-    <div className="min-w-0 space-y-2">
-      <div className="flex items-baseline justify-between">
-        <h2 className="font-pouf text-sm font-bold uppercase tracking-wide text-ink-muted">Игроки лиги</h2>
-        <span className="text-xs text-ink-subtle">{found.length}</span>
-      </div>
-      <FormInput value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск по нику, имени или команде" />
-      {/* Позиции — кнопками, а не выпадающим списком: их шесть, и выбор в один клик тут важнее
-          экономии места (то же решение, что у вкладок дивизионов). */}
-      <div className="flex flex-wrap gap-1.5 font-pouf">
-        {[{ key: null as string | null, short: "Все" }, ...ROLES.filter((r) => r.position !== null)].map((r) => (
-          <button
-            key={r.key ?? "all"}
-            type="button"
-            onClick={() => setRole(r.key)}
-            className={`inline-flex items-center rounded-[14px] px-3 py-[5px] text-[12px] font-black transition-[box-shadow,transform,background] ${
-              role === r.key
-                ? "bg-accent-fill text-[var(--on-accent)] cushion-control"
-                : "bg-surface text-ink-muted cushion-field hover:text-ink"
-            }`}
-          >
-            {r.short}
-          </button>
-        ))}
-      </div>
-      <div className={`max-h-[28rem] space-y-1 overflow-y-auto rounded-lg border border-hairline bg-surface-1/40 p-1.5 ${SCROLL}`}>
-        {found.length === 0 && (
-          <p className="px-2 py-6 text-center text-xs text-ink-subtle">
-            Никого не нашли. В списке только игроки лиги — новичка сначала регистрируют в боте.
-          </p>
-        )}
-        {found.map((p) => (
-          <PoolCard key={p.id} player={p} busyIn={busy.get(p.id) ?? null} placedAt={placed.has(p.id)} onTap={() => onTap(p.id)} />
-        ))}
-      </div>
-      <p className="rounded-md border border-hairline bg-surface-1 px-3 py-2 text-xs text-ink-muted">
-        Нет игрока в списке? В составе может быть только тот, кого лига знает.{" "}
-        {inviteUrl ? (
-          <>
-            Пришлите ему ссылку{" "}
-            <a href={inviteUrl} target="_blank" rel="noreferrer" className="break-all text-accent-bright hover:underline">
-              {inviteUrl}
-            </a>{" "}
-            — он зарегистрируется в боте и появится здесь.
-          </>
-        ) : (
-          <>Попросите его зарегистрироваться в телеграм-боте лиги — после этого он появится здесь.</>
-        )}
-      </p>
-    </div>
-  );
-}
-
-function PoolCard({
-  player,
-  busyIn,
-  placedAt,
-  onTap,
-}: {
-  player: PoolEntry;
-  busyIn: string | null;
-  placedAt: boolean;
-  onTap: () => void;
-}) {
-  const locked = !!busyIn || placedAt;
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `pool:${player.id}`, disabled: locked });
-  return (
-    <div
-      ref={setNodeRef}
-      {...(locked ? {} : { ...listeners, ...attributes })}
-      onClick={onTap}
-      title={busyIn ? `Уже действующий в составе «${busyIn}» этого дивизиона` : undefined}
-      className={`rounded-md border transition-colors ${
-        locked
-          ? "border-hairline opacity-40"
-          : "cursor-pointer border-hairline hover:border-accent active:cursor-grabbing"
-      } ${isDragging ? "opacity-30" : ""}`}
-    >
-      <PlayerLine player={player} note={busyIn ? `занят: ${busyIn}` : placedAt ? "в составе" : null} />
-    </div>
-  );
-}
-
-// ── слоты ────────────────────────────────────────────────────────────────────
-
-function SlotRow({
-  slotKey,
-  label,
-  core,
-  player,
-  isCaptain,
-  onCaptain,
-  onClear,
-}: {
-  slotKey: string;
-  label: string;
-  core: boolean;
-  player: PoolEntry | null;
-  isCaptain: boolean;
-  onCaptain: () => void;
-  onClear: () => void;
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: `slot:${slotKey}` });
-  // Игрока из слота тоже можно тащить: в другой слот — перестановка, мимо слотов — «убрать».
-  const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
-    id: `placed:${slotKey}`,
-    disabled: !player,
-  });
-  return (
-    <div
-      ref={setNodeRef}
-      className={`flex items-center gap-2 rounded-md border bg-surface-1/40 p-1.5 transition-colors ${
-        isOver ? "border-accent" : core && !player ? "border-dashed border-hairline" : "border-hairline"
-      }`}
-    >
-      <input
-        type="radio"
-        name="captain-slot"
-        checked={isCaptain}
-        onChange={onCaptain}
-        disabled={!player}
-        aria-label="капитан"
-        className="ml-1 shrink-0"
-      />
-      <span className="w-28 shrink-0 text-xs text-ink-subtle">{label}</span>
-      {player ? (
-        <>
-          <div
-            ref={setDragRef}
-            {...listeners}
-            {...attributes}
-            className={`min-w-0 flex-1 cursor-grab active:cursor-grabbing ${isDragging ? "opacity-30" : ""}`}
-          >
-            <PlayerLine player={player} />
-          </div>
-          <button type="button" onClick={onClear} className="shrink-0 px-2 text-ink-subtle hover:text-rose-700" title="Убрать">
-            ✕
-          </button>
-        </>
-      ) : (
-        <span className="flex-1 px-2 py-2 text-xs text-ink-subtle">
-          перетащите игрока или нажмите на него в списке
-        </span>
-      )}
-    </div>
-  );
-}
-
-/** Строка игрока — общий вид для пула, слота и оверлея перетаскивания. */
-function PlayerLine({ player, note }: { player: PoolEntry; note?: string | null }) {
-  return (
-    <div className="flex items-center gap-2 px-2 py-1.5">
-      <PlayerAvatar photo={player.photo} nickname={player.nickname} color={player.color} size={30} className="!rounded-md" />
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium">{player.nickname}</div>
-        <div className="truncate text-[11px] text-ink-subtle">
-          {[player.realName, player.teamName, roleShort(player.role)].filter(Boolean).join(" · ") || "без команды"}
-        </div>
-      </div>
-      {note ? (
-        <span className="shrink-0 text-[10px] text-ink-subtle">{note}</span>
-      ) : (
-        <span className="shrink-0 text-right text-[11px] text-ink-muted">
-          {player.mmr ? player.mmr.toLocaleString("ru-RU") : "—"}
-          <span className="block text-[10px] text-ink-subtle">MMR</span>
-        </span>
-      )}
-    </div>
   );
 }
