@@ -118,7 +118,7 @@ export function VisionMap({
       </div>
 
       {/* Карта */}
-      <div className="relative mx-auto aspect-square w-full max-w-[480px] overflow-hidden rounded-lg ring-1 ring-white/10">
+      <div className="relative mx-auto aspect-square w-full max-w-[480px] overflow-hidden rounded-lg ring-1 ring-[var(--pg-ring)]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/assets/map/minimap.jpg" alt="Карта Dota 2" className="absolute inset-0 h-full w-full object-cover" />
 
@@ -207,7 +207,7 @@ export function VisionMap({
                       setTime(t);
                     }}
                     className={`absolute top-0 -translate-x-1/2 text-[10px] tabular-nums transition ${
-                      Math.abs(time - t) < 30 ? "font-bold text-ink" : "text-ink-subtle hover:text-ink-muted"
+                      Math.abs(time - t) < 30 ? "font-bold text-ink" : "text-muted hover:text-ink"
                     }`}
                     style={{ left: `${(t / tEnd) * 100}%` }}
                     title={t === 0 ? "Вся расстановка за матч" : clock(t)}
@@ -219,7 +219,7 @@ export function VisionMap({
             </div>
             <span className="w-12 flex-none text-right text-sm font-semibold tabular-nums text-ink">{clock(time)}</span>
           </div>
-          <div className="mt-1 text-center text-[10px] text-ink-subtle">
+          <div className="mt-1 text-center text-[10px] font-bold text-muted">
             {overview ? "0:00 — вся расстановка вардов за матч" : "варды, активные в этот момент"}
           </div>
         </>
@@ -243,7 +243,7 @@ function FilterChip({
     <button
       onClick={onClick}
       className={`flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold transition ${
-        on ? "bg-surface-2 text-ink" : "text-ink-subtle line-through opacity-60"
+        on ? "bg-surface-2 text-ink" : "text-muted line-through opacity-70"
       }`}
     >
       {dot && <span className="inline-block h-2 w-2 rounded-full" style={{ background: dot }} />}
@@ -255,7 +255,7 @@ function FilterChip({
 function WardTip({ w }: { w: Ward }) {
   const life = w.left == null ? "до конца" : `${clock(w.placed)} → ${clock(w.left)}`;
   return (
-    <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1 w-max max-w-[180px] -translate-x-1/2 rounded-md bg-canvas/95 px-2 py-1 text-left text-[10px] leading-tight text-ink shadow-lg ring-1 ring-white/10">
+    <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1 w-max max-w-[180px] -translate-x-1/2 rounded-md bg-surface px-2 py-1 text-left text-[10px] leading-tight text-ink cushion-row">
       <span className="flex items-center gap-1 font-semibold">
         {w.hero.slug && (
           // eslint-disable-next-line @next/next/no-img-element

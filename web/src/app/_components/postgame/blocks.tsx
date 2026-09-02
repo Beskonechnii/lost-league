@@ -4,6 +4,11 @@
 // карта строений и бейджи событий. Их рендерят и страница матча (адаптивная),
 // и экспортный холст (фиксированные пиксели) — поэтому здесь нет media-брейкпоинтов:
 // при снятии PNG media-query могут пересчитаться и сломать раскладку.
+//
+// Цвета блоки не выбирают: всё, что не иконка Доты, нарисовано на `var(--pg-*)`.
+// Экранная (светлая) кожа объявлена в `globals.css`, тёмная кожа выгрузки —
+// в `skin.ts`, её вешает на свою рамку экспортный холст. Так один и тот же
+// компонент светел на сайте и тёмен на картинке, и сайт не носит тёмную тему.
 
 import { useState, type MouseEvent } from "react";
 import { assetUrl, assetFallback, type AssetKind } from "@/lib/assets";
@@ -42,7 +47,7 @@ export function Icon({ kind, slug, name, h = 24, className = "" }: { kind: Asset
         if (!img.src.endsWith(fb)) img.src = fb;
         else img.style.visibility = "hidden";
       }}
-      className={`inline-block shrink-0 rounded-sm ring-1 ring-black/50 ${className}`}
+      className={`inline-block shrink-0 rounded-sm ring-1 ring-[var(--pg-ring)] ${className}`}
     />
   );
 }
@@ -64,15 +69,18 @@ export function HeroFrame({
   title?: string;
   className?: string;
 }) {
-  const tint = side === "radiant" ? "border-emerald-700/40 bg-emerald-950/40" : "border-rose-700/40 bg-rose-950/40";
+  const tint =
+    side === "radiant"
+      ? "border-[var(--pg-radiant-line)] bg-[var(--pg-radiant-soft)]"
+      : "border-[var(--pg-dire-line)] bg-[var(--pg-dire-soft)]";
   return (
     <div title={title ?? hero.name} className={`relative inline-flex shrink-0 rounded-md border p-0.5 ${tint} ${className}`}>
       <Icon kind="heroes" slug={hero.slug} name={hero.name} h={h} className={`!ring-0 ${banned ? "opacity-55 grayscale" : ""}`} />
       {banned && (
         <span
-          className="pointer-events-none absolute inset-0 grid place-items-center font-black text-rose-500"
+          className="pointer-events-none absolute inset-0 grid place-items-center font-black text-[var(--pg-dire)]"
           // крестик тянется за размером иконки, иначе на крупных банах он теряется
-          style={{ fontSize: Math.round(h * 0.5), lineHeight: 1, textShadow: "0 1px 2px rgba(0,0,0,.85)" }}
+          style={{ fontSize: Math.round(h * 0.5), lineHeight: 1, textShadow: "0 1px 2px rgba(0,0,0,.55)" }}
         >
           ✕
         </span>
@@ -83,7 +91,7 @@ export function HeroFrame({
 
 // Портрет героя во всю ширину колонки (у скорборда своя раскладка, не Icon).
 export function HeroPortrait({ hero, dim }: { hero: Entity; dim?: boolean }) {
-  if (!hero.slug) return <div className="aspect-video w-full rounded-md bg-neutral-800" />;
+  if (!hero.slug) return <div className="aspect-video w-full rounded-md bg-[var(--pg-well)]" />;
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
@@ -97,7 +105,7 @@ export function HeroPortrait({ hero, dim }: { hero: Entity; dim?: boolean }) {
         if (!img.src.endsWith(fb)) img.src = fb;
         else img.style.opacity = "0";
       }}
-      className={`block w-full rounded-md ring-1 ring-black/50 ${dim ? "opacity-60 grayscale" : ""}`}
+      className={`block w-full rounded-md ring-1 ring-[var(--pg-ring)] ${dim ? "opacity-60 grayscale" : ""}`}
     />
   );
 }
@@ -115,13 +123,19 @@ export function TeamCrest({ logo, name, size = 44 }: { logo: string | null; name
         loading="lazy"
         onError={() => setBroken(true)}
         style={{ width: size, height: size }}
-        className="shrink-0 rounded-lg object-contain ring-1 ring-neutral-700"
+        className="shrink-0 rounded-lg object-contain ring-1 ring-[var(--pg-ring)]"
       />
     );
   return (
     <div
-      style={{ width: size, height: size, fontSize: Math.round(size * 0.32) }}
-      className="grid shrink-0 place-items-center rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-600 font-black text-white shadow"
+      style={{
+        width: size,
+        height: size,
+        fontSize: Math.round(size * 0.32),
+        background: "var(--pg-crest)",
+        color: "var(--pg-crest-ink)",
+      }}
+      className="grid shrink-0 place-items-center rounded-lg font-black shadow"
     >
       {initials(name)}
     </div>
@@ -134,7 +148,7 @@ export function ItemSlot({ item, h, className = "" }: { item: Entity | null; h: 
     return (
       <div
         style={{ height: h, width: Math.round(h * 1.35) }}
-        className="rounded-sm bg-neutral-800/50 ring-1 ring-inset ring-neutral-700/40"
+        className="rounded-sm bg-[var(--pg-well)] ring-1 ring-inset ring-[var(--pg-well-line)]"
       />
     );
   return <Icon kind="items" slug={item.slug} name={item.name} h={h} className={className} />;
@@ -147,7 +161,7 @@ export function ItemsRow({ p, size = 22 }: { p: PlayerReport; size?: number }) {
   const back = pad(p.backpack, 3);
   const small = Math.max(10, Math.round(size * 0.72));
   const neutral = p.neutral && p.neutral.slug ? p.neutral : null;
-  const sep = "border-l border-neutral-700/60 pl-1.5";
+  const sep = "border-l border-[var(--pg-line)] pl-1.5";
   return (
     <div className="flex items-center gap-1.5">
       {/* 6 базовых */}
@@ -165,9 +179,9 @@ export function ItemsRow({ p, size = 22 }: { p: PlayerReport; size?: number }) {
       {/* нейтральный предмет */}
       <div className={sep}>
         {neutral ? (
-          <Icon kind="items" slug={neutral.slug} name={neutral.name} h={size} className="!rounded-full !ring-amber-500/70" />
+          <Icon kind="items" slug={neutral.slug} name={neutral.name} h={size} className="!rounded-full !ring-[var(--pg-gold-line)]" />
         ) : (
-          <div style={{ width: size, height: size }} className="rounded-full bg-neutral-800/50 ring-1 ring-inset ring-amber-700/30" />
+          <div style={{ width: size, height: size }} className="rounded-full bg-[var(--pg-well)] ring-1 ring-inset ring-[var(--pg-gold-line)]" />
         )}
       </div>
       {/* Аганим (скипетр) + Шард — подсвечены при наличии */}
@@ -194,12 +208,12 @@ export function ItemsRow({ p, size = 22 }: { p: PlayerReport; size?: number }) {
 // Компактное дерево талантов для строки: 4 яруса (25→10), лево | уровень | право.
 // Позиции лево/право — как в игре; выбранная сторона золотая. Полный текст — в подсказке.
 export function TalentTreeMini({ talents }: { talents: TalentTier[] }) {
-  if (talents.length === 0) return <div className="text-center text-[10px] text-neutral-600">—</div>;
+  if (talents.length === 0) return <div className="text-center text-[10px] text-[var(--pg-muted)]">—</div>;
   const cell = (opt: TalentOpt | null, lvl: number, side: string) => (
     <span
       title={opt ? `${lvl} ур. (${side}): ${opt.name}` : undefined}
       className={`h-2.5 w-3 rounded-[2px] ${
-        opt?.picked ? "bg-amber-400 ring-1 ring-amber-200/50" : "bg-neutral-700/50"
+        opt?.picked ? "bg-[var(--pg-gold)] ring-1 ring-[var(--pg-gold-line)]" : "bg-[var(--pg-well)]"
       }`}
     />
   );
@@ -208,7 +222,7 @@ export function TalentTreeMini({ talents }: { talents: TalentTier[] }) {
       {talents.map((t) => (
         <div key={t.heroLevel} className="flex items-center gap-0.5">
           {cell(t.left, t.heroLevel, "лево")}
-          <span className="w-3.5 text-center text-[8px] tabular-nums text-neutral-500">{t.heroLevel}</span>
+          <span className="w-3.5 text-center text-[8px] tabular-nums text-[var(--pg-muted)]">{t.heroLevel}</span>
           {cell(t.right, t.heroLevel, "право")}
         </div>
       ))}
@@ -258,8 +272,9 @@ export function AdvantageChart({
   const yTicks = [top, top / 2, 0, -top / 2, -top];
   const xStep = Math.max(1, Math.round((n - 1) / 6)); // ~6 подписей времени
   // Цвет по лидеру: верхняя половина (Свет) — зелёный, нижняя (Тьма) — красный.
-  const EMERALD = "rgb(52 211 153)";
-  const ROSE = "rgb(251 113 133)";
+  // Значения — из кожи, а не литералами: на бумаге и на тёмной картинке они разные.
+  const EMERALD = "var(--pg-radiant)";
+  const ROSE = "var(--pg-dire)";
 
   const onMove = (e: MouseEvent<SVGSVGElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -270,22 +285,22 @@ export function AdvantageChart({
 
   return (
     <div>
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-400">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-[var(--pg-muted)]">
         <span>Преимущество по минутам</span>
         <span className="flex items-center gap-3">
           <span className="flex items-center gap-1">
-            <span className="inline-block h-0.5 w-4 bg-neutral-300" />золото
+            <span className="inline-block h-0.5 w-4 bg-[var(--pg-ink)]" />золото
           </span>
           {hasXp && (
             <span className="flex items-center gap-1">
-              <span className="inline-block h-0 w-4 border-t border-dashed border-neutral-400" />опыт
+              <span className="inline-block h-0 w-4 border-t border-dashed border-[var(--pg-muted)]" />опыт
             </span>
           )}
           <span className="flex items-center gap-1">
-            <span className="inline-block h-2 w-2 rounded-sm bg-emerald-400" />Свет
+            <span className="inline-block h-2 w-2 rounded-sm bg-[var(--pg-radiant)]" />Свет
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block h-2 w-2 rounded-sm bg-rose-400" />Тьма
+            <span className="inline-block h-2 w-2 rounded-sm bg-[var(--pg-dire)]" />Тьма
           </span>
         </span>
       </div>
@@ -297,9 +312,9 @@ export function AdvantageChart({
       >
         <defs>
           <linearGradient id="adv" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgb(52 211 153)" stopOpacity="0.35" />
-            <stop offset="50%" stopColor="rgb(120 120 120)" stopOpacity="0.05" />
-            <stop offset="100%" stopColor="rgb(251 113 133)" stopOpacity="0.35" />
+            <stop offset="0%" stopColor="var(--pg-radiant)" stopOpacity="0.3" />
+            <stop offset="50%" stopColor="var(--pg-muted)" stopOpacity="0.05" />
+            <stop offset="100%" stopColor="var(--pg-dire)" stopOpacity="0.3" />
           </linearGradient>
           {/* верх/низ графика — для двухцветной линии (лидирует Свет / Тьма) */}
           <clipPath id="advTop">
@@ -316,8 +331,8 @@ export function AdvantageChart({
           y={padT}
           width={plotW}
           height={plotH}
-          fill="rgba(0,0,0,0.35)"
-          stroke="rgb(38 38 38)"
+          fill="var(--pg-plot)"
+          stroke="var(--pg-grid)"
           strokeWidth="0.5"
         />
         {/* сетка + подписи оси Y (без минуса: верх — Свет, низ — Тьма) */}
@@ -328,7 +343,7 @@ export function AdvantageChart({
               y1={y(v)}
               x2={W - padR}
               y2={y(v)}
-              stroke={v === 0 ? "rgb(82 82 82)" : "rgb(38 38 38)"}
+              stroke={v === 0 ? "var(--pg-zero)" : "var(--pg-grid)"}
               strokeWidth={v === 0 ? 1 : 0.5}
               strokeDasharray={v === 0 ? "4 4" : undefined}
             />
@@ -336,7 +351,7 @@ export function AdvantageChart({
               x={padL - 6}
               y={y(v) + 3}
               textAnchor="end"
-              className={v > 0 ? "fill-emerald-500/80" : v < 0 ? "fill-rose-500/80" : "fill-neutral-500"}
+              fill={v > 0 ? "var(--pg-radiant)" : v < 0 ? "var(--pg-dire)" : "var(--pg-muted)"}
               style={{ fontSize: 9 }}
             >
               {kFmt(Math.abs(v))}
@@ -347,7 +362,7 @@ export function AdvantageChart({
         {Array.from({ length: n }, (_, i) => i)
           .filter((i) => i % xStep === 0 || i === n - 1)
           .map((i) => (
-            <text key={i} x={x(i)} y={H - 6} textAnchor="middle" className="fill-neutral-600" style={{ fontSize: 9 }}>
+            <text key={i} x={x(i)} y={H - 6} textAnchor="middle" fill="var(--pg-muted)" style={{ fontSize: 9 }}>
               {clock(i * 60)}
             </text>
           ))}
@@ -364,20 +379,20 @@ export function AdvantageChart({
         {/* курсор наведения */}
         {interactive && hover != null && (
           <g>
-            <line x1={x(hover)} y1={padT} x2={x(hover)} y2={H - padB} stroke="rgb(163 163 163)" strokeWidth="0.6" />
+            <line x1={x(hover)} y1={padT} x2={x(hover)} y2={H - padB} stroke="var(--pg-muted)" strokeWidth="0.6" />
             <circle cx={x(hover)} cy={y(gold[hover])} r="2.6" fill={gold[hover] >= 0 ? EMERALD : ROSE} />
             {hasXp && <circle cx={x(hover)} cy={y(xp[hover])} r="2.4" fill={xp[hover] >= 0 ? EMERALD : ROSE} />}
             {/* тултип: без минусов — цвет говорит, кто ведёт */}
             <g transform={`translate(${Math.min(x(hover) + 6, W - 128)}, ${padT + 4})`}>
-              <rect width="122" height={hasXp ? 46 : 32} rx="4" fill="rgb(10 10 10)" stroke="rgb(64 64 64)" strokeWidth="0.5" />
-              <text x="8" y="14" className="fill-neutral-300" style={{ fontSize: 9 }}>
+              <rect width="122" height={hasXp ? 46 : 32} rx="4" fill="var(--pg-tip)" stroke="var(--pg-zero)" strokeWidth="0.5" />
+              <text x="8" y="14" fill="var(--pg-tip-ink)" style={{ fontSize: 9 }}>
                 {`${hover} мин`}
               </text>
-              <text x="8" y="27" style={{ fontSize: 9 }} className={gold[hover] >= 0 ? "fill-emerald-400" : "fill-rose-400"}>
+              <text x="8" y="27" style={{ fontSize: 9 }} fill={gold[hover] >= 0 ? "var(--pg-radiant)" : "var(--pg-dire)"}>
                 {`золото ${fmt(Math.abs(gold[hover]))}`}
               </text>
               {hasXp && (
-                <text x="8" y="40" style={{ fontSize: 9 }} className={xp[hover] >= 0 ? "fill-emerald-400" : "fill-rose-400"}>
+                <text x="8" y="40" style={{ fontSize: 9 }} fill={xp[hover] >= 0 ? "var(--pg-radiant)" : "var(--pg-dire)"}>
                   {`опыт ${fmt(Math.abs(xp[hover]))}`}
                 </text>
               )}
@@ -516,21 +531,21 @@ export function BuildingMap({
     <div>
       {legend && (
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs uppercase tracking-widest text-neutral-400">Строения</span>
-          <span className="flex items-center gap-3 text-[10px] text-neutral-500">
+          <span className="text-xs font-extrabold uppercase tracking-widest text-[var(--pg-muted)]">Строения</span>
+          <span className="flex items-center gap-3 text-[10px] font-bold text-[var(--pg-muted)]">
             <span className="flex items-center gap-1">
-              <span className="inline-block h-2 w-2 rounded-sm bg-emerald-400" />Свет
+              <span className="inline-block h-2 w-2 rounded-sm bg-[var(--pg-radiant)]" />Свет
             </span>
             <span className="flex items-center gap-1">
-              <span className="inline-block h-2 w-2 rounded-sm bg-rose-400" />Тьма
+              <span className="inline-block h-2 w-2 rounded-sm bg-[var(--pg-dire)]" />Тьма
             </span>
             <span className="flex items-center gap-1">
-              <span className="inline-block h-2 w-2 rounded-sm bg-neutral-500" />уничтожено
+              <span className="inline-block h-2 w-2 rounded-sm bg-[var(--pg-well-line)]" />уничтожено
             </span>
           </span>
         </div>
       )}
-      <div className="relative mx-auto aspect-square w-full max-w-[300px] overflow-hidden rounded-lg ring-1 ring-white/10">
+      <div className="relative mx-auto aspect-square w-full max-w-[300px] overflow-hidden rounded-lg ring-1 ring-[var(--pg-ring)]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/assets/map/minimap.jpg" alt="Карта Dota 2" className="absolute inset-0 h-full w-full object-cover" />
         {icons.map((ic) => (
@@ -596,10 +611,10 @@ export function EventBadges({ events, tags, size = 32 }: { events: MatchEvents; 
   if (list.length === 0) return null;
   const cls = (s: Side | null) =>
     s === "radiant"
-      ? "bg-emerald-500/15 text-emerald-400 ring-emerald-500/40"
+      ? "bg-[var(--pg-radiant-soft)] text-[var(--pg-radiant)] ring-[var(--pg-radiant-line)]"
       : s === "dire"
-        ? "bg-rose-500/15 text-rose-400 ring-rose-500/40"
-        : "bg-neutral-800 text-neutral-400 ring-neutral-700";
+        ? "bg-[var(--pg-dire-soft)] text-[var(--pg-dire)] ring-[var(--pg-dire-line)]"
+        : "bg-[var(--pg-well)] text-[var(--pg-muted)] ring-[var(--pg-well-line)]";
   return (
     <div className="flex flex-wrap items-center justify-center gap-4">
       {list.map((b) => (
@@ -610,7 +625,7 @@ export function EventBadges({ events, tags, size = 32 }: { events: MatchEvents; 
           >
             {b.label}
           </span>
-          <span className="max-w-12 truncate text-[9px] font-semibold uppercase text-neutral-500">
+          <span className="max-w-12 truncate text-[9px] font-bold uppercase text-[var(--pg-muted)]">
             {b.side ? tags[b.side] : "="}
           </span>
         </div>

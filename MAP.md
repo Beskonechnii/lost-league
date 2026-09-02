@@ -28,7 +28,8 @@
     └── src/
         ├── app/        роуты (Next App Router) + API
         ├── components/pouf/  ЕДИНСТВЕННАЯ UI-библиотека: Кит элементов (токены `pouf.css`, атомы, интерактив на Radix,
-        │                     блоки страницы `blocks.tsx`, атомы профиля `profile.tsx`, атомы таблиц `table.tsx`)
+        │                     блоки страницы `blocks.tsx`, атомы профиля `profile.tsx`, атомы таблиц `table.tsx`,
+        │                     карточка встречи `series-card.tsx`, hero-шапка `hero.tsx`)
         ├── lib/        серверная логика и доменные справочники
         ├── studio/     движок шаблонов графики (отдельно от страниц студии)
         └── generated/  Prisma-клиент, генерится, в .gitignore
