@@ -20,6 +20,9 @@ import { isCoreRole } from "./roster-spots";
 import { slugify, accountIdFromUrl, normalizeTelegram } from "./profiles";
 import { registrationOpen } from "./tournaments";
 import { loadQuiz, type QuizConfig } from "./quiz-config";
+// Нодовый флоу: пока он ведёт только первый уровень меню и только при включённом `BOT_FLOW`
+// (`BOT-FLOW-PLAN.md`). Выключен — весь путь мёртв, бот работает как раньше.
+import { BOT_FLOW, FLOW_STEP, flowReply, startFlow } from "./bot-flow/run";
 import { MENU, LEGACY_ROSTER, QUIZ_ROSTER, menuKeyboard, isMenuButton, menuReply, rememberChat, identify } from "./tg-menu";
 import { FORMS_BUTTON, handleForm, isFormStep, offerForms, type FormState, type FormStep } from "./tg-forms";
 import {
@@ -168,6 +171,9 @@ const SERVICE = new Set([SKIP, DONE, ADD, EDIT, BACK, DROP, "Отправить 
 async function load(chatId: string): Promise<{ step: Step; state: State } | null> {
   const row = await prisma.botSession.findUnique({ where: { chatId } });
   if (!row) return null;
+  // Строку ведёт граф (`bot-flow/run.ts`) — для старого пути такого диалога нет: у него нечего
+  // терять и не во что возвращаться, а «начатым диалогом» стояние в меню считаться не должно.
+  if (row.step === FLOW_STEP) return null;
   try {
     return { step: row.step as Step, state: JSON.parse(row.state) as State };
   } catch {
@@ -465,6 +471,11 @@ export async function handleMessage(
     // не нашёл человека в пуле. Такого сразу ведём в регистрацию, а не в меню: он пришёл по делу,
     // и лишний экран между ним и анкетой — потерянный игрок.
     if (start[1] === "invite" && !known) return beginRegistration(chatId, username, tgId);
+    // Первый уровень ведёт граф — если он включён и что-то ответил (`BOT-FLOW-PLAN.md`, Э1).
+    if (BOT_FLOW) {
+      const flowed = await startFlow({ chatId, text, username, tgId });
+      if (flowed) return flowed;
+    }
     return [{ text: q.text("menu"), keyboard: await menuKeyboard(!known) }];
   }
   if (/^\/cancel\b/.test(text)) {
@@ -583,6 +594,17 @@ export async function handleMessage(
       return [{ text: "Что дальше?", keyboard: await menuKeyboard() }];
     }
     if (!session) return enterTournaments(chatId);
+  }
+
+  // Нодовый флоу (`BOT-FLOW-PLAN.md`). Стоит здесь, за всеми перехватами: пока граф ведёт только
+  // первый уровень, кнопки разделов должны попадать в свои модули, как и раньше. Сперва даём
+  // продолжить начатое графом, а с непонятого текста начинаем разговор заново — тем же меню,
+  // которым отвечает ветка ниже. `null` из графа значит «это не ко мне» — идём старым путём.
+  // `!session` здесь значит «ни начатого квиза, ни навигации по турнирам»: сессию графа `load`
+  // за диалог не считает (см. выше), и до этой строки доходит именно тот случай, который граф ведёт.
+  if (BOT_FLOW && !session) {
+    const flowed = await flowReply({ chatId, text, username, tgId });
+    if (flowed) return flowed;
   }
 
   // Непонятый текст без начатого диалога. Раньше он начинал заявку команды — теперь начинать нечего:

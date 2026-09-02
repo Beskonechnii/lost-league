@@ -558,10 +558,50 @@ model PointsEntry {
 model BotSession {
   id        Int      @id @default(autoincrement())
   chatId    String   @unique // id чата в Telegram, строкой: числа там выходят за 2^53
-  step      String // шаг квиза (src/lib/tg-quiz.ts → Step)
+  step      String // шаг квиза (src/lib/tg-quiz.ts → Step) либо `flow` — диалог ведёт граф
   /// Всё собранное на текущий момент, JSON (src/lib/tg-quiz.ts → State).
   state     String
+  /// На какой ноде графа стоит диалог (src/lib/bot-flow). NULL — граф этот чат не ведёт.
+  flowNode  String?
+  /// Версия графа, на которой диалог начался: `BotFlow.id`. Публикация новой версии не должна
+  /// выбрасывать человека из середины анкеты, поэтому сессия доигрывает на своей.
+  /// NULL при непустом `flowNode` — граф из сида в коде (BotFlow ещё ни разу не правили).
+  flowVersion Int?
+  /// Переменные, собранные графом: JSON `{ "ник": "…" }` (область `vars.*`).
+  flowVars  String?
   updatedAt DateTime @updatedAt
+}
+
+/// Версия графа диалога телеграм-бота (src/lib/bot-flow). Граф описывает **навигацию**: что бот
+/// говорит, какие кнопки показывает и куда ведёт каждая из них; тяжёлое (регистрация, заказ
+/// встречи, выдача кода входа) остаётся в TS и подключается нодами-действиями.
+///
+/// **Документом, а не таблицами нод и рёбер.** Канвас правится целиком — каждое перетаскивание
+/// ноды превращалось бы в пачку апдейтов, а откат к прошлому виду собирался бы по кускам. Здесь же
+/// версия — одна строка, откат — выбор строки.
+///
+/// Порядок тот же, что у `BotQuestion` и `BotSetting`: **дефолтный граф живёт сидом в коде**
+/// (`src/lib/bot-flow/default-flow.ts`), в таблице лежат правки оператора. Пустая база = бот с
+/// обычным флоу, а не бот без флоу.
+///
+/// `status`: draft (черновик редактора, не больше одного на `key`) | published (то, что в эфире,
+/// тоже не больше одного) | archived (бывшая живая). Версии **не удаляются**: на них доигрывают
+/// начатые диалоги (`BotSession.flowVersion`), и откат — это возврат к существующей строке.
+model BotFlow {
+  id        Int      @id @default(autoincrement())
+  key       String // какой флоу; до Э7 единственный — `main` (src/lib/bot-flow/store.ts)
+  version   Int // номер версии внутри `key`, растёт монотонно
+  status    String // draft | published | archived
+  /// Граф целиком, JSON (src/lib/bot-flow/types.ts → BotFlowGraph).
+  graph     String
+  /// Подпись версии оператором: по чему её узнать в списке откатов.
+  note      String?
+  /// Когда версия ушла в эфир. NULL у черновика; у архивной остаётся — по ней виден порядок.
+  publishedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([key, version])
 }
 
 /// Правка вопроса телеграм-бота, сделанная оператором на /admin/bot. В таблице лежат **только
