@@ -38,7 +38,7 @@ function pill(active: boolean) {
 function stageSuffix(pathname: string, base: string) {
   if (!pathname.startsWith(`${base}/`)) return "";
   const tail = pathname.slice(base.length);
-  return tail === "/playoff" || tail === "/stats" ? tail : "";
+  return tail === "/groups" || tail === "/playoff" || tail === "/stats" ? tail : "";
 }
 
 export function TournamentBar({
@@ -75,6 +75,9 @@ export function TournamentBar({
     ...(div
       ? [
           { href: base, label: "Таблица", active: pathname === base },
+          // «Группы» вернулись отдельной вкладкой на Э5: корень дивизиона показывает таблицу,
+          // а кросс-сетка личных встреч — экран со своей шириной (UI-GUIDELINES §2, L3).
+          { href: `${base}/groups`, label: "Группы", active: pathname === `${base}/groups` },
           { href: `${base}/playoff`, label: "Плей-офф", active: pathname === `${base}/playoff` },
           { href: `${base}/stats`, label: "Статистика", active: pathname === `${base}/stats` },
         ]

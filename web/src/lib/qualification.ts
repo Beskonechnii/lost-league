@@ -5,10 +5,36 @@
 /** Куда команда уходит из группы. Порядок и цвета одинаковы везде, где показываем группу. */
 export type Qualification = "upper" | "lower" | "out";
 
-export const QUALIFICATION: Record<Qualification, { label: string; text: string; marker: string }> = {
-  upper: { label: "Верхняя сетка", text: "text-emerald-400", marker: "bg-emerald-500" },
-  lower: { label: "Нижняя сетка", text: "text-amber-400", marker: "bg-amber-500" },
-  out: { label: "Вылет", text: "text-rose-400", marker: "bg-rose-500" },
+/**
+ * Цвета зон приехали из Кита (артборд «Турнирная таблица», блок «Зоны и легенда»): рейка зоны
+ * заливается ГРАДИЕНТОМ, а не плоским цветом — как и всё в Ките, где свет идёт ↖. До Э5 здесь
+ * стояли `emerald-400/amber-400/rose-400` — остаток тёмной темы: на бумаге #E7E3D8 такой текст
+ * даёт около 2:1 и не читается. Теперь `text` — тёмная пара того же оттенка (мятный ink Кита,
+ * охра и кирпич из его же алертов), а `bar` — градиент рейки; `marker` остался плоским для мест,
+ * где нужна точка, а не полоса.
+ */
+export const QUALIFICATION: Record<
+  Qualification,
+  { label: string; text: string; marker: string; bar: string }
+> = {
+  upper: {
+    label: "Верхняя сетка",
+    text: "text-[var(--accent-ink)]",
+    marker: "bg-[#7FC3A4]",
+    bar: "linear-gradient(135deg,#B7E4CD,#7FC3A4)",
+  },
+  lower: {
+    label: "Нижняя сетка",
+    text: "text-[var(--color-warn-ink)]",
+    marker: "bg-[#E2BC63]",
+    bar: "linear-gradient(135deg,#F3DEA6,#E2BC63)",
+  },
+  out: {
+    label: "Вылет",
+    text: "text-[var(--color-err-ink)]",
+    marker: "bg-[#DE9494]",
+    bar: "linear-gradient(135deg,#F0C4C4,#DE9494)",
+  },
 };
 
 /**

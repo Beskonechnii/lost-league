@@ -1,145 +1,149 @@
 import Link from "next/link";
-import { QUALIFICATION, qualificationOf } from "@/lib/qualification";
-import type { GroupRow, GroupTable } from "@/lib/group-stage";
+import { qualificationOf } from "@/lib/qualification";
+import type { GroupCell, GroupRow, GroupTable } from "@/lib/group-stage";
+import { CrossCell, Points, TeamMark, ZoneLegend, zonesOf } from "@/components/pouf/table";
 
-// Групповая стадия — макет как на Liquipedia: для каждой группы рядом две таблицы. Слева узкий
-// рейтинг (место, лого, команда, В–П, очки), справа перекрёстная сетка личных встреч: ячейки залиты
-// цветом (зелёная — победа команды-строки, красная — поражение), по краям лого команд, диагональ
-// затемнена. Плотно, без пустых мест. Только чтение: счёт из привязанных карт архива серий,
-// правки — через /admin/series.
+// Групповой этап по артборду Кита «Групповой этап»: слева блок группы (компактная таблица, зона
+// выхода залита мятным), справа кросс-таблица «все со всеми» — ячейка это счёт серии глазами
+// команды-строки. Только чтение: счёт из привязанных карт архива серий, правки — через /admin/series.
+//
+// Развёрнутая таблица с сортировкой, формой и разницей карт живёт на соседней вкладке «Таблица»
+// (корень дивизиона). Здесь намеренно короткий набор колонок — блок группы должен помещаться
+// рядом с сеткой, а не спорить с ней за ширину.
 
-const CARD = "overflow-hidden rounded-card bg-surface cushion-card";
-// Та же карточка, но прокручиваемая: `overflow-hidden` из CARD перебивал `overflow-x-auto` (оба
-// правила одной специфичности, порядок решает стилевой файл, а не класс), и на телефоне сетка
-// личных встреч просто обрезалась — прокрутить её было нельзя.
-const CARD_SCROLL = "rounded-card bg-surface cushion-card overflow-x-auto";
-
-/** Заголовок-полоска над таблицей/сеткой — компактный uppercase в духе pouf Eyebrow. */
-const HEAD = "px-4 py-2.5 text-center text-[11px] font-extrabold uppercase tracking-[1.5px] text-muted";
-
-/** Лого команды. Нет файла — монограмма из первых букв тега на подложке. */
-function TeamMark({ row, size = 26 }: { row: GroupRow; size?: number }) {
-  return row.logo ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={row.logo}
-      alt=""
-      title={row.name}
-      className="shrink-0 rounded-md bg-surface-2 object-contain p-0.5"
-      style={{ width: size, height: size }}
-    />
-  ) : (
-    <span
-      title={row.name}
-      className="grid shrink-0 place-items-center rounded-md bg-surface-2 text-[10px] font-bold uppercase leading-none text-ink-muted"
-      style={{ width: size, height: size }}
+/** Строка блока группы: место, лого, команда, И, разница карт, очки. Кит: `.ggrid.grow`. */
+function GroupRowLine({ r, size, relegation }: { r: GroupRow; size: number; relegation: boolean }) {
+  const zone = qualificationOf(r.place, size, relegation);
+  const up = zone === "upper";
+  const diff = r.mapsWon - r.mapsLost;
+  return (
+    <Link
+      href={`/roster/teams/${r.teamId}`}
+      // Зона выхода — заливка строки, как в Ките: у блока группы нет места под рейку слева,
+      // а сам смысл («эти проходят») важнее, чем единообразие с большой таблицей.
+      // На узком экране «И» и «Р» уходят: пять колонок ужимают имя команды до одной буквы, а
+      // сыгранные встречи и разница карт есть на соседней вкладке «Таблица».
+      className={`mt-0.5 grid grid-cols-[28px_1fr_58px] items-center rounded-[18px] px-3 py-[9px] text-sm font-extrabold first:mt-0 sm:grid-cols-[28px_1fr_38px_44px_58px] ${
+        up
+          ? "bg-accent-fill text-[var(--on-accent)] cushion-blob"
+          : zone === "out"
+            ? "opacity-[.72] hover:bg-surface-1 hover:cushion-row"
+            : "hover:bg-surface-1 hover:cushion-row"
+      }`}
     >
-      {row.tag.slice(0, 2)}
-    </span>
+      <span className={`text-center tabular-nums ${up ? "text-[var(--on-accent-muted)]" : "text-muted"}`}>
+        {r.place}
+      </span>
+      <span className="flex min-w-0 items-center gap-2.5">
+        <TeamMark logo={r.logo} tag={r.tag} name={r.name} size={30} />
+        <span className={`truncate text-sm font-black ${up ? "" : "text-ink"}`}>{r.name}</span>
+      </span>
+      <span className={`hidden text-center tabular-nums sm:block ${up ? "text-[var(--on-accent-muted)]" : "text-muted"}`}>
+        {r.played}
+      </span>
+      <span className={`hidden text-center tabular-nums sm:block ${up ? "text-[var(--on-accent-muted)]" : "text-muted"}`}>
+        {diff > 0 ? `+${diff}` : diff < 0 ? `−${Math.abs(diff)}` : "0"}
+      </span>
+      <span className="text-center">
+        <Points lead={r.place === 1}>{r.points}</Points>
+      </span>
+    </Link>
   );
 }
 
-/** Рейтинг группы: место с полоской зоны, лого, команда, В–П и плашка очков. */
-function StandingsCard({ t }: { t: GroupTable }) {
+/** Блок группы. Кит: `.gcard` — шапка с буквой группы, шапка колонок, строки. */
+function GroupCard({ t }: { t: GroupTable }) {
+  const left = t.expected - t.decided;
   return (
-    <div className={`${CARD} w-full lg:w-[23rem] lg:shrink-0`}>
-      <div className={`border-b border-hairline ${HEAD}`}>Таблица</div>
-      <table className="w-full border-collapse text-sm">
-        <tbody>
-          {t.rows.map((r) => {
-            const zone = QUALIFICATION[qualificationOf(r.place, t.rows.length, t.relegation)];
-            const leader = r.place === 1;
-            return (
-              <tr key={r.teamId} className="group border-t border-hairline transition-colors hover:bg-surface-2/50">
-                <td className="py-2.5 pl-3 pr-1">
-                  <span className="flex items-center gap-2">
-                    <span className={`h-5 w-1 rounded-full ${zone.marker}`} title={zone.label} />
-                    <span className={`w-4 text-right tabular-nums ${leader ? "font-bold text-ink" : "text-ink-subtle"}`}>
-                      {r.place}
-                    </span>
-                  </span>
-                </td>
-                <td className="py-2.5 pr-2">
-                  <Link href={`/roster/teams/${r.teamId}`} className="flex min-w-0 items-center gap-2.5">
-                    <TeamMark row={r} size={26} />
-                    <span className={`truncate font-medium group-hover:underline ${zone.text}`} title={r.name}>
-                      {r.name}
-                    </span>
-                  </Link>
-                </td>
-                <td className="w-12 py-2.5 text-center tabular-nums">
-                  <span className="font-medium text-emerald-700">{r.wins}</span>
-                  <span className="text-ink-subtle">–{r.losses}</span>
-                </td>
-                <td className="w-12 py-2.5 pr-3 text-center">
-                  <span
-                    className={`inline-block min-w-7 rounded-pill px-2.5 py-0.5 text-sm font-black tabular-nums ${
-                      leader ? "bg-accent-fill text-[var(--on-accent)]" : "bg-surface-2 text-ink"
-                    }`}
-                  >
-                    {r.points}
-                  </span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div className="rounded-[32px] bg-surface-1 p-5 font-pouf cushion-card xl:w-[24rem] xl:shrink-0">
+      <div className="mb-3.5 flex items-center gap-3">
+        <span className="grid h-9 min-w-9 place-items-center rounded-[14px] bg-accent-fill px-3 text-xl font-black text-[var(--on-accent)] cushion-control">
+          {t.group}
+        </span>
+        <span className="text-xl font-black tracking-[-0.4px] text-ink">Группа {t.group}</span>
+        <span className="ml-auto text-[11px] font-extrabold uppercase tracking-[1px] text-muted">
+          {left > 0 ? `осталось ${left}` : "сыграна"}
+        </span>
+      </div>
+      <div className="grid grid-cols-[28px_1fr_58px] px-3 pb-2 text-center text-[10px] font-extrabold uppercase tracking-[1px] text-muted sm:grid-cols-[28px_1fr_38px_44px_58px]">
+        <span>#</span>
+        <span className="text-left">Команда</span>
+        <span className="hidden sm:block" title="Сыграно встреч">И</span>
+        <span className="hidden sm:block" title="Разница карт">Р</span>
+        <span>Очки</span>
+      </div>
+      {t.rows.map((r) => (
+        <GroupRowLine key={r.teamId} r={r} size={t.rows.length} relegation={t.relegation} />
+      ))}
+      <ZoneLegend zones={zonesOf(t.relegation)} height={14} className="mt-3.5 border-t border-hairline pt-3" />
     </div>
   );
 }
 
-/** Перекрёстная сетка: строка — команда, столбец — соперник, ячейка — счёт серии глазами строки. */
-function HeadToHeadCard({ t }: { t: GroupTable }) {
+/** Одна ячейка кросс-таблицы: счёт глазами команды-строки, диагональ — своя клетка. */
+function Cell({ cell, row, col }: { cell: GroupCell; row: GroupRow; col: GroupRow }) {
+  if (row.teamId === col.teamId) return <CrossCell state="self">—</CrossCell>;
+  if (!cell) return <CrossCell state="soon" title={`${row.name} — ${col.name}: встречи ещё нет`}>—</CrossCell>;
+  const win = Number(cell.score.split(":")[0]) > Number(cell.score.split(":")[1]);
   return (
-    <div className={CARD_SCROLL}>
-      <div className={`border-b border-hairline ${HEAD}`}>Личные встречи</div>
-      <table className="border-collapse text-sm">
+    <CrossCell
+      state={win ? "win" : "loss"}
+      dim={cell.guessed}
+      title={`${row.name} — ${col.name}${cell.guessed ? " · счёт восстановлен расчётом" : ""}`}
+    >
+      {cell.score}
+    </CrossCell>
+  );
+}
+
+/** Кросс-таблица «все со всеми». Кит: `.cross` + `.ctab`. */
+function CrossTable({ t }: { t: GroupTable }) {
+  return (
+    // Прокрутка внутри своего контейнера, а не всей страницей (UI-GUIDELINES §4, «Плотность»).
+    <div className="min-w-0 flex-1 overflow-x-auto rounded-[32px] bg-surface-1 p-5 font-pouf cushion-card">
+      <table className="border-separate border-spacing-1">
+        <thead>
+          <tr>
+            <th className="w-[7rem] px-1.5 py-1 text-left text-[11px] font-extrabold text-ink">
+              Группа {t.group}
+            </th>
+            {t.rows.map((c) => (
+              <th
+                key={c.teamId}
+                title={c.name}
+                className="px-1.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.6px] text-muted"
+              >
+                {c.tag.slice(0, 4)}
+              </th>
+            ))}
+          </tr>
+        </thead>
         <tbody>
           {t.rows.map((r, i) => (
             <tr key={r.teamId}>
-              {/* левый столбец — лого команды-строки. Липкий: при прокрутке сетки вбок иначе
-                  непонятно, чья это строка */}
-              <td className="sticky left-0 z-10 w-9 border border-hairline/50 bg-surface px-2 py-2">
-                <span className="flex justify-center">
-                  <TeamMark row={r} size={24} />
-                </span>
-              </td>
-              {t.grid[i].map((cell, j) => {
-                if (i === j) {
-                  // диагональ — сам с собой не играет
-                  return <td key={t.rows[j].teamId} className="border border-hairline/50 bg-surface-3/40" />;
-                }
-                const win = cell?.score.startsWith("2");
-                return (
-                  <td
-                    key={t.rows[j].teamId}
-                    title={cell ? `${r.name} — ${t.rows[j].name}` : undefined}
-                    className={`border border-hairline/50 px-2 py-2 text-center text-sm font-medium tabular-nums ${
-                      cell == null
-                        ? "text-ink-subtle/30"
-                        : win
-                          ? "bg-emerald-500/12 text-emerald-700"
-                          : "bg-rose-500/12 text-rose-700"
-                    } ${cell?.guessed ? "opacity-60" : ""}`}
-                  >
-                    {cell ? cell.score : "—"}
-                  </td>
-                );
-              })}
+              {/* липкая: при прокрутке сетки вбок иначе непонятно, чья это строка */}
+              {/* Слева тег, а не полное имя: полные имена стоят рядом в блоке группы, а лишние
+                  сто пикселей здесь стоят двух колонок сетки. Кит рисует кросс-таблицу отдельно
+                  стоящей, поэтому там имена нужны. */}
+              <th className="sticky left-0 z-10 bg-surface-1 px-1.5 py-1 text-left">
+                <Link
+                  href={`/roster/teams/${r.teamId}`}
+                  title={r.name}
+                  className="flex items-center gap-2.5 group"
+                >
+                  <TeamMark logo={r.logo} tag={r.tag} name={r.name} size={30} />
+                  <span className="truncate text-[13px] font-black uppercase tracking-[0.4px] text-ink group-hover:underline">
+                    {r.tag}
+                  </span>
+                </Link>
+              </th>
+              {t.rows.map((c, j) => (
+                <td key={c.teamId}>
+                  <Cell cell={t.grid[i][j]} row={r} col={c} />
+                </td>
+              ))}
             </tr>
           ))}
-          {/* нижний ряд — лого команд-столбцов */}
-          <tr>
-            <td className="border border-hairline/50 bg-surface-2/30" />
-            {t.rows.map((r) => (
-              <td key={r.teamId} className="border border-hairline/50 bg-surface-2/30 px-2 py-2">
-                <span className="flex justify-center">
-                  <TeamMark row={r} size={24} />
-                </span>
-              </td>
-            ))}
-          </tr>
         </tbody>
       </table>
     </div>
@@ -148,18 +152,11 @@ function HeadToHeadCard({ t }: { t: GroupTable }) {
 
 export function GroupStage({ tables }: { tables: GroupTable[] }) {
   return (
-    <div className="space-y-10 font-pouf">
+    <div className="space-y-8 font-pouf">
       {tables.map((t) => (
-        <section key={t.group}>
-          <div className="mb-3 flex items-baseline gap-2.5">
-            <h2 className="text-xl font-black tracking-[-0.3px] text-ink">Группа {t.group}</h2>
-            <span className="text-xs font-bold text-muted">{t.rows.length} команд</span>
-          </div>
-          {/* stretch (по умолчанию) — обе карточки одной высоты; на широком экране заметный зазор */}
-          <div className="flex flex-col gap-4 lg:flex-row lg:gap-8">
-            <StandingsCard t={t} />
-            <HeadToHeadCard t={t} />
-          </div>
+        <section key={t.group} className="flex flex-col gap-5 xl:flex-row xl:items-start">
+          <GroupCard t={t} />
+          <CrossTable t={t} />
         </section>
       ))}
     </div>

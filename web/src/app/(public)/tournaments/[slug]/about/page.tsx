@@ -7,7 +7,8 @@ import {
   TOURNAMENT_STATUS_LABELS,
   type TournamentStatus,
 } from "@/lib/tournaments";
-import { SectionHeader, StatTile } from "@/components/pouf/blocks";
+import { READ_MAX_W, SectionHeader, StatTile } from "@/components/pouf/blocks";
+import { Heading } from "@/components/pouf/text";
 
 export const dynamic = "force-dynamic";
 
@@ -16,18 +17,19 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return { title: t ? `${t.name} — о турнире` : "Турнир" };
 }
 
-// «О турнире» — то, что осталось от бывшего хаба турнира, когда с него убрали плитки: статус,
-// сроки, формат, призовой, регламент и заявка. Отдельной вкладкой, а не корнем турнира: корень
-// ведёт в таблицу, потому что за ней сюда и приходят, а регламент читают один раз.
+// Обзор турнира: статус, сроки, формат, призовой, дивизионы и регламент. Отдельной вкладкой, а не
+// корнем турнира: корень (`/tournaments/<slug>`) ведёт в таблицу, потому что за ней сюда и приходят,
+// а регламент читают один раз. Хабом с плитками этот экран не является — плитки ведут не «в разделы»,
+// а прямо в таблицу нужного дивизиона, то есть на данные (UI-GUIDELINES §9).
 
 const date = new Intl.DateTimeFormat("ru", { day: "numeric", month: "long", year: "numeric" });
 
-/** Цвет плашки статуса — тот же смысл, что в админке, но на витрине. */
+/** Плашка статуса турнира. Кит: статусы турнира на артборде «Данные и обратная связь». */
 const TONE: Record<TournamentStatus, string> = {
-  draft: "bg-surface-2 text-ink-subtle",
-  registration: "bg-sky-500/20 text-sky-700",
-  running: "bg-emerald-500/20 text-emerald-700",
-  finished: "bg-amber-500/20 text-amber-700",
+  draft: "bg-surface-2 text-muted cushion-field",
+  registration: "bg-[image:var(--grad-info)] text-[var(--color-info-ink)]",
+  running: "bg-[image:var(--grad-ok)] text-[var(--color-ok-ink)]",
+  finished: "bg-[image:var(--grad-warn)] text-[var(--color-warn-ink)]",
 };
 
 export default async function TournamentAbout({ params }: { params: Promise<{ slug: string }> }) {
@@ -43,10 +45,10 @@ export default async function TournamentAbout({ params }: { params: Promise<{ sl
     tournament.startAt && { label: "Старт", value: date.format(tournament.startAt) },
     tournament.endAt && { label: "Финиш", value: date.format(tournament.endAt) },
     tournament.format && { label: "Формат", value: tournament.format },
-    tournament.prize && { label: "Призовой", value: tournament.prize },
+    tournament.prize && { label: "Призовой", value: tournament.prize, accent: true },
     { label: "Команд", value: String(teamsTotal) },
     { label: "Дивизионов", value: String(tournament.divisions.length) },
-  ].filter(Boolean) as { label: string; value: string }[];
+  ].filter(Boolean) as { label: string; value: string; accent?: boolean }[];
 
   return (
     <div className="space-y-6 font-pouf">
@@ -54,7 +56,7 @@ export default async function TournamentAbout({ params }: { params: Promise<{ sl
         eyebrow="Турнир"
         title={tournament.name}
         aside={
-          <span className={`rounded-[12px] px-3 py-1 text-xs font-black ${TONE[status]}`}>
+          <span className={`inline-block rounded-pill px-4 py-1.5 text-xs font-black ${TONE[status]}`}>
             {TOURNAMENT_STATUS_LABELS[status] ?? tournament.status}
           </span>
         }
@@ -63,7 +65,7 @@ export default async function TournamentAbout({ params }: { params: Promise<{ sl
       {registrationOpen(tournament) && (
         <Link
           href={`/tournaments/${slug}/apply`}
-          className="inline-block rounded-[14px] bg-accent-fill px-4 py-[9px] text-[13px] font-black text-[var(--on-accent)] cushion-control"
+          className="inline-block rounded-control bg-accent-fill px-6 py-3.5 text-[15px] font-black text-[var(--on-accent)] cushion-control transition hover:-translate-y-0.5"
         >
           Подать заявку командой
         </Link>
@@ -71,17 +73,50 @@ export default async function TournamentAbout({ params }: { params: Promise<{ sl
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {facts.map((f) => (
-          <StatTile key={f.label} label={f.label} value={f.value} />
+          <StatTile key={f.label} label={f.label} value={f.value} accent={f.accent} />
         ))}
       </div>
 
-      <section>
-        <h2 className="text-sm font-black uppercase tracking-[0.12em] text-ink-subtle">Регламент</h2>
+      {/* Дивизионы ведут прямо в таблицу — это не «список разделов», а короткий путь к данным для
+          того, кто пришёл на турнир впервые и ещё не понял, что дивизион переключается в строке. */}
+      {tournament.divisions.length > 0 && (
+        <section className="space-y-4">
+          <Heading level={2}>Дивизионы</Heading>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {tournament.divisions.map((d, i) => (
+              <Link
+                key={d.id}
+                href={`/tournaments/${slug}/${d.slug}`}
+                className="flex items-center gap-4 rounded-card bg-surface-1 p-5 cushion-card transition hover:-translate-y-0.5"
+              >
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[18px] bg-accent-fill text-lg font-black text-[var(--on-accent)] cushion-control">
+                  {d.short}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-[17px] font-black tracking-[-0.3px] text-ink">
+                    {d.label ?? d.name}
+                  </span>
+                  <span className="block text-xs font-extrabold text-muted">
+                    {rosters[i].length} команд · таблица и плей-офф
+                  </span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className={`${READ_MAX_W} space-y-3`}>
+        <Heading level={2}>Регламент</Heading>
         {tournament.description ? (
-          <p className="mt-2 max-w-3xl whitespace-pre-line text-sm text-ink-muted">{tournament.description}</p>
+          <p className="whitespace-pre-line text-[15px] font-bold leading-[1.6] text-ink-muted">
+            {tournament.description}
+          </p>
         ) : (
-          <p className="mt-2 text-sm text-muted">
-            Регламент ещё не заполнен. Его правит организатор в карточке турнира.
+          // Пустое состояние: что это за блок, почему пусто и кто это чинит.
+          <p className="rounded-card bg-surface-1 p-6 text-sm font-bold text-muted cushion-field">
+            Регламент ещё не заполнен. Его правит организатор в карточке турнира — до тех пор формат
+            и правила стоит спрашивать в чате лиги.
           </p>
         )}
       </section>

@@ -18,6 +18,14 @@ export type GroupRow = {
   wins: number;
   losses: number;
   points: number;
+  /** Взятые и отданные карты за все встречи группы — колонка «Карты» в таблице Кита (разница). */
+  mapsWon: number;
+  mapsLost: number;
+  /**
+   * Последние встречи, старые слева, новые справа — колонка «Форма» из Кита. Порядок по `playedAt`;
+   * у встреч без даты его взять неоткуда, поэтому они идут в конец по id (порядок заведения).
+   */
+  form: ("w" | "l")[];
   /** Как напечатано в таблице сезона. Расходится — значит сетку правили; показываем оба числа. */
   sheet: { played: number; wins: number; losses: number; points: number };
 };
@@ -153,13 +161,26 @@ export async function getGroupStage(divisionId: number): Promise<GroupTable[]> {
       const played = mine.filter((s) => s.homeId === e.teamId || s.awayId === e.teamId);
       let wins = 0;
       let points = 0;
+      let mapsWon = 0;
+      let mapsLost = 0;
       for (const s of played) {
         const home = s.homeId === e.teamId;
         const own = home ? s.homeScore : s.awayScore;
         const opp = home ? s.awayScore : s.homeScore;
         if (own > opp) wins++;
+        mapsWon += own;
+        mapsLost += opp;
         points += seriesPoints(own, opp);
       }
+      // Форма — только по встречам с результатом: незаведённая встреча это не ничья, а пустота,
+      // и рисовать её в ряду формы значило бы сообщать исход, которого не было.
+      const form = played
+        .filter((s) => s.homeScore !== s.awayScore)
+        .sort((a, b) => (a.playedAt?.getTime() ?? Infinity) - (b.playedAt?.getTime() ?? Infinity) || a.id - b.id)
+        .map<"w" | "l">((s) => {
+          const home = s.homeId === e.teamId;
+          return (home ? s.homeScore > s.awayScore : s.awayScore > s.homeScore) ? "w" : "l";
+        });
       return {
         teamId: e.teamId,
         name: e.team.name,
@@ -170,6 +191,9 @@ export async function getGroupStage(divisionId: number): Promise<GroupTable[]> {
         wins,
         losses: played.length - wins,
         points,
+        mapsWon,
+        mapsLost,
+        form,
         sheet: { played: e.played, wins: e.wins, losses: e.losses, points: e.points },
       };
     });
