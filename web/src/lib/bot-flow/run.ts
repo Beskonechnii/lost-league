@@ -131,17 +131,23 @@ function checkAnswer(check: FlowCheck | null | undefined, text: string): string 
 
 // ── ход по графу ─────────────────────────────────────────────────────────────
 
-/** Чем кончился проход: что сказать и на какой ноде заснуть (`null` — диалог окончен). */
-type Walk = { replies: Reply[]; park: NodeId | null };
+/**
+ * Чем кончился проход: что сказать, на какой ноде заснуть (`null` — диалог окончен) и через что
+ * прошли по дороге. `trail` интерпретатору не нужен — его читает симулятор редактора (Э3), чтобы
+ * подсветить на канвасе пройденный путь.
+ */
+export type Walk = { replies: Reply[]; park: NodeId | null; trail: NodeId[] };
 
-async function walk(flow: LoadedFlow, from: NodeId | null, scope: FlowScope, msg: FlowMessage): Promise<Walk> {
+export async function walk(flow: LoadedFlow, from: NodeId | null, scope: FlowScope, msg: FlowMessage): Promise<Walk> {
   const replies: Reply[] = [];
+  const trail: NodeId[] = [];
   let id = from;
 
   for (let step = 0; step < STEP_BUDGET; step++) {
-    if (!id) return { replies, park: null };
+    if (!id) return { replies, park: null, trail };
     const node = nodeById(flow.graph, id);
     if (!node) throw new Error(`нода «${id}» в графе не найдена`);
+    trail.push(node.id);
 
     switch (node.type) {
       case "start":
@@ -158,7 +164,7 @@ async function walk(flow: LoadedFlow, from: NodeId | null, scope: FlowScope, msg
       case "ask":
         // Ждущая нода: спросили — и заснули до следующего сообщения.
         replies.push(await speak(node, scope));
-        return { replies, park: node.id };
+        return { replies, park: node.id, trail };
       case "if":
         id = (await scope.test(node.cond)) ? node.then : node.else;
         break;
@@ -181,6 +187,55 @@ async function walk(flow: LoadedFlow, from: NodeId | null, scope: FlowScope, msg
     }
   }
   throw new Error(`граф не дошёл до ждущей ноды за ${STEP_BUDGET} шагов — похоже на петлю`);
+}
+
+/**
+ * Чем кончился ход графа по одному сообщению.
+ *
+ * Отдельным типом, потому что ход и его последствия — разные работы: записать сессию и отправить в
+ * телеграм умеет бот, а симулятор редактора (Э3) гоняет тот же ход в памяти и не пишет никуда.
+ */
+export type Turn =
+  | ({ kind: "flow" } & Walk)
+  /** Граф про этот ответ ничего не знает: разбирается старый обработчик, сессия остаётся как была. */
+  | { kind: "outside" }
+  /** Ноду вырезали из графа, пока человек на ней стоял: сессию снять, ответ отдать наружу. */
+  | { kind: "lost" };
+
+/**
+ * Ход графа с ноды, на которой стоит разговор. Ни БД, ни телеграма: сюда же ходит симулятор
+ * редактора — он подставляет свой граф и свои переменные, а результат никуда не сохраняет.
+ */
+export async function turn(flow: LoadedFlow, at: NodeId, scope: FlowScope, msg: FlowMessage): Promise<Turn> {
+  const node = nodeById(flow.graph, at);
+  if (!node) return { kind: "lost" };
+
+  const hit = (await visible(buttonsOf(node), scope)).find((b) => sameLabel(b.label, msg.text));
+
+  // Кнопка есть, а перехода у неё нет — граф её только показал: дальше разбирается старый код.
+  if (hit && !hit.next) return { kind: "outside" };
+
+  let next: NodeId | null = null;
+  if (hit) {
+    if (node.type === "ask") scope.vars[node.var] = hit.label;
+    next = hit.next;
+  } else if (node.type === "ask") {
+    const problem = checkAnswer(node.check, msg.text);
+    // Ответ не прошёл проверку — переспрашиваем той же нодой, ничего не записывая.
+    if (problem) return { kind: "flow", replies: [await speak(node, scope, problem)], park: node.id, trail: [node.id] };
+    scope.vars[node.var] = msg.text.trim();
+    // Выхода «иначе» нет — значит вопрос ждёт кнопку: повторяем его.
+    if (!node.else) return { kind: "flow", replies: [await speak(node, scope)], park: node.id, trail: [node.id] };
+    next = node.else;
+  } else if (node.type === "menu") {
+    if (!node.else) return { kind: "outside" };
+    next = node.else;
+  } else {
+    // Ждём субфлоу (Э5) — его ответ придёт не отсюда.
+    return { kind: "outside" };
+  }
+
+  return { kind: "flow", ...(await walk(flow, next, scope, msg)) };
 }
 
 /** Записать, где остановились, и отдать ответы. */
@@ -235,40 +290,16 @@ export function flowReply(msg: FlowMessage): Promise<Reply[] | null> {
     if (!park) return begin(msg);
 
     const flow = await pinnedFlow(park.versionId);
-    const node = nodeById(flow.graph, park.node);
-    if (!node) {
-      // Ноду вырезали из графа, пока человек на ней стоял. Начинать за него новый диалог не будем —
-      // отдаём наружу и снимаем сессию: следующее сообщение начнётся с меню.
+    const scope = makeScope(msg, park.vars);
+    const done = await turn(flow, park.node, scope, msg);
+
+    // Ноду вырезали из графа, пока человек на ней стоял. Начинать за него новый диалог не будем —
+    // отдаём наружу и снимаем сессию: следующее сообщение начнётся с меню.
+    if (done.kind === "lost") {
       await clearPark(msg.chatId);
       return null;
     }
-
-    const scope = makeScope(msg, park.vars);
-    const hit = (await visible(buttonsOf(node), scope)).find((b) => sameLabel(b.label, msg.text));
-
-    // Кнопка есть, а перехода у неё нет — граф её только показал: дальше разбирается старый код.
-    if (hit && !hit.next) return null;
-
-    let next: NodeId | null = null;
-    if (hit) {
-      if (node.type === "ask") scope.vars[node.var] = hit.label;
-      next = hit.next;
-    } else if (node.type === "ask") {
-      const problem = checkAnswer(node.check, msg.text);
-      // Ответ не прошёл проверку — переспрашиваем той же нодой, ничего не записывая.
-      if (problem) return settle(msg.chatId, flow, { replies: [await speak(node, scope, problem)], park: node.id }, scope);
-      scope.vars[node.var] = msg.text.trim();
-      // Выхода «иначе» нет — значит вопрос ждёт кнопку: повторяем его.
-      if (!node.else) return settle(msg.chatId, flow, { replies: [await speak(node, scope)], park: node.id }, scope);
-      next = node.else;
-    } else if (node.type === "menu") {
-      if (!node.else) return null;
-      next = node.else;
-    } else {
-      // Ждём субфлоу (Э5) — его ответ придёт не отсюда.
-      return null;
-    }
-
-    return settle(msg.chatId, flow, await walk(flow, next, scope, msg), scope);
+    if (done.kind === "outside") return null;
+    return settle(msg.chatId, flow, done, scope);
   });
 }

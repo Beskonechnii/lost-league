@@ -448,13 +448,14 @@ function Ports({ node, graph, onChange }: { node: FlowNode; graph: BotFlowGraph;
               onChange={(e) => onChange(setPort(node, p.key, (e.target.value || null) as NodeId | null))}
             >
               <option value="">— наружу, старому обработчику —</option>
-              {graph.nodes
-                .filter((n) => n.id !== node.id)
-                .map((n) => (
-                  <option key={n.id} value={n.id}>
-                    {n.title ? `${n.title} (${n.id})` : n.id}
-                  </option>
-                ))}
+              {/* Своя нода в списке есть: переход на себя это не описка, а рабочий приём — так меню
+                  отвечает на непонятый текст собой же (дефолтный граф). Без неё такой выход
+                  показывался бы как «наружу» и стирался первой же правкой соседнего. */}
+              {graph.nodes.map((n) => (
+                <option key={n.id} value={n.id}>
+                  {n.id === node.id ? `эта же нода (${n.id})` : n.title ? `${n.title} (${n.id})` : n.id}
+                </option>
+              ))}
             </FormSelect>
           </li>
         ))}

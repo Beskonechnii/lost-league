@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DragBoard, DragCard } from "@/components/pouf/board";
 import { portsOf, type FlowPort } from "@/lib/bot-flow/editor";
+import type { FlowIssueLevel } from "@/lib/bot-flow/validate";
 import type { BotFlowGraph, FlowNode, NodeId } from "@/lib/bot-flow/types";
 
 /* Канвас графа диалога: ноды карточками, связи линиями, перетаскивание и протяжка связи мышью.
@@ -80,6 +81,9 @@ export function FlowCanvas({
   graph,
   scrollRef,
   selected,
+  marks,
+  active,
+  trail,
   onSelect,
   onMove,
   onConnect,
@@ -88,6 +92,12 @@ export function FlowCanvas({
   /** Прокрутка канваса наружу: по ней редактор кладёт новую ноду туда, что сейчас видно. */
   scrollRef?: React.RefObject<HTMLDivElement | null>;
   selected: NodeId | null;
+  /** Претензии валидатора по нодам: карточка носит значок, чтобы список не приходилось читать целиком. */
+  marks?: Map<NodeId, FlowIssueLevel>;
+  /** Нода, на которой стоит симулятор. */
+  active?: NodeId | null;
+  /** Ноды, через которые симулятор прошёл последним ходом. */
+  trail?: Set<NodeId>;
   onSelect: (id: NodeId | null) => void;
   onMove: (id: NodeId, dx: number, dy: number) => void;
   onConnect: (from: NodeId, port: string, to: NodeId) => void;
@@ -126,6 +136,9 @@ export function FlowCanvas({
   }, [wire, toField, onConnect]);
 
   const byId = new Map(graph.nodes.map((n) => [n.id, n]));
+  // Вход ноды рисуется точкой, как и выход, и точка залита, когда сюда что-то ведёт: правило «у
+  // каждой ноды есть вход» видно на канвасе, а не только в списке проверки (`BOT-FLOW-PLAN.md` §2).
+  const wired = new Set(graph.nodes.flatMap((n) => portsOf(n).map((p) => p.target).filter((t): t is NodeId => !!t)));
   const width = Math.max(...graph.nodes.map((n) => (n.x ?? 0) + NODE_W), 600) + MARGIN;
   const height = Math.max(...graph.nodes.map((n) => (n.y ?? 0) + nodeHeight(n)), 400) + MARGIN;
 
@@ -187,6 +200,10 @@ export function FlowCanvas({
                 node={node}
                 start={graph.start === node.id}
                 selected={selected === node.id}
+                wired={wired.has(node.id)}
+                mark={marks?.get(node.id)}
+                active={active === node.id}
+                passed={trail?.has(node.id) ?? false}
                 onSelect={() => onSelect(node.id)}
                 onWire={(port, e) => {
                   const p = toField(e.clientX, e.clientY);
@@ -205,28 +222,67 @@ function NodeCard({
   node,
   start,
   selected,
+  wired,
+  mark,
+  active,
+  passed,
   onSelect,
   onWire,
 }: {
   node: FlowNode;
   start: boolean;
   selected: boolean;
+  /** Ведёт ли сюда хоть один переход — от этого залита точка входа. */
+  wired: boolean;
+  mark?: FlowIssueLevel;
+  active: boolean;
+  passed: boolean;
   onSelect: () => void;
   onWire: (port: string, e: React.PointerEvent) => void;
 }) {
   const ports = portsOf(node);
+  // Три обводки об одном и том же прямоугольнике: что правят (внутрь), где стоит симулятор и через
+  // что он прошёл (наружу). Стилем, а не классами: цвета берутся из токенов и смешиваются.
+  const rings: string[] = [];
+  if (selected) rings.push("inset 0 0 0 2px var(--color-accent)");
+  if (active) rings.push("0 0 0 3px var(--color-ok-ink)");
+  else if (passed) rings.push("0 0 0 2px color-mix(in srgb, var(--color-ok-ink) 40%, transparent)");
+
   return (
     <DragCard id={node.id} follow onTap={onSelect}>
       <div
         data-flow-node={node.id}
-        style={{ height: nodeHeight(node) }}
-        className={`overflow-hidden rounded-control ${selected ? "[box-shadow:inset_0_0_0_2px_var(--color-accent)]" : ""}`}
+        style={{ height: nodeHeight(node), boxShadow: rings.length ? rings.join(", ") : undefined }}
+        className="overflow-hidden rounded-control"
       >
-        <div style={{ height: HEAD_H }} className="flex items-center gap-1.5 px-2.5">
+        <div style={{ height: HEAD_H }} className="flex items-center gap-1.5 pl-1 pr-2.5">
+          {/* Точка входа. У ноды-входа её нет по правилу: в неё входят снаружи, из телеграма. */}
+          <span
+            title={node.type === "start" ? "Вход снаружи: /start" : wired ? "Сюда ведёт переход" : "Ни один переход сюда не ведёт"}
+            className={`h-3.5 w-3.5 shrink-0 rounded-pill ${
+              node.type === "start"
+                ? "bg-transparent"
+                : wired
+                  ? "bg-accent"
+                  : "bg-surface-3 [box-shadow:inset_0_0_0_2px_var(--line-strong)]"
+            }`}
+          />
           <span className="shrink-0 rounded-pill bg-surface-2 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-[0.4px] text-muted">
             {TYPE_LABEL[node.type]}
           </span>
           {start && <span className="shrink-0 text-[10px] font-black uppercase text-accent-bright">старт</span>}
+          {mark && (
+            <span
+              title={mark === "error" ? "Проверка: ошибка" : "Проверка: предупреждение"}
+              className="grid h-4 w-4 shrink-0 place-items-center rounded-pill text-[10px] font-black"
+              style={{
+                backgroundImage: mark === "error" ? "var(--grad-err)" : "var(--grad-warn)",
+                color: mark === "error" ? "var(--color-err-ink)" : "var(--color-warn-ink)",
+              }}
+            >
+              !
+            </span>
+          )}
           <span className="min-w-0 truncate text-[12px] font-black text-ink">{node.title || node.id}</span>
         </div>
         <div style={{ height: BODY_H }} className="px-2.5">

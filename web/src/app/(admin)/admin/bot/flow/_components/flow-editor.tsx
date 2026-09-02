@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/pouf/Button";
 import { FormInput } from "@/components/pouf/Input";
@@ -8,10 +8,13 @@ import { Alert } from "@/components/pouf/feedback";
 import { Panel } from "@/app/(admin)/_components/panel";
 import { NODE_KINDS, freeNodeId, makeNode, removeNode, setPort } from "@/lib/bot-flow/editor";
 import type { FlowVersion } from "@/lib/bot-flow/store";
+import { hasErrors, marksByNode, validateFlow, type FlowRegistries } from "@/lib/bot-flow/validate";
 import { parseGraph, type BotFlowGraph, type FlowNode, type FlowNodeType, type NodeId } from "@/lib/bot-flow/types";
 import { editFlowVersion, publishFlowDraft, resetFlowDraft, rollbackFlow, saveFlowDraft, type FlowResult } from "../actions";
 import { FlowCanvas } from "./flow-canvas";
+import { FlowCheck } from "./flow-check";
 import { FlowInspector } from "./flow-inspector";
+import { FlowSim } from "./flow-sim";
 import { FlowVersions } from "./flow-versions";
 
 /* Редактор графа диалога: канвас, палитра, инспектор и версии в одном состоянии.
@@ -40,16 +43,15 @@ export function FlowEditor({
   initialNote,
   source,
   versions,
-  ctxKeys,
-  settingKeys,
+  registries,
 }: {
   initialGraph: BotFlowGraph;
   initialNote: string;
   /** Откуда открылся редактор: черновик, живая версия или сид из кода. */
   source: "draft" | "live" | "seed";
   versions: FlowVersion[];
-  ctxKeys: string[];
-  settingKeys: string[];
+  /** Что существует: `ctx.*`, `settings.*`, действия. Приезжает с сервера — их реестры тянут prisma. */
+  registries: FlowRegistries;
 }) {
   const router = useRouter();
   const [graph, setGraph] = useState<BotFlowGraph>(initialGraph);
@@ -58,7 +60,16 @@ export function FlowEditor({
   const [dirty, setDirty] = useState(false);
   const [result, setResult] = useState<FlowResult | null>(null);
   const [busy, startTransition] = useTransition();
+  // Где стоит симулятор и через что он прошёл последним ходом — канвас подсвечивает это на карточках.
+  const [trace, setTrace] = useState<{ active: NodeId | null; trail: Set<NodeId> }>({ active: null, trail: new Set() });
   const viewRef = useRef<HTMLDivElement>(null);
+
+  // Проверка идёт на каждой правке прямо в браузере: она чистая арифметика по документу, и ходить
+  // за ней на сервер значило бы ждать ответа после каждого перетаскивания. Сервер проверит ещё раз
+  // при публикации — там решение, а здесь подсказка.
+  const issues = useMemo(() => validateFlow(graph, registries), [graph, registries]);
+  const blocked = hasErrors(issues);
+  const marks = useMemo(() => marksByNode(issues), [issues]);
 
   // Несохранённый граф живёт только в памяти вкладки: закрыть её молча — потерять работу.
   useEffect(() => {
@@ -144,13 +155,21 @@ export function FlowEditor({
           <Button size="sm" variant="quiet" disabled={busy} onClick={() => run(() => saveFlowDraft(json(), note))}>
             Сохранить черновик
           </Button>
-          <Button size="sm" disabled={busy} onClick={() => run(() => publishFlowDraft(json(), note))}>
+          {/* Кнопка гаснет при ошибках проверки, но экшен всё равно проверяет сам: экран мог быть
+              отрисован до правки, а в эфир уходит присланный документ. */}
+          <Button
+            size="sm"
+            disabled={busy || blocked}
+            title={blocked ? "Сначала исправьте ошибки проверки" : undefined}
+            onClick={() => run(() => publishFlowDraft(json(), note))}
+          >
             В эфир
           </Button>
         </div>
         <p className="mt-2 text-xs font-bold text-muted">
           {SOURCE[source]}
           {dirty ? " · есть несохранённые правки" : ""}
+          {blocked ? " · проверка не пройдена: в эфир нельзя" : ""}
         </p>
         {result && (
           <Alert tone={"error" in result ? "err" : "ok"} block className="mt-3">
@@ -172,14 +191,25 @@ export function FlowEditor({
             graph={graph}
             scrollRef={viewRef}
             selected={selected}
+            marks={marks}
+            active={trace.active}
+            trail={trace.trail}
             onSelect={setSelected}
             onMove={move}
             onConnect={connect}
           />
           <p className="text-xs font-bold leading-[1.5] text-muted">
             Ноду двигают перетаскиванием, связь тянут от кружка справа до любой ноды. Отпустили мимо — ничего не
-            изменилось; чтобы связь снять, поставьте выходу «наружу» в инспекторе.
+            изменилось; чтобы связь снять, поставьте выходу «наружу» в инспекторе. Кружок слева от типа — вход ноды:
+            залит, когда сюда что-то ведёт.
           </p>
+
+          <Panel
+            title={`Проверка${issues.length ? ` · ${issues.length}` : ""}`}
+            hint="Ошибки не пускают граф в эфир, предупреждения пускают. Строка выделяет ноду на канвасе."
+          >
+            <FlowCheck issues={issues} onSelect={setSelected} />
+          </Panel>
         </div>
 
         <div className="min-w-0 space-y-4">
@@ -188,8 +218,8 @@ export function FlowEditor({
               <FlowInspector
                 node={node}
                 graph={graph}
-                ctxKeys={ctxKeys}
-                settingKeys={settingKeys}
+                ctxKeys={registries.ctxKeys ?? []}
+                settingKeys={registries.settingKeys ?? []}
                 onChange={putNode}
                 onDelete={() => {
                   if (!node) return;
@@ -199,6 +229,13 @@ export function FlowEditor({
                 onMakeStart={() => node && edit((g) => ({ ...g, start: node.id }))}
               />
             </div>
+          </Panel>
+
+          <Panel
+            title="Симулятор"
+            hint="Прогон диалога прямо по графу с экрана: в телеграм ничего не уходит, сессия бота не трогается."
+          >
+            <FlowSim graph={graph} onTrace={(active, trail) => setTrace({ active, trail: new Set(trail) })} />
           </Panel>
 
           <Panel
