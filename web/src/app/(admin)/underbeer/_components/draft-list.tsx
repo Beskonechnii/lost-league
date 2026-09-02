@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
+import { IconButton } from "@/components/pouf/Button";
+import { Icon } from "@/components/pouf/Icon";
+import { EmptyState, StatusPill } from "@/components/pouf/feedback";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,9 +48,9 @@ export function DraftList({ sessions }: { sessions: Item[] }) {
 
   if (items.length === 0) {
     return (
-      <p className="rounded-card bg-surface p-8 text-center text-sm font-bold text-muted cushion-field font-pouf">
-        Пока нет ни одного драфта. Нажми «Новый драфт», чтобы собрать команды.
-      </p>
+      <EmptyState icon="users" title="Драфтов пока нет">
+        Нажмите «Новый драфт», чтобы собрать шоу-команды из живого ростера.
+      </EmptyState>
     );
   }
 
@@ -61,28 +64,26 @@ export function DraftList({ sessions }: { sessions: Item[] }) {
               href={`/underbeer/${s.id}`}
               className="block rounded-card bg-surface p-4 cushion-card transition-transform duration-200 hover:-translate-y-1"
             >
-              <div className="flex items-center justify-between gap-2 pr-16">
+              <div className="flex items-center justify-between gap-2 pr-12">
                 <span className="truncate font-black text-ink">{label}</span>
-                <span
-                  className={`shrink-0 rounded-pill px-2.5 py-0.5 text-xs font-black text-[var(--on-accent)] ${
-                    s.status === "done" ? "bg-ok" : "bg-warn"
-                  }`}
-                >
+                <StatusPill tone={s.status === "done" ? "ok" : "warn"}>
                   {s.status === "done" ? "Собран" : "Черновик"}
-                </span>
+                </StatusPill>
               </div>
               <div className="mt-2 text-xs font-bold text-muted">Обновлён {s.updated}</div>
             </Link>
 
             {/* Удаление — кнопка поверх карточки, отдельно от ссылки (кнопку в ссылку вкладывать нельзя).
                 Само подтверждение — один AlertDialog на список, ниже; сюда кладём только его триггер. */}
-            <button
-              onClick={() => setConfirmId(s.id)}
-              title="Удалить драфт"
-              className="absolute right-2 top-2 rounded p-1 text-ink-subtle opacity-0 transition-opacity hover:text-red-700 focus-visible:opacity-100 group-hover:opacity-100"
-            >
-              ✕
-            </button>
+            <div className="absolute right-2 top-2 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+              <IconButton
+                icon={<Icon name="remove" size="sm" />}
+                label="Удалить драфт"
+                tone="down"
+                size="xs"
+                onClick={() => setConfirmId(s.id)}
+              />
+            </div>
           </li>
         );
       })}

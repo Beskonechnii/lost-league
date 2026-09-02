@@ -1,15 +1,7 @@
 "use client";
 
 import { useActionState, useMemo, useState } from "react";
-import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type DragStartEvent,
-} from "@dnd-kit/core";
+import { DragBoard } from "@/components/pouf/board";
 import { Button } from "@/components/pouf/Button";
 import { FormInput, Label } from "@/components/pouf/Input";
 import { Eyebrow } from "@/components/pouf/text";
@@ -26,8 +18,8 @@ import type { PoolEntry, TakenSpot, ReadyTeam } from "./pool";
 
 // Доска сборки состава — оболочка: состояние, перетаскивание, форма. Слева пул игроков лиги,
 // справа слоты позиций: игрок переносится мышью либо ставится кликом в ближайший свободный слот.
-// Раскладка и техника — как у доски драфта UNDERBEER (`app/(admin)/underbeer/[id]/_components/
-// draft-board.tsx`), там же обкатан @dnd-kit.
+// Техника перетаскивания — атом Кита `pouf/board.tsx` (Э11): порог срыва, «летящая» карточка и
+// вид цели общие с драфтом UNDERBEER, а правила «кто куда может» остались здесь.
 //
 // Почему так, а не восемь строк ввода, как было: состав собирается **только из пула** (BOT-PLAN.md,
 // Э5). Свободное поле ника позволяло вписать кого угодно, и лига узнавала о человеке уже на апруве.
@@ -84,7 +76,6 @@ export function ApplyBoard({
   // Фильтр по позиции: в пуле под две сотни человек, а капитан ищет «кто у нас на четвёрку».
   // Позиция берётся из ростера (основное место игрока), а не из слота, куда его ставят.
   const [role, setRole] = useState<string | null>(null);
-  const [dragId, setDragId] = useState<number | null>(null);
   const [hint, setHint] = useState<string | null>(null);
 
   const byId = useMemo(() => new Map(pool.map((p) => [p.id, p])), [pool]);
@@ -121,8 +112,6 @@ export function ApplyBoard({
 
   const coreCount = CORE_KEYS.filter((k) => slots[k]).length;
   const totalCount = Object.values(slots).filter(Boolean).length;
-
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   /** Поставить игрока в слот. Занятый слот меняется местами с прежним местом игрока, а не затирается. */
   function place(slotKey: string, playerId: number) {
@@ -168,20 +157,15 @@ export function ApplyBoard({
     place(free.key, playerId);
   }
 
-  function onDragStart(e: DragStartEvent) {
-    const id = String(e.active.id);
-    setDragId(id.startsWith("pool:") ? Number(id.slice(5)) : (slots[id.slice(7)] ?? null));
-  }
+  /** Кого несут: из пула — id в самом ключе, из слота — тот, кто в этом слоте лежит. */
+  const draggedId = (from: string) => (from.startsWith("pool:") ? Number(from.slice(5)) : (slots[from.slice(7)] ?? null));
 
-  function onDragEnd(e: DragEndEvent) {
-    const active = String(e.active.id);
-    const playerId = dragId;
-    setDragId(null);
-    const over = e.over ? String(e.over.id) : null;
+  function onDrop(from: string, to: string | null) {
+    const playerId = draggedId(from);
     if (!playerId) return;
-    if (over?.startsWith("slot:")) return place(over.slice(5), playerId);
+    if (to?.startsWith("slot:")) return place(to.slice(5), playerId);
     // Вытащили из состава мимо слотов — освобождаем место: это тот же жест, что «убрать».
-    if (active.startsWith("placed:")) clearSlot(active.slice(7));
+    if (from.startsWith("placed:")) clearSlot(from.slice(7));
   }
 
   const roster: RosterInput = {
@@ -196,9 +180,14 @@ export function ApplyBoard({
   const ready = name.trim().length > 0 && coreCount === 5 && captainId !== null;
 
   return (
-    // `id` обязателен: без него @dnd-kit нумерует служебные `aria-describedby` счётчиком, и на
-    // сервере с клиентом номера расходятся — React ругается несовпадением гидратации.
-    <DndContext id="apply-board" sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+    <DragBoard
+      id="apply-board"
+      onDrop={onDrop}
+      overlay={(from) => {
+        const p = draggedId(from);
+        return p ? <PlayerLine player={byId.get(p)!} /> : null;
+      }}
+    >
       <form action={formAction} className="space-y-5 font-pouf">
         <input type="hidden" name="tournamentId" value={tournamentId} />
         <input type="hidden" name="tournamentSlug" value={tournamentSlug} />
@@ -319,14 +308,6 @@ export function ApplyBoard({
           </ul>
         )}
       </form>
-
-      <DragOverlay>
-        {dragId ? (
-          <div className="w-64 rounded-control bg-surface opacity-95 cushion-card">
-            <PlayerLine player={byId.get(dragId)!} />
-          </div>
-        ) : null}
-      </DragOverlay>
-    </DndContext>
+    </DragBoard>
   );
 }

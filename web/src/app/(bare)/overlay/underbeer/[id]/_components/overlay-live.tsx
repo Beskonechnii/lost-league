@@ -7,6 +7,12 @@ import { PlayerAvatar } from "@/app/(public)/roster/_components/avatar";
 // Живой оверлей: опрашивает сессию раз в ~1.5с и перерисовывает составы, пока идёт драфт.
 // OBS держит сцену открытой всё эфирное время, поэтому опрос дешевле любого сокета и не требует
 // отдельного канала — сервер отдаёт готовый payload, пул резолвим на клиенте по id.
+//
+// Единственный экран проекта, который НЕ переезжает на Light Clay (Э11): это не страница, а слой
+// поверх картинки игры в OBS-сцене. Тёмные полупрозрачные карточки читаются на любом кадре, а
+// светлые — нет. Поэтому здесь свои цвета и `text-white`: токены Кита рассчитаны на бумагу.
+// После Э3 (`--ink` стал тёмным) оверлей унаследовал тёмный текст на тёмной карточке и в эфире
+// был нечитаем — цвета проставлены явно, чтобы это не повторилось при следующей смене палитры.
 
 export function OverlayLive({
   sessionId,
@@ -43,7 +49,7 @@ export function OverlayLive({
   const cur = currentTurn(state);
 
   return (
-    <div className="min-h-screen p-6">
+    <div className="min-h-screen p-6 text-white">
       <div
         className="mx-auto grid gap-4"
         style={{
@@ -73,7 +79,7 @@ export function OverlayLive({
                   <span className="h-3.5 w-3.5 rounded-full" style={{ background: team.color }} />
                   <span className="text-lg font-bold">{team.name}</span>
                 </div>
-                <span className="text-xs text-neutral-400">Σ MMR {mmrSum.toLocaleString("ru-RU")}</span>
+                <span className="text-xs text-white/60">Σ MMR {mmrSum.toLocaleString("ru-RU")}</span>
               </div>
               <div className="space-y-2 p-3">
                 {members.map((p) => (
@@ -83,15 +89,15 @@ export function OverlayLive({
                       <div className="flex items-center gap-1.5">
                         <span className="truncate font-semibold">{p.nickname}</span>
                         {team.captainId === p.id && (
-                          <span className="rounded bg-amber-500/25 px-1 text-[10px] font-bold text-amber-700">КАП</span>
+                          <span className="rounded bg-amber-400/25 px-1 text-[10px] font-bold text-amber-200">КАП</span>
                         )}
                         {team.locked.includes(p.id) && <span title="Закреплён">🔒</span>}
                       </div>
-                      {p.realName && <div className="truncate text-xs text-neutral-500">{p.realName}</div>}
+                      {p.realName && <div className="truncate text-xs text-white/55">{p.realName}</div>}
                     </div>
                     <div className="shrink-0 text-right">
                       <div className="text-sm font-medium">{p.mmr ? p.mmr.toLocaleString("ru-RU") : "—"}</div>
-                      <div className="text-[10px] text-neutral-600">MMR</div>
+                      <div className="text-[10px] text-white/45">MMR</div>
                     </div>
                   </div>
                 ))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { DragCard, dropClasses, useDropTarget } from "@/components/pouf/board";
 import { Eyebrow } from "@/components/pouf/text";
 import { Icon } from "@/components/pouf/Icon";
 import { PlayerLine } from "./board-player";
@@ -84,23 +84,12 @@ function SlotRow({
   onCaptain: () => void;
   onClear: () => void;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `slot:${slotKey}` });
-  // Игрока из слота тоже можно тащить: в другой слот — перестановка, мимо слотов — «убрать».
-  const { attributes, listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
-    id: `placed:${slotKey}`,
-    disabled: !player,
-  });
+  const { ref, isOver } = useDropTarget(`slot:${slotKey}`);
 
   return (
     <div
-      ref={setNodeRef}
-      className={`flex items-center gap-2 rounded-control p-1.5 transition-[box-shadow,background] ${
-        isOver
-          ? "bg-accent-fill/60 cushion-blob"
-          : player
-            ? "bg-surface cushion-row"
-            : "bg-surface-2 cushion-field"
-      }`}
+      ref={ref}
+      className={`flex items-center gap-2 rounded-control p-1.5 transition-[box-shadow,background] ${dropClasses({ isOver, filled: !!player })}`}
     >
       <label
         className="relative ml-1 grid h-7 w-7 shrink-0 place-items-center"
@@ -141,14 +130,11 @@ function SlotRow({
 
       {player ? (
         <>
-          <div
-            ref={setDragRef}
-            {...listeners}
-            {...attributes}
-            className={`min-w-0 flex-1 cursor-grab active:cursor-grabbing ${isDragging ? "opacity-30" : ""}`}
-          >
+          {/* Игрока из слота тоже можно тащить: в другой слот — перестановка, мимо слотов —
+              «убрать». Своей подушки строка здесь не носит: её уже держит сам слот. */}
+          <DragCard id={`placed:${slotKey}`} bare>
             <PlayerLine player={player} dense />
-          </div>
+          </DragCard>
           <button
             type="button"
             onClick={onClear}

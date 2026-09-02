@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { Eyebrow } from "@/components/pouf/text";
+import { AdminHeader } from "../_components/admin-header";
 import { NewDraftButton } from "./_components/new-draft-button";
 import { DraftList } from "./_components/draft-list";
 
@@ -12,18 +12,12 @@ export default async function UnderbeerHome() {
   ]);
 
   return (
-    <div className="space-y-10 font-pouf">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <Eyebrow className="mb-2">Служебная часть · шоу-драфт</Eyebrow>
-          <h1 className="text-[28px] font-black tracking-[-0.5px] text-ink md:text-4xl">UNDERBEER 2.0</h1>
-          <p className="mt-1.5 max-w-2xl text-sm font-bold text-muted">
-            Сборка шоу-команд из живого ростера ({players} игрок(ов)). Назначь капитанов, задай размер состава —
-            и капитаны по очереди драфтят игроков. У каждой команды по разу есть «Закрепить» и «Украсть».
-          </p>
-        </div>
-        <NewDraftButton />
-      </div>
+    <div className="space-y-8">
+      <AdminHeader eyebrow="Служебная часть · шоу-драфт" title="UNDERBEER 2.0" aside={<NewDraftButton />}>
+        Сборка шоу-команд из живого ростера ({players} игрок(ов)). Назначьте капитанов, задайте размер
+        состава — и капитаны по очереди драфтят игроков. У каждой команды по разу есть «Закрепить» и
+        «Украсть».
+      </AdminHeader>
 
       <DraftList
         sessions={sessions.map((s) => ({

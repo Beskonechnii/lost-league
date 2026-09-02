@@ -1,6 +1,6 @@
 "use client";
 
-import { useDraggable } from "@dnd-kit/core";
+import { BoardLane, DragCard } from "@/components/pouf/board";
 import { FormInput } from "@/components/pouf/Input";
 import { Eyebrow } from "@/components/pouf/text";
 import { EmptyState } from "@/components/pouf/feedback";
@@ -69,9 +69,9 @@ export function Pool({
         ))}
       </div>
 
-      {/* Дорожка списка — вдавленная лунка Кита: приподнятые строки лежат внутри неё, а не парят
-          на бумаге. Высота ограничена, иначе двести человек уводят состав справа за экран. */}
-      <div className="max-h-[30rem] space-y-1.5 overflow-y-auto rounded-blob bg-surface-2 p-2 cushion-field">
+      {/* Дорожка списка — `BoardLane` из атома доски: вдавленная лунка, в которой лежат
+          приподнятые строки, с пределом высоты и прокруткой внутри. */}
+      <BoardLane>
         {found.length === 0 ? (
           <EmptyState icon="search" title="Никого не нашли">
             В списке только игроки лиги — новичка сначала регистрируют в телеграм-боте.
@@ -87,7 +87,7 @@ export function Pool({
             />
           ))
         )}
-      </div>
+      </BoardLane>
 
       <p className="text-xs font-bold leading-[1.5] text-muted">
         Нет игрока в списке? В составе может быть только тот, кого лига знает.{" "}
@@ -108,9 +108,12 @@ export function Pool({
 }
 
 /**
- * Игрок в пуле: приподнятая строка-подушка. Занятый в другой команде и уже поставленный в состав
+ * Игрок в пуле: карточка доски (`DragCard`). Занятый в другой команде и уже поставленный в состав
  * гаснут и не тащатся — это не запрет мышью, а видимое состояние: капитан должен понимать, почему
  * человек не берётся, без попытки его взять.
+ *
+ * Поставленный в состав всё же реагирует на нажатие — им его снимают, — поэтому у него `onTap`
+ * живёт снаружи карточки: `DragCard` гасит нажатие вместе с перетаскиванием.
  */
 function PoolCard({
   player,
@@ -123,21 +126,25 @@ function PoolCard({
   placedAt: boolean;
   onTap: () => void;
 }) {
-  const locked = !!busyIn || placedAt;
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `pool:${player.id}`, disabled: locked });
+  const line = <PlayerLine player={player} note={busyIn ? `занят: ${busyIn}` : placedAt ? "в составе" : null} />;
+  if (busyIn) {
+    return (
+      <DragCard id={`pool:${player.id}`} muted title={`Уже действующий в составе «${busyIn}» этого дивизиона`}>
+        {line}
+      </DragCard>
+    );
+  }
+  if (placedAt) {
+    // Уже в составе: тащить нечего (он справа), но нажатием его оттуда снимают.
+    return (
+      <div onClick={onTap} className="cursor-pointer rounded-control bg-surface-2 opacity-55 font-pouf cushion-field">
+        {line}
+      </div>
+    );
+  }
   return (
-    <div
-      ref={setNodeRef}
-      {...(locked ? {} : { ...listeners, ...attributes })}
-      onClick={onTap}
-      title={busyIn ? `Уже действующий в составе «${busyIn}» этого дивизиона` : undefined}
-      className={`rounded-control transition-[box-shadow,transform] ${
-        locked
-          ? "bg-surface-2 opacity-55 cushion-field"
-          : "cursor-pointer bg-surface cushion-row hover:-translate-y-px hover:cushion-row-hover active:translate-y-px active:cursor-grabbing"
-      } ${isDragging ? "opacity-30" : ""}`}
-    >
-      <PlayerLine player={player} note={busyIn ? `занят: ${busyIn}` : placedAt ? "в составе" : null} />
-    </div>
+    <DragCard id={`pool:${player.id}`} onTap={onTap}>
+      {line}
+    </DragCard>
   );
 }

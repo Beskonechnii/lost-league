@@ -1,4 +1,5 @@
-import { SITE_MAX_W, SectionHeader } from "@/components/pouf/blocks";
+import { READ_MAX_W } from "@/components/pouf/blocks";
+import { AdminHeader } from "../../_components/admin-header";
 import { SingleDraft } from "./_components/single-draft";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 
@@ -10,12 +11,13 @@ export default async function SingleDraftPage() {
   if (denied) return denied;
 
   return (
-    <main className={`mx-auto w-full ${SITE_MAX_W} flex-1 px-4 py-8 md:px-6`}>
-      <SectionHeader
-        eyebrow="Админка"
-        title="Single draft"
-        aside={<span>По одному случайному герою на каждую характеристику</span>}
-      />
+    // Колонка чтения, а не вся ширина сайта: на экране четыре карточки героев, и растянутые
+    // на 1600px они превращаются в четыре плаката.
+    <main className={`mx-auto w-full ${READ_MAX_W} flex-1 px-4 py-8 md:px-6`}>
+      <AdminHeader title="Single draft">
+        По одному случайному герою на каждую характеристику — сила, ловкость, интеллект, универсал.
+        Пул локальный, поэтому «перекрутить» срабатывает мгновенно и не спрашивает сервер.
+      </AdminHeader>
       <SingleDraft />
     </main>
   );

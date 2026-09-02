@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { draftPool } from "@/lib/draft-data";
 import { newDraftState, type DraftState } from "@/lib/draft";
+import { AdminHeader } from "../../_components/admin-header";
 import { DraftBoard } from "./_components/draft-board";
 
 export const dynamic = "force-dynamic";
@@ -27,10 +27,16 @@ export default async function DraftPage({ params }: { params: Promise<{ id: stri
   }
 
   return (
-    <div className="space-y-6 font-pouf">
-      <Link href="/underbeer" className="text-sm font-bold text-muted hover:text-[var(--accent-ink)]">
-        ← Все драфты
-      </Link>
+    <div className="space-y-6">
+      {/* Крошки, а не «← Все драфты»: где ты находишься, стрелка назад не говорит (§C3). */}
+      <AdminHeader
+        crumbs={[
+          { href: "/admin", label: "Служебная часть" },
+          { href: "/underbeer", label: "UNDERBEER 2.0" },
+        ]}
+        eyebrow="Шоу-драфт"
+        title={session.title || `Драфт #${session.id}`}
+      />
       <DraftBoard sessionId={sessionId} initialTitle={session.title} initialState={state} pool={pool} />
     </div>
   );
