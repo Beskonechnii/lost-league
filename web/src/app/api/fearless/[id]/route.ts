@@ -20,10 +20,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (denied) return denied;
   const id = parseId((await params).id);
   if (!id) return bad("id: ожидался числовой id");
-  const body = (await req.json()) as { payload?: FearlessState; title?: string; status?: string };
+  const body = (await req.json()) as { payload?: FearlessState | null; title?: string; status?: string };
 
   const data: { payload?: string; title?: string | null; status?: string } = {};
-  if (body.payload !== undefined) {
+  if (body.payload === null) {
+    // Сброс борда: пустой payload = сессия снова открывается экраном настройки. Без этой ветки
+    // кнопка «Сбросить» очищала только экран, а перезагрузка возвращала брошенный драфт.
+    data.payload = "";
+    data.status = "draft";
+  } else if (body.payload !== undefined) {
     if (body.payload?.version !== FEARLESS_VERSION) return bad("Несовместимая версия состояния драфта");
     data.payload = JSON.stringify(body.payload);
     // Серия «готова», когда доиграна последняя карта bestOf

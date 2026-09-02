@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { listTeams } from "@/lib/roster-data";
@@ -6,9 +5,9 @@ import { localHeroes } from "@/lib/dota-constants";
 import { heroImg } from "@/lib/assets";
 import { teamAccent } from "@/lib/profiles";
 import { FEARLESS_VERSION, type FearlessState } from "@/lib/fearless";
-import { FearlessBoard, type HeroRef, type TeamRef } from "../_components/fearless-board";
-import { denyUnlessPermission } from "../../../_components/permission-gate";
-import { SITE_MAX_W } from "@/components/pouf/blocks";
+import { AdminHeader } from "../../../_components/admin-header";
+import { FearlessBoard } from "../_components/fearless-board";
+import type { HeroRef, TeamRef } from "../_components/types";
 
 export const dynamic = "force-dynamic";
 
@@ -16,9 +15,6 @@ export const dynamic = "force-dynamic";
 // payload = стартуем с экрана настройки (initialState=null).
 
 export default async function FearlessSessionPage({ params }: { params: Promise<{ id: string }> }) {
-  const denied = await denyUnlessPermission("tools", "Fearless draft");
-  if (denied) return denied;
-
   const { id } = await params;
   const sessionId = Number(id);
   if (!Number.isInteger(sessionId)) notFound();
@@ -46,13 +42,23 @@ export default async function FearlessSessionPage({ params }: { params: Promise<
     .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <main className={`mx-auto w-full ${SITE_MAX_W} flex-1 px-4 py-6 md:px-6`}>
-      <Link href="/admin/fearless-draft" className="text-sm text-ink-subtle hover:text-ink-muted">
-        ← Все драфты
-      </Link>
-      <div className="mt-4">
-        <FearlessBoard teams={teamRefs} heroes={heroes} sessionId={sessionId} initialState={initialState} />
-      </div>
-    </main>
+    <div className="space-y-6">
+      {/* Крошки, а не «← Все драфты»: где ты находишься, стрелка назад не говорит (§C3). */}
+      <AdminHeader
+        crumbs={[
+          { href: "/admin", label: "Служебная часть" },
+          { href: "/admin/fearless-draft", label: "Fearless draft" },
+        ]}
+        eyebrow="Драфт героев"
+        title={session.title || `Драфт #${session.id}`}
+      />
+      <FearlessBoard
+        teams={teamRefs}
+        heroes={heroes}
+        sessionId={sessionId}
+        initialTitle={session.title}
+        initialState={initialState}
+      />
+    </div>
   );
 }

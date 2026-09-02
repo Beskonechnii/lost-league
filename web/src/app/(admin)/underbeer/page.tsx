@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { AdminHeader } from "../_components/admin-header";
+import { SessionList } from "../_components/session-list";
 import { NewDraftButton } from "./_components/new-draft-button";
-import { DraftList } from "./_components/draft-list";
 
 export const dynamic = "force-dynamic";
 
@@ -19,13 +19,19 @@ export default async function UnderbeerHome() {
         «Украсть».
       </AdminHeader>
 
-      <DraftList
-        sessions={sessions.map((s) => ({
+      <SessionList
+        items={sessions.map((s) => ({
           id: s.id,
-          title: s.title,
-          status: s.status,
+          title: s.title || `Драфт #${s.id}`,
+          done: s.status === "done",
           updated: s.updatedAt.toLocaleString("ru-RU", { dateStyle: "short", timeStyle: "short" }),
         }))}
+        hrefBase="/underbeer"
+        apiBase="/api/underbeer"
+        doneLabel="Собран"
+        emptyIcon="users"
+        emptyTitle="Драфтов пока нет"
+        emptyHint="Нажмите «Новый драфт», чтобы собрать шоу-команды из живого ростера."
       />
     </div>
   );
