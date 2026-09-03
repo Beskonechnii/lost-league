@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { FLOW_KEY } from "@/lib/bot-flow/default-flow";
 import { flowActionList, flowNeighbours, flowRegistries, flowSubflowList } from "@/lib/bot-flow/registries";
 import { editorFlow, listFlowKeys, listVersions } from "@/lib/bot-flow/store";
 import { SITE_MAX_W } from "@/components/pouf/blocks";
+import { Button } from "@/components/pouf/Button";
 import { AdminHeader } from "../../../_components/admin-header";
 import { denyUnlessPermission } from "../../../_components/permission-gate";
 import { FlowEditor } from "./_components/flow-editor";
@@ -40,9 +42,22 @@ export default async function BotFlowPage({ searchParams }: { searchParams: Prom
 
   return (
     <main className={`mx-auto w-full ${SITE_MAX_W} flex-1 px-4 py-8 md:px-6`}>
-      <AdminHeader crumbs={[{ href: "/admin/bot", label: "Телеграм-бот" }]} title="Флоу бота">
+      <AdminHeader
+        crumbs={[{ href: "/admin/bot", label: "Телеграм-бот" }]}
+        title="Флоу бота"
+        // Дорожка к гайду — действием у заголовка (UI-GUIDELINES §4), а не строкой в подвале: его
+        // ищут в первую минуту знакомства с экраном, а не после того, как всё уже собрано.
+        aside={
+          <Link href="/admin/bot/flow/guide">
+            <Button type="button" size="sm" variant="quiet">
+              Как это устроено
+            </Button>
+          </Link>
+        }
+      >
         Структура диалога нодами: что бот говорит, какие кнопки показывает и куда ведёт каждая из них.
         Правки копятся в черновике — бот продолжает говорить версией из эфира, пока её не заменят.
+        Первый раз здесь — начните с гайда «Как это устроено».
       </AdminHeader>
 
       <FlowEditor
