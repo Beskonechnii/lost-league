@@ -125,6 +125,7 @@ export function DragCard({
   muted = false,
   bare = false,
   follow = false,
+  scale = 1,
   onTap,
   title,
   children,
@@ -135,6 +136,13 @@ export function DragCard({
   bare?: boolean;
   /** Тащим сам предмет, а не его копию: см. комментарий выше. */
   follow?: boolean;
+  /**
+   * Масштаб поля, в котором лежит карточка (`follow`-режим).
+   *
+   * Смещение от dnd-kit приезжает в экранных пикселях, а `transform` на карточке умножается на
+   * масштаб родителя — под увеличением предмет уезжал бы дальше курсора. Делим заранее.
+   */
+  scale?: number;
   /** Поставить нажатием — второй способ того же действия, для узкого экрана. */
   onTap?: () => void;
   title?: string;
@@ -159,7 +167,11 @@ export function DragCard({
       onClick={muted ? undefined : onTap}
       title={title}
       // Пока карточку несут, переход по transform выключен: иначе она догоняет курсор с задержкой.
-      style={follow && transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined}
+      style={
+        follow && transform
+          ? { transform: `translate3d(${transform.x / scale}px, ${transform.y / scale}px, 0)` }
+          : undefined
+      }
       className={`rounded-control font-pouf ${follow && isDragging ? "" : "transition-[box-shadow,transform,opacity]"} ${skin} ${
         isDragging && !follow ? "opacity-30" : ""
       } ${follow && isDragging ? "cushion-row-hover" : ""}`}

@@ -12,7 +12,7 @@ import type { FlowVersion } from "@/lib/bot-flow/store";
 import { hasErrors, marksByNode, validateFlow, type FlowRegistries } from "@/lib/bot-flow/validate";
 import { parseGraph, type BotFlowGraph, type FlowNode, type FlowNodeType, type NodeId } from "@/lib/bot-flow/types";
 import { editFlowVersion, publishFlowDraft, resetFlowDraft, rollbackFlow, saveFlowDraft, type FlowResult } from "../actions";
-import { FlowCanvas } from "./flow-canvas";
+import { FlowCanvas, NODE_TONE } from "./flow-canvas";
 import { FlowCheck } from "./flow-check";
 import { FlowEntryPanel } from "./flow-entry";
 import { FlowInspector } from "./flow-inspector";
@@ -140,6 +140,9 @@ export function FlowEditor({
   // Где стоит симулятор и через что он прошёл последним ходом — канвас подсвечивает это на карточках.
   const [trace, setTrace] = useState<{ active: NodeId | null; trail: Set<NodeId> }>({ active: null, trail: new Set() });
   const viewRef = useRef<HTMLDivElement>(null);
+  // Масштаб канваса держим здесь только ради «положить ноду в видимый угол»: прокрутка меряется в
+  // экранных пикселях, а координаты ноды — в полевых.
+  const zoomRef = useRef(1);
 
   // Проверка идёт на каждой правке прямо в браузере: она чистая арифметика по документу, и ходить
   // за ней на сервер значило бы ждать ответа после каждого перетаскивания. Сервер проверит ещё раз
@@ -186,8 +189,9 @@ export function FlowEditor({
     // Кладём в левый верхний угол того, что сейчас видно: нода, появившаяся за краем прокрутки,
     // выглядит как «кнопка не сработала». Занятое место обходим лесенкой вправо-вниз.
     const view = viewRef.current;
-    let x = snap((view?.scrollLeft ?? 0) + 40);
-    let y = snap((view?.scrollTop ?? 0) + 40);
+    const z = zoomRef.current;
+    let x = snap(((view?.scrollLeft ?? 0) + 40) / z);
+    let y = snap(((view?.scrollTop ?? 0) + 40) / z);
     while (graph.nodes.some((n) => Math.abs((n.x ?? 0) - x) < 120 && Math.abs((n.y ?? 0) - y) < 80)) {
       x += 30;
       y += 30;
@@ -261,7 +265,14 @@ export function FlowEditor({
           <div className="flex flex-wrap gap-1.5">
             {NODE_KINDS.map((k) => (
               <Button key={k.type} size="xs" variant="quiet" onClick={() => add(k.type)}>
-                <span title={k.hint}>+ {k.label}</span>
+                {/* Точка цвета — та же, что у типа на канвасе: палитра заодно и легенда. */}
+                <span title={k.hint} className="flex items-center gap-1.5">
+                  <span
+                    style={{ background: NODE_TONE[k.type].fill }}
+                    className="h-2.5 w-2.5 shrink-0 rounded-pill"
+                  />
+                  {k.label}
+                </span>
               </Button>
             ))}
           </div>
@@ -275,11 +286,15 @@ export function FlowEditor({
             onSelect={setSelected}
             onMove={move}
             onConnect={connect}
+            onZoom={(z) => {
+              zoomRef.current = z;
+            }}
           />
           <p className="text-xs font-bold leading-[1.5] text-muted">
             Ноду двигают перетаскиванием, связь тянут от кружка справа до любой ноды. Отпустили мимо — ничего не
             изменилось; чтобы связь снять, поставьте выходу «наружу» в инспекторе. Кружок слева от типа — вход ноды:
-            залит, когда сюда что-то ведёт.
+            залит, когда сюда что-то ведёт. Поле двигают перетаскиванием пустого места, масштаб — пультом в углу или
+            Ctrl (⌘) с колесом; «Вписать» показывает весь граф целиком, «Развернуть» — во весь экран.
           </p>
 
           <Panel
