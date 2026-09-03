@@ -3,7 +3,7 @@
 // Три области различаются префиксом:
 //   • `vars.*`     — собранное этим диалогом, живёт в сессии (`BotSession.flowVars`);
 //   • `ctx.*`      — вычисленный контекст сообщения, только чтение (кто написал, знает ли его лига);
-//   • `settings.*` — тексты и тайминги из нынешних реестров (`quiz-config.ts`, `bot-settings.ts`).
+//   • `settings.*` — тайминги и тексты уведомлений (`bot-settings.ts`): всё, что бот шлёт сам.
 //
 // **Контекст считается лениво и один раз на сообщение.** Нода спрашивает то, что ей нужно, — и
 // только это уходит в БД: иначе каждое «привет» стоило бы опознания игрока, списка турниров и
@@ -11,7 +11,6 @@
 
 import { prisma } from "../prisma";
 import { loadBotSettings, isBotSettingKey } from "../bot-settings";
-import { isQuizKey, loadQuiz } from "../quiz-config";
 import { anyFormOpen } from "../tg-forms";
 import { identify } from "../tg-menu";
 import { registrationOpen } from "../tournaments";
@@ -99,9 +98,8 @@ export function makeScope(msg: FlowMessage, vars: Record<string, string>): FlowS
   };
 
   const settings = async (name: string): Promise<string | undefined> => {
-    // Реестр текстов вопросов и реестр таймингов — два разных источника, но для графа это одна
-    // область: оператору важно значение, а не то, в какой таблице оно лежит.
-    if (isQuizKey(name)) return (await loadQuiz()).text(name);
+    // Здесь только исходящий поток — тайминги и тексты уведомлений. Формулировки шагов диалога с
+    // Э6 живут свойством ноды: два места для одного текста уже разъезжались.
     if (isBotSettingKey(name)) return (await loadBotSettings()).raw(name);
     return undefined;
   };

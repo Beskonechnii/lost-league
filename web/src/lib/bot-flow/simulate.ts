@@ -16,9 +16,9 @@
 // пишет в базу, в прогоне не пишет — код входа симулятор не выдаёт.
 
 import { makeScope, type FlowMessage } from "./context";
-import { turn, walk } from "./run";
+import { BUSY, repeat, turn, visible, walk } from "./run";
 import type { LoadedFlow } from "./store";
-import type { BotFlowGraph, NodeId } from "./types";
+import { buttonsOf, matchIntercept, nodeById, sameLabel, servicePolicyOf, type BotFlowGraph, type NodeId } from "./types";
 
 /** Где стоит воображаемый разговор: нода (`null` — ещё не начат) и собранные переменные. */
 export type SimState = { node: NodeId | null; vars: Record<string, string> };
@@ -33,7 +33,8 @@ export type SimStep = {
   vars: Record<string, string>;
   /** Через какие ноды прошёл этот ход — канвас подсвечивает след. */
   trail: NodeId[];
-  /** Граф отдал ответ наружу, старому обработчику: дальше сегодня работает `tg-quiz.ts`. */
+  /** Нода за ответ не взялась (у кнопки нет перехода, у меню пусто «непонятое») — в живом боте
+   *  разговор начался бы заново. С Э6 это дыра в графе: валидатор такой документ не выпускает. */
   outside: boolean;
   /** Ноды, на которой стоял разговор, в графе больше нет (её удалили между шагами). */
   lost: boolean;
@@ -49,6 +50,22 @@ export async function simulate(graph: BotFlowGraph, state: SimState, msg: FlowMe
   const blank = { replies: [], node: state.node, vars, trail: [], outside: false, lost: false };
 
   try {
+    const at = state.node ? nodeById(graph, state.node) : null;
+    // Порядок тот же, что у живого бота (`run.ts` → `reply`): своя кнопка ноды, потом перехват
+    // флоу, потом ход ноды. Иначе прогон показывал бы не то, что человек увидит в телеграме.
+    const own = at ? (await visible(buttonsOf(at), scope)).some((b) => sameLabel(b.label, msg.text)) : false;
+    const hit = own ? null : matchIntercept(graph, msg.text);
+    if (hit) {
+      if (at && !hit.force && servicePolicyOf(at) === "повторить") {
+        const again = await repeat(at, scope, null);
+        return { ...blank, replies: [{ text: BUSY, keyboard: null }, ...again.map(reply)], trail: [at.id] };
+      }
+      const said = hit.text ? [{ text: hit.text, keyboard: null }] : [];
+      if (!hit.to) return { ...blank, replies: said, node: null };
+      const done = await walk(flow, hit.to, scope, msg, true);
+      return { ...blank, replies: [...said, ...done.replies.map(reply)], node: done.park, trail: done.trail };
+    }
+
     if (state.node === null) {
       const done = await walk(flow, graph.start, scope, msg, true);
       return { ...blank, replies: done.replies.map(reply), node: done.park, trail: done.trail };

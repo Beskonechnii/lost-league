@@ -15,6 +15,7 @@ import { editFlowVersion, publishFlowDraft, resetFlowDraft, rollbackFlow, saveFl
 import { FlowCanvas } from "./flow-canvas";
 import { FlowCheck } from "./flow-check";
 import { FlowInspector } from "./flow-inspector";
+import { FlowIntercepts } from "./flow-intercepts";
 import { FlowSim } from "./flow-sim";
 import { FlowVersions } from "./flow-versions";
 
@@ -210,6 +211,13 @@ export function FlowEditor({
             изменилось; чтобы связь снять, поставьте выходу «наружу» в инспекторе. Кружок слева от типа — вход ноды:
             залит, когда сюда что-то ведёт.
           </p>
+
+          <Panel
+            title="Перехваты"
+            hint="Что разбирается раньше ноды, на которой стоит разговор: команды, кнопки из уведомлений и кнопки прошлых версий меню."
+          >
+            <FlowIntercepts graph={graph} onChange={(intercepts) => edit((g) => ({ ...g, intercepts }))} />
+          </Panel>
 
           <Panel
             title={`Проверка${issues.length ? ` · ${issues.length}` : ""}`}

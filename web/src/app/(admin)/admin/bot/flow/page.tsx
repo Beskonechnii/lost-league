@@ -1,7 +1,6 @@
 import { flowActionList, flowRegistries, flowSubflowList } from "@/lib/bot-flow/registries";
 import { editorFlow, listVersions } from "@/lib/bot-flow/store";
 import { SITE_MAX_W } from "@/components/pouf/blocks";
-import { Alert } from "@/components/pouf/feedback";
 import { AdminHeader } from "../../../_components/admin-header";
 import { denyUnlessPermission } from "../../../_components/permission-gate";
 import { FlowEditor } from "./_components/flow-editor";
@@ -10,7 +9,8 @@ export const metadata = { title: "Флоу бота" };
 export const dynamic = "force-dynamic";
 
 // Редактор графа диалога бота: ноды, связи, черновик и версии (`BOT-FLOW-PLAN.md` Э2), проверка и
-// симулятор (Э3).
+// симулятор (Э3). С Э6 граф — единственный путь бота: опубликованная версия и есть то, что
+// человек видит в телеграме, флага и старого рукописного пути за ней больше нет.
 //
 // Отдельным маршрутом, а не третьей вкладкой /admin/bot: у вкладок там колонка чтения (READ_MAX_W)
 // и форма на форме, а канвасу нужна вся ширина витрины. Право то же — отдельного у бота нет.
@@ -32,15 +32,6 @@ export default async function BotFlowPage() {
         Структура диалога нодами: что бот говорит, какие кнопки показывает и куда ведёт каждая из них.
         Правки копятся в черновике — бот продолжает говорить версией из эфира, пока её не заменят.
       </AdminHeader>
-
-      {/* Пока флаг выключен, граф правится «в стол»: бот идёт старым рукописным путём. Молчать об
-          этом нельзя — оператор опубликует версию и не поймёт, почему в телеграме ничего не изменилось. */}
-      {process.env.BOT_FLOW !== "1" && (
-        <Alert tone="warn" block className="mt-5">
-          Флоу выключен: в окружении сервера нет <code>BOT_FLOW=1</code>, и бот сейчас работает старым путём.
-          Править и публиковать граф можно — в эфир он попадёт после включения флага и перезапуска бота.
-        </Alert>
-      )}
 
       <FlowEditor
         initialGraph={state.graph}

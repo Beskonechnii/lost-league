@@ -1,9 +1,9 @@
 import "dotenv/config";
 import { botConfigured, getUpdates, sendTo, tgCall, type Update } from "@/lib/telegram";
-import { replyTo } from "@/lib/tg-quiz";
+import { replyTo } from "@/lib/tg-bot";
 import { tickSchedule } from "@/lib/tg-schedule";
 
-// Телеграм-бот лиги: крутит квиз заявки команды (`src/lib/tg-quiz.ts`). Запускается руками и живёт,
+// Телеграм-бот лиги: ведёт разговор графом диалога (`src/lib/tg-bot.ts` → `bot-flow/`). Запускается руками и живёт,
 // пока открыт приём заявок:
 //
 //   cd web && npm run bot          — в этом окне, видно лог

@@ -2,11 +2,18 @@
 // сессия → выбрали ребро → шагаем по графу, копя ответы, пока не упрёмся в ждущую ноду (`ask`,
 // `menu`, `subflow`) или в конец.
 //
-// **Наружу можно вернуть `null`** — «граф про это ничего не знает». С Э5 граф ведёт весь входящий
-// путь: первый уровень, справки (нодами `action`) и диалоги, которые пишут в базу, — регистрацию,
-// правку профиля, заказ встречи и анкеты (нодами `subflow` поверх рукописных модулей). За старым
-// `tg-quiz.ts` остаётся квиз заявки состава и перехваты уровня чата; `null` — это шов между ними,
-// он исчезнет вместе со старым путём на Э6.
+// **С Э6 граф — единственный путь бота.** Первый уровень, справки (ноды `action`) и диалоги,
+// которые пишут в базу (ноды `subflow` поверх рукописных модулей), ведёт он; то, что раньше
+// перехватывалось `if`-ами в начале `handleMessage` — `/start`, `/cancel`, кнопки меню посреди
+// анкеты, ответ на предложение соперника, — стало **перехватами уровня флоу** (`intercepts` в
+// документе графа). Наружу отдавать больше некому, поэтому у входа `respond` ответ есть всегда.
+//
+// **Порядок разбора одного сообщения:**
+//   1. собственная кнопка ноды, на которой стоит разговор, — она сильнее всего остального;
+//   2. перехват флоу, если политика ноды его пускает (`ServicePolicy`); `/start` и `/cancel`
+//      сильнее политики;
+//   3. обычный ход ноды;
+//   4. нода не взялась (её вырезали из графа, у кнопки нет перехода) — разговор начинается заново.
 //
 // **Бюджет шагов** — против петли в графе, которую оператор нарисовал мышью. Упёрлись в бюджет,
 // не нашли ноду, не нашли действие — это исключение: пишем в лог, человеку отвечаем понятной
@@ -21,12 +28,16 @@ import { pinnedFlow, liveFlow, type LoadedFlow } from "./store";
 import { FLOW_SUBFLOWS, type SubflowPark, type SubflowResult } from "./subflows";
 import {
   buttonsOf,
+  matchIntercept,
   nodeById,
   rowsOf,
   sameLabel,
+  servicePolicyOf,
   type AskNode,
   type FlowButton,
   type FlowCheck,
+  type FlowIntercept,
+  type FlowNode,
   type MenuNode,
   type MessageNode,
   type NodeId,
@@ -36,17 +47,9 @@ import {
 export type { FlowMessage } from "./context";
 
 /**
- * Ведёт ли граф первый уровень бота. Выключен — бот работает ровно как раньше, весь код ниже мёртв;
- * включается переменной окружения `BOT_FLOW=1` у процесса бота (`scripts/bot.ts`) и у сайта.
- *
- * Переменной, а не константой в коде: бот — долгоживущий процесс на ноутбуке, и «попробовать и
- * вернуть как было» должно стоить перезапуска, а не правки исходника (`BOT-FLOW-PLAN.md`, Э1).
- */
-export const BOT_FLOW: boolean = process.env.BOT_FLOW === "1";
-
-/**
- * Значение `BotSession.step` у диалога, который ведёт граф. Хранилище у старого и нового пути одно,
- * и старый обработчик по этому признаку понимает, что строка не его (`tg-quiz.ts` → `load`).
+ * Значение `BotSession.step` у диалога, который ведёт граф. Своего смысла у шага строки больше нет
+ * — граф помнит место в `flowNode`, — но признак остаётся: по нему видно строку, оставшуюся от
+ * старого квиза (сессии в базе переживают выкладку), и такую строку разбирать нечем.
  */
 export const FLOW_STEP = "flow";
 
@@ -106,13 +109,13 @@ async function savePark(chatId: string, park: Park): Promise<void> {
   await prisma.botSession.upsert({ where: { chatId }, create: { chatId, ...data }, update: data });
 }
 
-/** Снять сессию — только свою: строку начатого квиза граф не трогает. */
-const clearPark = (chatId: string) => prisma.botSession.deleteMany({ where: { chatId, step: FLOW_STEP } });
+/** Снять сессию. С Э6 строка диалога у чата одна и принадлежит графу — забирать её больше не у кого. */
+const clearPark = (chatId: string) => prisma.botSession.deleteMany({ where: { chatId } });
 
 // ── реплики ──────────────────────────────────────────────────────────────────
 
 /** Кнопки, которые сейчас видно: у скрытой условием кнопки не работает и переход по ней. */
-async function visible(buttons: FlowButton[], scope: FlowScope): Promise<FlowButton[]> {
+export async function visible(buttons: FlowButton[], scope: FlowScope): Promise<FlowButton[]> {
   const out: FlowButton[] = [];
   for (const b of buttons) if (await scope.test(b.when ?? null)) out.push(b);
   return out;
@@ -302,7 +305,8 @@ export async function walk(
  */
 export type Turn =
   | ({ kind: "flow" } & Walk)
-  /** Граф про этот ответ ничего не знает: разбирается старый обработчик, сессия остаётся как была. */
+  /** Нода за ответ не взялась: у кнопки нет перехода, у меню пусто «непонятое». Разговор начнётся
+   *  заново — с Э6 отдавать наружу больше некому, а валидатор такой граф в эфир не пускает. */
   | { kind: "outside" }
   /** Ноду вырезали из графа, пока человек на ней стоял: сессию снять, ответ отдать наружу. */
   | { kind: "lost" };
@@ -325,7 +329,8 @@ export async function turn(
 
   const hit = (await visible(buttonsOf(node), scope)).find((b) => sameLabel(b.label, msg.text));
 
-  // Кнопка есть, а перехода у неё нет — граф её только показал: дальше разбирается старый код.
+  // Кнопка есть, а перехода у неё нет — дыра в графе (валидатор такое не выпускает). Не молчим:
+  // разговор начнётся заново.
   if (hit && !hit.next) return { kind: "outside" };
 
   let next: NodeId | null = null;
@@ -395,64 +400,81 @@ async function guard(chatId: string, run: () => Promise<Reply[] | null>): Promis
 
 // ── вход ─────────────────────────────────────────────────────────────────────
 
-/** Разговор с начала графа. Берём версию, которая в эфире: новый диалог идёт на свежем графе. */
-async function begin(msg: FlowMessage): Promise<Reply[]> {
-  const flow = await liveFlow();
+/** Что бот отвечает на служебную кнопку там, где начатое бросать нельзя. */
+export const BUSY = "Сначала закончим начатое — или наберите /cancel, чтобы бросить.";
+
+/**
+ * Повторить вопрос, на котором стоит разговор. Нужен политике «повторить» (`ServicePolicy`): без
+ * повтора человек остаётся с ответом на другой вопрос и без понимания, чего от него ждут.
+ *
+ * У ноды графа вопрос свой, у ноды-модуля его знает только модуль (`Subflow.ask`). Модуль без
+ * `ask` молчит — лучше одна фраза «закончим начатое», чем выдуманный вопрос.
+ */
+export async function repeat(node: FlowNode, scope: FlowScope, sub: SubflowPark | null): Promise<Reply[]> {
+  if (node.type === "ask" || node.type === "menu") return [await speak(node, scope)];
+  if (node.type === "subflow" && sub) {
+    const again = await FLOW_SUBFLOWS[node.flow]?.ask?.(sub);
+    if (again) return [again];
+  }
+  return [];
+}
+
+/**
+ * Разговор с начала указанной ноды на живом графе. Перехват и непонятый текст начинают его заново,
+ * поэтому и версию берут свежую: доигрывать прежнюю человеку больше нечего (в отличие от
+ * продолжения — там версия закреплена сессией, `store.ts`).
+ */
+async function begin(msg: FlowMessage, flow: LoadedFlow, from: NodeId | null): Promise<Reply[]> {
   const scope = makeScope(msg, {});
-  return settle(msg.chatId, flow, await walk(flow, flow.graph.start, scope, msg), scope);
+  const at = from && nodeById(flow.graph, from) ? from : flow.graph.start;
+  return settle(msg.chatId, flow, await walk(flow, at, scope, msg), scope);
+}
+
+/** Сработавший перехват: сказать своё, бросить начатое и увести туда, куда он ведёт. */
+async function fire(msg: FlowMessage, live: LoadedFlow, hit: FlowIntercept): Promise<Reply[]> {
+  const said: Reply[] = hit.text ? [{ text: hit.text, keyboard: null }] : [];
+  if (!hit.to) {
+    await clearPark(msg.chatId);
+    return said;
+  }
+  return [...said, ...(await begin(msg, live, hit.to))];
 }
 
 /**
- * Начать диалог заново — это `/start`: что бы человек ни делал до того, разговор начинается с
- * первой ноды.
+ * Ответ бота на одно сообщение. Единственный вход: старого обработчика за графом больше нет,
+ * поэтому ответ есть всегда — даже если нода упала (`guard` вернёт извинение и меню).
  */
-export function startFlow(msg: FlowMessage): Promise<Reply[] | null> {
-  return guard(msg.chatId, () => begin(msg));
+export async function respond(msg: FlowMessage): Promise<Reply[]> {
+  return (await guard(msg.chatId, () => reply(msg))) ?? [];
 }
 
-/**
- * Продолжить разговор, который граф уже ведёт. `null` — либо графом ничего не начато, либо ответ
- * не его: разбирается старый обработчик (`tg-quiz.ts`), а сессия остаётся там же, где стояла.
- *
- * Отдельно от `flowReply` (ниже), потому что зовут их в разных местах обработчика: продолжение —
- * ПЕРЕД перехватами справок (у графа и у рукописного меню кнопки подписаны одинаково, и человека
- * посреди графа нельзя уводить в старый раздел), а начало разговора — ПОСЛЕ них, последним
- * средством. Начинай граф раньше — он отвечал бы меню на «Мой состав» и «Анкеты», не дав старым
- * веткам ни одного шанса.
- *
- * Версию берём ту, на которой диалог начался (`BotSession.flowVersion`): публикация новой не должна
- * выбрасывать человека из середины анкеты.
- */
-export function continueFlow(msg: FlowMessage): Promise<Reply[] | null> {
-  return guard(msg.chatId, async () => {
-    const park = await loadPark(msg.chatId);
-    if (!park) return null;
+async function reply(msg: FlowMessage): Promise<Reply[]> {
+  const park = await loadPark(msg.chatId);
+  // Версия: у начатого разговора — та, на которой он начался; у нового — та, что в эфире.
+  const flow = park ? await pinnedFlow(park.versionId) : await liveFlow();
+  const node = park ? nodeById(flow.graph, park.node) : null;
+  const scope = makeScope(msg, park?.vars ?? {});
 
-    const flow = await pinnedFlow(park.versionId);
-    const scope = makeScope(msg, park.vars);
-    const done = await turn(flow, park.node, scope, msg, false, park.sub);
+  // Собственная кнопка ноды сильнее перехвата: «Турниры» на экране турнира обязана вести туда,
+  // куда нарисована связь, а не туда, куда та же подпись уводит с первого уровня.
+  const own = node ? (await visible(buttonsOf(node), scope)).some((b) => sameLabel(b.label, msg.text)) : false;
+  const hit = own ? null : matchIntercept(flow.graph, msg.text);
 
-    // Ноду вырезали из графа, пока человек на ней стоял. Начинать за него новый диалог не будем —
-    // отдаём наружу и снимаем сессию: следующее сообщение начнётся с меню.
-    if (done.kind === "lost") {
-      await clearPark(msg.chatId);
-      return null;
+  if (hit) {
+    // Нода велела начатое не бросать — отвечаем и повторяем её вопрос. `/start` и `/cancel` сильнее:
+    // ими человек и бросает начатое, другого способа выйти у него нет.
+    if (node && !hit.force && servicePolicyOf(node) === "повторить") {
+      return [{ text: BUSY, keyboard: null }, ...(await repeat(node, scope, park?.sub ?? null))];
     }
-    if (done.kind === "outside") return null;
-    return settle(msg.chatId, flow, done, scope);
-  });
-}
+    return fire(msg, park ? await liveFlow() : flow, hit);
+  }
 
-/**
- * Ответ графа на текст, за который не взялся никто: разговор начинается с первой ноды (сегодня бот
- * на непонятый текст отвечает ровно меню).
- *
- * `null` — разговор графом уже начат: его ход сделал `continueFlow` выше по обработчику, и второй
- * раз тот же текст графу давать нечего.
- */
-export function flowReply(msg: FlowMessage): Promise<Reply[] | null> {
-  return guard(msg.chatId, async () => {
-    const park = await loadPark(msg.chatId);
-    return park ? null : begin(msg);
-  });
+  if (node) {
+    const done = await turn(flow, park!.node, scope, msg, false, park!.sub);
+    if (done.kind === "flow") return settle(msg.chatId, flow, done, scope);
+    // Нода не взялась: её вырезали из графа, пока человек стоял на ней, либо у кнопки нет перехода
+    // (с Э6 это уже ошибка валидатора). Начинаем разговор заново, а не молчим.
+  }
+
+  return begin(msg, park ? await liveFlow() : flow, null);
 }

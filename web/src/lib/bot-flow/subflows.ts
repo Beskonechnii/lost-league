@@ -19,11 +19,19 @@
 // правды о том, где человек стоит.
 
 import type { Reply } from "../telegram";
-import { handleForm, offerForms, isFormStep, type FormState } from "../tg-forms";
-import { emptyMeeting, handleMeeting, isMrStep, startMeeting, type MrState } from "../tg-meetings";
+import { askForm, handleForm, offerForms, isFormStep, type FormState } from "../tg-forms";
+import {
+  answerProposal,
+  askMeeting,
+  emptyMeeting,
+  handleMeeting,
+  isMrStep,
+  startMeeting,
+  type MrState,
+} from "../tg-meetings";
 import { identify } from "../tg-menu";
-import { emptyEdit, handleProfileEdit, isPeStep, startProfileEdit, type PeState } from "../tg-profile";
-import { emptyRegistration, handleRegister, isRegStep, startRegistration, type RegState } from "../tg-register";
+import { askEdit, emptyEdit, handleProfileEdit, isPeStep, startProfileEdit, type PeState } from "../tg-profile";
+import { askReg, emptyRegistration, handleRegister, isRegStep, startRegistration, type RegState } from "../tg-register";
 import type { FlowMessage } from "./context";
 
 /**
@@ -59,6 +67,12 @@ export type Subflow = {
   start: (input: SubflowInput) => Promise<SubflowResult>;
   /** Очередной ход внутри модуля. */
   step: (input: SubflowInput & { park: SubflowPark }) => Promise<SubflowResult>;
+  /**
+   * Повторить вопрос, на котором модуль стоит. Нужен политике «повторить» (`ServicePolicy`):
+   * служебная кнопка не должна ни попасть в ответ, ни оставить человека без понимания, чего от
+   * него ждут. `null` — повторять нечего.
+   */
+  ask?: (park: SubflowPark) => Promise<Reply | null>;
 };
 
 /** Результат рукописного модуля — ровно в том виде, в каком его отдают все четыре. */
@@ -110,6 +124,8 @@ export const FLOW_SUBFLOWS: Record<string, Subflow> = {
       });
       return resume(done, park.step);
     },
+    ask: async ({ step, state }) =>
+      isRegStep(step) ? askReg(step, (state as RegState | null) ?? emptyRegistration()) : null,
   },
 
   правка_профиля: {
@@ -127,6 +143,7 @@ export const FLOW_SUBFLOWS: Record<string, Subflow> = {
       });
       return resume(done, park.step);
     },
+    ask: async ({ step, state }) => (isPeStep(step) ? askEdit(step, (state as PeState | null) ?? emptyEdit()) : null),
   },
 
   заказ_встречи: {
@@ -140,6 +157,8 @@ export const FLOW_SUBFLOWS: Record<string, Subflow> = {
       const done = await handleMeeting(park.step, state, msg.text, { chatId: msg.chatId, tgId: msg.tgId ?? null });
       return resume(done, park.step);
     },
+    ask: async ({ step, state }) =>
+      isMrStep(step) ? askMeeting(step, (state as MrState | null) ?? emptyMeeting()) : null,
   },
 
   анкета: {
@@ -160,5 +179,25 @@ export const FLOW_SUBFLOWS: Record<string, Subflow> = {
       const done = await handleForm(park.step, state, msg.text, msg.chatId, msg.username, playerId ?? null);
       return resume(done, park.step);
     },
+    ask: async ({ step, state }) =>
+      isFormStep(step) ? askForm(step, (state as FormState | null) ?? { quizId: null, answers: [] }) : null,
+  },
+
+  ответ_сопернику: {
+    label: "Ответ на предложение соперника",
+    hint:
+      "«Принять время» и «Предложить другое» из уведомления. Приходят вне разговора — клавиатуру " +
+      "поставило само уведомление, поэтому нода зовётся перехватом флоу, а не кнопкой экрана.",
+    // Разбор ответа и есть весь модуль: «принять» кончается сразу, «предложить другое» уводит в те
+    // же шаги `mr_*`, что и обычный заказ встречи, — поэтому и `step`, и `ask` у них общие.
+    start: async ({ msg }) => enter(await answerProposal(msg.text, { tgId: msg.tgId ?? null })),
+    step: async ({ msg, park }) => {
+      if (!isMrStep(park.step)) return lostStep();
+      const state = (park.state as MrState | null) ?? emptyMeeting();
+      const done = await handleMeeting(park.step, state, msg.text, { chatId: msg.chatId, tgId: msg.tgId ?? null });
+      return resume(done, park.step);
+    },
+    ask: async ({ step, state }) =>
+      isMrStep(step) ? askMeeting(step, (state as MrState | null) ?? emptyMeeting()) : null,
   },
 };

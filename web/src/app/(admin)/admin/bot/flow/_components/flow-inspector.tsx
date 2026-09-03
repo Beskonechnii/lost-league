@@ -6,7 +6,17 @@ import { Checkbox } from "@/components/pouf/checkbox";
 import { Alert } from "@/components/pouf/feedback";
 import { portsOf, setPort } from "@/lib/bot-flow/editor";
 import type { FlowActionInfo } from "@/lib/bot-flow/registries";
-import type { BotFlowGraph, FlowButton, FlowCondition, FlowNode, FlowOp, NodeId } from "@/lib/bot-flow/types";
+import {
+  isWaiting,
+  servicePolicyOf,
+  type BotFlowGraph,
+  type FlowButton,
+  type FlowCondition,
+  type FlowNode,
+  type FlowOp,
+  type NodeId,
+  type ServicePolicy,
+} from "@/lib/bot-flow/types";
 
 /* Инспектор выбранной ноды: всё, чего не видно на карточке канваса.
  *
@@ -92,6 +102,8 @@ export function FlowInspector({
 
       <Body node={node} onChange={onChange} refs={REF_LIST} actions={actions} subflows={subflows} />
 
+      {isWaiting(node) && <Service node={node} onChange={onChange} />}
+
       <Ports node={node} graph={graph} onChange={onChange} />
 
       <div className="flex flex-wrap gap-2 pt-1">
@@ -109,6 +121,34 @@ export function FlowInspector({
           Стартовую ноду не удалить: без неё диалогу неоткуда начаться. Назначьте стартовой другую — и эта освободится.
         </p>
       )}
+    </div>
+  );
+}
+
+/**
+ * Что нода делает со служебной кнопкой — подписью перехвата флоу, нажатой посреди разговора.
+ * Спрашиваем только у ждущих нод: на проходной ноде разговор не стоит, и перехватывать там нечего.
+ */
+function Service({ node, onChange }: { node: FlowNode; onChange: (n: FlowNode) => void }) {
+  const value = servicePolicyOf(node);
+  return (
+    <div>
+      <Label htmlFor="flow-service">Служебная кнопка</Label>
+      <FormSelect
+        id="flow-service"
+        size="sm"
+        className="mt-1 w-full"
+        value={value}
+        onChange={(e) => onChange({ ...node, service: e.target.value as ServicePolicy } as FlowNode)}
+      >
+        <option value="перехват">срабатывает перехват — уйти туда, куда он ведёт</option>
+        <option value="повторить">не бросать начатое — повторить вопрос этой ноды</option>
+      </FormSelect>
+      <Hint>
+        {value === "повторить"
+          ? "Кнопка меню, нажатая здесь, не оборвёт разговор: бот попросит закончить начатое и повторит вопрос. Выйти можно /cancel."
+          : "Кнопка меню, нажатая здесь, уводит по перехвату: терять на этой ноде нечего."}
+      </Hint>
     </div>
   );
 }

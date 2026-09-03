@@ -18,7 +18,7 @@ import { roleShort, roleOrder } from "./roles";
 import { teamMmr } from "./roster-data";
 import { registrationOpen, TOURNAMENT_STATUS_LABELS, isTournamentStatus } from "./tournaments";
 import { parseDraft } from "./team-application";
-import { MENU, QUIZ_ROSTER, applicationsOf, identify, menuKeyboard, unknownReply } from "./tg-menu";
+import { MENU, applicationsOf, identify, menuKeyboard, unknownReply } from "./tg-menu";
 import { captainSpots, linkedPlayerId } from "./match-request";
 import { MEETING_BUTTON } from "./tg-meetings";
 
@@ -46,8 +46,7 @@ export const TT_SERVICE = [MY_TEAM, TEAMS, BACK, TT_EXIT];
 
 /**
  * Кнопка раздела? Клавиатура у Telegram висит до отмены, и «Команды турнира» прилетает и через день
- * после того, как диалог закончился, — по такому нажатию надо вернуть человека в раздел, а не
- * начинать ему заявку (`tg-quiz.ts` начинает её на любой непонятый текст).
+ * после того, как диалог закончился.
  */
 export const isTtButton = (text: string): boolean => TT_SERVICE.includes(text.trim());
 
@@ -57,8 +56,6 @@ export type TtResult = {
   step?: TtStep;
   state: TtState;
   done?: boolean;
-  /** Человек нажал «Подать заявку» — заявку ведёт квиз (`tg-quiz.ts`), турнир уже выбран. */
-  apply?: number;
 };
 
 // ── список турниров ──────────────────────────────────────────────────────────
@@ -450,9 +447,7 @@ export async function handleTournaments(
       }
       // Состав собирается на сайте (Э5): в чате пятёрку не выбрать из пула, а вписать кого угодно
       // мимо лиги больше нельзя. Из раздела при этом не выходим — человек вернётся сюда за статусом.
-      if (!QUIZ_ROSTER)
-        return { replies: [applyReply(current, open, meet)], step: "tt_menu", state };
-      return { replies: [], state, apply: current.id };
+      return { replies: [applyReply(current, open, meet)], step: "tt_menu", state };
     }
 
     return { replies: [tournamentReply(current, meet)], step: "tt_menu", state };

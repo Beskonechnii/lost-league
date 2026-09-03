@@ -6,13 +6,13 @@
 // выход. Исключения ровно два и по существу: у `start` нет входа, у `end` нет выхода — иначе граф
 // нечем начать и нечем кончить.
 //
-// **Переходная оговорка.** Пока разделы бота не переехали в граф (Э4–Э5), пустой выход означает не
-// дыру, а шов: «граф показал кнопку, дальше разбирается старый обработчик» (`run.ts` → `null`).
-// Поэтому до Э6 незаполненный выход — предупреждение с такой пометкой, а не ошибка; на Э6 хватит
-// перевести `EMPTY_OUT` в `"error"`, и тот же список станет блокирующим.
+// **Пустой выход — ошибка (с Э6).** Пока за графом стоял старый обработчик, незаполненный выход
+// означал не дыру, а шов: «граф показал кнопку, дальше разбирается `tg-quiz.ts`». Старого пути
+// больше нет, отдавать наружу некому — незаполненный выход теперь роняет человека в начало
+// разговора, и такой документ в эфир не пускаем.
 //
-// Предупреждения публикацию не блокируют — иначе дефолтный граф, у которого все кнопки меню ведут
-// наружу, нельзя было бы выпустить в эфир.
+// Предупреждения публикацию не блокируют: они про то, что бот скажет не то, а не про то, что он
+// потеряет разговор.
 //
 // Разбор ссылок (`ctx.*`, `settings.*`, имена действий) требует реестров, а они живут в серверных
 // модулях, которые тянут prisma. Поэтому реестры приезжают аргументом — так же, как подсказки в
@@ -52,16 +52,6 @@ export type FlowRegistries = {
   /** Зарегистрированные модули — что можно написать в ноде `subflow` (`bot-flow/subflows.ts`). */
   subflows?: { name: string }[];
 };
-
-/**
- * Уровень претензии «выход не заполнен». До Э6 — предупреждение: пустой выход это шов со старым
- * обработчиком, а не дыра. На Э6 разделы переедут в граф, шва не останется — здесь встанет `"error"`,
- * и правило «у каждой ноды заполненный выход» начнёт блокировать публикацию.
- */
-const EMPTY_OUT: FlowIssueLevel = "warn";
-
-const OUT_HINT =
-  EMPTY_OUT === "warn" ? " После Э6, когда разделы переедут в граф, это станет ошибкой." : "";
 
 /** Все `{…}` в тексте — то, что нода собирается подставить. */
 const braces = (text: string | null | undefined): string[] =>
@@ -114,7 +104,7 @@ function targetsOf(graph: BotFlowGraph, node: FlowNode): NodeId[] {
 /** Что означает незаполненный выход у этой ноды — претензию надо объяснять, а не констатировать. */
 function emptyOutMeaning(node: FlowNode, portKey: string): string {
   if (portKey.startsWith("btn:") || (node.type === "menu" && portKey === "else")) {
-    return "управление уйдёт наружу, старому обработчику (`tg-quiz.ts`).";
+    return "человек окажется в начале разговора, будто написал боту впервые.";
   }
   return "разговор оборвётся молча: бот скажет своё и замолчит.";
 }
@@ -156,9 +146,31 @@ export function validateFlow(graph: BotFlowGraph, known: FlowRegistries = {}): F
         }
         continue;
       }
-      add(EMPTY_OUT, node.id, `Выход «${port.label}» не заполнен: ${emptyOutMeaning(node, port.key)}${OUT_HINT}`, port.key);
+      add("error", node.id, `Выход «${port.label}» не заполнен: ${emptyOutMeaning(node, port.key)}`, port.key);
     }
   }
+
+  /* ── Перехваты флоу: подпись это тоже ключ перехода ─────────────────────────────────────── */
+
+  const seenMatch: string[] = [];
+  (graph.intercepts ?? []).forEach((i, n) => {
+    const match = i.match.trim();
+    if (!match) {
+      add("error", null, `У перехвата №${n + 1} нет текста: ловить нечего.`);
+      return;
+    }
+    if (seenMatch.some((m) => sameLabel(m, match))) {
+      add("error", null, `Два перехвата на «${match}»: сработает первый, второй не сработает никогда.`);
+      return;
+    }
+    seenMatch.push(match);
+    if (i.to && !byId.has(i.to)) {
+      add("error", null, `Перехват «${match}» ведёт на ноду «${i.to}», которой в графе нет.`);
+    }
+    if (!i.to && !i.text?.trim()) {
+      add("warn", null, `Перехват «${match}» никуда не ведёт и ничего не говорит: бот промолчит.`);
+    }
+  });
 
   /* ── Кнопки: подпись это ключ перехода ──────────────────────────────────────────────────── */
 
@@ -181,11 +193,16 @@ export function validateFlow(graph: BotFlowGraph, known: FlowRegistries = {}): F
 
   /* ── Вход: на ноду должен вести переход, и она должна быть достижима ────────────────────── */
 
-  const incoming = new Set<NodeId>();
+  // Перехват — тоже вход: нода «Ответ сопернику» переходами ниоткуда не достижима, в неё попадают
+  // с кнопки, которую поставило уведомление (`default-flow.ts`).
+  const entries: NodeId[] = [graph.start];
+  for (const i of graph.intercepts ?? []) if (i.to && byId.has(i.to)) entries.push(i.to);
+
+  const incoming = new Set<NodeId>(entries);
   for (const node of graph.nodes) for (const t of targetsOf(graph, node)) if (byId.has(t)) incoming.add(t);
 
-  const reachable = new Set<NodeId>([graph.start]);
-  const queue: NodeId[] = [graph.start];
+  const reachable = new Set<NodeId>(entries);
+  const queue: NodeId[] = [...entries];
   while (queue.length) {
     const node = byId.get(queue.pop() as NodeId);
     if (!node) continue;
@@ -198,8 +215,8 @@ export function validateFlow(graph: BotFlowGraph, known: FlowRegistries = {}): F
   }
 
   for (const node of graph.nodes) {
-    // Стартовая нода входа не требует по определению: в неё входят снаружи, из телеграма.
-    if (node.id === graph.start) continue;
+    // Стартовая нода и цели перехватов входа не требуют: в них попадают снаружи, из телеграма.
+    if (entries.includes(node.id)) continue;
     if (!incoming.has(node.id)) {
       add(
         "error",
@@ -242,9 +259,8 @@ export function validateFlow(graph: BotFlowGraph, known: FlowRegistries = {}): F
 
   /* ── Тупики: из ноды не выйти ни в вопрос, ни в конец, ни наружу ────────────────────────── */
 
-  // Пока держится переходная оговорка, пустой выход — законный выход наружу, и настоящий тупик
-  // получается только вместе с петлёй (о ней уже сказано выше). Проверка оживёт на Э6, когда
-  // пустых выходов не останется: тогда «некуда идти» перестанет быть шумом.
+  // Пустой выход тупиком не считаем: о нём уже сказано выше отдельной ошибкой, и повторять её
+  // вторым текстом про тупик значит удваивать список.
   const escapes = new Map<NodeId, boolean>();
   const canLeave = (id: NodeId): boolean => {
     const memo = escapes.get(id);
@@ -254,11 +270,10 @@ export function validateFlow(graph: BotFlowGraph, known: FlowRegistries = {}): F
     // На время разбора считаем ноду тупиковой: так цикл не уходит в бесконечность, а честный
     // выход всё равно найдётся по другой ветке.
     escapes.set(id, false);
-    const ports = portsOf(node);
     const out =
       node.type === "end" ||
       isWaiting(node) ||
-      (EMPTY_OUT === "warn" && ports.some((p) => !p.target)) ||
+      portsOf(node).some((p) => !p.target) ||
       targetsOf(graph, node).some(canLeave);
     escapes.set(id, out);
     return out;

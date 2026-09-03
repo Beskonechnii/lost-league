@@ -1,68 +1,44 @@
 import Link from "next/link";
-import { loadQuizForEditor } from "@/lib/quiz-config";
 import { loadBotSettingsForEditor } from "@/lib/bot-settings";
 import { telegramConfigured } from "@/lib/telegram";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 import { READ_MAX_W } from "@/components/pouf/blocks";
-import { BotAdmin } from "./_components/bot-admin";
 import { BotSettingsAdmin } from "./_components/bot-settings-admin";
 
 export const metadata = { title: "Телеграм-бот" };
 export const dynamic = "force-dynamic";
 
-// Что бот говорит и по каким таймингам. Тексты шагов и настройки флоу правятся здесь, а не в коде:
-// формулировка и «за сколько напоминать» — работа организатора, и держать их в исходниках значит
-// ходить за правкой запятой к разработчику.
+// По каким таймингам бот пишет сам: напоминания о встречах и утренний дайджест (`bot-settings.ts`).
+// Дефолт в коде, в БД только отличия оператора.
 //
-// Две вкладки, потому что это две разные работы: «Вопросы» — приём заявки (`quiz-config.ts`),
-// «Настройки» — напоминания и уведомления о встречах (`bot-settings.ts`). У обеих один уклад:
-// дефолт в коде, в БД только отличия.
+// **Вкладки «Вопросы» здесь больше нет** (`BOT-FLOW-PLAN.md`, Э6). Формулировки шагов диалога были
+// вторым реестром текстов рядом с графом, и одно и то же приходилось искать в двух местах; теперь
+// текст — свойство ноды и правится в «Флоу». Настройки остались: у них нет входящего сообщения и
+// потому нет ноды — это исходящий поток, а не разговор.
 
-const TABS = [
-  { key: "questions", label: "Вопросы" },
-  { key: "settings", label: "Настройки" },
-] as const;
-type TabKey = (typeof TABS)[number]["key"];
-
-export default async function BotPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+export default async function BotPage() {
   const denied = await denyUnlessPermission("tournaments.edit", "Телеграм-бот");
   if (denied) return denied;
 
-  const tab: TabKey = (await searchParams).tab === "settings" ? "settings" : "questions";
-  const [quiz, settings] = await Promise.all([
-    tab === "questions" ? loadQuizForEditor() : null,
-    tab === "settings" ? loadBotSettingsForEditor() : null,
-  ]);
+  const settings = await loadBotSettingsForEditor();
 
   return (
     <main className={`mx-auto w-full ${READ_MAX_W} flex-1 px-4 py-8 md:px-6`}>
       <h1 className="text-xl font-bold tracking-tight">Телеграм-бот</h1>
 
-      {/* Разрез живёт в query, как и везде на сайте: ссылку на нужную вкладку можно кинуть в чат. */}
+      {/* Флоу — соседний маршрут, а не вкладка: канвасу нужна вся ширина витрины, а здесь колонка
+          чтения. Ссылка стоит первой строкой, потому что «что бот говорит» оператор ищет чаще, чем
+          «за сколько напоминать». */}
       <div className="mt-5 flex flex-wrap gap-2">
-        {TABS.map((t) => (
-          <Link
-            key={t.key}
-            href={t.key === "questions" ? "/admin/bot" : `/admin/bot?tab=${t.key}`}
-            className={`rounded-md border px-3 py-1.5 text-sm ${
-              tab === t.key ? "border-accent bg-surface-2 text-ink" : "border-hairline bg-surface-1 text-ink-muted hover:text-ink"
-            }`}
-          >
-            {t.label}
-          </Link>
-        ))}
-        {/* Флоу — соседний маршрут, а не третья вкладка: канвасу нужна вся ширина витрины, а здесь
-            колонка чтения. В ряду он стоит рядом с вкладками, потому что для оператора это одна
-            работа — «что бот говорит и как ведёт разговор». */}
         <Link
           href="/admin/bot/flow"
           className="rounded-md border border-hairline bg-surface-1 px-3 py-1.5 text-sm text-ink-muted hover:text-ink"
         >
-          Флоу →
+          Флоу: что бот говорит и как ведёт разговор →
         </Link>
       </div>
 
-      {quiz ? <BotAdmin quiz={quiz} /> : settings ? <BotSettingsAdmin settings={settings} digestOff={!telegramConfigured()} /> : null}
+      <BotSettingsAdmin settings={settings} digestOff={!telegramConfigured()} />
     </main>
   );
 }

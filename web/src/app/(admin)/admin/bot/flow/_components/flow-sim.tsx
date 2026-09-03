@@ -61,7 +61,7 @@ export function FlowSim({
       setStarted(true);
       if (done.error) setNote({ tone: "err", text: `Нода упала: ${done.error}. В живом боте здесь была бы фраза «что-то пошло не так» и возврат в меню.` });
       else if (done.lost) setNote({ tone: "warn", text: "Ноды, на которой стоял разговор, в графе больше нет — сессия снята." });
-      else if (done.outside) setNote({ tone: "warn", text: "Граф отдал ответ наружу: дальше сегодня разбирается старый обработчик (`tg-quiz.ts`)." });
+      else if (done.outside) setNote({ tone: "warn", text: "Нода за ответ не взялась: у кнопки нет перехода либо у меню пусто «непонятое». В живом боте человек оказался бы в начале разговора." });
       else if (!done.node) setNote({ tone: "info", text: "Диалог окончен: следующее сообщение начнёт его заново." });
       else setNote(null);
     });

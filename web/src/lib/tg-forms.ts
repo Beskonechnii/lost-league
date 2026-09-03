@@ -82,6 +82,19 @@ const quizOf = (state: FormState) =>
     ? prisma.quiz.findUnique({ where: { id: state.quizId }, include: { questions: { orderBy: { orderNo: "asc" } } } })
     : Promise.resolve(null);
 
+/**
+ * Вопрос, на котором стоит анкета: им бот отвечает на служебную кнопку, нажатую посреди заполнения
+ * (`ServicePolicy` → «повторить»). `null` — анкету закрыли, пока человек отвечал: повторять нечего.
+ */
+export async function askForm(step: FormStep, state: FormState): Promise<Reply | null> {
+  if (step === "form_pick") return offerForms();
+  const quiz = await quizOf(state);
+  if (!quiz) return null;
+  if (step === "form_confirm") return summary(quiz, state);
+  const index = state.answers.length;
+  return quiz.questions[index] ? ask(quiz, index) : summary(quiz, state);
+}
+
 /** Результат шага: что ответить и куда переходить. `done` — анкета закончена, диалог сбросить. */
 export type FormResult = { replies: Reply[]; step?: FormStep; state: FormState; done?: boolean };
 

@@ -58,20 +58,9 @@ export const MENU = {
 } as const;
 
 /**
- * Собирает ли состав сам бот. С Э5 — нет: пятёрка набирается мышью из пула лиги на сайте
- * (`/tournaments/<slug>/apply`), а бот отдаёт туда ссылку. Пошаговый ввод ников в чате позволял
- * вписать кого угодно мимо лиги — ровно то, что новое правило запрещает.
- *
- * Флаг, а не удалённый код: квиз состава (`tg-quiz.ts`) остаётся до первого живого прогона нового
- * пути. Если на приёме заявок что-то пойдёт не так — откат здесь, в одну строку.
- */
-export const QUIZ_ROSTER: boolean = false;
-
-/**
  * Кнопка прошлой версии меню. Клавиатура у Telegram висит до отмены: у того, кто последний раз
- * писал боту неделю назад, на экране всё ещё «Мой состав», и нажмёт он её не раз. Ловим отдельно —
- * иначе текст кнопки уходит в квиз заявки (он начинается на любой непонятый текст) и человек
- * оказывается в диалоге, которого не просил.
+ * писал боту неделю назад, на экране всё ещё «Мой состав», и нажмёт он её не раз. Ловится
+ * перехватом флоу (`bot-flow/default-flow.ts`), который объясняет, куда состав переехал.
  */
 export const LEGACY_ROSTER = "Мой состав";
 
@@ -87,9 +76,6 @@ export async function menuKeyboard(register = false): Promise<string[][]> {
   if (await anyFormOpen()) rows.push([FORMS_BUTTON]);
   return rows;
 }
-
-export const isMenuButton = (text: string): boolean =>
-  (Object.values(MENU) as string[]).includes(text.trim()) || text.trim() === FORMS_BUTTON;
 
 /**
  * Игроки с этим хендлом — **все**, а не первый попавшийся. В ростере встречаются дубли: один человек
@@ -185,8 +171,8 @@ export async function applicationsOf(chatId: string, username: string | null | u
  * Личный профиль: всё, что лига о человеке знает, — анкета, турнирная строка, TP и ссылки. Показ
  * читает то же, что и карточка на сайте; бот лишь не заставляет за ней ходить.
  *
- * **Текст отдельно от клавиатуры** (Э4): карточку показывают двое — рукописное меню (`myProfile`
- * ниже) и нода-действие нодового флоу (`bot-flow/actions.ts`), а кнопки у них свои. Поэтому здесь
+ * **Текст отдельно от клавиатуры** (Э4): содержимое собирает эта функция, а кнопки рисует нода
+ * графа, на которой экран показан (`bot-flow/actions.ts` → `default-flow.ts`). Поэтому здесь
  * только содержимое и признаки «что этому человеку доступно»: привязан ли профиль (правка данных,
  * `tg-profile.ts`) и есть ли аккаунт из регистрации в боте (код входа, `tg-login.ts`). Кнопка
  * «Изменить данные» появляется только у **привязанного** профиля: узнанному по хендлу бот
@@ -310,22 +296,6 @@ export async function profileCard(
   };
 }
 
-/** Экран профиля в рукописном меню: карточка (выше) плюс кнопки своего аккаунта над меню. */
-async function myProfile(chatId: string, username: string | null | undefined, tgId?: string | null): Promise<Reply> {
-  const card = await profileCard(chatId, username, tgId);
-  if (!card.known) {
-    // Анкета в очереди: кабинет у человека уже есть, а игрока ещё нет — зовём войти, а не
-    // регистрироваться заново.
-    if (card.canLogin) return { text: card.text, keyboard: [[MENU.login], ...(await menuKeyboard())] };
-    return { text: card.text, keyboard: await menuKeyboard(true) };
-  }
-  const keyboard = await menuKeyboard();
-  // Кнопки своего аккаунта — первыми строками: за ними человек сюда и пришёл, а меню он и так знает.
-  // Вход даём по тому же правилу, что и правку, — по привязке `tgId`, а не по хендлу (`tg-login.ts`).
-  if (card.canLogin) keyboard.unshift([MENU.login]);
-  if (card.canEdit) keyboard.unshift([EDIT_BUTTON]);
-  return { text: card.text, keyboard };
-}
 
 /**
  * «Войти на сайт»: одноразовый код и адрес страницы (`src/lib/tg-login.ts`). Код выдаётся аккаунту
@@ -378,34 +348,3 @@ export async function loginCodeText(
   };
 }
 
-/** Экран «Войти на сайт» в рукописном меню: текст кода (выше) плюс клавиатура первого уровня. */
-async function loginCode(
-  chatId: string,
-  username: string | null | undefined,
-  tgId?: string | null,
-): Promise<Reply> {
-  const code = await loginCodeText(chatId, username, tgId);
-  return { text: code.text, keyboard: await menuKeyboard(!code.issued && !code.known) };
-}
-
-/**
- * Ответ на кнопку меню. `null` — это не кнопка меню, разбирайся сам (квиз).
- *
- * Заявку («Подать заявку») меню не обрабатывает: её ведёт квиз. Турниры — тоже: у них свой раздел
- * с навигацией и состоянием (`tg-tournaments.ts`), а здесь только справки в один ответ.
- */
-export async function menuReply(
-  chatId: string,
-  text: string,
-  username: string | null | undefined,
-  tgId?: string | null,
-): Promise<Reply | null> {
-  switch (text.trim()) {
-    case MENU.profile:
-      return myProfile(chatId, username, tgId);
-    case MENU.login:
-      return loginCode(chatId, username, tgId);
-    default:
-      return null;
-  }
-}
