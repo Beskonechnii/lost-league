@@ -561,6 +561,9 @@ model BotSession {
   step      String // шаг квиза (src/lib/tg-quiz.ts → Step) либо `flow` — диалог ведёт граф
   /// Всё собранное на текущий момент, JSON (src/lib/tg-quiz.ts → State).
   state     String
+  /// В каком флоу стоит диалог: `BotFlow.key` (main, invite, answer — src/lib/bot-flow/default-flow.ts).
+  /// NULL — строка от диалога до Э7, когда флоу был единственный: читается как `main`.
+  flowKey   String?
   /// На какой ноде графа стоит диалог (src/lib/bot-flow). NULL — граф этот чат не ведёт.
   flowNode  String?
   /// Версия графа, на которой диалог начался: `BotFlow.id`. Публикация новой версии не должна
@@ -589,7 +592,9 @@ model BotSession {
 /// начатые диалоги (`BotSession.flowVersion`), и откат — это возврат к существующей строке.
 model BotFlow {
   id        Int      @id @default(autoincrement())
-  key       String // какой флоу; до Э7 единственный — `main` (src/lib/bot-flow/store.ts)
+  /// Какой флоу: main (меню), invite (онбординг по ссылке), answer (ответ сопернику) — плюс
+  /// заведённые оператором. Как в него попадают, объявлено в самом графе (`entry`), а не здесь.
+  key       String
   version   Int // номер версии внутри `key`, растёт монотонно
   status    String // draft | published | archived
   /// Граф целиком, JSON (src/lib/bot-flow/types.ts → BotFlowGraph).

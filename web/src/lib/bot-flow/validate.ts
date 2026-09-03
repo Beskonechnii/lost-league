@@ -51,7 +51,16 @@ export type FlowRegistries = {
   actions?: { name: string; provides?: string[] }[];
   /** Зарегистрированные модули — что можно написать в ноде `subflow` (`bot-flow/subflows.ts`). */
   subflows?: { name: string }[];
+  /**
+   * Остальные живые флоу (Э7): ключ, главный ли он и чем в него входят. Без этого списка нельзя
+   * проверить ни переход `goto` в соседний граф, ни двойной вход — одну и ту же кнопку, объявленную
+   * в двух документах сразу.
+   */
+  flows?: FlowNeighbour[];
 };
+
+/** Сосед по набору флоу — ровно то, что нужно проверкам про вход и переходы между графами. */
+export type FlowNeighbour = { key: string; title?: string; main?: boolean; matches: string[] };
 
 /** Все `{…}` в тексте — то, что нода собирается подставить. */
 const braces = (text: string | null | undefined): string[] =>
@@ -92,12 +101,16 @@ function refsOf(node: FlowNode): Ref[] {
   return out;
 }
 
-/** Куда нода передаёт управление. `end` с возвратом в меню шагает на стартовую — это тоже переход. */
+/**
+ * Куда нода передаёт управление внутри ЭТОГО графа. `end` с возвратом в меню шагает на стартовую —
+ * но только в главном флоу: у соседних меню своего нет, и «в меню» уводит их наружу (Э7), а
+ * переход наружу разбором связей этого документа не описывается.
+ */
 function targetsOf(graph: BotFlowGraph, node: FlowNode): NodeId[] {
   const out = portsOf(node)
     .map((p) => p.target)
     .filter((t): t is NodeId => !!t);
-  if (node.type === "end" && node.toMenu) out.push(graph.start);
+  if (node.type === "end" && node.toMenu && graph.entry?.main) out.push(graph.start);
   return out;
 }
 
@@ -171,6 +184,44 @@ export function validateFlow(graph: BotFlowGraph, known: FlowRegistries = {}): F
       add("warn", null, `Перехват «${match}» никуда не ведёт и ничего не говорит: бот промолчит.`);
     }
   });
+
+  /* ── Точка входа флоу: как сюда вообще попадают (Э7) ────────────────────────────────────── */
+
+  const neighbours = known.flows;
+  const entry = graph.entry;
+  // Хвост ссылки и подпись кнопки — разные вещи, а ловятся одним списком: хвост `invite` ловит
+  // текст `/start invite` (`router.ts` → `entryHooks`). Сравнивать с соседями надо именно то, что
+  // ловится, иначе два флоу с одним хвостом разошлись бы незамеченными.
+  const declared = [...(entry?.payloads ?? []), ...(entry?.buttons ?? [])];
+  const caught = [
+    ...(entry?.payloads ?? []).filter((p) => p.trim()).map((p) => `/start ${p.trim()}`),
+    ...(entry?.buttons ?? []).filter((b) => b.trim()).map((b) => b.trim()),
+  ];
+
+  if (!entry?.main && !declared.some((m) => m.trim())) {
+    add(
+      "warn",
+      null,
+      "У флоу нет точки входа: попасть в него можно только переходом из другого графа. " +
+        "Объявите вход — команду /start с хвостом, кнопку из уведомления или «главный флоу».",
+    );
+  }
+  for (const value of declared) {
+    if (!value.trim()) add("error", null, "Пустая строка в точке входа: ловить нечего.");
+  }
+  if (neighbours) {
+    const twin = neighbours.find((f) => f.main);
+    if (entry?.main && twin) {
+      add("error", null, `Главным объявлен и флоу «${twin.title || twin.key}»: в бота ведут два /start, сработает один.`);
+    }
+    if (!entry?.main && !twin) {
+      add("warn", null, "Главного флоу нет ни у кого: /start и возврат «в меню» попадут в первый попавшийся граф.");
+    }
+    for (const value of caught) {
+      const busy = neighbours.find((f) => f.matches.some((m) => sameLabel(m, value)));
+      if (busy) add("error", null, `Вход «${value}» уже объявлен во флоу «${busy.title || busy.key}»: сработает один из двух.`);
+    }
+  }
 
   /* ── Кнопки: подпись это ключ перехода ──────────────────────────────────────────────────── */
 
@@ -272,6 +323,8 @@ export function validateFlow(graph: BotFlowGraph, known: FlowRegistries = {}): F
     escapes.set(id, false);
     const out =
       node.type === "end" ||
+      // Переход в соседний флоу — тоже выход: разговор продолжится там (Э7).
+      (node.type === "goto" && !!node.flow?.trim()) ||
       isWaiting(node) ||
       portsOf(node).some((p) => !p.target) ||
       targetsOf(graph, node).some(canLeave);
@@ -331,6 +384,14 @@ export function validateFlow(graph: BotFlowGraph, known: FlowRegistries = {}): F
       if (!node.action.trim()) add("error", node.id, "Действие не выбрано: ноде нечего звать.");
       else if (actionNames && !actionNames.has(node.action.trim())) {
         add("error", node.id, `Действие «${node.action}» не зарегистрировано — интерпретатор упадёт на этой ноде.`);
+      }
+    }
+    if (node.type === "goto" && node.flow?.trim()) {
+      const key = node.flow.trim();
+      // Переход в свой же флоу законен — это «начать разговор заново», — а вот в несуществующий
+      // интерпретатор упадёт: такой ключ не найдётся в наборе живых графов.
+      if (neighbours && key !== graph.key && !neighbours.some((f) => f.key === key)) {
+        add("error", node.id, `Флоу «${key}» не существует — интерпретатор упадёт на этой ноде.`);
       }
     }
     if (node.type === "subflow") {

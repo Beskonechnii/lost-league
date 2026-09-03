@@ -8,10 +8,16 @@
 // анкеты, ответ на предложение соперника, — стало **перехватами уровня флоу** (`intercepts` в
 // документе графа). Наружу отдавать больше некому, поэтому у входа `respond` ответ есть всегда.
 //
+// **С Э7 графов несколько**, у каждого своя точка входа (`BotFlowGraph.entry`): меню, онбординг по
+// deeplink'у, сценарий по кнопке из уведомления. Сессия помнит, в каком графе стоит разговор
+// (`BotSession.flowKey`), а какой граф ловит сообщение снаружи, считает роутер (`router.ts`).
+// Перейти в соседний граф можно нодой `goto` с указанным флоу и концом «вернуть в меню».
+//
 // **Порядок разбора одного сообщения:**
 //   1. собственная кнопка ноды, на которой стоит разговор, — она сильнее всего остального;
-//   2. перехват флоу, если политика ноды его пускает (`ServicePolicy`); `/start` и `/cancel`
-//      сильнее политики;
+//   2. перехват своего флоу, затем перехват главного, затем точка входа любого флоу — если
+//      политика ноды их пускает (`ServicePolicy`); `/start`, `/cancel` и вход по ссылке сильнее
+//      политики;
 //   3. обычный ход ноды;
 //   4. нода не взялась (её вырезали из графа, у кнопки нет перехода) — разговор начинается заново.
 //
@@ -24,11 +30,12 @@ import { menuKeyboard } from "../tg-menu";
 import { prisma } from "../prisma";
 import { makeScope, type FlowMessage, type FlowScope } from "./context";
 import { FLOW_ACTIONS } from "./actions";
-import { pinnedFlow, liveFlow, type LoadedFlow } from "./store";
+import { FLOW_KEY } from "./default-flow";
+import { flowOf, makeSet, matchHook, withFlow, type FlowHook, type FlowSet } from "./router";
+import { liveFlows, pinnedFlow, type LoadedFlow } from "./store";
 import { FLOW_SUBFLOWS, type SubflowPark, type SubflowResult } from "./subflows";
 import {
   buttonsOf,
-  matchIntercept,
   nodeById,
   rowsOf,
   sameLabel,
@@ -36,7 +43,6 @@ import {
   type AskNode,
   type FlowButton,
   type FlowCheck,
-  type FlowIntercept,
   type FlowNode,
   type MenuNode,
   type MessageNode,
@@ -61,10 +67,12 @@ const TROUBLE = "Что-то пошло не так на моей стороне
 // ── сессия ───────────────────────────────────────────────────────────────────
 
 /**
- * Где стоит диалог: нода, версия графа (`BotFlow.id`, null — сид из кода), собранные переменные и —
- * если разговор внутри ноды `subflow` — состояние самого модуля (`sub`).
+ * Где стоит диалог: флоу и нода в нём, версия графа (`BotFlow.id`, null — сид из кода), собранные
+ * переменные и — если разговор внутри ноды `subflow` — состояние самого модуля (`sub`).
  */
 type Park = {
+  /** Ключ флоу (Э7). У строк, заведённых до Э7, его нет — там был единственный граф, главный. */
+  key: string;
   node: NodeId;
   versionId: number | null;
   vars: Record<string, string>;
@@ -92,12 +100,13 @@ async function loadPark(chatId: string): Promise<Park | null> {
     // управление графу по выходу «отменено».
     sub = null;
   }
-  return { node: row.flowNode, versionId: row.flowVersion, vars, sub };
+  return { key: row.flowKey ?? FLOW_KEY, node: row.flowNode, versionId: row.flowVersion, vars, sub };
 }
 
 async function savePark(chatId: string, park: Park): Promise<void> {
   const data = {
     step: FLOW_STEP,
+    flowKey: park.key,
     // В `state` у графа лежит только состояние рукописного модуля, которому отдан разговор
     // (`subflows.ts`): своих данных у графа тут нет — они в `flowNode`/`flowVars`. Поле общее со
     // старым квизом, но одновременно им пользуется кто-то один: шаг строки принадлежит одному пути.
@@ -179,6 +188,11 @@ export type Walk = {
   trail: NodeId[];
   /** Состояние модуля, если заснули внутри ноды `subflow`. `null`/нет — модуля в разговоре нет. */
   sub?: SubflowPark | null;
+  /**
+   * Во флоу, в котором проход **кончился** (Э7): переход `goto` в другой граф и «в меню» из конца
+   * уводят разговор в соседний документ, и записать в сессию надо уже его ключ и его версию.
+   */
+  flow: LoadedFlow;
 };
 
 /**
@@ -223,6 +237,7 @@ const dryNote = (node: SubflowNode): Reply => ({
 });
 
 export async function walk(
+  set: FlowSet,
   flow: LoadedFlow,
   from: NodeId | null,
   scope: FlowScope,
@@ -230,15 +245,27 @@ export async function walk(
   dry = false,
 ): Promise<Walk> {
   const replies: Reply[] = [];
-  const trail: NodeId[] = [];
+  let trail: NodeId[] = [];
   // Клавиатура, которую принесло действие: она достаётся ближайшей ждущей ноде. Дальше первого
   // экрана не едет — список турниров не должен всплыть под карточкой команды.
   let rows: string[][] | null = null;
   let id = from;
+  let current = flow;
+
+  /** Уйти в соседний граф (Э7): дальше шагаем по его нодам и с его стартовой. */
+  const jump = (key: string): NodeId => {
+    const next = flowOf(set, key);
+    if (!next) throw new Error(`флоу «${key}» не найден`);
+    // След — для канваса редактора, а канвас показывает один граф: ноды чужого документа на нём
+    // подсветили бы совпавшие по имени. Поэтому при смене графа след начинается заново.
+    if (next.key !== current.key) trail = [];
+    current = next;
+    return next.graph.start;
+  };
 
   for (let step = 0; step < STEP_BUDGET; step++) {
-    if (!id) return { replies, park: null, trail };
-    const node = nodeById(flow.graph, id);
+    if (!id) return { replies, park: null, trail, flow: current };
+    const node = nodeById(current.graph, id);
     if (!node) throw new Error(`нода «${id}» в графе не найдена`);
     trail.push(node.id);
 
@@ -247,7 +274,7 @@ export async function walk(
         id = node.next;
         break;
       case "goto":
-        id = node.target;
+        id = node.flow ? jump(node.flow) : node.target;
         break;
       case "message":
         replies.push(await speak(node, scope, undefined, rows));
@@ -258,7 +285,7 @@ export async function walk(
       case "ask":
         // Ждущая нода: спросили — и заснули до следующего сообщения.
         replies.push(await speak(node, scope, undefined, rows));
-        return { replies, park: node.id, trail };
+        return { replies, park: node.id, trail, flow: current };
       case "if":
         id = (await scope.test(node.cond)) ? node.then : node.else;
         break;
@@ -284,13 +311,15 @@ export async function walk(
         }
         replies.push(...done.replies);
         // Модуль взялся за разговор — дальше по графу не идём: следующее сообщение придёт ему.
-        if (done.kind === "wait") return { replies, park: node.id, trail, sub: done.park };
+        if (done.kind === "wait") return { replies, park: node.id, trail, sub: done.park, flow: current };
         id = done.kind === "done" ? node.done : node.cancel;
         break;
       }
       case "end":
         if (node.text) replies.push({ text: await scope.render(node.text), keyboard: null });
-        id = node.toMenu ? flow.graph.start : null;
+        // «Вернуть в меню» — это главный флоу, а не начало своего (Э7): у онбординга по ссылке и
+        // ответа сопернику меню нет вовсе, а вернуть человека надо туда же, куда и всех.
+        id = node.toMenu ? jump(set.main.key) : null;
         break;
     }
   }
@@ -316,6 +345,7 @@ export type Turn =
  * редактора — он подставляет свой граф и свои переменные, а результат никуда не сохраняет.
  */
 export async function turn(
+  set: FlowSet,
   flow: LoadedFlow,
   at: NodeId,
   scope: FlowScope,
@@ -342,10 +372,10 @@ export async function turn(
     // Ответ не прошёл проверку — переспрашиваем той же нодой, ничего не записывая. Клавиатуру
     // ноды при этом показываем её собственную: список из действия принесёт то действие, которое
     // на эту ноду ведёт, а здесь мы никуда не шагали.
-    if (problem) return { kind: "flow", replies: [await speak(node, scope, problem)], park: node.id, trail: [node.id] };
+    if (problem) return { kind: "flow", replies: [await speak(node, scope, problem)], park: node.id, trail: [node.id], flow };
     scope.vars[node.var] = msg.text.trim();
     // Выхода «иначе» нет — значит вопрос ждёт кнопку: повторяем его.
-    if (!node.else) return { kind: "flow", replies: [await speak(node, scope)], park: node.id, trail: [node.id] };
+    if (!node.else) return { kind: "flow", replies: [await speak(node, scope)], park: node.id, trail: [node.id], flow };
     next = node.else;
   } else if (node.type === "menu") {
     if (!node.else) return { kind: "outside" };
@@ -357,32 +387,45 @@ export async function turn(
     if (!done) return { kind: "outside" };
     // Модуль ещё ведёт разговор: остаёмся на той же ноде, меняется только его состояние.
     if (done.kind === "wait") {
-      return { kind: "flow", replies: done.replies, park: node.id, trail: [node.id], sub: done.park };
+      return { kind: "flow", replies: done.replies, park: node.id, trail: [node.id], sub: done.park, flow };
     }
     // Модуль отработал — возвращаемся в граф по «готово» либо «отменено», и его прощальные реплики
     // идут перед тем, что скажет граф дальше.
-    const rest = await walk(flow, done.kind === "done" ? node.done : node.cancel, scope, msg, dry);
+    const rest = await walk(set, flow, done.kind === "done" ? node.done : node.cancel, scope, msg, dry);
     return {
       kind: "flow",
       replies: [...done.replies, ...rest.replies],
       park: rest.park,
-      trail: [node.id, ...rest.trail],
+      // След чужого графа сюда не приезжает: `walk` начинает его заново при переходе во флоу —
+      // а нода модуля осталась в этом. Приклеиваем её только к следу своего же графа.
+      trail: rest.flow.key === flow.key ? [node.id, ...rest.trail] : rest.trail,
       sub: rest.sub ?? null,
+      flow: rest.flow,
     };
   } else {
     // Нода не ждущая — стоять на ней разговор не мог; отдаём наружу, а не гадаем.
     return { kind: "outside" };
   }
 
-  return { kind: "flow", ...(await walk(flow, next, scope, msg, dry)) };
+  return { kind: "flow", ...(await walk(set, flow, next, scope, msg, dry)) };
 }
 
 /** Записать, где остановились, и отдать ответы. */
-async function settle(chatId: string, flow: LoadedFlow, done: Walk, scope: FlowScope): Promise<Reply[]> {
+async function settle(chatId: string, done: Walk, scope: FlowScope): Promise<Reply[]> {
+  // Флоу берём тот, в котором проход КОНЧИЛСЯ: `goto` в соседний граф и «в меню» из конца уводят
+  // разговор в другой документ, и записать надо его ключ и его версию (Э7).
+  //
   // `sub` пишем ровно тот, что вернул ход: заснули не на модуле — в строке его состояния и не
   // будет, иначе брошенная анкета всплыла бы через неделю на другой ноде.
-  if (done.park) await savePark(chatId, { node: done.park, versionId: flow.id, vars: scope.vars, sub: done.sub ?? null });
-  else await clearPark(chatId);
+  if (done.park) {
+    await savePark(chatId, {
+      key: done.flow.key,
+      node: done.park,
+      versionId: done.flow.id,
+      vars: scope.vars,
+      sub: done.sub ?? null,
+    });
+  } else await clearPark(chatId);
   return done.replies;
 }
 
@@ -424,20 +467,24 @@ export async function repeat(node: FlowNode, scope: FlowScope, sub: SubflowPark 
  * поэтому и версию берут свежую: доигрывать прежнюю человеку больше нечего (в отличие от
  * продолжения — там версия закреплена сессией, `store.ts`).
  */
-async function begin(msg: FlowMessage, flow: LoadedFlow, from: NodeId | null): Promise<Reply[]> {
+async function begin(msg: FlowMessage, set: FlowSet, flow: LoadedFlow, from: NodeId | null): Promise<Reply[]> {
   const scope = makeScope(msg, {});
   const at = from && nodeById(flow.graph, from) ? from : flow.graph.start;
-  return settle(msg.chatId, flow, await walk(flow, at, scope, msg), scope);
+  return settle(msg.chatId, await walk(set, flow, at, scope, msg), scope);
 }
 
-/** Сработавший перехват: сказать своё, бросить начатое и увести туда, куда он ведёт. */
-async function fire(msg: FlowMessage, live: LoadedFlow, hit: FlowIntercept): Promise<Reply[]> {
+/**
+ * Сработавший перехват или точка входа чужого флоу: сказать своё, бросить начатое и увести туда,
+ * куда ведёт. Флоу берём из самой записи (`FlowHook.flow`) — с Э7 она может уводить в соседний граф.
+ */
+async function fire(msg: FlowMessage, set: FlowSet, hit: FlowHook): Promise<Reply[]> {
   const said: Reply[] = hit.text ? [{ text: hit.text, keyboard: null }] : [];
-  if (!hit.to) {
+  const flow = flowOf(set, hit.flow);
+  if (!hit.to || !flow) {
     await clearPark(msg.chatId);
     return said;
   }
-  return [...said, ...(await begin(msg, live, hit.to))];
+  return [...said, ...(await begin(msg, set, flow, hit.to))];
 }
 
 /**
@@ -450,31 +497,37 @@ export async function respond(msg: FlowMessage): Promise<Reply[]> {
 
 async function reply(msg: FlowMessage): Promise<Reply[]> {
   const park = await loadPark(msg.chatId);
-  // Версия: у начатого разговора — та, на которой он начался; у нового — та, что в эфире.
-  const flow = park ? await pinnedFlow(park.versionId) : await liveFlow();
-  const node = park ? nodeById(flow.graph, park.node) : null;
+  // Живой набор графов целиком (Э7): роутеру нужны точки входа ВСЕХ флоу — `/start invite` и
+  // кнопка из уведомления обязаны попадать куда объявлено, где бы человек ни стоял.
+  const live = makeSet(await liveFlows());
+  // Начатый разговор доигрывает на своей версии — подменяем в наборе только его флоу: соседние
+  // всё равно берутся из эфира, входить в них человек будет заново.
+  const set = park?.versionId ? withFlow(live, await pinnedFlow(park.versionId, park.key)) : live;
+  const flow = park ? flowOf(set, park.key) : null;
+  const node = park && flow ? nodeById(flow.graph, park.node) : null;
   const scope = makeScope(msg, park?.vars ?? {});
 
   // Собственная кнопка ноды сильнее перехвата: «Турниры» на экране турнира обязана вести туда,
   // куда нарисована связь, а не туда, куда та же подпись уводит с первого уровня.
   const own = node ? (await visible(buttonsOf(node), scope)).some((b) => sameLabel(b.label, msg.text)) : false;
-  const hit = own ? null : matchIntercept(flow.graph, msg.text);
+  const hit = own ? null : matchHook(set, flow?.key ?? set.main.key, msg.text);
 
   if (hit) {
-    // Нода велела начатое не бросать — отвечаем и повторяем её вопрос. `/start` и `/cancel` сильнее:
-    // ими человек и бросает начатое, другого способа выйти у него нет.
+    // Нода велела начатое не бросать — отвечаем и повторяем её вопрос. `/start`, `/cancel` и вход
+    // по ссылке сильнее: ими человек и бросает начатое, другого способа выйти у него нет.
     if (node && !hit.force && servicePolicyOf(node) === "повторить") {
       return [{ text: BUSY, keyboard: null }, ...(await repeat(node, scope, park?.sub ?? null))];
     }
-    return fire(msg, park ? await liveFlow() : flow, hit);
+    // Перехват начинает разговор заново — и на живых версиях: доигрывать прежнюю уже нечего.
+    return fire(msg, live, hit);
   }
 
-  if (node) {
-    const done = await turn(flow, park!.node, scope, msg, false, park!.sub);
-    if (done.kind === "flow") return settle(msg.chatId, flow, done, scope);
+  if (node && flow) {
+    const done = await turn(set, flow, park!.node, scope, msg, false, park!.sub);
+    if (done.kind === "flow") return settle(msg.chatId, done, scope);
     // Нода не взялась: её вырезали из графа, пока человек стоял на ней, либо у кнопки нет перехода
     // (с Э6 это уже ошибка валидатора). Начинаем разговор заново, а не молчим.
   }
 
-  return begin(msg, park ? await liveFlow() : flow, null);
+  return begin(msg, live, live.main, null);
 }

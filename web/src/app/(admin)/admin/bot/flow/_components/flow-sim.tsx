@@ -24,11 +24,18 @@ type Line = { who: "бот" | "человек"; text: string; keyboard?: string[
 
 const EMPTY: SimState = { node: null, vars: {} };
 
+/** Куда ушёл прогон, если это уже не правимый граф (Э7): «в меню» уводит в главный флоу. */
+const away = (flow: string, edited: string, title?: string) =>
+  flow === edited ? null : `Разговор ушёл во флоу «${title || flow}» — дальше отвечает он, а не этот граф.`;
+
 export function FlowSim({
   graph,
+  flows,
   onTrace,
 }: {
   graph: BotFlowGraph;
+  /** Соседние флоу: по ним прогон объясняет, куда ушёл разговор, словами, а не ключом (Э7). */
+  flows: { key: string; title?: string }[];
   /** Куда пришёл симулятор и через что прошёл — канвас подсвечивает это на карточках. */
   onTrace: (active: NodeId | null, trail: NodeId[]) => void;
 }) {
@@ -56,20 +63,33 @@ export function FlowSim({
       }
       const { step: done } = res;
       setLog((l) => [...l, ...done.replies.map((r) => ({ who: "бот" as const, text: r.text, keyboard: r.keyboard }))]);
-      setState({ node: done.node, vars: done.vars });
-      onTrace(done.node, done.trail);
+      setState({ flow: done.flow, node: done.node, vars: done.vars });
+      // След подсвечиваем, только пока разговор в правимом графе: у чужих нод бывают те же имена,
+      // и подсветка «по совпадению» врала бы про пройденный путь.
+      onTrace(done.flow === graph.key ? done.node : null, done.flow === graph.key ? done.trail : []);
       setStarted(true);
+      const gone = away(done.flow, graph.key, flows.find((f) => f.key === done.flow)?.title);
       if (done.error) setNote({ tone: "err", text: `Нода упала: ${done.error}. В живом боте здесь была бы фраза «что-то пошло не так» и возврат в меню.` });
       else if (done.lost) setNote({ tone: "warn", text: "Ноды, на которой стоял разговор, в графе больше нет — сессия снята." });
       else if (done.outside) setNote({ tone: "warn", text: "Нода за ответ не взялась: у кнопки нет перехода либо у меню пусто «непонятое». В живом боте человек оказался бы в начале разговора." });
       else if (!done.node) setNote({ tone: "info", text: "Диалог окончен: следующее сообщение начнёт его заново." });
+      else if (gone) setNote({ tone: "info", text: gone });
       else setNote(null);
     });
 
+  // Чем прогон начинается: тем же сообщением, которым в этот граф входит живой человек (Э7). У
+  // онбординга это `/start invite`, у сценария из уведомления — его кнопка. Слать всем «/start»
+  // значило бы каждый раз проверять главное меню вместо графа, открытого на экране.
+  const opening = (() => {
+    const payload = graph.entry?.payloads?.find((p) => p.trim())?.trim();
+    if (payload) return `/start ${payload}`;
+    return graph.entry?.buttons?.find((b) => b.trim())?.trim() || "/start";
+  })();
+
   const restart = () => {
-    setLog([{ who: "человек", text: "/start" }]);
+    setLog([{ who: "человек", text: opening }]);
     setNote(null);
-    step("/start", EMPTY, false);
+    step(opening, { ...EMPTY, flow: graph.key }, false);
   };
 
   const send = (message: string) => {
@@ -106,8 +126,8 @@ export function FlowSim({
             onChange={(e) => setWho({ ...who, username: e.target.value })}
           />
         </div>
-        <Button size="sm" variant="quiet" disabled={busy} onClick={restart}>
-          {started ? "Заново" : "/start"}
+        <Button size="sm" variant="quiet" disabled={busy} onClick={restart} title={`Начать с «${opening}»`}>
+          {started ? "Заново" : opening}
         </Button>
       </div>
       <p className="text-xs font-bold leading-[1.5] text-muted">
@@ -116,7 +136,7 @@ export function FlowSim({
       </p>
 
       <div ref={tail} className="max-h-64 space-y-1.5 overflow-y-auto rounded-card bg-surface-2 p-2 cushion-field">
-        {!log.length && <p className="p-2 text-xs font-bold text-muted">Нажмите «/start» — диалог пойдёт по графу с экрана.</p>}
+        {!log.length && <p className="p-2 text-xs font-bold text-muted">Нажмите «{opening}» — тем же сообщением в этот граф попадает живой человек.</p>}
         {log.map((line, i) => (
           <div
             key={i}

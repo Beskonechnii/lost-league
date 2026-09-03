@@ -53,7 +53,9 @@ export function portsOf(node: FlowNode): FlowPort[] {
     case "subflow":
       return [flowPort("done", "готово", node.done), flowPort("cancel", "отменено", node.cancel)];
     case "goto":
-      return [flowPort("target", "переход", node.target)];
+      // Переход в другой флоу (Э7) выхода на канвасе не имеет: цель живёт в чужом документе, и
+      // рисовать связь некуда. Валидатор проверяет её отдельно — по имени флоу.
+      return node.flow?.trim() ? [] : [flowPort("target", "переход", node.target)];
     case "end":
       return [];
   }
@@ -108,7 +110,7 @@ export const NODE_KINDS: { type: FlowNodeType; label: string; hint: string }[] =
   { type: "if", label: "Развилка", hint: "Условие над переменными и контекстом." },
   { type: "action", label: "Действие", hint: "Зовёт функцию из реестра: один экран и сразу назад в граф." },
   { type: "subflow", label: "Модуль", hint: "Отдаёт разговор рукописному модулю на несколько ходов." },
-  { type: "goto", label: "Переход", hint: "Чтобы не тянуть длинную связь через весь канвас." },
+  { type: "goto", label: "Переход", hint: "Чтобы не тянуть длинную связь через весь канвас — или чтобы уйти в другой флоу." },
   { type: "end", label: "Конец", hint: "Попрощаться и вернуть в меню либо закрыть диалог." },
 ];
 
@@ -131,7 +133,7 @@ export function makeNode(type: FlowNodeType, id: NodeId, x: number, y: number): 
     case "subflow":
       return { ...base, type, title: "Модуль", flow: "", params: {}, done: null, cancel: null };
     case "goto":
-      return { ...base, type, title: "Переход", target: null };
+      return { ...base, type, title: "Переход", target: null, flow: null };
     case "end":
       return { ...base, type, title: "Конец", text: "", toMenu: true };
   }

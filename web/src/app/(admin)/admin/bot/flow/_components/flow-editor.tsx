@@ -14,6 +14,7 @@ import { parseGraph, type BotFlowGraph, type FlowNode, type FlowNodeType, type N
 import { editFlowVersion, publishFlowDraft, resetFlowDraft, rollbackFlow, saveFlowDraft, type FlowResult } from "../actions";
 import { FlowCanvas } from "./flow-canvas";
 import { FlowCheck } from "./flow-check";
+import { FlowEntryPanel } from "./flow-entry";
 import { FlowInspector } from "./flow-inspector";
 import { FlowIntercepts } from "./flow-intercepts";
 import { FlowSim } from "./flow-sim";
@@ -29,6 +30,68 @@ import { FlowVersions } from "./flow-versions";
  * говорить опубликованной версией, пока оператор не нажмёт «В эфир».
  */
 
+/**
+ * Переключатель флоу (Э7): какой граф правим и как завести новый.
+ *
+ * Ключ живёт в адресе, а не в состоянии редактора: по ссылке на конкретный граф удобно
+ * возвращаться, и перезагрузка не кидает оператора обратно в меню. Уход со страницы с
+ * несохранёнными правками спрашивает подтверждения — граф лежит только в памяти вкладки.
+ */
+function FlowPicker({ current, keys, dirty }: { current: string; keys: string[]; dirty: boolean }) {
+  const router = useRouter();
+  const [fresh, setFresh] = useState("");
+
+  const go = (key: string) => {
+    if (key === current) return;
+    if (dirty && !window.confirm("В этом графе есть несохранённые правки — уйти и потерять их?")) return;
+    router.push(`/admin/bot/flow?flow=${encodeURIComponent(key)}`);
+  };
+
+  // Ключ — часть адреса и имя в базе: латиница, цифры, дефис. Остальное молча срезаем, чтобы
+  // «Мой флоу» не превратился в ссылку, по которой не вернуться.
+  const make = () => {
+    const key = fresh.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
+    if (!key) return;
+    setFresh("");
+    go(key);
+  };
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-hairline pt-3">
+      <span className="text-xs font-black text-ink">Флоу:</span>
+      {keys.map((key) => (
+        <Button key={key} size="xs" variant={key === current ? "solid" : "quiet"} onClick={() => go(key)}>
+          {key}
+        </Button>
+      ))}
+      {/* Поле в обёртке с шириной: у `FormInput` в базовых классах `w-full`, и ширина, заданная
+          самому полю, до него не доезжает. */}
+      <div className="ml-2 w-36">
+        <FormInput
+          size="sm"
+          mono
+          value={fresh}
+          placeholder="новый ключ"
+          onChange={(e) => setFresh(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              make();
+            }
+          }}
+        />
+      </div>
+      <Button size="xs" variant="quiet" disabled={!fresh.trim()} onClick={make}>
+        + Флоу
+      </Button>
+      <p className="basis-full text-xs font-bold text-muted">
+        Новый флоу открывается заготовкой «вход → конец» и появляется в списке после первого сохранения. Войти в
+        него можно будет, когда у него появится точка входа.
+      </p>
+    </div>
+  );
+}
+
 /** Что за граф сейчас на экране — редактор говорит это вслух, чтобы «сохранить» не было сюрпризом. */
 const SOURCE: Record<"draft" | "live" | "seed", string> = {
   draft: "открыт черновик — в эфире пока прежняя версия",
@@ -41,6 +104,8 @@ const GRID = 10;
 const snap = (v: number) => Math.max(0, Math.round(v / GRID) * GRID);
 
 export function FlowEditor({
+  flowKey,
+  flowKeys,
   initialGraph,
   initialNote,
   source,
@@ -49,6 +114,10 @@ export function FlowEditor({
   actions,
   subflows,
 }: {
+  /** Какой флоу правим (Э7): ключ приезжает из адреса страницы. */
+  flowKey: string;
+  /** Все заведённые флоу — переключателем сверху. */
+  flowKeys: string[];
   initialGraph: BotFlowGraph;
   initialNote: string;
   /** Откуда открылся редактор: черновик, живая версия или сид из кода. */
@@ -174,6 +243,7 @@ export function FlowEditor({
             В эфир
           </Button>
         </div>
+        <FlowPicker current={flowKey} keys={flowKeys} dirty={dirty} />
         <p className="mt-2 text-xs font-bold text-muted">
           {SOURCE[source]}
           {dirty ? " · есть несохранённые правки" : ""}
@@ -213,8 +283,15 @@ export function FlowEditor({
           </p>
 
           <Panel
+            title="Точка входа"
+            hint="Как человек попадает именно в этот граф: главный флоу, ссылка-приглашение или кнопка из уведомления."
+          >
+            <FlowEntryPanel graph={graph} onChange={(fields) => edit((g) => ({ ...g, ...fields }))} />
+          </Panel>
+
+          <Panel
             title="Перехваты"
-            hint="Что разбирается раньше ноды, на которой стоит разговор: команды, кнопки из уведомлений и кнопки прошлых версий меню."
+            hint="Что разбирается раньше ноды, на которой стоит разговор: команды и кнопки, висящие на клавиатуре из любого места. Перехваты главного флоу работают во всех графах."
           >
             <FlowIntercepts graph={graph} onChange={(intercepts) => edit((g) => ({ ...g, intercepts }))} />
           </Panel>
@@ -252,14 +329,18 @@ export function FlowEditor({
             title="Симулятор"
             hint="Прогон диалога прямо по графу с экрана: в телеграм ничего не уходит, сессия бота не трогается."
           >
-            <FlowSim graph={graph} onTrace={(active, trail) => setTrace({ active, trail: new Set(trail) })} />
+            <FlowSim
+              graph={graph}
+              flows={registries.flows ?? []}
+              onTrace={(active, trail) => setTrace({ active, trail: new Set(trail) })}
+            />
           </Panel>
 
           <Panel
             title="Версии"
             hint="Откат — публикация уже существующей версии. Версии не удаляются: сессия доигрывает на своей."
             aside={
-              <Button size="xs" variant="quiet" disabled={busy} onClick={() => run(resetFlowDraft)}>
+              <Button size="xs" variant="quiet" disabled={busy} onClick={() => run(() => resetFlowDraft(flowKey))}>
                 Дефолт из кода
               </Button>
             }

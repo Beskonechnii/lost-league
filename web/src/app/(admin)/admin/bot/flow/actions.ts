@@ -3,11 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/account";
 import { prisma } from "@/lib/prisma";
-import { FLOW_KEY, defaultFlow } from "@/lib/bot-flow/default-flow";
+import { blankFlow, defaultFlow } from "@/lib/bot-flow/default-flow";
 import { brokenGraph } from "@/lib/bot-flow/editor";
-import { flowRegistries } from "@/lib/bot-flow/registries";
+import { flowNeighbours, flowRegistries } from "@/lib/bot-flow/registries";
+import { makeSet, withFlow } from "@/lib/bot-flow/router";
 import { simulate, type SimState, type SimStep } from "@/lib/bot-flow/simulate";
-import { copyToDraft, publishVersion, saveDraft } from "@/lib/bot-flow/store";
+import { copyToDraft, liveFlows, publishVersion, saveDraft } from "@/lib/bot-flow/store";
 import { validateFlow, type FlowIssue } from "@/lib/bot-flow/validate";
 import { parseGraph, type BotFlowGraph } from "@/lib/bot-flow/types";
 
@@ -49,8 +50,9 @@ function readGraph(json: string): { graph: BotFlowGraph } | { error: string } {
  * рядом с кнопкой: экран мог быть отрисован до правки реестров, а в эфир уходит то, что прислали.
  * В ответ кладём первые несколько претензий — весь список у оператора и так перед глазами.
  */
-function blocking(graph: BotFlowGraph): string | null {
-  const errors: FlowIssue[] = validateFlow(graph, flowRegistries()).filter((i) => i.level === "error");
+async function blocking(graph: BotFlowGraph): Promise<string | null> {
+  const known = { ...flowRegistries(), flows: await flowNeighbours(graph.key) };
+  const errors: FlowIssue[] = validateFlow(graph, known).filter((i) => i.level === "error");
   if (!errors.length) return null;
   const head = errors.slice(0, 3).map((e) => (e.node ? `${e.node}: ${e.text}` : e.text));
   const rest = errors.length > head.length ? ` И ещё ${errors.length - head.length}.` : "";
@@ -63,7 +65,7 @@ export async function saveFlowDraft(json: string, note: string): Promise<FlowRes
     await requirePermission("tournaments.edit");
     const read = readGraph(json);
     if ("error" in read) return read;
-    const version = await saveDraft(read.graph, note.trim());
+    const version = await saveDraft(read.graph, note.trim(), read.graph.key);
     revalidatePath(PATH);
     return { ok: `Черновик сохранён (версия ${version.version})` };
   } catch (e) {
@@ -80,15 +82,15 @@ export async function publishFlowDraft(json: string, note: string): Promise<Flow
     await requirePermission("tournaments.edit");
     const read = readGraph(json);
     if ("error" in read) return read;
-    const stop = blocking(read.graph);
+    const stop = await blocking(read.graph);
     // Черновик всё равно сохраняем: работу оператора терять нельзя, а в эфир не пускаем.
     if (stop) {
-      await saveDraft(read.graph, note.trim());
+      await saveDraft(read.graph, note.trim(), read.graph.key);
       revalidatePath(PATH);
       return { error: stop };
     }
-    const version = await saveDraft(read.graph, note.trim());
-    await publishVersion(version.id);
+    const version = await saveDraft(read.graph, note.trim(), read.graph.key);
+    await publishVersion(version.id, read.graph.key);
     revalidatePath(PATH);
     return { ok: `Версия ${version.version} в эфире` };
   } catch (e) {
@@ -101,12 +103,12 @@ export async function rollbackFlow(id: number): Promise<FlowResult> {
   try {
     await requirePermission("tournaments.edit");
     const row = await prisma.botFlow.findUnique({ where: { id }, select: { key: true, version: true, graph: true } });
-    if (!row || row.key !== FLOW_KEY) return { error: "Версия не найдена" };
+    if (!row) return { error: "Версия не найдена" };
     const graph = parseGraph(row.graph);
     if (!graph) return { error: "Эта версия не читается — выпускать её в эфир нельзя" };
-    const stop = blocking(graph);
+    const stop = await blocking(graph);
     if (stop) return { error: `Версия ${row.version} не проходит проверку. ${stop}` };
-    await publishVersion(id);
+    await publishVersion(id, row.key);
     revalidatePath(PATH);
     return { ok: `В эфире снова версия ${row.version}` };
   } catch (e) {
@@ -128,11 +130,13 @@ export async function editFlowVersion(id: number): Promise<FlowResult> {
 }
 
 /** Вернуть черновику дефолтный граф из кода — тот самый, с которым работает пустая база. */
-export async function resetFlowDraft(): Promise<FlowResult> {
+export async function resetFlowDraft(key: string): Promise<FlowResult> {
   try {
     await requirePermission("tournaments.edit");
-    const graph = defaultFlow();
-    await saveDraft(graph, "дефолт из кода");
+    // У флоу, заведённого оператором, дефолта в коде нет — возвращаем пустую заготовку: «сбросить»
+    // должно работать в любом графе, иначе кнопка врёт через раз.
+    const graph = defaultFlow(key) ?? blankFlow(key);
+    await saveDraft(graph, "дефолт из кода", key);
     revalidatePath(PATH);
     return { ok: "Черновик заменён дефолтным графом", graph: JSON.stringify(graph) };
   } catch (e) {
@@ -160,7 +164,10 @@ export async function simulateFlow(
     if (!graph) return { error: "Документ графа не читается" };
     const broken = brokenGraph(graph);
     if (broken) return { error: broken };
-    const step = await simulate(graph, state, {
+    // Правимый граф — с экрана, соседние — из эфира (Э7): прогон, дошедший до «вернуть в меню»,
+    // должен показать то самое меню, которое человек увидит в телеграме.
+    const set = withFlow(makeSet(await liveFlows()), { id: null, key: graph.key, version: 0, graph });
+    const step = await simulate(set, graph.key, state, {
       chatId: who.chatId.trim() || "sim",
       text,
       username: who.username?.trim() || null,

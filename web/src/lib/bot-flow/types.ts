@@ -147,8 +147,15 @@ export type SubflowNode = NodeBase & {
   service?: ServicePolicy;
 };
 
-/** Переход. Отдельной нодой — чтобы длинную связь на канвасе можно было не тянуть через весь экран. */
-export type GotoNode = NodeBase & { type: "goto"; target: NodeId | null };
+/**
+ * Переход. Отдельной нодой — чтобы длинную связь на канвасе можно было не тянуть через весь экран.
+ *
+ * С Э7 переход бывает и **в другой флоу**: заполнен `flow` — управление уходит на стартовую ноду
+ * названного графа, а `target` уже ни при чём. На ноду чужого графа не ходим намеренно: id живут в
+ * другом документе, редактор их не показывает, и такая связь рвалась бы молча при первой же правке
+ * соседнего флоу.
+ */
+export type GotoNode = NodeBase & { type: "goto"; target: NodeId | null; flow?: string | null };
 
 /** Конец диалога: сказать что-то на прощание и либо вернуть в меню, либо молча закрыть. */
 export type EndNode = NodeBase & { type: "end"; text?: string | null; toMenu?: boolean };
@@ -174,13 +181,43 @@ export type FlowNodeType = FlowNode["type"];
  */
 export type BotFlowGraph = {
   format: 1;
-  /** Какой это флоу; до Э7 единственный — `main`. */
+  /** Какой это флоу: `main`, `invite`, `answer`. Он же `BotFlow.key` и `BotSession.flowKey`. */
   key: string;
+  /** Название графа человеку — списком в редакторе. Пусто — покажем ключ. */
+  title?: string;
   /** С какой ноды начинается диалог. */
   start: NodeId;
   nodes: FlowNode[];
   /** Перехваты уровня флоу: что разбирается раньше ноды, на которой стоит разговор. */
   intercepts?: FlowIntercept[];
+  /** Как в этот флоу попадают снаружи (Э7). Нет объявления — войти в него нечем. */
+  entry?: FlowEntry;
+};
+
+/**
+ * Точка входа флоу (Э7): **объявляется в самом документе**, а не списком где-то сбоку. Пока флоу
+ * был один, вход у бота тоже был один — `/start` и перехваты `main`; с несколькими графами вопрос
+ * «каким сообщением человек попадает именно сюда» принадлежит графу, как и всё остальное в диалоге.
+ *
+ * Три вида входа — ровно те, что назвал план:
+ *   · `main`     — главный флоу: `/start` без хвоста, первое сообщение незнакомца и возврат «в
+ *                  меню» из любого другого графа. Главный ровно один;
+ *   · `payloads` — онбординг по ссылке: `t.me/bot?start=invite` приезжает текстом `/start invite`,
+ *                  и хвост `invite` ведёт в свой граф, минуя меню;
+ *   · `buttons`  — сценарий по кнопке из уведомления: клавиатуру поставил не экран, а рассылка
+ *                  (`tg-schedule.ts`, `tg-meetings.ts`), и нажимают её из любого места разговора.
+ *
+ * Вход работает как перехват (`FlowIntercept`) — тем же порядком разбора и с той же оговоркой про
+ * политику ноды: команда (`payloads`) сильнее политики, кнопка — нет, начатую анкету случайное
+ * нажатие не бросает.
+ */
+export type FlowEntry = {
+  /** Главный флоу бота. Такой ровно один: в него ведёт `/start` и возврат «в меню». */
+  main?: boolean;
+  /** Хвосты deeplink-ссылки без `/start`: `invite`, `promo`. */
+  payloads?: string[];
+  /** Подписи кнопок, которыми в этот флоу входят снаружи из любого места. */
+  buttons?: string[];
 };
 
 /**
@@ -220,20 +257,25 @@ export const servicePolicyOf = (node: FlowNode): ServicePolicy => {
 };
 
 /**
- * Перехват под этот текст. Сперва точное совпадение по всему списку, и только потом команда с
- * хвостом (`/start invite` ловится перехватом `/start`) — иначе более общий перехват, стоящий в
- * списке выше, съедал бы свой же частный случай.
+ * Что из списка ловит этот текст. Сперва точное совпадение по **всему** списку, и только потом
+ * команда с хвостом (`/start invite` ловится перехватом `/start`) — иначе более общая запись,
+ * стоящая выше, съедала бы свой же частный случай. С Э7 на этом держится и вход по deeplink'у:
+ * `/start invite` объявлен точкой входа своего флоу и обязан выиграть у общего `/start` главного.
  */
-export function matchIntercept(graph: BotFlowGraph, text: string): FlowIntercept | null {
-  const list = (graph.intercepts ?? []).filter((i) => i.match.trim());
+export function pickMatch<T extends { match: string }>(list: T[], text: string): T | null {
+  const items = list.filter((i) => i.match.trim());
   const value = text.trim();
-  const exact = list.find((i) => sameLabel(i.match, value));
+  const exact = items.find((i) => sameLabel(i.match, value));
   if (exact) return exact;
-  const prefixed = list.find(
+  const prefixed = items.find(
     (i) => i.match.trim().startsWith("/") && value.toLowerCase().startsWith(`${i.match.trim().toLowerCase()} `),
   );
   return prefixed ?? null;
 }
+
+/** Перехват этого графа под текст. Роутер (`router.ts`) смотрит шире — по всем живым флоу. */
+export const matchIntercept = (graph: BotFlowGraph, text: string): FlowIntercept | null =>
+  pickMatch(graph.intercepts ?? [], text);
 
 export const nodeById = (graph: BotFlowGraph, id: NodeId | null | undefined): FlowNode | null =>
   (id ? graph.nodes.find((n) => n.id === id) : null) ?? null;

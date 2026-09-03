@@ -12,16 +12,22 @@
 //     сессия доигрывает на своей (`BotSession.flowVersion`), и снос строки оборвал бы разговор.
 
 import { prisma } from "../prisma";
-import { defaultFlow, FLOW_KEY } from "./default-flow";
+import { blankFlow, defaultFlow, defaultFlows, FLOW_KEY } from "./default-flow";
 import { parseGraph, type BotFlowGraph } from "./types";
 
 /**
  * Граф вместе с тем, откуда он взят. `id` — строка `BotFlow`, на которую ссылается сессия
  * (`BotSession.flowVersion`); `null` — сид из кода: строки в базе ещё нет, ссылаться не на что.
  */
-export type LoadedFlow = { id: number | null; version: number; graph: BotFlowGraph };
+export type LoadedFlow = { id: number | null; key: string; version: number; graph: BotFlowGraph };
 
-const seed = (): LoadedFlow => ({ id: null, version: 0, graph: defaultFlow() });
+/** Сид ключа: дефолтный граф из кода, а у ключа, которого в коде нет, — пустая заготовка. */
+const seed = (key: string): LoadedFlow => ({
+  id: null,
+  key,
+  version: 0,
+  graph: defaultFlow(key) ?? blankFlow(key),
+});
 
 /**
  * Граф, который сейчас в эфире: опубликованная версия, а нет её — сид из кода. Битый JSON в базе
@@ -33,13 +39,43 @@ export async function liveFlow(key: string = FLOW_KEY): Promise<LoadedFlow> {
     where: { key, status: "published" },
     orderBy: [{ publishedAt: "desc" }, { version: "desc" }],
   });
-  if (!row) return seed();
+  if (!row) return seed(key);
   const graph = parseGraph(row.graph);
   if (!graph) {
     console.error(`[bot-flow] версия ${row.version} флоу ${key} не читается — беру дефолтный граф`);
-    return seed();
+    return seed(key);
   }
-  return { id: row.id, version: row.version, graph };
+  return { id: row.id, key, version: row.version, graph };
+}
+
+/**
+ * Все живые флоу разом (Э7): опубликованные версии плюс сиды тех ключей, которых в базе ещё нет.
+ *
+ * Одним запросом на сообщение, а не по графу за раз: роутер должен видеть точки входа **всех**
+ * флоу, чтобы `/start invite` и кнопка из уведомления попадали куда объявлено, где бы человек ни
+ * стоял. Запрос дешёвый — строк тут единицы.
+ */
+export async function liveFlows(): Promise<LoadedFlow[]> {
+  const rows = await prisma.botFlow.findMany({
+    where: { status: "published" },
+    orderBy: [{ publishedAt: "desc" }, { version: "desc" }],
+  });
+  const out: LoadedFlow[] = [];
+  const taken = new Set<string>();
+  for (const row of rows) {
+    // Живых версий на ключ по построению не больше одной, но если их всё же две (правили базу
+    // руками), берём свежайшую — ту же, что взял бы `liveFlow`.
+    if (taken.has(row.key)) continue;
+    const graph = parseGraph(row.graph);
+    if (!graph) {
+      console.error(`[bot-flow] версия ${row.version} флоу ${row.key} не читается — беру дефолтный граф`);
+      continue;
+    }
+    taken.add(row.key);
+    out.push({ id: row.id, key: row.key, version: row.version, graph });
+  }
+  for (const graph of defaultFlows()) if (!taken.has(graph.key)) out.push(seed(graph.key));
+  return out;
 }
 
 /**
@@ -48,11 +84,20 @@ export async function liveFlow(key: string = FLOW_KEY): Promise<LoadedFlow> {
  * возвращаем то, что в эфире: продолжить на живом графе лучше, чем оборвать разговор.
  */
 export async function pinnedFlow(id: number | null, key: string = FLOW_KEY): Promise<LoadedFlow> {
-  if (id === null) return seed();
+  if (id === null) return seed(key);
   const row = await prisma.botFlow.findUnique({ where: { id } });
   const graph = row ? parseGraph(row.graph) : null;
   if (!row || !graph) return liveFlow(key);
-  return { id: row.id, version: row.version, graph };
+  return { id: row.id, key: row.key, version: row.version, graph };
+}
+
+/** Какие флоу вообще есть: дефолтные из кода плюс заведённые оператором. Для списка в редакторе. */
+export async function listFlowKeys(): Promise<string[]> {
+  const rows = await prisma.botFlow.findMany({ distinct: ["key"], select: { key: true }, orderBy: { key: "asc" } });
+  const keys = new Set<string>(defaultFlows().map((g) => g.key));
+  for (const row of rows) keys.add(row.key);
+  // Главный первым, остальные по алфавиту: в списке редактора он же и открывается по умолчанию.
+  return [...keys].sort((a, b) => (a === FLOW_KEY ? -1 : b === FLOW_KEY ? 1 : a.localeCompare(b)));
 }
 
 /* ── Редактор: версии, черновик, публикация ─────────────────────────────────────────────────── */

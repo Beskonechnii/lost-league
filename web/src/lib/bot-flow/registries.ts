@@ -10,8 +10,10 @@
 import { BOT_SETTINGS } from "../bot-settings";
 import { FLOW_ACTIONS } from "./actions";
 import { CTX_KEYS } from "./context";
+import { entryHooks } from "./router";
+import { liveFlows } from "./store";
 import { FLOW_SUBFLOWS } from "./subflows";
-import type { FlowRegistries } from "./validate";
+import type { FlowNeighbour, FlowRegistries } from "./validate";
 
 /** Реестры одним объектом. Простые строки и массивы — их можно отдать клиентскому компоненту. */
 export const flowRegistries = (): FlowRegistries => ({
@@ -22,6 +24,24 @@ export const flowRegistries = (): FlowRegistries => ({
   actions: Object.entries(FLOW_ACTIONS).map(([name, a]) => ({ name, provides: a.provides })),
   subflows: Object.keys(FLOW_SUBFLOWS).map((name) => ({ name })),
 });
+
+/**
+ * Соседи по набору флоу (Э7): все живые графы, кроме правимого. Ходит в базу, поэтому отдельно от
+ * `flowRegistries` — та синхронная и её зовут в браузере на каждой правке.
+ */
+export async function flowNeighbours(key: string): Promise<FlowNeighbour[]> {
+  const flows = await liveFlows();
+  return flows
+    .filter((f) => f.key !== key)
+    .map((f) => ({
+      key: f.key,
+      title: f.graph.title,
+      main: !!f.graph.entry?.main,
+      // Ловят чужой флоу его точки входа, а не перехваты: перехват принадлежит разговору внутри
+      // графа, а вход — тому, как в граф попадают снаружи, и вот он-то и может столкнуться.
+      matches: entryHooks(f).map((h) => h.match),
+    }));
+}
 
 /**
  * Действия для инспектора ноды: подпись, пояснение и обязательные параметры. Отдельно от

@@ -7,7 +7,8 @@
 // в памяти, а прогон живого человека посреди анкеты не сбивает.
 //
 // **Граф берётся с экрана, а не из базы.** Проверять нужно ровно то, что оператор сейчас
-// нарисовал, — в том числе несохранённый черновик.
+// нарисовал, — в том числе несохранённый черновик. Соседние флоу при этом берутся из эфира (Э7):
+// прогон, дошедший до «вернуть в меню», должен показать то самое меню, которое увидит человек.
 //
 // Чего симулятор всё-таки касается: `ctx.*` читает настоящую базу (кто написал, знает ли лига,
 // открыты ли анкеты) — это чтение, и без него проверка условий была бы игрой в угадайку. По той же
@@ -16,18 +17,24 @@
 // пишет в базу, в прогоне не пишет — код входа симулятор не выдаёт.
 
 import { makeScope, type FlowMessage } from "./context";
+import { flowOf, matchHook, type FlowSet } from "./router";
 import { BUSY, repeat, turn, visible, walk } from "./run";
-import type { LoadedFlow } from "./store";
-import { buttonsOf, matchIntercept, nodeById, sameLabel, servicePolicyOf, type BotFlowGraph, type NodeId } from "./types";
+import { buttonsOf, nodeById, sameLabel, servicePolicyOf, type NodeId } from "./types";
 
-/** Где стоит воображаемый разговор: нода (`null` — ещё не начат) и собранные переменные. */
-export type SimState = { node: NodeId | null; vars: Record<string, string> };
+/**
+ * Где стоит воображаемый разговор: флоу, нода в нём (`null` — ещё не начат) и собранные переменные.
+ * Ключ флоу нужен с Э7: «в меню» и переход `goto` уводят прогон в соседний граф, и следующий ход
+ * должен начаться там же, где кончился прошлый.
+ */
+export type SimState = { flow?: string; node: NodeId | null; vars: Record<string, string> };
 
 /** Одна реплика бота так, как её увидит человек. */
 export type SimReply = { text: string; keyboard: string[][] | null };
 
 export type SimStep = {
   replies: SimReply[];
+  /** В каком флоу разговор оказался: «в меню» и `goto` уводят прогон в соседний граф (Э7). */
+  flow: string;
   /** На какой ноде разговор заснул; `null` — окончен. */
   node: NodeId | null;
   vars: Record<string, string>;
@@ -43,37 +50,40 @@ export type SimStep = {
 };
 
 /** Ход симулятора: то же, что сделал бы бот, но без записи сессии и без Telegram. */
-export async function simulate(graph: BotFlowGraph, state: SimState, msg: FlowMessage): Promise<SimStep> {
-  const flow: LoadedFlow = { id: null, version: 0, graph };
+export async function simulate(set: FlowSet, edited: string, state: SimState, msg: FlowMessage): Promise<SimStep> {
+  // Флоу, в котором стоит разговор: начатый помнит свой (Э7), новый начинается в редактируемом.
+  const flow = flowOf(set, state.flow ?? edited) ?? set.main;
   const vars: Record<string, string> = { ...state.vars };
   const scope = makeScope(msg, vars);
-  const blank = { replies: [], node: state.node, vars, trail: [], outside: false, lost: false };
+  const blank = { replies: [], flow: flow.key, node: state.node, vars, trail: [], outside: false, lost: false };
 
   try {
-    const at = state.node ? nodeById(graph, state.node) : null;
-    // Порядок тот же, что у живого бота (`run.ts` → `reply`): своя кнопка ноды, потом перехват
-    // флоу, потом ход ноды. Иначе прогон показывал бы не то, что человек увидит в телеграме.
+    const at = state.node ? nodeById(flow.graph, state.node) : null;
+    // Порядок тот же, что у живого бота (`run.ts` → `reply`): своя кнопка ноды, потом перехваты и
+    // точки входа (`router.ts`), потом ход ноды. Иначе прогон показывал бы не то, что человек
+    // увидит в телеграме.
     const own = at ? (await visible(buttonsOf(at), scope)).some((b) => sameLabel(b.label, msg.text)) : false;
-    const hit = own ? null : matchIntercept(graph, msg.text);
+    const hit = own ? null : matchHook(set, flow.key, msg.text);
     if (hit) {
       if (at && !hit.force && servicePolicyOf(at) === "повторить") {
         const again = await repeat(at, scope, null);
         return { ...blank, replies: [{ text: BUSY, keyboard: null }, ...again.map(reply)], trail: [at.id] };
       }
       const said = hit.text ? [{ text: hit.text, keyboard: null }] : [];
-      if (!hit.to) return { ...blank, replies: said, node: null };
-      const done = await walk(flow, hit.to, scope, msg, true);
-      return { ...blank, replies: [...said, ...done.replies.map(reply)], node: done.park, trail: done.trail };
+      const target = flowOf(set, hit.flow);
+      if (!hit.to || !target) return { ...blank, replies: said, node: null };
+      const done = await walk(set, target, hit.to, scope, msg, true);
+      return { ...blank, replies: [...said, ...done.replies.map(reply)], flow: done.flow.key, node: done.park, trail: done.trail };
     }
 
     if (state.node === null) {
-      const done = await walk(flow, graph.start, scope, msg, true);
-      return { ...blank, replies: done.replies.map(reply), node: done.park, trail: done.trail };
+      const done = await walk(set, flow, flow.graph.start, scope, msg, true);
+      return { ...blank, replies: done.replies.map(reply), flow: done.flow.key, node: done.park, trail: done.trail };
     }
-    const done = await turn(flow, state.node, scope, msg, true);
+    const done = await turn(set, flow, state.node, scope, msg, true);
     if (done.kind === "lost") return { ...blank, node: null, outside: true, lost: true };
     if (done.kind === "outside") return { ...blank, outside: true };
-    return { ...blank, replies: done.replies.map(reply), node: done.park, trail: done.trail };
+    return { ...blank, replies: done.replies.map(reply), flow: done.flow.key, node: done.park, trail: done.trail };
   } catch (e) {
     return { ...blank, error: e instanceof Error ? e.message : "нода упала" };
   }
