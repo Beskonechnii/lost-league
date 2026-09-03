@@ -185,12 +185,29 @@ export async function applicationsOf(chatId: string, username: string | null | u
  * Личный профиль: всё, что лига о человеке знает, — анкета, турнирная строка, TP и ссылки. Показ
  * читает то же, что и карточка на сайте; бот лишь не заставляет за ней ходить.
  *
- * Кнопка «Изменить данные» появляется только у **привязанного** профиля (`UserAccount.tgId`):
- * узнанному по хендлу бот показывает, но не даёт править — см. `tg-profile.ts`. Рядом с ней живёт
- * «Войти на сайт»: вход — это про свой аккаунт, а не про лигу, и на первом уровне меню он занимал
- * место, ничего не объясняя.
+ * **Текст отдельно от клавиатуры** (Э4): карточку показывают двое — рукописное меню (`myProfile`
+ * ниже) и нода-действие нодового флоу (`bot-flow/actions.ts`), а кнопки у них свои. Поэтому здесь
+ * только содержимое и признаки «что этому человеку доступно»: привязан ли профиль (правка данных,
+ * `tg-profile.ts`) и есть ли аккаунт из регистрации в боте (код входа, `tg-login.ts`). Кнопка
+ * «Изменить данные» появляется только у **привязанного** профиля: узнанному по хендлу бот
+ * показывает, но не даёт править. Рядом с ней живёт «Войти на сайт»: вход — это про свой аккаунт,
+ * а не про лигу, и на первом уровне меню он занимал место, ничего не объясняя.
  */
-async function myProfile(chatId: string, username: string | null | undefined, tgId?: string | null): Promise<Reply> {
+export type ProfileCard = {
+  text: string;
+  /** Лига знает этого человека: в ростере есть его игрок. */
+  known: boolean;
+  /** Профиль привязан (`UserAccount.tgId`) — данные можно править (`tg-profile.ts`). */
+  canEdit: boolean;
+  /** Есть аккаунт из регистрации в боте — ему можно выдать код входа (`tg-login.ts`). */
+  canLogin: boolean;
+};
+
+export async function profileCard(
+  chatId: string,
+  username: string | null | undefined,
+  tgId?: string | null,
+): Promise<ProfileCard> {
   const me = await identify(chatId, username, tgId);
   const account = await loginAccount(tgId);
   // Аккаунт есть, а игрока ещё нет — это тот, чья регистрация лежит в очереди у организатора.
@@ -199,10 +216,14 @@ async function myProfile(chatId: string, username: string | null | undefined, tg
   if (me.length === 0 && account) {
     return {
       text: `Анкета на проверке у организатора — как решит, я напишу. Пока можно заглянуть в кабинет: «${MENU.login}».`,
-      keyboard: [[MENU.login], ...(await menuKeyboard())],
+      known: false,
+      canEdit: false,
+      canLogin: true,
     };
   }
-  if (me.length === 0) return unknownReply(username);
+  if (me.length === 0) {
+    return { text: (await unknownReply(username)).text, known: false, canEdit: false, canLogin: false };
+  }
 
   const candidates = await prisma.player.findMany({
     where: { id: { in: me } },
@@ -226,7 +247,9 @@ async function myProfile(chatId: string, username: string | null | undefined, tg
     return (y.divisionId ?? 0) - (x.divisionId ?? 0) || y.createdAt.getTime() - x.createdAt.getTime();
   };
   const player = candidates.find((c) => c.id === linked?.id) ?? [...candidates].sort(fresher)[0];
-  if (!player) return unknownReply(username);
+  if (!player) {
+    return { text: (await unknownReply(username)).text, known: false, canEdit: false, canLogin: !!account };
+  }
 
   const spot = player.spots[0];
   const links = playerLinks(player);
@@ -268,12 +291,6 @@ async function myProfile(chatId: string, username: string | null | undefined, tg
       ? [``, `В ростере ${candidates.length} записи с вашим телеграмом (${candidates.map((c) => c.nickname).join(", ")}) — скажите организатору, он объединит.`]
       : [];
 
-  const keyboard = await menuKeyboard();
-  // Кнопки своего аккаунта — первыми строками: за ними человек сюда и пришёл, а меню он и так знает.
-  // Вход даём по тому же правилу, что и правку, — по привязке `tgId`, а не по хендлу (`tg-login.ts`).
-  if (account) keyboard.unshift([MENU.login]);
-  if (linked) keyboard.unshift([EDIT_BUTTON]);
-
   return {
     text: [
       `<b>${player.nickname}</b>`,
@@ -287,20 +304,50 @@ async function myProfile(chatId: string, username: string | null | undefined, tg
     ]
       .filter((line) => line !== null)
       .join("\n"),
-    keyboard,
+    known: true,
+    canEdit: !!linked,
+    canLogin: !!account,
   };
+}
+
+/** Экран профиля в рукописном меню: карточка (выше) плюс кнопки своего аккаунта над меню. */
+async function myProfile(chatId: string, username: string | null | undefined, tgId?: string | null): Promise<Reply> {
+  const card = await profileCard(chatId, username, tgId);
+  if (!card.known) {
+    // Анкета в очереди: кабинет у человека уже есть, а игрока ещё нет — зовём войти, а не
+    // регистрироваться заново.
+    if (card.canLogin) return { text: card.text, keyboard: [[MENU.login], ...(await menuKeyboard())] };
+    return { text: card.text, keyboard: await menuKeyboard(true) };
+  }
+  const keyboard = await menuKeyboard();
+  // Кнопки своего аккаунта — первыми строками: за ними человек сюда и пришёл, а меню он и так знает.
+  // Вход даём по тому же правилу, что и правку, — по привязке `tgId`, а не по хендлу (`tg-login.ts`).
+  if (card.canLogin) keyboard.unshift([MENU.login]);
+  if (card.canEdit) keyboard.unshift([EDIT_BUTTON]);
+  return { text: card.text, keyboard };
 }
 
 /**
  * «Войти на сайт»: одноразовый код и адрес страницы (`src/lib/tg-login.ts`). Код выдаётся аккаунту
  * из регистрации в боте (`UserAccount.tgId`), а не хендлу: это ключ от кабинета, а хендл меняют —
  * тому, кого узнали только по нему, кода не даём.
+ *
+ * Текст отдельно от клавиатуры по той же причине, что и карточка профиля: то же самое показывает
+ * нода-действие нодового флоу, а кнопки у неё свои (`bot-flow/actions.ts`).
  */
-async function loginCode(
+export type LoginCodeText = {
+  text: string;
+  /** Код выдан. `false` — аккаунта под этот телеграм нет, в тексте объяснено почему. */
+  issued: boolean;
+  /** Лига этого человека знает: ему предлагать регистрацию не надо. */
+  known: boolean;
+};
+
+export async function loginCodeText(
   chatId: string,
   username: string | null | undefined,
   tgId?: string | null,
-): Promise<Reply> {
+): Promise<LoginCodeText> {
   const account = await loginAccount(tgId);
   if (!account) {
     // Разводим два случая: человек лиге известен (значит, аккаунт у него сайтовый — с почтой) и
@@ -312,7 +359,8 @@ async function loginCode(
           `с почтой и паролем: ${siteUrl()}/me. Если войти не выходит — скажите организатору.`
         : `Вход по коду — для тех, кто зарегистрирован через меня. Если вы в лиге впервые — ` +
           `«${REGISTER_BUTTON}». Если аккаунт на сайте уже есть — входите там почтой: ${siteUrl()}/me`,
-      keyboard: await menuKeyboard(!known),
+      issued: false,
+      known,
     };
   }
 
@@ -325,8 +373,19 @@ async function loginCode(
       "",
       `Код живёт ${CODE_TTL_MIN} минут и срабатывает один раз. Никому его не пересылайте — это вход в ваш кабинет.`,
     ].join("\n"),
-    keyboard: await menuKeyboard(),
+    issued: true,
+    known: true,
   };
+}
+
+/** Экран «Войти на сайт» в рукописном меню: текст кода (выше) плюс клавиатура первого уровня. */
+async function loginCode(
+  chatId: string,
+  username: string | null | undefined,
+  tgId?: string | null,
+): Promise<Reply> {
+  const code = await loginCodeText(chatId, username, tgId);
+  return { text: code.text, keyboard: await menuKeyboard(!code.issued && !code.known) };
 }
 
 /**

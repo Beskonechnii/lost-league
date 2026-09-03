@@ -2,10 +2,11 @@
 // сессия → выбрали ребро → шагаем по графу, копя ответы, пока не упрёмся в ждущую ноду (`ask`,
 // `menu`, `subflow`) или в конец.
 //
-// **Наружу можно вернуть `null`** — «граф про это ничего не знает». Пока флоу ведёт только первый
-// уровень меню (`default-flow.ts`), всё остальное разбирает рукописный `tg-quiz.ts`, и `null` —
-// это шов между ними. По мере переезда разделов (Э4–Э5) `null` будет возвращаться всё реже, а
-// после Э6 исчезнет вместе со старым путём.
+// **Наружу можно вернуть `null`** — «граф про это ничего не знает». С Э4 граф ведёт первый уровень
+// и справочные разделы (профиль, код входа, турниры, состав, команды), а всё, что пишет в базу
+// диалогом — регистрация, правка профиля, заказ встречи, анкеты, — по-прежнему за рукописным
+// `tg-quiz.ts`, и `null` — это шов между ними. На Э5 разделы переедут нодами `subflow`, на Э6 шов
+// исчезнет вместе со старым путём.
 //
 // **Бюджет шагов** — против петли в графе, которую оператор нарисовал мышью. Упёрлись в бюджет,
 // не нашли ноду, не нашли действие — это исключение: пишем в лог, человеку отвечаем понятной
@@ -96,11 +97,23 @@ async function visible(buttons: FlowButton[], scope: FlowScope): Promise<FlowBut
   return out;
 }
 
-/** Что бот скажет этой нодой: текст с подстановками и клавиатура из видимых кнопок. */
-async function speak(node: MessageNode | MenuNode | AskNode, scope: FlowScope, extra?: string): Promise<Reply> {
+/**
+ * Что бот скажет этой нодой: текст с подстановками и клавиатура из видимых кнопок.
+ *
+ * `rows` — ряды, которые принесло действие перед этой нодой: список турниров или команд граф не
+ * знает заранее, его подписи приходят из базы (`actions.ts`). Они встают НАД собственными кнопками
+ * ноды: сперва выбор, потом «назад» и «в меню», как в рукописном разделе.
+ */
+async function speak(
+  node: MessageNode | MenuNode | AskNode,
+  scope: FlowScope,
+  extra?: string,
+  rows?: string[][] | null,
+): Promise<Reply> {
   const shown = await visible(buttonsOf(node), scope);
   const text = await scope.render(node.text);
-  return { text: extra ? `${extra}\n\n${text}` : text, keyboard: shown.length ? rowsOf(shown) : null };
+  const keyboard = [...(rows ?? []), ...(shown.length ? rowsOf(shown) : [])];
+  return { text: extra ? `${extra}\n\n${text}` : text, keyboard: keyboard.length ? keyboard : null };
 }
 
 /**
@@ -138,9 +151,18 @@ function checkAnswer(check: FlowCheck | null | undefined, text: string): string 
  */
 export type Walk = { replies: Reply[]; park: NodeId | null; trail: NodeId[] };
 
-export async function walk(flow: LoadedFlow, from: NodeId | null, scope: FlowScope, msg: FlowMessage): Promise<Walk> {
+export async function walk(
+  flow: LoadedFlow,
+  from: NodeId | null,
+  scope: FlowScope,
+  msg: FlowMessage,
+  dry = false,
+): Promise<Walk> {
   const replies: Reply[] = [];
   const trail: NodeId[] = [];
+  // Клавиатура, которую принесло действие: она достаётся ближайшей ждущей ноде. Дальше первого
+  // экрана не едет — список турниров не должен всплыть под карточкой команды.
+  let rows: string[][] | null = null;
   let id = from;
 
   for (let step = 0; step < STEP_BUDGET; step++) {
@@ -157,13 +179,14 @@ export async function walk(flow: LoadedFlow, from: NodeId | null, scope: FlowSco
         id = node.target;
         break;
       case "message":
-        replies.push(await speak(node, scope));
+        replies.push(await speak(node, scope, undefined, rows));
+        rows = null;
         id = node.next;
         break;
       case "menu":
       case "ask":
         // Ждущая нода: спросили — и заснули до следующего сообщения.
-        replies.push(await speak(node, scope));
+        replies.push(await speak(node, scope, undefined, rows));
         return { replies, park: node.id, trail };
       case "if":
         id = (await scope.test(node.cond)) ? node.then : node.else;
@@ -171,9 +194,13 @@ export async function walk(flow: LoadedFlow, from: NodeId | null, scope: FlowSco
       case "action": {
         const action = FLOW_ACTIONS[node.action];
         if (!action) throw new Error(`действие «${node.action}» не зарегистрировано`);
-        const done = await action.run({ msg, params: node.params ?? {}, vars: scope.vars });
+        // Параметры — с подстановками: `{vars.турнир_id}` в редакторе, число на входе действия.
+        const params: Record<string, string> = {};
+        for (const [key, value] of Object.entries(node.params ?? {})) params[key] = await scope.render(value);
+        const done = await action.run({ msg, params, vars: scope.vars, dry });
         replies.push(...(done.replies ?? []));
         Object.assign(scope.vars, done.vars ?? {});
+        if (done.keyboard) rows = done.keyboard;
         id = done.ok ? node.ok : node.fail;
         break;
       }
@@ -206,7 +233,13 @@ export type Turn =
  * Ход графа с ноды, на которой стоит разговор. Ни БД, ни телеграма: сюда же ходит симулятор
  * редактора — он подставляет свой граф и свои переменные, а результат никуда не сохраняет.
  */
-export async function turn(flow: LoadedFlow, at: NodeId, scope: FlowScope, msg: FlowMessage): Promise<Turn> {
+export async function turn(
+  flow: LoadedFlow,
+  at: NodeId,
+  scope: FlowScope,
+  msg: FlowMessage,
+  dry = false,
+): Promise<Turn> {
   const node = nodeById(flow.graph, at);
   if (!node) return { kind: "lost" };
 
@@ -221,7 +254,9 @@ export async function turn(flow: LoadedFlow, at: NodeId, scope: FlowScope, msg: 
     next = hit.next;
   } else if (node.type === "ask") {
     const problem = checkAnswer(node.check, msg.text);
-    // Ответ не прошёл проверку — переспрашиваем той же нодой, ничего не записывая.
+    // Ответ не прошёл проверку — переспрашиваем той же нодой, ничего не записывая. Клавиатуру
+    // ноды при этом показываем её собственную: список из действия принесёт то действие, которое
+    // на эту ноду ведёт, а здесь мы никуда не шагали.
     if (problem) return { kind: "flow", replies: [await speak(node, scope, problem)], park: node.id, trail: [node.id] };
     scope.vars[node.var] = msg.text.trim();
     // Выхода «иначе» нет — значит вопрос ждёт кнопку: повторяем его.
@@ -235,7 +270,7 @@ export async function turn(flow: LoadedFlow, at: NodeId, scope: FlowScope, msg: 
     return { kind: "outside" };
   }
 
-  return { kind: "flow", ...(await walk(flow, next, scope, msg)) };
+  return { kind: "flow", ...(await walk(flow, next, scope, msg, dry)) };
 }
 
 /** Записать, где остановились, и отдать ответы. */
@@ -275,19 +310,22 @@ export function startFlow(msg: FlowMessage): Promise<Reply[] | null> {
 }
 
 /**
- * Ответ графа на очередное сообщение: продолжить начатое, а если начатого нет — начать с первой
- * ноды (сегодня бот на непонятый текст отвечает ровно меню).
+ * Продолжить разговор, который граф уже ведёт. `null` — либо графом ничего не начато, либо ответ
+ * не его: разбирается старый обработчик (`tg-quiz.ts`), а сессия остаётся там же, где стояла.
  *
- * `null` — граф не знает, что делать с этим ответом: разбирается старый обработчик (`tg-quiz.ts`),
- * а сессия остаётся там же, где стояла.
+ * Отдельно от `flowReply` (ниже), потому что зовут их в разных местах обработчика: продолжение —
+ * ПЕРЕД перехватами справок (у графа и у рукописного меню кнопки подписаны одинаково, и человека
+ * посреди графа нельзя уводить в старый раздел), а начало разговора — ПОСЛЕ них, последним
+ * средством. Начинай граф раньше — он отвечал бы меню на «Мой состав» и «Анкеты», не дав старым
+ * веткам ни одного шанса.
  *
  * Версию берём ту, на которой диалог начался (`BotSession.flowVersion`): публикация новой не должна
  * выбрасывать человека из середины анкеты.
  */
-export function flowReply(msg: FlowMessage): Promise<Reply[] | null> {
+export function continueFlow(msg: FlowMessage): Promise<Reply[] | null> {
   return guard(msg.chatId, async () => {
     const park = await loadPark(msg.chatId);
-    if (!park) return begin(msg);
+    if (!park) return null;
 
     const flow = await pinnedFlow(park.versionId);
     const scope = makeScope(msg, park.vars);
@@ -301,5 +339,19 @@ export function flowReply(msg: FlowMessage): Promise<Reply[] | null> {
     }
     if (done.kind === "outside") return null;
     return settle(msg.chatId, flow, done, scope);
+  });
+}
+
+/**
+ * Ответ графа на текст, за который не взялся никто: разговор начинается с первой ноды (сегодня бот
+ * на непонятый текст отвечает ровно меню).
+ *
+ * `null` — разговор графом уже начат: его ход сделал `continueFlow` выше по обработчику, и второй
+ * раз тот же текст графу давать нечего.
+ */
+export function flowReply(msg: FlowMessage): Promise<Reply[] | null> {
+  return guard(msg.chatId, async () => {
+    const park = await loadPark(msg.chatId);
+    return park ? null : begin(msg);
   });
 }

@@ -21,3 +21,13 @@ export const flowRegistries = (): FlowRegistries => ({
   settingKeys: [...QUIZ_SLOTS.map((s) => s.key as string), ...BOT_SETTINGS.map((f) => f.key as string)],
   actions: Object.entries(FLOW_ACTIONS).map(([name, a]) => ({ name, provides: a.provides })),
 });
+
+/**
+ * Действия для инспектора ноды: подпись, пояснение и обязательные параметры. Отдельно от
+ * `flowRegistries` — тому нужны только имена (он служит валидатору), а редактору нужны ещё и слова
+ * человеку. Тянуть в браузер сам `FLOW_ACTIONS` нельзя: за ним весь рантайм бота с prisma.
+ */
+export type FlowActionInfo = { name: string; label: string; hint?: string; params?: string[] };
+
+export const flowActionList = (): FlowActionInfo[] =>
+  Object.entries(FLOW_ACTIONS).map(([name, a]) => ({ name, label: a.label, hint: a.hint, params: a.params }));

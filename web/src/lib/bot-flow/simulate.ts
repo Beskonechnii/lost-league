@@ -10,9 +10,10 @@
 // нарисовал, — в том числе несохранённый черновик.
 //
 // Чего симулятор всё-таки касается: `ctx.*` читает настоящую базу (кто написал, знает ли лига,
-// открыты ли анкеты) — это чтение, и без него проверка условий была бы игрой в угадайку. Когда на
-// Э4 в реестре появятся действия, их ноды здесь будут выполняться по-настоящему: реестр пока пуст,
-// но нодам-действиям понадобится уговор о холостом прогоне.
+// открыты ли анкеты) — это чтение, и без него проверка условий была бы игрой в угадайку. По той же
+// причине ноды-действия здесь выполняются по-настоящему: иначе прогон показывал бы выдуманные
+// экраны. Но им передаётся признак холостого прогона (`ActionInput.dry`), и действие, которое
+// пишет в базу, в прогоне не пишет — код входа симулятор не выдаёт.
 
 import { makeScope, type FlowMessage } from "./context";
 import { turn, walk } from "./run";
@@ -49,10 +50,10 @@ export async function simulate(graph: BotFlowGraph, state: SimState, msg: FlowMe
 
   try {
     if (state.node === null) {
-      const done = await walk(flow, graph.start, scope, msg);
+      const done = await walk(flow, graph.start, scope, msg, true);
       return { ...blank, replies: done.replies.map(reply), node: done.park, trail: done.trail };
     }
-    const done = await turn(flow, state.node, scope, msg);
+    const done = await turn(flow, state.node, scope, msg, true);
     if (done.kind === "lost") return { ...blank, node: null, outside: true, lost: true };
     if (done.kind === "outside") return { ...blank, outside: true };
     return { ...blank, replies: done.replies.map(reply), node: done.park, trail: done.trail };

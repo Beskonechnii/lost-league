@@ -5,6 +5,7 @@ import { FormInput, FormSelect, FormTextarea, Label } from "@/components/pouf/In
 import { Checkbox } from "@/components/pouf/checkbox";
 import { Alert } from "@/components/pouf/feedback";
 import { portsOf, setPort } from "@/lib/bot-flow/editor";
+import type { FlowActionInfo } from "@/lib/bot-flow/registries";
 import type { BotFlowGraph, FlowButton, FlowCondition, FlowNode, FlowOp, NodeId } from "@/lib/bot-flow/types";
 
 /* Инспектор выбранной ноды: всё, чего не видно на карточке канваса.
@@ -28,6 +29,7 @@ export function FlowInspector({
   onMakeStart,
   ctxKeys,
   settingKeys,
+  actions,
 }: {
   node: FlowNode | null;
   graph: BotFlowGraph;
@@ -38,6 +40,8 @@ export function FlowInspector({
   ctxKeys: string[];
   /** Что можно написать после `settings.` — реестры текстов и таймингов бота. */
   settingKeys: string[];
+  /** Зарегистрированные действия: подпись, пояснение, обязательные параметры (`bot-flow/actions.ts`). */
+  actions: FlowActionInfo[];
 }) {
   if (!node) {
     return (
@@ -83,7 +87,7 @@ export function FlowInspector({
         />
       </div>
 
-      <Body node={node} onChange={onChange} refs={REF_LIST} />
+      <Body node={node} onChange={onChange} refs={REF_LIST} actions={actions} />
 
       <Ports node={node} graph={graph} onChange={onChange} />
 
@@ -108,7 +112,17 @@ export function FlowInspector({
 
 /* ── Поля, свои у каждого типа ──────────────────────────────────────────────────────────────── */
 
-function Body({ node, onChange, refs }: { node: FlowNode; onChange: (n: FlowNode) => void; refs: string }) {
+function Body({
+  node,
+  onChange,
+  refs,
+  actions,
+}: {
+  node: FlowNode;
+  onChange: (n: FlowNode) => void;
+  refs: string;
+  actions: FlowActionInfo[];
+}) {
   switch (node.type) {
     case "start":
       return (
@@ -206,19 +220,39 @@ function Body({ node, onChange, refs }: { node: FlowNode; onChange: (n: FlowNode
         </div>
       );
 
-    case "action":
+    case "action": {
+      const chosen = actions.find((a) => a.name === node.action.trim()) ?? null;
       return (
         <>
           <div>
             <Label htmlFor="flow-action">Действие</Label>
-            <FormInput
+            {/* Список, а не свободный ввод: имя действия сверяется с реестром, и опечатка — это
+                ошибка валидатора, на которой интерпретатор упал бы посреди разговора. Ноду со
+                снятым реестром (действие переименовали) показываем отдельной строкой, чтобы её
+                было видно, а не молча подменяли первой из списка. */}
+            <FormSelect
               id="flow-action"
               size="sm"
-              mono
               className="mt-1 w-full"
               value={node.action}
-              onChange={(e) => onChange({ ...node, action: e.target.value })}
-            />
+              onChange={(e) => {
+                const next = actions.find((a) => a.name === e.target.value);
+                // Обязательные параметры заводим пустыми: так видно, что их надо заполнить, а
+                // уже написанные значения не теряются при смене действия.
+                const params = { ...(node.params ?? {}) };
+                for (const key of next?.params ?? []) params[key] ??= "";
+                onChange({ ...node, action: e.target.value, params });
+              }}
+            >
+              <option value="">— выберите действие —</option>
+              {actions.map((a) => (
+                <option key={a.name} value={a.name}>
+                  {a.label} ({a.name})
+                </option>
+              ))}
+              {node.action.trim() && !chosen && <option value={node.action}>{node.action} — нет в реестре</option>}
+            </FormSelect>
+            {chosen?.hint && <Hint>{chosen.hint}</Hint>}
           </div>
           <div>
             <Label htmlFor="flow-params">Параметры</Label>
@@ -233,12 +267,15 @@ function Body({ node, onChange, refs }: { node: FlowNode; onChange: (n: FlowNode
               placeholder={"имя=значение\nодна пара в строке"}
               onChange={(e) => onChange({ ...node, params: parseParams(e.target.value) })}
             />
+            <Hint>
+              {chosen?.params?.length
+                ? `Действие ждёт: ${chosen.params.join(", ")}. В значении работают подстановки — {vars.турнир_id}.`
+                : "В значении работают подстановки — {vars.турнир_id}: их посчитают перед вызовом."}
+            </Hint>
           </div>
-          <Alert tone="warn" block>
-            Реестр действий пуст до Э4 — такая нода сейчас уйдёт в выход «ошибка».
-          </Alert>
         </>
       );
+    }
 
     case "subflow":
       return (

@@ -22,7 +22,7 @@ import { registrationOpen } from "./tournaments";
 import { loadQuiz, type QuizConfig } from "./quiz-config";
 // Нодовый флоу: пока он ведёт только первый уровень меню и только при включённом `BOT_FLOW`
 // (`BOT-FLOW-PLAN.md`). Выключен — весь путь мёртв, бот работает как раньше.
-import { BOT_FLOW, FLOW_STEP, flowReply, startFlow } from "./bot-flow/run";
+import { BOT_FLOW, FLOW_STEP, continueFlow, flowReply, startFlow } from "./bot-flow/run";
 import { MENU, LEGACY_ROSTER, QUIZ_ROSTER, menuKeyboard, isMenuButton, menuReply, rememberChat, identify } from "./tg-menu";
 import { FORMS_BUTTON, handleForm, isFormStep, offerForms, type FormState, type FormStep } from "./tg-forms";
 import {
@@ -542,6 +542,22 @@ export async function handleMessage(
     return answered.replies;
   }
 
+  // Нодовый флоу (`BOT-FLOW-PLAN.md`), ход первый: продолжить то, что граф уже ведёт. Стоит после
+  // перехватов, которые НАЧИНАЮТ рукописный диалог (регистрация, правка профиля, заказ встречи,
+  // ответ сопернику), и перед теми, что показывают справки: с Э4 справки ведёт граф, и его кнопки
+  // подписаны теми же словами («Личный профиль», «Моя команда», «В меню»). Разбирай их старый код
+  // первым — человек посреди графа проваливался бы в рукописный раздел на каждой второй кнопке.
+  //
+  // Начать разговор графом здесь нельзя: он ответил бы меню на «Мой состав» и «Анкеты», не дав
+  // веткам ниже ни одного шанса. Начало — последним средством, в конце обработчика.
+  //
+  // `null` из графа значит «это не ко мне» — идём дальше старым путём. `!session` здесь значит «ни
+  // начатого квиза, ни навигации по турнирам»: сессию графа `load` за диалог не считает (см. выше).
+  if (BOT_FLOW && !session) {
+    const flowed = await continueFlow({ chatId, text, username, tgId });
+    if (flowed) return flowed;
+  }
+
   // Кнопка меню посреди квиза — справка, а не выход: капитан на седьмом игроке не должен терять
   // состав из-за случайного нажатия. Отвечаем и тут же повторяем вопрос, на котором стоим.
   if (isMenuButton(text)) {
@@ -596,12 +612,8 @@ export async function handleMessage(
     if (!session) return enterTournaments(chatId);
   }
 
-  // Нодовый флоу (`BOT-FLOW-PLAN.md`). Стоит здесь, за всеми перехватами: пока граф ведёт только
-  // первый уровень, кнопки разделов должны попадать в свои модули, как и раньше. Сперва даём
-  // продолжить начатое графом, а с непонятого текста начинаем разговор заново — тем же меню,
-  // которым отвечает ветка ниже. `null` из графа значит «это не ко мне» — идём старым путём.
-  // `!session` здесь значит «ни начатого квиза, ни навигации по турнирам»: сессию графа `load`
-  // за диалог не считает (см. выше), и до этой строки доходит именно тот случай, который граф ведёт.
+  // Нодовый флоу, ход второй: за текст никто не взялся — граф начинает разговор с первой ноды и
+  // отвечает тем же меню, что и ветка ниже. Начатое графом сюда не доходит: его ход сделан выше.
   if (BOT_FLOW && !session) {
     const flowed = await flowReply({ chatId, text, username, tgId });
     if (flowed) return flowed;

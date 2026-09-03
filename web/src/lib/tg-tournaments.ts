@@ -32,9 +32,11 @@ export type TtState = { tournamentId: number | null };
 
 export const emptyTt = (): TtState => ({ tournamentId: null });
 
-const MY_TEAM = "Моя команда";
-const TEAMS = "Команды турнира";
-const BACK = "К списку турниров";
+/* Подписи кнопок раздела. Экспортируются: те же слова стоят на кнопках нодового флоу
+   (`bot-flow/default-flow.ts`) — по подписи едет и переход по ребру, и разбор в старом коде. */
+export const MY_TEAM = "Моя команда";
+export const TEAMS = "Команды турнира";
+export const BACK = "К списку турниров";
 
 /** Выход из раздела. Наружу — потому что нажатие на него без сессии тоже надо узнать (`tg-quiz.ts`). */
 export const TT_EXIT = "В меню";
@@ -146,28 +148,29 @@ const tournamentKeyboard = (open: boolean, meeting = false): string[][] => [
   [BACK, TT_EXIT],
 ];
 
-function tournamentReply(t: Listed, meeting = false): Reply {
-  const open = registrationOpen(t);
+/** Карточка турнира без клавиатуры: тот же текст показывает нода-действие нодового флоу. */
+function tournamentText(t: Listed): string {
   const dates = [day(t.startAt), day(t.endAt)].filter(Boolean).join(" — ");
-  return {
-    text: [
-      `<b>${t.name}</b> — ${statusLabel(t)}`,
-      t.divisions.length ? `Дивизионы: ${t.divisions.map((d) => d.name).join(", ")}` : null,
-      t.format || null,
-      dates || null,
-      open && t.regCloseAt ? `Заявки принимаем до ${day(t.regCloseAt)}` : null,
-    ]
-      .filter(Boolean)
-      .join("\n"),
-    keyboard: tournamentKeyboard(open, meeting),
-  };
+  return [
+    `<b>${t.name}</b> — ${statusLabel(t)}`,
+    t.divisions.length ? `Дивизионы: ${t.divisions.map((d) => d.name).join(", ")}` : null,
+    t.format || null,
+    dates || null,
+    registrationOpen(t) && t.regCloseAt ? `Заявки принимаем до ${day(t.regCloseAt)}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function tournamentReply(t: Listed, meeting = false): Reply {
+  return { text: tournamentText(t), keyboard: tournamentKeyboard(registrationOpen(t), meeting) };
 }
 
 /**
  * Ответ на «Подать заявку»: ссылка на сборку состава. Отдельным сообщением, а не строкой в карточке
  * турнира, — её надо нажать, а не прочитать.
  */
-export function applyReply(t: { slug: string; name: string }, open = true, meeting = false): Reply {
+function applyText(t: { slug: string; name: string }): string {
   const url = `${siteUrl()}/tournaments/${t.slug}/apply`;
   // Локальный адрес телеграм ссылкой не делает — он покажет её обычным текстом, и человек решит,
   // что бот сломался. Честнее сказать, что сайт не опубликован: адрес всё равно виден, а
@@ -175,19 +178,20 @@ export function applyReply(t: { slug: string; name: string }, open = true, meeti
   const link = siteIsLocal()
     ? [`Сайт сейчас не опубликован наружу (${url}) — скажите организатору.`]
     : [`<a href="${url}">Открыть сборку состава</a>`];
-  return {
-    text: [
-      `<b>${t.name}</b> — заявка подаётся на сайте: там виден весь пул игроков лиги, и состав`,
-      "набирается мышью, а не по одному нику в чате.",
-      "",
-      ...link,
-      "",
-      `Сайт спросит, кто вы: код для входа даёт бот — «${MENU.profile}» → «${MENU.login}».`,
-      "В составе может быть только игрок, которого знает лига: незнакомого позовите",
-      "зарегистрироваться — ссылка-приглашение есть там же, на странице заявки.",
-    ].join("\n"),
-    keyboard: tournamentKeyboard(open, meeting),
-  };
+  return [
+    `<b>${t.name}</b> — заявка подаётся на сайте: там виден весь пул игроков лиги, и состав`,
+    "набирается мышью, а не по одному нику в чате.",
+    "",
+    ...link,
+    "",
+    `Сайт спросит, кто вы: код для входа даёт бот — «${MENU.profile}» → «${MENU.login}».`,
+    "В составе может быть только игрок, которого знает лига: незнакомого позовите",
+    "зарегистрироваться — ссылка-приглашение есть там же, на странице заявки.",
+  ].join("\n");
+}
+
+export function applyReply(t: { slug: string; name: string }, open = true, meeting = false): Reply {
+  return { text: applyText(t), keyboard: tournamentKeyboard(open, meeting) };
 }
 
 const loadTournament = (id: number) =>
@@ -278,6 +282,29 @@ async function myTeam(t: Listed, chatId: string, username: string | null | undef
   return blocks;
 }
 
+/** Кто спрашивает: чат, хендл и числовой id — этого хватает всем справкам раздела. */
+type Who = { chatId: string; username?: string | null; tgId?: string | null };
+
+/**
+ * «Моя команда» одним текстом. `known: false` — лига человека не знает: это другой случай, чем
+ * «знаем, но в этом турнире не заявлен», и путать их нельзя (однажды бот так сказал «вас нет»
+ * игроку, который в лиге есть).
+ */
+async function myTeamText(t: Listed, ctx: Who): Promise<{ text: string; known: boolean }> {
+  const blocks = await myTeam(t, ctx.chatId, ctx.username, ctx.tgId);
+  if (blocks.length) return { text: blocks.join("\n\n"), known: true };
+
+  const me = await identify(ctx.chatId, ctx.username, ctx.tgId);
+  if (me.length === 0) return { text: (await unknownReply(ctx.username)).text, known: false };
+  const player = await prisma.player.findUnique({ where: { id: me[0] }, select: { nickname: true } });
+  return {
+    text:
+      `Вы есть в лиге как <b>${player?.nickname ?? "игрок"}</b>, но в турнире «${t.name}» не заявлены.` +
+      (registrationOpen(t) ? ` Заявиться — «${MENU.apply}».` : ""),
+    known: true,
+  };
+}
+
 // ── «Команды турнира» ────────────────────────────────────────────────────────
 
 /** Команды турнира — по участию (`TournamentEntry`), а не по строке-зеркалу `Team.group`. */
@@ -295,21 +322,27 @@ type Entry = Awaited<ReturnType<typeof tournamentEntries>>[number];
  * в сообщение Telegram влезает 4096 знаков, а команд в дивизионе бывает два десятка, и у каждой
  * состав со ссылками.
  */
-function teamsReply(entries: Entry[]): Reply {
-  const names = entries.map((e) => e.team.name);
-  const rows: string[][] = [];
-  // По две в ряд: столбец из двадцати кнопок на телефоне листать невозможно.
-  for (let i = 0; i < names.length; i += 2) rows.push(names.slice(i, i + 2));
-  rows.push([BACK, TT_EXIT]);
-
+/** Список команд текстом — по дивизионам. Без клавиатуры: её собирают оба пути по-своему. */
+function teamsText(entries: Entry[]): string {
   const byDivision = new Map<string, string[]>();
   for (const e of entries) {
     const key = e.division?.name ?? "Без дивизиона";
     byDivision.set(key, [...(byDivision.get(key) ?? []), e.team.name]);
   }
   const text = [...byDivision.entries()].map(([name, teams]) => `<b>${name}</b> (${teams.length})\n${teams.join(", ")}`);
+  return ["Чью команду смотрим?", ...text].join("\n\n");
+}
 
-  return { text: ["Чью команду смотрим?", ...text].join("\n\n"), keyboard: rows };
+/** Кнопки команд: по две в ряд — столбец из двадцати кнопок на телефоне листать невозможно. */
+function teamRows(entries: Entry[]): string[][] {
+  const names = entries.map((e) => e.team.name);
+  const rows: string[][] = [];
+  for (let i = 0; i < names.length; i += 2) rows.push(names.slice(i, i + 2));
+  return rows;
+}
+
+function teamsReply(entries: Entry[]): Reply {
+  return { text: teamsText(entries), keyboard: [...teamRows(entries), [BACK, TT_EXIT]] };
 }
 
 /** Карточка команды: состав, сила, капитан и ссылки — всё, чего хватает, чтобы позвать на игру. */
@@ -389,27 +422,10 @@ export async function handleTournaments(
 
   if (step === "tt_menu") {
     if (answer === MY_TEAM) {
-      const blocks = await myTeam(current, ctx.chatId, ctx.username, ctx.tgId);
-      if (blocks.length) {
-        return { replies: [{ text: blocks.join("\n\n"), keyboard: tournamentKeyboard(open, meet) }], step: "tt_menu", state };
-      }
-      // Человека знаем, но в этом турнире он не заявлен — это не «мы вас не знаем», и путать одно
-      // с другим нельзя: так бот однажды сказал «вас нет» игроку, который в лиге есть.
-      const me = await identify(ctx.chatId, ctx.username, ctx.tgId);
-      if (me.length === 0) return { replies: [await unknownReply(ctx.username)], state, done: true };
-      const player = await prisma.player.findUnique({ where: { id: me[0] }, select: { nickname: true } });
-      return {
-        replies: [
-          {
-            text:
-              `Вы есть в лиге как <b>${player?.nickname ?? "игрок"}</b>, но в турнире «${current.name}» не заявлены.` +
-              (open ? ` Заявиться — «${MENU.apply}».` : ""),
-            keyboard: tournamentKeyboard(open, meet),
-          },
-        ],
-        step: "tt_menu",
-        state,
-      };
+      const mine = await myTeamText(current, ctx);
+      // Лига человека не знает — показывать ему экран турнира не с чем: выходим в меню.
+      if (!mine.known) return { replies: [await unknownReply(ctx.username)], state, done: true };
+      return { replies: [{ text: mine.text, keyboard: tournamentKeyboard(open, meet) }], step: "tt_menu", state };
     }
 
     if (answer === TEAMS) {
@@ -454,4 +470,78 @@ export async function handleTournaments(
     step: "tt_teams",
     state,
   };
+}
+
+// ── экраны для нодового флоу ─────────────────────────────────────────────────
+
+/*
+ * То же самое, что показывает `handleTournaments` выше, но без навигации и без клавиатур: где
+ * человек стоит, помнит граф, а кнопки рисуют его ноды (`bot-flow/default-flow.ts`). Здесь —
+ * только содержимое экрана и список, которого граф не знает заранее (турниры, команды): их
+ * подписи возвращаются рядами и уезжают клавиатурой ближайшей ждущей ноды.
+ *
+ * Логика не переписана — это обёртки над теми же функциями раздела. Иначе две правды об одном
+ * экране разъехались бы на первой же правке текста.
+ */
+
+/** Список турниров: текст и ряды кнопок с их названиями. Пустые ряды — турниров нет. */
+export async function flowTournaments(): Promise<{ text: string; rows: string[][] }> {
+  const rows = await visibleTournaments();
+  if (rows.length === 0) return { text: "Сейчас турниров нет — как объявим, напишу.", rows: [] };
+  return { text: listText(rows), rows: rows.map((t) => [t.name]) };
+}
+
+/** Экран турнира по названию с кнопки. `null` — такого турнира в списке нет (промах или опечатка). */
+export async function flowTournament(
+  name: string,
+  tgId?: string | null,
+): Promise<{ id: number; text: string; open: boolean; meeting: boolean } | null> {
+  const rows = await visibleTournaments();
+  const chosen = rows.find((t) => t.name.trim().toLowerCase() === name.trim().toLowerCase());
+  if (!chosen) return null;
+  return {
+    id: chosen.id,
+    text: tournamentText(chosen),
+    open: registrationOpen(chosen),
+    meeting: await canOrderMeeting(chosen.id, tgId),
+  };
+}
+
+/** «Моя команда». `null` — турнир уехал в черновики или удалён, пока человек смотрел. */
+export async function flowMyTeam(id: number, ctx: Who): Promise<{ text: string; known: boolean } | null> {
+  const t = await loadTournament(id);
+  if (!t) return null;
+  return myTeamText(t, ctx);
+}
+
+/** «Команды турнира»: текст по дивизионам и ряды кнопок. Пустые ряды — команд ещё нет. */
+export async function flowTeams(id: number): Promise<{ text: string; rows: string[][] } | null> {
+  const t = await loadTournament(id);
+  if (!t) return null;
+  const entries = await tournamentEntries(t);
+  if (entries.length === 0) return { text: "Команд в турнире пока нет — заявки ещё разбирают.", rows: [] };
+  return { text: teamsText(entries), rows: teamRows(entries) };
+}
+
+/**
+ * Карточка команды по названию с кнопки. Ряды возвращаем те же: после карточки человек остаётся в
+ * списке команд, и клавиатура не должна пропасть. `null` — команды с таким именем в турнире нет.
+ */
+export async function flowTeamCard(id: number, name: string): Promise<{ text: string; rows: string[][] } | null> {
+  const t = await loadTournament(id);
+  if (!t) return null;
+  const entries = await tournamentEntries(t);
+  // Именами команды не уникальны (в S2 «ReMix» есть и в D1, и в D2) — показываем обе карточки.
+  const chosen = entries.filter((e) => e.team.name.trim().toLowerCase() === name.trim().toLowerCase());
+  if (chosen.length === 0) return null;
+  const cards = await Promise.all(chosen.map(teamCard));
+  return { text: cards.join("\n\n"), rows: teamRows(entries) };
+}
+
+/** «Подать заявку»: ссылка на сборку состава либо отказ, если приём закрыт. */
+export async function flowApply(id: number): Promise<{ text: string; open: boolean } | null> {
+  const t = await loadTournament(id);
+  if (!t) return null;
+  if (!registrationOpen(t)) return { text: "Приём заявок в этот турнир закрыт.", open: false };
+  return { text: applyText(t), open: true };
 }

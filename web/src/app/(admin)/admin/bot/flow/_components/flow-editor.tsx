@@ -7,6 +7,7 @@ import { FormInput } from "@/components/pouf/Input";
 import { Alert } from "@/components/pouf/feedback";
 import { Panel } from "@/app/(admin)/_components/panel";
 import { NODE_KINDS, freeNodeId, makeNode, removeNode, setPort } from "@/lib/bot-flow/editor";
+import type { FlowActionInfo } from "@/lib/bot-flow/registries";
 import type { FlowVersion } from "@/lib/bot-flow/store";
 import { hasErrors, marksByNode, validateFlow, type FlowRegistries } from "@/lib/bot-flow/validate";
 import { parseGraph, type BotFlowGraph, type FlowNode, type FlowNodeType, type NodeId } from "@/lib/bot-flow/types";
@@ -44,6 +45,7 @@ export function FlowEditor({
   source,
   versions,
   registries,
+  actions,
 }: {
   initialGraph: BotFlowGraph;
   initialNote: string;
@@ -52,6 +54,8 @@ export function FlowEditor({
   versions: FlowVersion[];
   /** Что существует: `ctx.*`, `settings.*`, действия. Приезжает с сервера — их реестры тянут prisma. */
   registries: FlowRegistries;
+  /** Действия со словами человеку: подпись, пояснение, обязательные параметры (`actions.ts`). */
+  actions: FlowActionInfo[];
 }) {
   const router = useRouter();
   const [graph, setGraph] = useState<BotFlowGraph>(initialGraph);
@@ -220,6 +224,7 @@ export function FlowEditor({
                 graph={graph}
                 ctxKeys={registries.ctxKeys ?? []}
                 settingKeys={registries.settingKeys ?? []}
+                actions={actions}
                 onChange={putNode}
                 onDelete={() => {
                   if (!node) return;

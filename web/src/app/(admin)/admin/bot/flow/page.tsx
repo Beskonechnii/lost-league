@@ -1,4 +1,4 @@
-import { flowRegistries } from "@/lib/bot-flow/registries";
+import { flowActionList, flowRegistries } from "@/lib/bot-flow/registries";
 import { editorFlow, listVersions } from "@/lib/bot-flow/store";
 import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { Alert } from "@/components/pouf/feedback";
@@ -48,6 +48,7 @@ export default async function BotFlowPage() {
         source={state.source}
         versions={versions}
         registries={flowRegistries()}
+        actions={flowActionList()}
       />
     </main>
   );
