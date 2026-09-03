@@ -83,8 +83,13 @@ type NodeBase = {
   title?: string;
 };
 
-/** Точка входа. `payload` — значение deeplink'а (`?start=invite`), пусто — обычный /start. */
-export type StartNode = NodeBase & { type: "start"; payload?: string | null; next: NodeId | null };
+/**
+ * Точка входа графа. Своих полей нет: чем именно в этот флоу попадают — командой, ссылкой или
+ * кнопкой из рассылки — записано в `entry` документа (Э7), одной записью на весь граф. Поле
+ * `payload` у ноды жило с Э1 и не читалось рантаймом ни дня после Э7 — убрано, чтобы редактор не
+ * предлагал настройку, которая ни на что не влияет.
+ */
+export type StartNode = NodeBase & { type: "start"; next: NodeId | null };
 
 /** Реплика и клавиатура. Ответа не ждёт — шагает дальше сразу. */
 export type MessageNode = NodeBase & {

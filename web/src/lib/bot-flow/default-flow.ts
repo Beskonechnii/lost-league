@@ -277,7 +277,7 @@ const inviteFlow = (): BotFlowGraph => ({
   entry: { payloads: ["invite"] },
   start: "start",
   nodes: [
-    { id: "start", type: "start", title: "/start invite", payload: "invite", next: "reg-do", x: 0, y: 0 },
+    { id: "start", type: "start", title: "/start invite", next: "reg-do", x: 0, y: 0 },
     // Уже знакомого лиге модуль вернёт сам, поэтому «отменено» ведёт туда же, куда «готово»:
     // объяснение у модуля своё, второе от графа было бы разговором дважды.
     { id: "reg-do", type: "subflow", title: "Регистрация", flow: "регистрация", done: "done", cancel: "done", x: 0, y: 160 },

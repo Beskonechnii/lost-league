@@ -99,7 +99,7 @@ const TYPE_LABEL: Record<FlowNode["type"], string> = {
 function preview(node: FlowNode): string {
   switch (node.type) {
     case "start":
-      return node.payload ? `deeplink: ${node.payload}` : "/start и первое сообщение";
+      return "вход графа — см. «Точку входа»";
     case "message":
     case "menu":
       return node.text || "текст не задан";

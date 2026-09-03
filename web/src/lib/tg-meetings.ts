@@ -70,12 +70,6 @@ const CANCEL = "Не сейчас";
 export const MR_ACCEPT = "Принять время";
 export const MR_COUNTER = "Предложить другое";
 
-/** Служебные ответы сценария. Остаток рукописного пути: с Э6 их никто не зовёт (`BACKLOG.md` §2). */
-export const MR_SERVICE = [MEETING_BUTTON, SEND, CANCEL, MR_ACCEPT, MR_COUNTER];
-
-/** Тоже остаток: ответ вне диалога ловит теперь точка входа флоу `answer` (`BACKLOG.md` §2). */
-export const isMrAnswer = (text: string): boolean => text.trim() === MR_ACCEPT || text.trim() === MR_COUNTER;
-
 /** Результат шага: что ответить и куда переходить. `done` — сценарий закончен, диалог сбросить. */
 export type MrResult = { replies: Reply[]; step?: MrStep; state: MrState; done?: boolean };
 

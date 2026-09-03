@@ -329,6 +329,7 @@ export function FlowEditor({
                 settingKeys={registries.settingKeys ?? []}
                 actions={actions}
                 subflows={subflows}
+                flows={(registries.flows ?? []).map((f) => f.key).filter((k) => k !== flowKey)}
                 onChange={putNode}
                 onDelete={() => {
                   if (!node) return;

@@ -3,8 +3,8 @@
 //
 // Отдельно от `tg-menu.ts` по той же причине, по какой отдельны анкеты (`tg-forms.ts`): меню — это
 // плоские справки, каждая в один ответ, а здесь у человека три уровня (турнир → раздел → команда),
-// и на каждом нужно помнить, где он стоит. Состояние держим в общей `BotSession` под префиксом
-// `tt_*` — как `form_*`, `reg_*` и `pe_*`; пишет её `tg-quiz.ts`, модуль только возвращает наружу.
+// и на каждом нужно помнить, где он стоит. С Э6 навигацию ведёт граф (`bot-flow/`), а модуль
+// остался поставщиком экранов: собирает текст и списки, а где человек стоит — помнит флоу.
 //
 // **Почему состав живёт здесь, а не кнопкой первого уровня.** Состав принадлежит дивизиону турнира
 // (`RosterSpot.divisionId`), и «мой состав» без турнира — это два разных состава (D1 и прошлый
@@ -12,51 +12,22 @@
 
 import { prisma } from "./prisma";
 import { siteIsLocal, siteUrl } from "./site";
-import type { Reply } from "./telegram";
 import { playerLinks, playerPath, telegramUrl } from "./profiles";
 import { roleShort, roleOrder } from "./roles";
 import { teamMmr } from "./roster-data";
 import { registrationOpen, TOURNAMENT_STATUS_LABELS, isTournamentStatus } from "./tournaments";
 import { parseDraft } from "./team-application";
-import { MENU, applicationsOf, identify, menuKeyboard, unknownReply } from "./tg-menu";
+import { MENU, applicationsOf, identify, unknownReply } from "./tg-menu";
 import { captainSpots, linkedPlayerId } from "./match-request";
-import { MEETING_BUTTON } from "./tg-meetings";
-
-/** Шаги раздела. Лежат в том же `BotSession.step`, что и шаги заявки — префикс их разводит. */
-export type TtStep = "tt_pick" | "tt_menu" | "tt_teams";
-
-export const isTtStep = (step: string): step is TtStep => step.startsWith("tt_");
-
-/** Где человек стоит. Турнир — единственное, что нужно помнить: команда выбирается заново каждый раз. */
-export type TtState = { tournamentId: number | null };
-
-export const emptyTt = (): TtState => ({ tournamentId: null });
 
 /* Подписи кнопок раздела. Экспортируются: те же слова стоят на кнопках нодового флоу
-   (`bot-flow/default-flow.ts`) — по подписи едет и переход по ребру, и разбор в старом коде. */
+   (`bot-flow/default-flow.ts`), а подпись кнопки — это ключ перехода по ребру. */
 export const MY_TEAM = "Моя команда";
 export const TEAMS = "Команды турнира";
 export const BACK = "К списку турниров";
 
-/** Выход из раздела. Наружу — потому что нажатие на него без сессии тоже надо узнать (`tg-quiz.ts`). */
+/** Выход из раздела: та же кнопка ведёт в главное меню из всех экранов турнира. */
 export const TT_EXIT = "В меню";
-
-/** Служебные ответы раздела — ими нельзя случайно назваться на шаге со свободным текстом. */
-export const TT_SERVICE = [MY_TEAM, TEAMS, BACK, TT_EXIT];
-
-/**
- * Кнопка раздела? Клавиатура у Telegram висит до отмены, и «Команды турнира» прилетает и через день
- * после того, как диалог закончился.
- */
-export const isTtButton = (text: string): boolean => TT_SERVICE.includes(text.trim());
-
-/** Результат шага: что ответить и куда переходить. `done` — из раздела вышли, диалог сбросить. */
-export type TtResult = {
-  replies: Reply[];
-  step?: TtStep;
-  state: TtState;
-  done?: boolean;
-};
 
 // ── список турниров ──────────────────────────────────────────────────────────
 
@@ -90,31 +61,6 @@ const listRow = (t: Listed) =>
 
 const listText = (rows: Listed[]) => ["Какой турнир смотрим?", ...rows.map(listRow)].join("\n\n");
 
-/** Текст списка без навигации: им отвечаем посреди начатого диалога, чтобы не сбрасывать его. */
-export async function tournamentsDigest(): Promise<Reply> {
-  const rows = await visibleTournaments();
-  if (rows.length === 0) return { text: "Сейчас турниров нет — как объявим, напишу." };
-  return { text: rows.map(listRow).join("\n\n") };
-}
-
-const listReply = (rows: Listed[]): Reply => ({
-  text: listText(rows),
-  keyboard: [...rows.map((t) => [t.name]), [TT_EXIT]],
-});
-
-/** Вход в раздел из меню. Турниров нет — навигацию не заводим: ходить всё равно некуда. */
-export async function startTournaments(): Promise<TtResult> {
-  const rows = await visibleTournaments();
-  if (rows.length === 0) {
-    return {
-      replies: [{ text: "Сейчас турниров нет — как объявим, напишу.", keyboard: await menuKeyboard() }],
-      state: emptyTt(),
-      done: true,
-    };
-  }
-  return { replies: [listReply(rows)], step: "tt_pick", state: emptyTt() };
-}
-
 // ── экран турнира ────────────────────────────────────────────────────────────
 
 const day = (date: Date | null): string | null =>
@@ -137,14 +83,6 @@ async function canOrderMeeting(tournamentId: number, tgId: string | null | undef
   return (await captainSpots(playerId, tournamentId)).length > 0;
 }
 
-const tournamentKeyboard = (open: boolean, meeting = false): string[][] => [
-  [MY_TEAM],
-  [TEAMS],
-  ...(meeting ? [[MEETING_BUTTON]] : []),
-  ...(open ? [[MENU.apply]] : []),
-  [BACK, TT_EXIT],
-];
-
 /** Карточка турнира без клавиатуры: тот же текст показывает нода-действие нодового флоу. */
 function tournamentText(t: Listed): string {
   const dates = [day(t.startAt), day(t.endAt)].filter(Boolean).join(" — ");
@@ -157,10 +95,6 @@ function tournamentText(t: Listed): string {
   ]
     .filter(Boolean)
     .join("\n");
-}
-
-function tournamentReply(t: Listed, meeting = false): Reply {
-  return { text: tournamentText(t), keyboard: tournamentKeyboard(registrationOpen(t), meeting) };
 }
 
 /**
@@ -185,10 +119,6 @@ function applyText(t: { slug: string; name: string }): string {
     "В составе может быть только игрок, которого знает лига: незнакомого позовите",
     "зарегистрироваться — ссылка-приглашение есть там же, на странице заявки.",
   ].join("\n");
-}
-
-export function applyReply(t: { slug: string; name: string }, open = true, meeting = false): Reply {
-  return { text: applyText(t), keyboard: tournamentKeyboard(open, meeting) };
 }
 
 const loadTournament = (id: number) =>
@@ -338,10 +268,6 @@ function teamRows(entries: Entry[]): string[][] {
   return rows;
 }
 
-function teamsReply(entries: Entry[]): Reply {
-  return { text: teamsText(entries), keyboard: [...teamRows(entries), [BACK, TT_EXIT]] };
-}
-
 /** Карточка команды: состав, сила, капитан и ссылки — всё, чего хватает, чтобы позвать на игру. */
 async function teamCard(entry: Entry): Promise<string> {
   const roster = await prisma.rosterSpot.findMany({
@@ -379,98 +305,10 @@ async function teamCard(entry: Entry): Promise<string> {
     .join("\n");
 }
 
-// ── шаг диалога ──────────────────────────────────────────────────────────────
-
-/**
- * Один ответ человека в разделе. Состояние возвращаем наружу, а не пишем сами: строка диалога в
- * `BotSession` общая с заявкой, и два писателя в неё — это две правды о том, где человек стоит.
- */
-export async function handleTournaments(
-  step: TtStep,
-  state: TtState,
-  text: string,
-  ctx: { chatId: string; username?: string | null; tgId?: string | null },
-): Promise<TtResult> {
-  const answer = text.trim();
-  if (answer === TT_EXIT) return { replies: [], state, done: true };
-
-  const rows = await visibleTournaments();
-  const back = (): TtResult => ({ replies: [listReply(rows)], step: "tt_pick", state: { tournamentId: null } });
-  if (rows.length === 0) {
-    return { replies: [{ text: "Сейчас турниров нет — как объявим, напишу.", keyboard: await menuKeyboard() }], state, done: true };
-  }
-
-  if (step === "tt_pick") {
-    const chosen = rows.find((t) => t.name.trim().toLowerCase() === answer.toLowerCase());
-    if (!chosen) return { replies: [listReply(rows)], step: "tt_pick", state };
-    const canMeet = await canOrderMeeting(chosen.id, ctx.tgId);
-    return { replies: [tournamentReply(chosen, canMeet)], step: "tt_menu", state: { tournamentId: chosen.id } };
-  }
-
-  // Турнир мог уехать в черновики или быть удалён, пока человек смотрел, — тогда возвращаем к списку,
-  // а не падаем на пустой ссылке.
-  const current = state.tournamentId ? await loadTournament(state.tournamentId) : null;
-  if (!current) return back();
-  const open = registrationOpen(current);
-  // Капитанство спрашиваем один раз на ответ: от него зависит только лишняя кнопка в клавиатуре.
-  const meet = await canOrderMeeting(current.id, ctx.tgId);
-
-  if (answer === BACK) return back();
-
-  if (step === "tt_menu") {
-    if (answer === MY_TEAM) {
-      const mine = await myTeamText(current, ctx);
-      // Лига человека не знает — показывать ему экран турнира не с чем: выходим в меню.
-      if (!mine.known) return { replies: [await unknownReply(ctx.username)], state, done: true };
-      return { replies: [{ text: mine.text, keyboard: tournamentKeyboard(open, meet) }], step: "tt_menu", state };
-    }
-
-    if (answer === TEAMS) {
-      const entries = await tournamentEntries(current);
-      if (entries.length === 0) {
-        return {
-          replies: [{ text: "Команд в турнире пока нет — заявки ещё разбирают.", keyboard: tournamentKeyboard(open, meet) }],
-          step: "tt_menu",
-          state,
-        };
-      }
-      return { replies: [teamsReply(entries)], step: "tt_teams", state };
-    }
-
-    if (answer === MENU.apply) {
-      if (!open) {
-        return {
-          replies: [{ text: "Приём заявок в этот турнир закрыт.", keyboard: tournamentKeyboard(open, meet) }],
-          step: "tt_menu",
-          state,
-        };
-      }
-      // Состав собирается на сайте (Э5): в чате пятёрку не выбрать из пула, а вписать кого угодно
-      // мимо лиги больше нельзя. Из раздела при этом не выходим — человек вернётся сюда за статусом.
-      return { replies: [applyReply(current, open, meet)], step: "tt_menu", state };
-    }
-
-    return { replies: [tournamentReply(current, meet)], step: "tt_menu", state };
-  }
-
-  // tt_teams
-  const entries = await tournamentEntries(current);
-  // Именами команды не уникальны: в S2 «ReMix» есть и в D1, и в D2 — это две разные команды.
-  // Кнопка одна, поэтому показываем обе карточки, а не угаданную первой.
-  const chosen = entries.filter((e) => e.team.name.trim().toLowerCase() === answer.toLowerCase());
-  if (chosen.length === 0) return { replies: [teamsReply(entries)], step: "tt_teams", state };
-  const cards = await Promise.all(chosen.map(teamCard));
-  return {
-    replies: [{ text: cards.join("\n\n"), keyboard: teamsReply(entries).keyboard }],
-    step: "tt_teams",
-    state,
-  };
-}
-
 // ── экраны для нодового флоу ─────────────────────────────────────────────────
 
 /*
- * То же самое, что показывает `handleTournaments` выше, но без навигации и без клавиатур: где
+ * Экраны раздела без навигации и без клавиатур: где
  * человек стоит, помнит граф, а кнопки рисуют его ноды (`bot-flow/default-flow.ts`). Здесь —
  * только содержимое экрана и список, которого граф не знает заранее (турниры, команды): их
  * подписи возвращаются рядами и уезжают клавиатурой ближайшей ждущей ноды.

@@ -41,6 +41,7 @@ export function FlowInspector({
   settingKeys,
   actions,
   subflows,
+  flows,
 }: {
   node: FlowNode | null;
   graph: BotFlowGraph;
@@ -55,6 +56,8 @@ export function FlowInspector({
   actions: FlowActionInfo[];
   /** Зарегистрированные модули для ноды «модуль» (`bot-flow/subflows.ts`). Формат тот же. */
   subflows: FlowActionInfo[];
+  /** Ключи остальных живых флоу (Э7) — цель перехода в соседний граф. */
+  flows: string[];
 }) {
   if (!node) {
     return (
@@ -100,7 +103,7 @@ export function FlowInspector({
         />
       </div>
 
-      <Body node={node} onChange={onChange} refs={REF_LIST} actions={actions} subflows={subflows} />
+      <Body node={node} onChange={onChange} refs={REF_LIST} actions={actions} subflows={subflows} flows={flows} />
 
       {isWaiting(node) && <Service node={node} onChange={onChange} />}
 
@@ -161,28 +164,22 @@ function Body({
   refs,
   actions,
   subflows,
+  flows,
 }: {
   node: FlowNode;
   onChange: (n: FlowNode) => void;
   refs: string;
   actions: FlowActionInfo[];
   subflows: FlowActionInfo[];
+  flows: string[];
 }) {
   switch (node.type) {
     case "start":
       return (
-        <div>
-          <Label htmlFor="flow-payload">Deeplink-payload</Label>
-          <FormInput
-            id="flow-payload"
-            size="sm"
-            className="mt-1 w-full"
-            value={node.payload ?? ""}
-            placeholder="пусто — обычный /start"
-            onChange={(e) => onChange({ ...node, payload: e.target.value || null })}
-          />
-          <Hint>Значение из ссылки вида t.me/бот?start=invite. Пусто — вход для всех остальных.</Hint>
-        </div>
+        <Hint>
+          Своих полей у входа нет: чем в этот граф попадают — команда, ссылка-приглашение или кнопка
+          из рассылки — записано в панели «Точка входа» под канвасом, одной на весь флоу.
+        </Hint>
       );
 
     case "message":
@@ -381,7 +378,35 @@ function Body({
     }
 
     case "goto":
-      return <Hint>Куда ведёт переход — в списке выходов ниже.</Hint>;
+      return (
+        <div>
+          <Label htmlFor="flow-goto">Уйти в другой флоу</Label>
+          <FormSelect
+            id="flow-goto"
+            size="sm"
+            className="mt-1 w-full"
+            value={node.flow ?? ""}
+            onChange={(e) => onChange({ ...node, flow: e.target.value || null })}
+          >
+            <option value="">— остаться в этом графе —</option>
+            {flows.map((key) => (
+              <option key={key} value={key}>
+                {key}
+              </option>
+            ))}
+            {/* Ключ из документа, которого больше нет в наборе: молча подменять его выбором
+                «остаться» нельзя — это правка графа за спиной оператора. */}
+            {node.flow?.trim() && !flows.includes(node.flow.trim()) && (
+              <option value={node.flow}>{node.flow} — такого флоу нет</option>
+            )}
+          </FormSelect>
+          <Hint>
+            {node.flow?.trim()
+              ? "Разговор уйдёт на стартовую ноду выбранного графа, выхода на канвасе у ноды нет: id живут в чужом документе."
+              : "Пусто — обычный переход внутри графа, цель в списке выходов ниже."}
+          </Hint>
+        </div>
+      );
 
     case "end":
       return (
