@@ -123,6 +123,31 @@ model TeamApplication {
   divisionId   Int? // предложенный дивизион; оператор может переставить перед апрувом
   team         Team?      @relation(fields: [teamId], references: [id], onDelete: SetNull)
   teamId       Int? // проставляется при апруве — по нему видно, что заявка уже заведена
+  members      TeamApplicationMember[]
+}
+
+/// Игрок в заявке команды и его собственный ответ на «тебя заявили».
+///
+/// Ступени апрува идут ПАРАЛЛЕЛЬНО (решение 04.09.2026): заявка попадает к организатору сразу,
+/// а согласие игроков собирается рядом и решение не блокирует — оператору просто видно, кто
+/// подтвердил. Отдельной таблицей, а не полем в payload: payload капитан перезаписывает при
+/// каждой правке состава, и ответы игроков стирались бы вместе с ним.
+model TeamApplicationMember {
+  id            Int      @id @default(autoincrement())
+  application   TeamApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  applicationId Int
+  /// Ник из состава — ключ строки: по нему она переживает переотправку заявки.
+  nickname      String
+  /// Опознанный игрок лиги. null — человека в ростере ещё нет: отвечать некому, статус так и
+  /// останется «позван», а профиль ему заведёт апрув заявки.
+  player        Player?  @relation(fields: [playerId], references: [id], onDelete: SetNull)
+  playerId      Int?
+  status        String   @default("invited") // invited | accepted | declined
+  invitedAt     DateTime @default(now())
+  respondedAt   DateTime?
+
+  @@unique([applicationId, nickname])
+  @@index([playerId, status])
 }
 
 model Team {
@@ -192,6 +217,7 @@ model Player {
   claims  UserAccount[] @relation("AccountClaim") // заявки на привязку, ждущие подтверждения
   edits   ProfileEditRequest[] // правки анкеты, присланные из бота и ждущие оператора
   proposals MatchRequest[] // предложения времени встречи, отправленные им как капитаном
+  invites   TeamApplicationMember[] // заявки команд, в составе которых он значится
 }
 
 /// Аккаунт игрока: вход по Google. Отдельно от `Player` намеренно — профиль игрока есть у всех в

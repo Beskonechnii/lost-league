@@ -6,6 +6,7 @@ import { resolveUpload } from "@/lib/uploads";
 import type { Role } from "@/lib/player-auth";
 import { chatIdentity, unreadTotal } from "@/lib/chat";
 import { pendingProfileEditCount } from "@/lib/profile-edit";
+import { openInviteCount } from "@/lib/team-invites";
 import { onlineCount, onlinePlayerIds } from "@/lib/presence";
 import { AppSidebar } from "./app-sidebar";
 import { ChatLiveProvider } from "./chat-live";
@@ -133,6 +134,20 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     // Личка — только у игрока лиги: писать и получать может тот, кого одобрили и привязали к
     // профилю (src/lib/chat.ts). У остальных пункта нет вовсе, а не «есть, но ругается».
     if (chat) cabinet.push({ href: "/chat", label: "Сообщения", icon: "comment", hint: "Личные диалоги с игроками лиги", badge: unread });
+    // «Приглашения» показываем, только когда они есть: пустой пункт в колонке — это строка,
+    // которая никогда ничего не значит, а зовут игрока раз в турнир.
+    if (player) {
+      const invites = await openInviteCount(player.id);
+      if (invites > 0) {
+        cabinet.push({
+          href: "/me/invites",
+          label: "Приглашения",
+          icon: "mail",
+          hint: "Составы, в которые вас позвали",
+          badge: invites,
+        });
+      }
+    }
     cabinet.push({ href: "/me/settings", label: "Настройки", icon: "settings", hint: "Вход, пароль, аккаунт" });
     if (spot) cabinet.push({ href: `/roster/teams/${spot.team.id}`, label: "Моя команда", icon: "shield" });
 

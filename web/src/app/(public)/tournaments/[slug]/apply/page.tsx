@@ -6,6 +6,7 @@ import { myApplications, parseDraft } from "@/lib/team-application";
 import { botStartLink } from "@/lib/telegram";
 import { slugify } from "@/lib/profiles";
 import { roleLabel } from "@/lib/roles";
+import { INVITE_LABEL, isInviteStatus, membersByApplication } from "@/lib/team-invites";
 import { Chip, SectionHeader } from "@/components/pouf/blocks";
 import { Alert, type AlertTone } from "@/components/pouf/feedback";
 import { ApplyBoard } from "./apply-board";
@@ -93,6 +94,10 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
       ])
     : [[], [], null];
 
+  // Кто из состава уже ответил. Капитану это нужнее всех: именно он идёт тормошить тех,
+  // кто молчит, — а до этого «позвал» и «согласился» были для него одним и тем же.
+  const answers = await membersByApplication(mine.map((a) => a.id));
+
   const restored = editableDraft ? toSlots(editableDraft, pool) : null;
   // Готовые составы капитана — только когда своей заявки на этот турнир ещё нет: правку прежней
   // заявки не подменяем чужой командой, а на чистой доске это быстрый путь «заявиться командой».
@@ -123,9 +128,29 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
                   {a.division && <Chip>{a.division.name}</Chip>}
                 </div>
                 {draft && (
-                  <p className="text-xs font-bold leading-[1.5] text-muted">
-                    {draft.players.map((p) => `${p.nickname} (${roleLabel(p.role) ?? "роль не указана"})`).join(", ")}
-                  </p>
+                  <ul className="space-y-0.5">
+                    {draft.players.map((p, i) => {
+                      const answer = (answers.get(a.id) ?? []).find((m) => m.nickname === p.nickname.trim());
+                      const state = answer && isInviteStatus(answer.status) ? answer.status : "invited";
+                      return (
+                        <li key={i} className="text-xs font-bold leading-[1.5] text-muted">
+                          <span className="text-ink">{p.nickname}</span> · {roleLabel(p.role) ?? "роль не указана"}
+                          {" · "}
+                          <span
+                            className={
+                              state === "accepted"
+                                ? "text-[var(--color-ok-ink)]"
+                                : state === "declined"
+                                  ? "text-[var(--color-warn-ink)]"
+                                  : ""
+                            }
+                          >
+                            {state === "invited" ? "ждём ответа" : INVITE_LABEL[state]}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 )}
                 {a.notes && (
                   <Alert tone="warn" block>

@@ -11,6 +11,7 @@ import {
 import { fieldLabel, pendingProfileEdits, type PendingProfileEdit } from "@/lib/profile-edit";
 import { parseDraft, pendingApplications } from "@/lib/team-application";
 import { roleLabel } from "@/lib/roles";
+import { membersByApplication, type InviteRow } from "@/lib/team-invites";
 import { ApplicationSummary } from "@/app/_components/application-summary";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 import { AdminHeader } from "../../_components/admin-header";
@@ -76,6 +77,7 @@ export default async function ModerationPage({ searchParams }: { searchParams: P
     teams: teams.length,
     edits: edits.length,
   };
+  const teamMembers = await membersByApplication(teams.map((t) => t.id));
   const tabs = TABS.filter((t) => !("permission" in t) || mayEdit);
   const total = counts.profiles + counts.links + counts.teams + counts.edits;
 
@@ -110,7 +112,7 @@ export default async function ModerationPage({ searchParams }: { searchParams: P
         ) : tab === "links" ? (
           <Claims claims={claims} />
         ) : tab === "teams" ? (
-          <TeamApplications rows={teams} />
+          <TeamApplications rows={teams} members={teamMembers} />
         ) : (
           <ProfileEdits rows={edits} />
         )}
@@ -171,7 +173,13 @@ function Registrations({ queue }: { queue: PendingRegistration[] }) {
  * выбор дивизиона и «подтянуть данные»), поэтому здесь — список со ссылкой: раздел модерации
  * отвечает за «не пропустить», а не дублирует разбор.
  */
-function TeamApplications({ rows }: { rows: Awaited<ReturnType<typeof pendingApplications>> }) {
+function TeamApplications({
+  rows,
+  members,
+}: {
+  rows: Awaited<ReturnType<typeof pendingApplications>>;
+  members: Map<number, InviteRow[]>;
+}) {
   if (rows.length === 0) {
     return (
       <EmptyState icon="trophy" title="Заявок команд нет">
@@ -183,6 +191,11 @@ function TeamApplications({ rows }: { rows: Awaited<ReturnType<typeof pendingApp
     <ul className="space-y-3">
       {rows.map((a) => {
         const draft = parseDraft(a.payload);
+        // Согласия игроков — вторая, параллельная ступень: решение не блокируют, но счётчик
+        // «подтвердили N из M» отвечает на первый вопрос оператора, не открывая карточку.
+        const invited = members.get(a.id) ?? [];
+        const accepted = invited.filter((m) => m.status === "accepted").length;
+        const declined = invited.filter((m) => m.status === "declined").length;
         return (
           <li key={a.id}>
             <QueueCard
@@ -193,6 +206,8 @@ function TeamApplications({ rows }: { rows: Awaited<ReturnType<typeof pendingApp
               <QueueNote>
                 <p className="text-xs">
                   {a.division ? a.division.name : "дивизион не выбран"} · {draft?.players.length ?? 0} игрок(ов)
+                  {invited.length > 0 && ` · подтвердили ${accepted} из ${invited.length}`}
+                  {declined > 0 && `, отказались ${declined}`}
                 </p>
                 {draft && (
                   <p className="mt-1 line-clamp-2 text-[11px] text-muted">

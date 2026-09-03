@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { currentAccount } from "@/lib/account";
 import { applicationProblems, submitTeamApplication, type Problem } from "@/lib/team-application";
+import { notifyRosterInvites } from "@/lib/tg-notify";
 import { splitTeamName, type PlayerDraft, type TeamDraft } from "@/lib/roster-import";
 import { prisma } from "@/lib/prisma";
 import { isRole } from "@/lib/roles";
@@ -89,9 +90,23 @@ export async function submitApplication(_prev: ApplyState, form: FormData): Prom
     return { problems, error: "Заявку нельзя отправить, пока есть красные замечания" };
 
   try {
-    await submitTeamApplication(me.id, Number(form.get("tournamentId")), input.divisionId, draft);
+    const { invited } = await submitTeamApplication(
+      me.id,
+      Number(form.get("tournamentId")),
+      input.divisionId,
+      draft,
+    );
+    // Уведомление — после записи и своим шагом: телеграм может лежать, но заявка уже принята,
+    // и ронять из-за него отправку нельзя (тот же уговор, что у решений оператора в tg-notify).
+    await notifyRosterInvites(invited, draft.name);
     revalidatePath(`/tournaments/${String(form.get("tournamentSlug") ?? "")}/apply`);
-    return { problems, ok: "Заявка отправлена — она появится в очереди организаторов" };
+    return {
+      problems,
+      ok:
+        invited.length > 0
+          ? `Заявка отправлена — она появится в очереди организаторов. Позвали в состав: ${invited.length}.`
+          : "Заявка отправлена — она появится в очереди организаторов",
+    };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Не удалось отправить заявку" };
   }

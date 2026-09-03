@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { tournamentBySlug } from "@/lib/tournaments";
 import { applicationProblems, listApplications, parseAnswers, parseDraft, type Problem } from "@/lib/team-application";
 import { roleLabel } from "@/lib/roles";
+import { INVITE_LABEL, isInviteStatus, membersByApplication } from "@/lib/team-invites";
 import { Button } from "@/components/pouf/Button";
 import { FormSelect, Label } from "@/components/pouf/Input";
 import { Alert, EmptyState, StatusPill, type AlertTone } from "@/components/pouf/feedback";
@@ -59,6 +60,8 @@ export default async function TeamRegistrationsPage({ params }: { params: Promis
     }),
   );
   const waiting = applications.filter((a) => a.status === "pending").length;
+  // Ответы позванных — одним запросом на всю очередь, а не по строке на карточку.
+  const members = await membersByApplication(applications.map((a) => a.id));
 
   return (
     <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
@@ -103,7 +106,14 @@ export default async function TeamRegistrationsPage({ params }: { params: Promis
                     {draft && (
                       <QueueNote>
                         <ul className="space-y-0.5">
-                          {draft.players.map((p, j) => (
+                          {draft.players.map((p, j) => {
+                            // Ответ игрока — вторая ступень апрува: решение оператора он не
+                            // блокирует, но отказ в составе видно до, а не после одобрения.
+                            const answer = (members.get(a.id) ?? []).find(
+                              (m) => m.nickname === p.nickname.trim(),
+                            );
+                            const status = answer && isInviteStatus(answer.status) ? answer.status : null;
+                            return (
                             <li key={j} className="text-xs">
                               <span className="font-black text-ink">{p.nickname}</span>
                               {p.realName && <span> · {p.realName}</span>}
@@ -111,8 +121,16 @@ export default async function TeamRegistrationsPage({ params }: { params: Promis
                               {p.mmr ? <span> · {p.mmr} MMR (заявленный)</span> : null}
                               {p.accountId ? <span> · id {p.accountId}</span> : null}
                               {rankLabel(p.rank) ? <span> · {rankLabel(p.rank)}</span> : null}
+                              {status && status !== "invited" && (
+                                <span className={status === "accepted" ? " text-[var(--color-ok-ink)]" : " text-[var(--color-warn-ink)]"}>
+                                  {" · "}
+                                  {INVITE_LABEL[status]}
+                                </span>
+                              )}
+                              {status === "invited" && <span className="text-muted"> · ждём ответа</span>}
                             </li>
-                          ))}
+                            );
+                          })}
                         </ul>
                         <p className="mt-2 text-[11px] text-muted">
                           /{draft.slug}

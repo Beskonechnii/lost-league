@@ -14,6 +14,7 @@ import { prisma } from "./prisma";
 import { slugify, playerAccountId } from "./profiles";
 import { isCoreRole, spotConflict } from "./roster-spots";
 import { registrationOpen, setTeamDivision } from "./tournaments";
+import { syncApplicationMembers } from "./team-invites";
 import type { TeamDraft, PlayerDraft } from "./roster-import";
 
 export type { TeamDraft, PlayerDraft };
@@ -122,9 +123,15 @@ export async function submitTeamApplication(
     notes: null,
     submittedAt: new Date(),
   };
-  return mine
-    ? prisma.teamApplication.update({ where: { id: mine.id }, data })
-    : prisma.teamApplication.create({ data });
+  const application = mine
+    ? await prisma.teamApplication.update({ where: { id: mine.id }, data })
+    : await prisma.teamApplication.create({ data });
+
+  // Позванные — рядом с заявкой, а не вместо неё: заявка уже у организатора, а игроки отвечают
+  // параллельно (см. team-invites.ts). Свежие строки возвращаем наружу — их уведомляет вызывающий:
+  // отправка в телеграм не должна ронять приём заявки.
+  const invited = await syncApplicationMembers(application.id, { ...draft, name, players, slug });
+  return { application, invited };
 }
 
 /**
@@ -168,9 +175,12 @@ export async function submitTelegramApplication(
     notes: null,
     submittedAt: new Date(),
   };
-  return mine
-    ? prisma.teamApplication.update({ where: { id: mine.id }, data })
-    : prisma.teamApplication.create({ data });
+  const application = mine
+    ? await prisma.teamApplication.update({ where: { id: mine.id }, data })
+    : await prisma.teamApplication.create({ data });
+
+  const invited = await syncApplicationMembers(application.id, { ...draft, slug });
+  return { application, invited };
 }
 
 /** Заявки, поданные этим аккаунтом — кабинет показывает их статус и причину возврата. */

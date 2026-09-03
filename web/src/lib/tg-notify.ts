@@ -118,6 +118,56 @@ export async function notifyRegistrationRejected(accountId: number, reason: stri
   );
 }
 
+// ── позвали в состав на турнир ───────────────────────────────────────────────
+//
+// Отдельно от `tell(applicationId)`: та пишет ВСЕМ чатам заявки одним текстом («заявку одобрили»),
+// а здесь адресное — каждому позванному про него самого. Чат ищем по игроку: сперва привязанный
+// к нему аккаунт (`UserAccount.playerId`), потом телеграм-хендл из профиля. Не нашлось — молчим:
+// человек просто увидит приглашение в кабинете, когда зайдёт.
+
+async function playerChats(playerId: number): Promise<string[]> {
+  const chats = new Set<string>();
+  const account = await prisma.userAccount.findFirst({ where: { playerId }, select: { id: true } });
+  if (account) for (const c of await accountChats(account.id)) chats.add(c);
+
+  const player = await prisma.player.findUnique({ where: { id: playerId }, select: { telegram: true } });
+  const handle = normalizeTelegram(player?.telegram ?? "");
+  if (handle) {
+    const known = await prisma.tgChat.findMany({ where: { username: { not: null } } });
+    for (const c of known) if (c.username!.toLowerCase() === handle.toLowerCase()) chats.add(c.chatId);
+  }
+  return [...chats];
+}
+
+/**
+ * Капитан вписал человека в состав. Уведомляем только тех, кого позвали ИМЕННО СЕЙЧАС
+ * (`syncApplicationMembers` их и возвращает): при каждой правке заявки писать всему составу
+ * значит превратить уведомление в спам.
+ *
+ * Ответить можно в кабинете — ссылку и даём: своей кнопки у бота на это пока нет, а звать
+ * человека без способа ответить бессмысленно.
+ */
+export async function notifyRosterInvites(
+  rows: { playerId: number | null; nickname: string; application: { tournament: { name: string } } }[],
+  teamName: string,
+): Promise<void> {
+  if (!botConfigured()) return;
+  for (const row of rows) {
+    if (!row.playerId) continue; // человека ещё нет в лиге — писать некому
+    try {
+      for (const chatId of await playerChats(row.playerId)) {
+        await sendTo(
+          chatId,
+          `Вас заявили в состав <b>${teamName}</b> на турнир <b>${row.application.tournament.name}</b>.\n\n` +
+            `Подтвердить или отказаться — в кабинете на сайте, раздел «Приглашения».`,
+        ).catch((e) => console.error(`Не доставлено в чат ${chatId}:`, e));
+      }
+    } catch (e) {
+      console.error("Не удалось позвать игрока в состав:", e);
+    }
+  }
+}
+
 // ── решение по правке профиля ────────────────────────────────────────────────
 //
 // Чат берём из самой правки (`ProfileEditRequest.chatId`): она пришла из бота, и отвечать надо
