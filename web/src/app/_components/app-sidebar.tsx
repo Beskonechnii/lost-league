@@ -8,6 +8,7 @@ import { Icon } from "@/components/pouf/Icon";
 import { Sheet } from "@/components/pouf/sheet";
 import { logout } from "@/app/(public)/me/actions";
 import { LeagueSearch } from "./league-search";
+import { OnlineCount } from "./chat-live";
 import type { NavAccount, NavItem, NavSection } from "./nav-model";
 
 // Единственная навигация продукта — одна колонка на все страницы, публичные и служебные
@@ -148,6 +149,9 @@ function Column({
 
       <ProfileBlock account={account} onNavigate={onNavigate} />
       <LeagueSearch onNavigate={onNavigate} />
+      {/* Сколько человек сейчас на сайте. Под поиском, а не в секции: это не пункт навигации,
+          никуда не ведёт и подписи секции ему не нужно. */}
+      <OnlineCount />
 
       {sections.map((s) => (
         <div key={s.title} className="flex flex-col">

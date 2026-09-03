@@ -261,6 +261,9 @@ model UserAccount {
   claim    Player? @relation("AccountClaim", fields: [claimId], references: [id], onDelete: SetNull)
   claimId  Int? // заявка на существующего игрока, ждёт подтверждения оператора
 
+  chats    ConversationMember[] // беседы, в которых состоит (личная переписка игроков)
+  sent     ChatMessage[] // отправленные сообщения
+
   createdAt DateTime @default(now())
 }
 
@@ -812,4 +815,51 @@ model ProfileEditRequest {
   playerId Int
 
   @@index([playerId])
+}
+
+/// Личная переписка двух игроков лиги. Модель заведена парой «беседа + участник», хотя диалог
+/// сейчас ровно на двоих: комната как отдельная сущность позволяет добавить чат команды или
+/// общий канал, не переписывая ни хранение, ни доставку (там меняется только состав участников).
+///
+/// `key` — «меньший id : больший id» аккаунтов, уникально. Так «найти или создать беседу с этим
+/// человеком» решается одним upsert без гонки: без ключа два одновременных сообщения завели бы
+/// две беседы на одну пару.
+model Conversation {
+  id            Int      @id @default(autoincrement())
+  key           String   @unique // "12:37" — пара id аккаунтов по возрастанию
+  createdAt     DateTime @default(now())
+  /// Время последнего сообщения — по нему сортируется список бесед. Отдельным полем, а не
+  /// подзапросом max(createdAt): список читается на каждый рендер шапки, а пишется редко.
+  lastMessageAt DateTime @default(now())
+
+  members  ConversationMember[]
+  messages ChatMessage[]
+}
+
+/// Участие аккаунта в беседе. Здесь же отметка о прочтении — она у каждого своя.
+model ConversationMember {
+  id             Int          @id @default(autoincrement())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId Int
+  account        UserAccount  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId      Int
+  /// До какого момента человек прочитал беседу. null — не открывал ни разу.
+  lastReadAt     DateTime?
+
+  @@unique([conversationId, accountId])
+  @@index([accountId])
+}
+
+/// Сообщение. Правки и удаления не предусмотрены намеренно: переписка — это след разговора,
+/// а не документ; оператору для разбора жалобы нужна история как она была.
+model ChatMessage {
+  id             Int          @id @default(autoincrement())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId Int
+  sender         UserAccount  @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderId       Int
+  text           String
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, id]) // лента беседы и «что нового после id N» — оба по этому индексу
 }

@@ -263,7 +263,7 @@ export async function profileCard(
   const contacts = [
     // Своя карточка на сайте — первой строкой: за ссылкой «покажи, как я выгляжу в лиге» человек
     // и приходит, а искать её на сайте руками значит знать, что она вообще есть.
-    `Профиль в лиге: ${siteUrl()}${playerPath(player.id)}`,
+    `Профиль в лиге: ${siteUrl()}${playerPath(player)}`,
     links.dotabuff ? `Dotabuff: ${links.dotabuff}` : null,
     links.stratz ? `Stratz: ${links.stratz}` : null,
     links.steam ? `Steam: ${links.steam}` : null,

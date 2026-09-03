@@ -22,7 +22,7 @@ export async function savePassword(_state: SecState, form: FormData): Promise<Se
   const error = await changePassword(accountId, current, next);
   if (error) return { error };
 
-  revalidatePath("/me/security");
+  revalidatePath("/me/settings");
   revalidatePath("/me");
   return { ok: "Пароль сохранён." };
 }

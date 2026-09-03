@@ -136,7 +136,7 @@ const loadTournament = (id: number) =>
  */
 const rosterLine = (m: { isCaptain: boolean; role: string | null; player: { id: number; nickname: string } }) =>
   [
-    `• <a href="${siteUrl()}${playerPath(m.player.id)}"><b>${m.player.nickname}</b></a>`,
+    `• <a href="${siteUrl()}${playerPath(m.player)}"><b>${m.player.nickname}</b></a>`,
     roleShort(m.role) ?? "без позиции",
     m.isCaptain ? "капитан" : null,
   ]
@@ -282,7 +282,7 @@ async function teamCard(entry: Entry): Promise<string> {
     const parts = [
       // Ник — ссылкой на карточку в лиге, Dotabuff остаётся отдельной: это разные вопросы
       // («кто он у нас» и «как он играет вообще»), и подменять один другим неверно.
-      `• <a href="${siteUrl()}${playerPath(s.player.id)}"><b>${s.player.nickname}</b></a>`,
+      `• <a href="${siteUrl()}${playerPath(s.player)}"><b>${s.player.nickname}</b></a>`,
       roleShort(s.role) ?? "без позиции",
       s.isCaptain ? "капитан" : null,
     ].filter(Boolean);
@@ -297,7 +297,7 @@ async function teamCard(entry: Entry): Promise<string> {
     "",
     ...(lines.length ? lines : ["Состав ещё не заведён."]),
     captain
-      ? `\nКапитан: <a href="${siteUrl()}${playerPath(captain.player.id)}"><b>${captain.player.nickname}</b></a>` +
+      ? `\nКапитан: <a href="${siteUrl()}${playerPath(captain.player)}"><b>${captain.player.nickname}</b></a>` +
         `${captain.player.telegram ? ` — ${telegramUrl(captain.player.telegram)}` : " (телеграм не указан)"}`
       : null,
   ]

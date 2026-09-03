@@ -92,15 +92,22 @@ export function FlowInspector({
       </div>
 
       <div>
-        <Label htmlFor="flow-title">Заголовок ноды</Label>
+        <Label htmlFor="flow-title">Заголовок ноды — для вас</Label>
         <FormInput
           id="flow-title"
           size="sm"
           className="mt-1 w-full"
           value={node.title ?? ""}
-          placeholder="виден только здесь и на канвасе"
+          placeholder="как называть эту ноду на канвасе"
           onChange={(e) => patch({ title: e.target.value })}
         />
+        {/* Подсказка постоянная, а не placeholder: заголовок есть у каждой ноды, и placeholder,
+            который человек видит только у пустого поля, эту разницу как раз и не объясняет.
+            На нём и споткнулись: заголовок правили, ждали правку в чате, а бот его не говорит. */}
+        <Hint>
+          Подпись карточки в редакторе. <b>Бот её никогда не показывает</b> — то, что человек прочитает в
+          чате, лежит в полях ниже: «Что говорит бот» и подписи кнопок.
+        </Hint>
       </div>
 
       <Body node={node} onChange={onChange} refs={REF_LIST} actions={actions} subflows={subflows} flows={flows} />

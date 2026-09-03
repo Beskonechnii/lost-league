@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { playerPath } from "@/lib/profiles";
 import { currentAccount, effectiveRole, listAccounts, ownerEmail, type StaffAccount } from "@/lib/account";
 import { PERMISSIONS, PERMISSION_GROUPS } from "@/lib/permissions";
 import { Button } from "@/components/pouf/Button";
@@ -29,7 +30,7 @@ export const metadata = { title: "Команда лиги" };
 function ProfileLink({ account }: { account: StaffAccount }) {
   if (!account.player) return null;
   return (
-    <Link href={`/roster/players/${account.player.id}`} className="text-[var(--accent-ink)] hover:underline">
+    <Link href={playerPath(account.player)} className="text-[var(--accent-ink)] hover:underline">
       {account.player.nickname}
     </Link>
   );

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { playerPath } from "@/lib/profiles";
 import {
   can,
   pendingClaims,
@@ -240,8 +241,7 @@ function Claims({ claims }: { claims: PendingClaim[] }) {
               {c.name && <p className="font-pouf text-sm font-bold text-muted">{c.name}</p>}
               <QueueNote>
                 Заявляет, что он —{" "}
-                {/* адрес карточки игрока — числовой id, не slug (см. /roster/players/[id]) */}
-                <Link href={`/roster/players/${c.claim!.id}`} className="font-black text-[var(--accent-ink)] hover:underline">
+                <Link href={playerPath(c.claim!)} className="font-black text-[var(--accent-ink)] hover:underline">
                   {c.claim!.nickname}
                 </Link>
                 . Сверьте по профилю: анкеты у этой ветки нет — все данные уже в ростере.
@@ -282,8 +282,7 @@ function ProfileEdits({ rows }: { rows: PendingProfileEdit[] }) {
               </>
             }
             title={
-              // адрес карточки игрока — числовой id, не slug (см. /roster/players/[id])
-              <Link href={`/roster/players/${row.player.id}`} className="hover:text-[var(--accent-ink)]">
+              <Link href={playerPath(row.player)} className="hover:text-[var(--accent-ink)]">
                 {row.player.nickname}
               </Link>
             }

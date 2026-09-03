@@ -282,6 +282,8 @@ type PoolPlayerTeam = { id: number; slug: string; name: string; tag: string | nu
 
 export type PoolPlayer = {
   id: number;
+  /** Слаг — ключ адреса страницы игрока (`/players/<slug>`), поэтому едет в карточку вместе с ником. */
+  slug: string;
   nickname: string;
   photo: string | null;
   mmr: number | null;
@@ -342,6 +344,7 @@ export async function listPoolPlayers(): Promise<PoolPlayer[]> {
 
       return {
         id: p.id,
+        slug: p.slug,
         nickname: p.nickname,
         photo: uploaded.photo,
         mmr: p.mmr,

@@ -9,8 +9,12 @@ import { NextResponse } from "next/server";
 /** Ответ-ошибка в том же виде, что и везде: `{ error }`. */
 export const bad = (error: string, status = 400) => NextResponse.json({ error }, { status });
 
-/** Положительное целое из сегмента адреса, иначе null (значит 400, а не падение в Prisma). */
-export function parseId(raw: string | null | undefined): number | null {
+/**
+ * Положительное целое из сегмента адреса или из поля JSON-тела, иначе null (значит 400, а не
+ * падение в Prisma). Число на входе допускается намеренно: в теле запроса id приходит числом,
+ * и оборачивать его в String ради этой проверки — шум на каждом вызове.
+ */
+export function parseId(raw: string | number | null | undefined): number | null {
   const n = Number(raw);
   return Number.isInteger(n) && n > 0 ? n : null;
 }

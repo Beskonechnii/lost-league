@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { playerPath } from "@/lib/profiles";
 import { googleConfigured } from "@/lib/google-oauth";
 import { currentAccount, linkablePlayers, effectiveRole, accountStatus, accountApplication } from "@/lib/account";
 import type { Role } from "@/lib/player-auth";
@@ -54,6 +56,12 @@ const ROLE_META: Record<Role, { label: string; tone: "warn" | "info" | "neutral"
 export default async function AccountPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
   const account = await currentAccount();
+  // У одобренного игрока кабинет и профиль — одна и та же страница (решение 04.09.2026): всё, что
+  // кабинет показывал про него самого, лежит на его странице в лиге, а служебное про аккаунт —
+  // в настройках. Здесь остаётся ровно то, чего на той странице быть не может: вход, анкета,
+  // ожидание решения и привязка профиля.
+  if (account?.player && accountStatus(account) === "active") redirect(playerPath(account.player));
+
   const role = account ? effectiveRole(account) : null;
   const status = account ? accountStatus(account) : null;
 
@@ -77,20 +85,15 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
         <div className="space-y-4">
           <ProfileCard account={account} role={role} />
           <Link
-            href="/me/security"
+            href="/me/settings"
             className="flex items-center justify-between gap-2 rounded-control bg-surface-2 px-4 py-3.5 text-sm font-black text-ink cushion-field transition hover:text-[var(--accent-ink)]"
           >
-            <span>Вход и защита</span>
+            <span>Настройки</span>
             <span className="text-xs font-bold text-muted">пароль, способы входа →</span>
           </Link>
           {role !== "player" && <AdminEntry role={role} />}
-          {account.player ? (
-            <Linked account={account} />
-          ) : account.claim ? (
-            <Pending account={account} />
-          ) : (
-            <Onboarding players={await linkablePlayers()} />
-          )}
+          {/* Сюда доходит только аккаунт без профиля: с профилем страница уводит в лигу выше. */}
+          {account.claim ? <Pending account={account} /> : <Onboarding players={await linkablePlayers()} />}
         </div>
       ) : status === "pending" ? (
         <div className="space-y-4">
@@ -215,28 +218,6 @@ function SignedOut() {
         <SocialLink href="/login/tg" label="Войти по коду из Telegram">
           <TelegramIcon />
         </SocialLink>
-      </div>
-    </div>
-  );
-}
-
-/** Профиль привязан: показываем его и ведём в ростер. */
-function Linked({ account }: { account: Account }) {
-  const player = account.player!;
-  return (
-    <div className="space-y-3">
-      <Alert tone="ok" block>
-        Профиль привязан: <b className="font-black">{player.nickname}</b>
-      </Alert>
-      <div className="grid gap-2">
-        {/* Ссылка, которая выглядит кнопкой: `buttonClasses` — тот же билдер, что внутри
-            Button, поэтому ссылка не может разъехаться с кнопкой рядом. */}
-        <Link href="/me/profile" className={buttonClasses({ block: true })}>
-          Редактировать анкету
-        </Link>
-        <Link href={`/roster/players/${player.id}`} className={buttonClasses({ variant: "quiet", block: true })}>
-          Открыть мой профиль
-        </Link>
       </div>
     </div>
   );

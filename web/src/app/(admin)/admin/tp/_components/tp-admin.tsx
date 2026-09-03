@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { playerPath } from "@/lib/profiles";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 // Страница на компонентах Кита («подушки» claymorphism), как архив серий.
@@ -55,7 +56,7 @@ function TpRow({ row }: { row: Row }) {
 
   return (
     <div className="flex items-center gap-3 py-2">
-      <Link href={`/roster/players/${row.id}`} target="_blank" className="min-w-0 flex-1 font-bold hover:underline">
+      <Link href={playerPath(row.id)} target="_blank" className="min-w-0 flex-1 font-bold hover:underline">
         {row.nickname}
       </Link>
       <div className="w-24 shrink-0">

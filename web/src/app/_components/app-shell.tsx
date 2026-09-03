@@ -1,9 +1,13 @@
 import "server-only";
+import { playerPath } from "@/lib/profiles";
 import { prisma } from "@/lib/prisma";
 import { currentAccount, effectiveRole, currentPermissions, pendingClaims, pendingRegistrations } from "@/lib/account";
 import { resolveUpload } from "@/lib/uploads";
 import type { Role } from "@/lib/player-auth";
+import { chatIdentity, unreadTotal } from "@/lib/chat";
+import { onlineCount, onlinePlayerIds } from "@/lib/presence";
 import { AppSidebar } from "./app-sidebar";
+import { ChatLiveProvider } from "./chat-live";
 import { QUEUE_TOOL, toolGroupsFor } from "./tools";
 import type { NavAccount, NavItem, NavSection } from "./nav-model";
 
@@ -86,6 +90,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   const cabinet: NavItem[] = [];
   let navAccount: NavAccount | null = null;
 
+  // Чат и присутствие: канал открывает только игрок лиги, а снимок «кто в сети» нужен и гостю —
+  // точки у карточек ростера рисуются всем, просто у гостя они не обновляются вживую.
+  const chat = chatIdentity(account);
+  const unread = chat ? await unreadTotal(chat.accountId) : 0;
+
   if (account) {
     const role = effectiveRole(account);
     const player = account.player;
@@ -100,9 +109,20 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         })
       : null;
 
-    cabinet.push({ href: "/me", label: "Профиль", icon: "user", match: ["/me"] });
-    cabinet.push({ href: "/me/security", label: "Безопасность", icon: "lock" });
-    if (player) cabinet.push({ href: `/roster/players/${player.id}`, label: "Моя карточка", icon: "smile" });
+    // «Профиль» ведёт на страницу игрока в лиге, а не в кабинет: у одобренного игрока это одна и
+    // та же страница (`/me` сам уводит туда). Кабинет остаётся дверью для тех, у кого профиля ещё
+    // нет — им ссылка и ведёт в `/me`. Отдельного пункта «Моя карточка» больше нет: он дублировал
+    // этот же адрес.
+    cabinet.push({
+      href: player ? playerPath(player) : "/me",
+      label: "Профиль",
+      icon: "user",
+      match: player ? ["/me", playerPath(player)] : ["/me"],
+    });
+    // Личка — только у игрока лиги: писать и получать может тот, кого одобрили и привязали к
+    // профилю (src/lib/chat.ts). У остальных пункта нет вовсе, а не «есть, но ругается».
+    if (chat) cabinet.push({ href: "/chat", label: "Сообщения", icon: "comment", hint: "Личные диалоги с игроками лиги", badge: unread });
+    cabinet.push({ href: "/me/settings", label: "Настройки", icon: "settings", hint: "Вход, пароль, аккаунт" });
     if (spot) cabinet.push({ href: `/roster/teams/${spot.team.id}`, label: "Моя команда", icon: "shield" });
 
     const name = player?.nickname ?? account.name ?? account.email?.split("@")[0] ?? "Игрок";
@@ -116,13 +136,25 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     };
   }
 
+  // Порядок колонки — по частоте обращения, а не по «сначала общее, потом служебное»: свой кабинет
+  // и очередь модерации открывают каждый день, лигу — когда идёт тур, остальное реже. Секции, не
+  // названные в списке, идут следом в порядке реестра инструментов.
   const sections: NavSection[] = [LEAGUE, ...tools];
   if (cabinet.length > 0) sections.push({ title: "Кабинет", items: cabinet });
 
+  const ORDER = ["Кабинет", "Модерация", "Лига", "Showmatch"];
+  const rank = (title: string) => {
+    const i = ORDER.indexOf(title);
+    return i === -1 ? ORDER.length : i;
+  };
+  sections.sort((a, b) => rank(a.title) - rank(b.title));
+
   return (
-    <div className="flex flex-1">
-      <AppSidebar sections={sections} footer={FOOTER} account={navAccount} />
-      <div className="flex min-w-0 flex-1 flex-col">{children}</div>
-    </div>
+    <ChatLiveProvider live={!!chat} initialPlayers={onlinePlayerIds()} initialCount={onlineCount()}>
+      <div className="flex flex-1">
+        <AppSidebar sections={sections} footer={FOOTER} account={navAccount} />
+        <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+      </div>
+    </ChatLiveProvider>
   );
 }

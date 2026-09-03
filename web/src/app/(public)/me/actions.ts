@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { playerPath } from "@/lib/profiles";
 import { revalidatePath } from "next/cache";
 import { currentAccountId, clearSessionCookie } from "@/lib/player-session";
 import {
@@ -110,7 +111,7 @@ export async function createProfile(_state: string | null, form: FormData): Prom
   } catch (e) {
     return e instanceof Error ? e.message : "Не удалось создать профиль";
   }
-  redirect(`/roster/players/${playerId}`);
+  redirect(playerPath(playerId));
 }
 
 /** Заявка на существующего игрока — уходит оператору на подтверждение. */

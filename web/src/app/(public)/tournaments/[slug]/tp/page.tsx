@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { listPlayers } from "@/lib/roster-data";
-import { teamAccent } from "@/lib/profiles";
+import { playerPath, teamAccent } from "@/lib/profiles";
 import { roleLabel } from "@/lib/roles";
 import { can } from "@/lib/account";
 import { notFound } from "next/navigation";
@@ -89,7 +89,7 @@ export default async function TpPage({
             return (
               <li key={p.id}>
                 <Link
-                  href={`/roster/players/${p.id}`}
+                  href={playerPath(p)}
                   className="flex items-center gap-4 rounded-card bg-surface px-4 py-3 cushion-row transition-transform hover:-translate-y-px hover:cushion-row-hover"
                 >
                   {/* Место всегда одной ширины, чтобы ники встали в столбец; тройка лидеров — на подушке */}

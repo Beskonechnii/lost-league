@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { countryCode } from "@/lib/profiles";
+import { countryCode, playerPath } from "@/lib/profiles";
 import { Chip } from "@/components/pouf/blocks";
+import { OnlineDot } from "@/app/_components/chat-live";
 import { PlayerAvatar } from "./avatar";
 
 // Мини-карточка игрока — общий кирпич для витрины, тиммейтов и состава команды. Один вид на все
@@ -10,6 +11,7 @@ import { PlayerAvatar } from "./avatar";
 
 export function PlayerMiniCard({
   id,
+  slug,
   nickname,
   photo,
   accent,
@@ -23,6 +25,8 @@ export function PlayerMiniCard({
   flagged = false,
 }: {
   id: number;
+  /** Слаг для канонического адреса страницы игрока; без него ссылка пойдёт по id и получит редирект. */
+  slug?: string | null;
   nickname: string;
   photo: string | null;
   accent?: string | null;
@@ -42,7 +46,7 @@ export function PlayerMiniCard({
 
   return (
     <Link
-      href={`/roster/players/${id}`}
+      href={playerPath({ id, slug })}
       className={`group flex items-center gap-3 rounded-control p-2.5 font-pouf transition duration-200 hover:-translate-y-0.5 ${
         flagged ? "bg-warn/[0.10] [box-shadow:var(--pouf-field),inset_0_0_0_2px_var(--warn)]" : "bg-surface cushion-row hover:cushion-row-hover"
       }`}
@@ -54,6 +58,8 @@ export function PlayerMiniCard({
           <span className="truncate font-black text-ink transition-colors group-hover:text-[var(--accent-ink)]">
             {nickname}
           </span>
+          {/* Точка «в сети» рядом с ником — рисуется только у того, кто сейчас на сайте. */}
+          <OnlineDot playerId={id} />
           {isCaptain && <span className="shrink-0 text-[11px] font-black text-[var(--accent-ink)]">C</span>}
           {code && <span className="shrink-0 text-[10px] font-bold text-ink-subtle">{code}</span>}
         </div>

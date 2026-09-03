@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { RosterMember, TeamWithRoster, PoolTournament } from "@/lib/roster-data";
-import { countryCode, teamAccent, teamTag } from "@/lib/profiles";
+import { countryCode, playerPath, teamAccent, teamTag } from "@/lib/profiles";
 import { roleLabel } from "@/lib/roles";
 import { Chip, Meter } from "@/components/pouf/blocks";
 import { Icon } from "@/components/pouf/Icon";
@@ -59,7 +59,7 @@ function PlayerRow({ player, accent }: { player: RosterMember; accent: string })
 
   return (
     <Link
-      href={`/roster/players/${player.id}`}
+      href={playerPath(player)}
       // Подсветка строки — мятная полоса Кита; раньше здесь лежал сырой фиолетовый
       // rgba(124,58,237,…) из тёмной темы, мимо токенов акцента.
       className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-[linear-gradient(90deg,color-mix(in_srgb,var(--accent-fill)_55%,transparent),transparent)]"

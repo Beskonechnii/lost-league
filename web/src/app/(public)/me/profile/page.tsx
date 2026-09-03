@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { playerPath } from "@/lib/profiles";
 import { redirect } from "next/navigation";
 import { currentAccount } from "@/lib/account";
 import { AUTH_MAX_W } from "@/components/pouf/blocks";
@@ -41,7 +42,7 @@ export default async function EditProfilePage() {
           {/* Крошки, а не «← Кабинет»: путь виден целиком, и он же работает при заходе по прямой
               ссылке, откуда «назад» вело бы наугад (UI-GUIDELINES §3). */}
           <Breadcrumbs items={[{ href: "/me", label: "Кабинет" }]} />
-          <Link href={`/roster/players/${p.id}`} className={buttonClasses({ variant: "quiet", size: "sm" })}>
+          <Link href={playerPath(p)} className={buttonClasses({ variant: "quiet", size: "sm" })}>
             Моя витрина
           </Link>
         </div>

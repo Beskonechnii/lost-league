@@ -127,6 +127,7 @@ export default async function PlayersPage({
             <PlayerMiniCard
               key={p.id}
               id={p.id}
+              slug={p.slug}
               nickname={p.nickname}
               photo={p.photo}
               accent={p.main ? teamAccent(p.main.team) : null}

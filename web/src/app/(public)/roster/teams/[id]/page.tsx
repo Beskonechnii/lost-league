@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getStandings } from "@/lib/standings";
 import { listSeries } from "@/lib/series";
 import { teamDivision } from "@/lib/tournaments";
-import { teamAccent, teamTag } from "@/lib/profiles";
+import { playerPath, teamAccent, teamTag } from "@/lib/profiles";
 import { buttonClasses } from "@/components/pouf/Button";
 import { roleLabel } from "@/lib/roles";
 import { QUALIFICATION, qualificationOf } from "@/lib/qualification";
@@ -236,7 +236,7 @@ function SeasonRoster({ season }: { season: TeamSeasonRoster }) {
       <ul className="mt-3 space-y-1">
         {players.map((p) => (
           <li key={p.id} className="flex flex-wrap items-center gap-2 text-xs font-bold text-muted">
-            <Link href={`/roster/players/${p.id}`} className="font-black text-ink hover:text-[var(--accent-ink)]">
+            <Link href={playerPath(p)} className="font-black text-ink hover:text-[var(--accent-ink)]">
               {p.nickname}
             </Link>
             {p.isCaptain && <span className="font-black text-[var(--accent-ink)]">C</span>}
@@ -274,7 +274,7 @@ function RosterSection({
           {players.map((p) => (
             <RosterLine
               key={p.id}
-              href={`/roster/players/${p.id}`}
+              href={playerPath(p)}
               glyph={<PlayerAvatar photo={p.photo} nickname={p.nickname} color={accent} size={34} className="rounded-[12px]" />}
               name={
                 <>

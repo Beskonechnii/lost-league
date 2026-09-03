@@ -27,6 +27,11 @@ export function needsAdmin(pathname: string, method: string): boolean {
   // они написали организатору. Роут проверяет право и сам, но пускать до него посторонних незачем.
   if (pathname.startsWith("/api/quizzes/")) return true;
 
+  // Исключение третье, обратное: чат игроков. Писать в него — обычное дело для игрока, а не для
+  // администратора, поэтому общее правило «POST в /api только админу» здесь не работает. Право
+  // проверяет сам роут (src/lib/chat.ts: аккаунт должен быть одобрен и привязан к профилю).
+  if (pathname.startsWith("/api/chat/")) return false;
+
   // Любая запись через API: POST/PATCH/PUT/DELETE. Чтение (GET) остаётся публичным.
   if (pathname.startsWith("/api/")) return method !== "GET" && method !== "HEAD";
 

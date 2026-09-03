@@ -8,6 +8,7 @@
 // дешевле, чем городить теневую колонку с нормализованным именем ради одного поля ввода.
 
 import "server-only";
+import { playerPath } from "./profiles";
 import { prisma } from "./prisma";
 import { resolveUpload } from "./uploads";
 
@@ -93,7 +94,7 @@ export async function searchLeague(query: string, limit = 8): Promise<SearchHit[
           kind: "player",
           title: p.nickname,
           subtitle: p.realName,
-          href: `/roster/players/${p.id}`,
+          href: playerPath(p),
           slug: p.slug,
           stored: p.photo,
         },

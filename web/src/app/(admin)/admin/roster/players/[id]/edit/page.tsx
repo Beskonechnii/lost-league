@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { playerPath } from "@/lib/profiles";
 import { getPlayer, listTeams } from "@/lib/roster-data";
 import { roleOrder } from "@/lib/roles";
 import { PlayerEditor, SpotsEditor } from "@/app/_components/roster-editors";
@@ -28,7 +29,7 @@ export default async function PlayerEditPage({ params }: { params: Promise<{ id:
       <AdminHeader
         crumbs={[
           { href: "/roster/players", label: "Игроки" },
-          { href: `/roster/players/${player.id}`, label: player.nickname },
+          { href: playerPath(player), label: player.nickname },
         ]}
         eyebrow="Правка игрока"
         title={player.nickname}
