@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { DragBoard, DragCard } from "@/components/pouf/board";
 import { Button } from "@/components/pouf/Button";
 import { portsOf, type FlowPort } from "@/lib/bot-flow/editor";
@@ -118,41 +119,66 @@ function preview(node: FlowNode): string {
 }
 
 /**
- * Цвет типа ноды: заливка значка, полоска у левого края карточки и — главное — цвет связей,
- * которые из этой ноды выходят.
+ * Цвет типа ноды: заливка значка, полоска у левого края карточки и основа для цвета связей.
  *
  * Цвет тут работает как подпись, которую видно с высоты «вписать»: на общем плане текст уже не
  * читается, а «откуда пришла эта линия» и «сколько тут развилок» видно по цвету. Поэтому цвет
  * связи берётся у НОДЫ-ИСТОЧНИКА, а не у ноды-цели: в густом месте взгляд идёт по линии назад, к
  * тому, кто её послал.
  *
- * Оттенки — пастель Кита (`pouf.css`): `fill` для плашки, `ink` для текста на ней, `line` для
- * линии на бумаге, где чистая пастель теряется.
+ * Тон задан парой «оттенок — насыщенность», а не тремя готовыми hex: из них же считаются оттенки
+ * отдельных выходов (`portColor`), а перебирать руками по девять цветов на каждый тип — это тот
+ * самый второй источник правды.
  */
-export const NODE_TONE: Record<FlowNode["type"], { fill: string; ink: string; line: string }> = {
-  start: { fill: "#9cd3b6", ink: "#184636", line: "#4f9b76" },
-  message: { fill: "#98c5e4", ink: "#1e4a66", line: "#4b8cb5" },
-  ask: { fill: "#e8c56e", ink: "#7a5a16", line: "#b28c28" },
-  menu: { fill: "#bcaee8", ink: "#3b2d78", line: "#7a68bf" },
-  if: { fill: "#e39191", ink: "#7c2f2f", line: "#b85f5f" },
-  action: { fill: "#7fcac4", ink: "#14524f", line: "#3f9c96" },
-  subflow: { fill: "#eeae7f", ink: "#7a4318", line: "#bd7942" },
-  goto: { fill: "#a9b4c8", ink: "#33415a", line: "#6b7a95" },
-  end: { fill: "#c2bcb0", ink: "#4a463e", line: "#8a8478" },
+const NODE_HUE: Record<FlowNode["type"], { h: number; s: number }> = {
+  start: { h: 152, s: 40 },
+  message: { h: 205, s: 55 },
+  ask: { h: 42, s: 68 },
+  menu: { h: 258, s: 45 },
+  if: { h: 0, s: 52 },
+  action: { h: 176, s: 42 },
+  subflow: { h: 26, s: 72 },
+  goto: { h: 218, s: 22 },
+  end: { h: 40, s: 8 },
+};
+
+/** Тон типа тремя ролями: плашка, текст на ней, линия на бумаге. */
+export const NODE_TONE = Object.fromEntries(
+  Object.entries(NODE_HUE).map(([type, { h, s }]) => [
+    type,
+    {
+      fill: `hsl(${h} ${s}% 72%)`,
+      ink: `hsl(${h} ${Math.min(s + 12, 80)}% 26%)`,
+      line: `hsl(${h} ${Math.min(s + 8, 80)}% 45%)`,
+    },
+  ]),
+) as Record<FlowNode["type"], { fill: string; ink: string; line: string }>;
+
+/**
+ * Цвет ОДНОГО выхода ноды: свой у каждого, но в пределах тона своего типа.
+ *
+ * Ради этого всё и затевалось: у меню шесть кнопок, и шесть линий одного цвета из одной карточки
+ * различаются только точкой, из которой вышли, — на общем плане это неразличимо. Оттенок
+ * расходится веером вокруг тона типа, светлота чередуется, так что соседние строки не сливаются
+ * даже при близких оттенках. Считается арифметикой от номера выхода: порядок выходов — свойство
+ * ноды, значит цвет строки не «уедет» при следующем открытии редактора.
+ */
+export const portColor = (type: FlowNode["type"], i: number, count: number): string => {
+  const { h, s } = NODE_HUE[type];
+  const spread = count > 1 ? (i - (count - 1) / 2) * Math.min(84 / count, 16) : 0;
+  const light = 45 + (i % 2) * 9;
+  return `hsl(${(h + spread + 360) % 360} ${Math.min(s + 8, 80)}% ${light}%)`;
 };
 
 /** Цвет симуляторного следа — он про «здесь только что прошли», а не про тип ноды. */
 const TRAIL_LINE = "var(--color-ok-ink)";
 
-/** Все наконечники, которые надо объявить в `<defs>`: по одному на тип ноды и один на след. */
-const MARKERS: [string, string][] = [
-  ...Object.entries(NODE_TONE).map(([type, tone]): [string, string] => [`wire-${type}`, tone.line]),
-  ["wire-trail", TRAIL_LINE],
-];
-
 type Wire = { from: NodeId; port: string; x: number; y: number };
 /** Связь, готовая к отрисовке: путь, цвет своей ноды и то, чем она сейчас выделена. */
-type Edge = { key: string; d: string; color: string; marker: string; width: number; opacity: number; lift: boolean };
+type Edge = { key: string; d: string; color: string; width: number; opacity: number; lift: boolean };
+
+/** Идентификатор наконечника под цвет: маркер не наследует обводку линии, а цветов теперь много. */
+const markerId = (color: string) => `wire-${color.replace(/[^a-z0-9]/gi, "")}`;
 
 export function FlowCanvas({
   graph,
@@ -196,6 +222,8 @@ export function FlowCanvas({
   // прежнего размера, и браузер обрежет прокрутку по старому пределу — «вписать» промахивался
   // ровно поэтому.
   const pending = useRef<{ x: number; y: number } | null>(null);
+  // Точка графа в середине окна — запоминается перед разворотом, возвращается после него.
+  const center = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => onZoom?.(zoom), [zoom, onZoom]);
 
@@ -259,6 +287,23 @@ export function FlowCanvas({
     setZoom(z);
   }, [graph.nodes]);
 
+
+  // Разворот и сворачивание меняют размер окна канваса — граф показывается заново. Иначе после
+  // разворота видно ровно тот же угол, что и в маленьком окне, и человек первым делом жмёт
+  // «Вписать» руками. Граф при переезде в портал перерисовывается с нуля, прокрутка всё равно
+  // сбрасывается — так пусть сбрасывается осмысленно.
+  useEffect(() => {
+    // Разворот переносит канвас в портал, и вся его разметка создаётся заново — прокрутка
+    // обнуляется. Возвращаем взгляд на ту же точку графа: масштаб человек выбрал сам, меняется
+    // только размер окна, поэтому «вписать» тут было бы самоуправством.
+    const el = view.current;
+    const at = center.current;
+    center.current = null;
+    if (!el || !at) return;
+    el.scrollLeft = at.x * zoomNow.current - el.clientWidth / 2;
+    el.scrollTop = at.y * zoomNow.current - el.clientHeight / 2;
+  }, [expanded]);
+
   // Колесо с Ctrl/⌘ — масштаб, без него обычная прокрутка. Слушатель свой, а не `onWheel`:
   // React вешает колесо пассивно, и отменить прокрутку страницы из него нельзя.
   useEffect(() => {
@@ -274,11 +319,18 @@ export function FlowCanvas({
   }, [zoom, zoomAt]);
 
   // Развёрнутый канвас закрывается Esc: он лежит поверх страницы, и мышью до кнопки ещё надо дойти.
+  // Заодно страница под ним замирает: иначе колесо, доехав до края поля, продолжает катить её —
+  // человек правит граф, а под оверлеем уезжает вся вкладка.
   useEffect(() => {
     if (!expanded) return;
     const esc = (e: KeyboardEvent) => e.key === "Escape" && setExpanded(false);
+    const back = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", esc);
-    return () => window.removeEventListener("keydown", esc);
+    return () => {
+      document.body.style.overflow = back;
+      window.removeEventListener("keydown", esc);
+    };
   }, [expanded]);
 
   // Протяжка связи слушает окно, а не карточку: курсор уходит с ноды на первом же пикселе,
@@ -337,18 +389,18 @@ export function FlowCanvas({
   // ведёт именно та нода, которую правят.
   const edges: Edge[] = [];
   for (const node of graph.nodes) {
-    portsOf(node).forEach((port, i) => {
+    const ports = portsOf(node);
+    ports.forEach((port, i) => {
       const target = port.target ? byId.get(port.target) : null;
       if (!target) return;
       const near = selected === node.id || selected === target.id;
       const passed = (trail?.has(node.id) && trail?.has(target.id)) ?? false;
-      // След симулятора перебивает цвет типа: он про «здесь прошли сейчас», и держится один ход.
+      // След симулятора перебивает цвет выхода: он про «здесь прошли сейчас», и держится один ход.
       const trailed = passed && !near;
       edges.push({
         key: `${node.id}:${port.key}`,
         d: wirePath(outPoint(node, i), inPoint(target)),
-        color: trailed ? TRAIL_LINE : NODE_TONE[node.type].line,
-        marker: trailed ? "url(#wire-trail)" : `url(#wire-${node.type})`,
+        color: trailed ? TRAIL_LINE : portColor(node.type, i, ports.length),
         // Выделенное толще и плотнее, остальное приглушено: в густом месте важно видеть связи
         // именно той ноды, которую правят.
         width: near || trailed ? 2.6 : 1.8,
@@ -363,11 +415,8 @@ export function FlowCanvas({
   // а та, которую правят, должна лежать поверх соседей.
   const drawOrder = [...graph.nodes].sort((a, b) => Number(a.id === selected) - Number(b.id === selected));
 
-  return (
-    // Внешняя коробка держит место в потоке: развёрнутый канвас уходит в `fixed`, и без неё
-    // остальная колонка подпрыгнула бы вверх.
-    <div className="h-[72vh] min-h-[30rem]">
-      <div className={expanded ? "fixed inset-3 z-50" : "relative h-full"}>
+  const panel = (
+      <div className="relative h-full">
         <div
           ref={(el) => {
             view.current = el;
@@ -395,12 +444,12 @@ export function FlowCanvas({
                 onPointerDown={startPan}
               >
                 <svg width={width} height={height} className="pointer-events-none absolute inset-0">
-                  {/* Наконечник — свой на каждый цвет: маркер не наследует обводку линии. */}
+                  {/* Наконечник — свой на каждый встреченный цвет: маркер не наследует обводку. */}
                   <defs>
-                    {MARKERS.map(([id, color]) => (
+                    {[...new Set([TRAIL_LINE, ...edges.map((e) => e.color)])].map((color) => (
                       <marker
-                        key={id}
-                        id={id}
+                        key={color}
+                        id={markerId(color)}
                         viewBox="0 0 8 8"
                         refX={7}
                         refY={4}
@@ -421,7 +470,7 @@ export function FlowCanvas({
                       stroke={edge.color}
                       strokeWidth={edge.width}
                       strokeOpacity={edge.opacity}
-                      markerEnd={edge.marker}
+                      markerEnd={`url(#${markerId(edge.color)})`}
                     />
                   ))}
                   {/* Связь, которую сейчас тянут: пунктиром от выхода к курсору. */}
@@ -434,7 +483,7 @@ export function FlowCanvas({
                       return (
                         <path
                           d={wirePath(a, { x: wire.x, y: wire.y })}
-                          stroke={NODE_TONE[from.type].line}
+                          stroke={portColor(from.type, i, portsOf(from).length)}
                           strokeWidth={2}
                           strokeDasharray="6 4"
                           fill="none"
@@ -491,13 +540,44 @@ export function FlowCanvas({
             size="xs"
             variant={expanded ? "solid" : "quiet"}
             title={expanded ? "Свернуть (Esc)" : "Развернуть на весь экран"}
-            onClick={() => setExpanded((v) => !v)}
+            onClick={() => {
+              const el = view.current;
+              if (el) {
+                center.current = {
+                  x: (el.scrollLeft + el.clientWidth / 2) / zoomNow.current,
+                  y: (el.scrollTop + el.clientHeight / 2) / zoomNow.current,
+                };
+              }
+              setExpanded((v) => !v);
+            }}
           >
             {expanded ? "Свернуть" : "Развернуть"}
           </Button>
         </div>
       </div>
-    </div>
+  );
+
+  return (
+    <>
+      {/* Место в потоке остаётся занятым всегда: развёрнутый канвас уезжает в портал на body, и
+          без заглушки соседние панели подпрыгнули бы вверх, а по возвращении съехали обратно. */}
+      <div className="h-[72vh] min-h-[30rem]">
+        {expanded ? (
+          <div className="grid h-full place-items-center rounded-card bg-surface-2 font-pouf cushion-field">
+            <p className="text-xs font-bold text-muted">Канвас развёрнут поверх страницы · Esc — вернуть сюда</p>
+          </div>
+        ) : (
+          panel
+        )}
+      </div>
+      {/* Портал на body, а не `fixed` внутри страницы: так оверлей не зависит от того, что над ним
+          в разметке (у предка с `transform` `fixed` считается от предка, а не от окна). */}
+      {expanded &&
+        createPortal(
+          <div className="fixed inset-0 z-50 bg-bg/85 p-3 backdrop-blur-sm">{panel}</div>,
+          document.body,
+        )}
+    </>
   );
 }
 
@@ -548,12 +628,9 @@ function NodeCard({
           {/* Точка входа. У ноды-входа её нет по правилу: в неё входят снаружи, из телеграма. */}
           <span
             title={node.type === "start" ? "Вход снаружи: /start" : wired ? "Сюда ведёт переход" : "Ни один переход сюда не ведёт"}
+            style={node.type !== "start" && wired ? { background: tone.line } : undefined}
             className={`h-3.5 w-3.5 shrink-0 rounded-pill ${
-              node.type === "start"
-                ? "bg-transparent"
-                : wired
-                  ? "bg-accent"
-                  : "bg-surface-3 [box-shadow:inset_0_0_0_2px_var(--line-strong)]"
+              node.type === "start" || wired ? "" : "bg-surface-3 [box-shadow:inset_0_0_0_2px_var(--line-strong)]"
             }`}
           />
           <span
@@ -581,19 +658,31 @@ function NodeCard({
           <p className="truncate text-[11px] font-bold leading-[1.5] text-muted">{preview(node)}</p>
           <p className="truncate text-[10px] font-bold text-muted opacity-70">{node.id}</p>
         </div>
-        {ports.map((port) => (
-          <PortRow key={port.key} port={port} onWire={onWire} />
+        {ports.map((port, i) => (
+          <PortRow key={port.key} port={port} color={portColor(node.type, i, ports.length)} onWire={onWire} />
         ))}
       </div>
     </DragCard>
   );
 }
 
-function PortRow({ port, onWire }: { port: FlowPort; onWire: (port: string, e: React.PointerEvent) => void }) {
+function PortRow({
+  port,
+  color,
+  onWire,
+}: {
+  port: FlowPort;
+  /** Цвет ЭТОГО выхода — тот же, которым уходит его связь: строка и линия ищут друг друга глазами. */
+  color: string;
+  onWire: (port: string, e: React.PointerEvent) => void;
+}) {
   return (
     <div style={{ height: PORT_H }} className="flex items-center justify-end gap-1.5 pl-2.5 pr-1">
       <span
-        className={`min-w-0 truncate text-[11px] font-extrabold ${port.kind === "button" ? "text-ink" : "text-muted"}`}
+        style={port.target ? { color } : undefined}
+        className={`min-w-0 truncate text-[11px] font-extrabold ${
+          port.target ? "" : port.kind === "button" ? "text-ink" : "text-muted"
+        }`}
         title={port.label}
       >
         {port.kind === "button" ? `«${port.label}»` : port.label}
@@ -609,8 +698,9 @@ function PortRow({ port, onWire }: { port: FlowPort; onWire: (port: string, e: R
           e.preventDefault();
           onWire(port.key, e);
         }}
+        style={port.target ? { background: color } : undefined}
         className={`h-3.5 w-3.5 shrink-0 cursor-crosshair rounded-pill border-none ${
-          port.target ? "bg-accent" : "bg-surface-3 [box-shadow:inset_0_0_0_2px_var(--line-strong)]"
+          port.target ? "" : "bg-surface-3 [box-shadow:inset_0_0_0_2px_var(--line-strong)]"
         }`}
       />
     </div>
