@@ -2,6 +2,7 @@ import Link from "next/link";
 import { playerPath } from "@/lib/profiles";
 import { redirect } from "next/navigation";
 import { currentAccount } from "@/lib/account";
+import { lastProfileEdit } from "@/lib/profile-edit";
 import { AUTH_MAX_W } from "@/components/pouf/blocks";
 import { Eyebrow } from "@/components/pouf/text";
 import { Breadcrumbs } from "@/app/_components/breadcrumbs";
@@ -20,6 +21,9 @@ export default async function EditProfilePage() {
   if (!account.player) redirect("/me"); // профиля ещё нет — сначала онбординг в /me
 
   const p = account.player;
+  // MMR правится не напрямую, а заявкой в очередь модерации (решение 04.09.2026), поэтому странице
+  // нужно знать, чем кончилась последняя такая заявка: ждёт решения, приняли или вернули с причиной.
+  const mmrEdit = await lastProfileEdit(p.id, "mmr");
   // Ссылки показываем ровно те, что записаны у игрока, а не выведенные из account_id: иначе человек
   // «сохранял» бы то, чего сам не вводил, и выведенная ссылка навсегда становилась бы его полем.
   const values: ProfileValues = {
@@ -29,11 +33,19 @@ export default async function EditProfilePage() {
     country: p.country ?? "",
     birthday: p.birthday ? p.birthday.toISOString().slice(0, 10) : "",
     telegram: p.telegram ?? "",
-    dotabuffUrl: p.dotabuffUrl ?? "",
-    stratzUrl: p.stratzUrl ?? "",
-    steamUrl: p.steamUrl ?? "",
-    achievements: p.achievements ?? "",
+    // Какая из трёх заполнена — та и показывается: поле одно.
+    profileUrl: p.dotabuffUrl ?? p.stratzUrl ?? p.steamUrl ?? "",
+    mmr: p.mmr != null ? String(p.mmr) : "",
   };
+
+  // Заявка на MMR в работе перекрывает поле: вторая на то же поле всё равно не примется
+  // (submitProfileEdit её отобьёт), и лучше сказать об этом до отправки, чем после.
+  const mmrReview =
+    mmrEdit?.status === "pending"
+      ? { state: "pending" as const, value: mmrEdit.newValue }
+      : mmrEdit?.status === "rejected"
+        ? { state: "rejected" as const, value: mmrEdit.newValue, reason: mmrEdit.notes ?? "" }
+        : null;
 
   return (
     <main className="flex-1 px-4 py-10 font-pouf md:py-16">
@@ -54,7 +66,7 @@ export default async function EditProfilePage() {
         </p>
 
         <div className="rounded-card bg-surface p-5 cushion-card sm:p-6">
-          <ProfileForm values={values} />
+          <ProfileForm values={values} mmrReview={mmrReview} />
         </div>
       </div>
     </main>

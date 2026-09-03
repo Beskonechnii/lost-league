@@ -14,7 +14,9 @@ import {
   normalizeApplication,
   formatApplication,
   parseApplication,
-  profileLinkProblem,
+  anyProfileLinkProblem,
+  profileLinkKind,
+  applicationLinkColumns,
   applicationAccountId,
   type Application,
   type ApplicationInput,
@@ -148,12 +150,8 @@ export type OwnProfileInput = {
   country?: string;
   birthday?: string;
   telegram?: string;
-  // Ссылки — каждая своим полем (требование 6 плана): раньше было одно «ссылка на профиль», и по нему
-  // нельзя было понять, что человек дал и чего не хватает.
-  dotabuffUrl?: string;
-  stratzUrl?: string;
-  steamUrl?: string;
-  achievements?: string;
+  /** Одна ссылка на профиль — Dotabuff, Stratz или Steam; какая площадка, видно по хосту. */
+  profileUrl?: string;
 };
 
 /** Записать правки анкеты от имени вошедшего игрока. Возвращает ошибку строкой или null при успехе. */
@@ -189,7 +187,6 @@ export async function updateOwnProfile(accountId: number, input: OwnProfileInput
   setText("realName", "realName");
   setText("city", "city");
   setText("country", "country");
-  setText("achievements", "achievements");
 
   if (input.telegram !== undefined) {
     const raw = input.telegram.trim();
@@ -211,24 +208,27 @@ export async function updateOwnProfile(accountId: number, input: OwnProfileInput
     }
   }
 
-  // Ссылки на профиль — по одной на площадку. Проверяем, что адрес ведёт куда обещано, и из первой
-  // разобравшейся выводим account_id: по нему игрока находят в матчах. Если не разобралась ни одна
-  // (например, дали именной адрес Steam), прежний account_id НЕ трогаем — его мог поставить оператор
-  // или resolve-vanity, и терять привязку к статистике из-за правки анкеты нельзя.
-  const links = { dotabuffUrl: "dotabuff", stratzUrl: "stratz", steamUrl: "steam" } as const;
-  for (const [column, kind] of Object.entries(links) as [keyof typeof links, "dotabuff" | "stratz" | "steam"][]) {
-    const raw = input[column];
-    if (raw === undefined) continue;
-    const problem = profileLinkProblem(kind, raw);
+  // Ссылка на профиль — одна: из неё выводится account_id, а из него лига достраивает адреса
+  // остальных площадок (`playerLinks`). Кладём её в колонку своей площадки, две другие чистим —
+  // иначе рядом остался бы адрес, которого человек уже не даёт. Если account_id не вывелся
+  // (например, дали именной адрес Steam), прежний НЕ трогаем: его мог поставить оператор или
+  // resolve-vanity, и терять привязку к статистике из-за правки анкеты нельзя.
+  if (input.profileUrl !== undefined) {
+    const raw = input.profileUrl.trim();
+    const problem = anyProfileLinkProblem(raw);
     if (problem) return problem;
-    data[column] = raw.trim().replace(/\/+$/, "") || null;
+    const kind = profileLinkKind(raw);
+    const url = raw.replace(/\/+$/, "") || null;
+    data.dotabuffUrl = kind === "dotabuff" ? url : null;
+    data.stratzUrl = kind === "stratz" ? url : null;
+    data.steamUrl = kind === "steam" ? url : null;
+    const derived = playerAccountId({
+      dotabuffUrl: data.dotabuffUrl as string | null,
+      stratzUrl: data.stratzUrl as string | null,
+      steamUrl: data.steamUrl as string | null,
+    });
+    if (derived) data.accountId = derived;
   }
-  const derived = playerAccountId({
-    dotabuffUrl: data.dotabuffUrl as string | null | undefined,
-    stratzUrl: data.stratzUrl as string | null | undefined,
-    steamUrl: data.steamUrl as string | null | undefined,
-  });
-  if (derived) data.accountId = derived;
 
   if (Object.keys(data).length > 0) {
     await prisma.player.update({ where: { id: account.playerId }, data });
@@ -388,13 +388,10 @@ async function createPlayerFromApplication(app: Application, mmr: number | null)
       birthday: app.birthday ? parseBirthday(app.birthday) : null,
       city: app.city || null,
       country: app.country || null,
-      dotabuffUrl: app.dotabuff || null,
-      stratzUrl: app.stratz || null,
-      steamUrl: app.steam || null,
+      ...applicationLinkColumns(app),
       telegram: app.telegram || null,
       // Без account_id игрок не находится ни в одном матче (§7 CLAUDE.md) — выводим из ссылок сразу.
       accountId: applicationAccountId(app),
-      achievements: app.achievements || null,
       mmr,
     },
   });

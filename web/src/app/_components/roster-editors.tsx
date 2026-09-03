@@ -117,6 +117,18 @@ export function PlayerEditor({ id, initial }: { id: number; initial: PlayerForm 
             hint="Можно вставить ссылку t.me — сохраним хендл"
           />
         </div>
+        <div className="mt-4">
+          {/* Достижения ведёт ТОЛЬКО оператор: в анкете игрока этого поля нет (решение 04.09.2026) —
+              иначе туда попадает что угодно, а на витрине это заметный блок. */}
+          <TextAreaField
+            label="Достижения"
+            value={v.achievements}
+            onChange={(x) => set("achievements", x)}
+            placeholder={"Топ-4 LOST S1\nMVP гранд-финала\n…"}
+            rows={4}
+          />
+          <p className="mt-1 text-xs text-ink-subtle">Одна строка — одно достижение. Видно на странице игрока.</p>
+        </div>
       </Fieldset>
 
       <Fieldset title="Игра">
@@ -155,16 +167,6 @@ export function PlayerEditor({ id, initial }: { id: number; initial: PlayerForm 
               </button>
             ))}
           </div>
-        </div>
-        <div className="mt-4">
-          <TextAreaField
-            label="Достижения"
-            value={v.achievements}
-            onChange={(x) => set("achievements", x)}
-            placeholder={"Топ-4 LOST S1\nMVP гранд-финала\n…"}
-            rows={4}
-          />
-          <p className="mt-1 text-xs text-ink-subtle">Одна строка — одно достижение.</p>
         </div>
       </Fieldset>
 

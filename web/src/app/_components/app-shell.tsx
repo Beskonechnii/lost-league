@@ -5,6 +5,7 @@ import { currentAccount, effectiveRole, currentPermissions, pendingClaims, pendi
 import { resolveUpload } from "@/lib/uploads";
 import type { Role } from "@/lib/player-auth";
 import { chatIdentity, unreadTotal } from "@/lib/chat";
+import { pendingProfileEditCount } from "@/lib/profile-edit";
 import { onlineCount, onlinePlayerIds } from "@/lib/presence";
 import { AppSidebar } from "./app-sidebar";
 import { ChatLiveProvider } from "./chat-live";
@@ -33,6 +34,13 @@ const LEAGUE: NavSection = {
     },
     { href: "/roster", label: "Ростер", icon: "users", hint: "Все команды лиги: фильтр по турниру и поиск" },
   ],
+};
+
+/** Главная — над всеми разделами и без подписи секции: это дверь на витрину, а не раздел.
+ *  Внизу, в «Лиге», она терялась — до неё нужно долистать мимо кабинета и инструментов. */
+const HOME: NavSection = {
+  title: "",
+  items: [{ href: "/", label: "Главная", icon: "home", hint: "Витрина лиги" }],
 };
 
 /** Низ колонки: то, что нужно редко, но всегда на одном месте. */
@@ -69,7 +77,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   const [queue, claims] = perms.includes("accounts.approve")
     ? await Promise.all([pendingRegistrations(), pendingClaims()])
     : [[], []];
-  const pending = queue.length + claims.length;
+  // Правки профиля (в том числе MMR с сайта) лежат в той же очереди, но под своим правом —
+  // без него вкладки не видно, и в значок их считать нечего.
+  const edits = perms.includes("roster.edit") ? await pendingProfileEditCount() : 0;
+  const pending = queue.length + claims.length + edits;
 
   // Инструменты операторской — из общего реестра, срезанного правами. Пункт без права не рисуется:
   // это витрина, а не защита; сами роуты проверяют право у себя.
@@ -148,6 +159,9 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     return i === -1 ? ORDER.length : i;
   };
   sections.sort((a, b) => rank(a.title) - rank(b.title));
+
+  // «Главная» — всегда первой, вне сортировки по частоте: она ни к одной секции не относится.
+  sections.unshift(HOME);
 
   return (
     <ChatLiveProvider live={!!chat} initialPlayers={onlinePlayerIds()} initialCount={onlineCount()}>

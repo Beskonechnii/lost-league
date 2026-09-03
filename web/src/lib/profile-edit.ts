@@ -200,6 +200,16 @@ export const pendingProfileEdits = () =>
 
 export type PendingProfileEdit = Awaited<ReturnType<typeof pendingProfileEdits>>[number];
 
+/** Чем кончилась последняя правка поля у игрока. Нужно кабинету: человек, приславший MMR с сайта,
+ *  не в телеграме — уведомления ему не приходит, и состояние он видит на самой странице анкеты. */
+export const lastProfileEdit = (playerId: number, field: EditField) =>
+  prisma.profileEditRequest.findFirst({ where: { playerId, field }, orderBy: { id: "desc" } });
+
+export type LastProfileEdit = Awaited<ReturnType<typeof lastProfileEdit>>;
+
+/** Сколько правок ждёт решения — для значка на пункте «Модерация» в колонке. */
+export const pendingProfileEditCount = () => prisma.profileEditRequest.count({ where: { status: "pending" } });
+
 /**
  * Одобрить: записать значение в `Player`. Права проверяет вызывающий — `account.ts` сюда не тянется.
  * Возвращает ошибку строкой либо null.

@@ -155,9 +155,13 @@ function Column({
 
       {sections.map((s) => (
         <div key={s.title} className="flex flex-col">
-          <h2 className="px-3 pb-2 pt-[15px] text-[11px] font-extrabold uppercase tracking-[1.6px] text-ink-subtle">
-            {s.title}
-          </h2>
+          {/* Пустой заголовок = секция без подписи: так стоит одинокая «Главная» над разделами —
+              подписывать один пункт нечем, а место над «Кабинетом» ему нужно. */}
+          {s.title && (
+            <h2 className="px-3 pb-2 pt-[15px] text-[11px] font-extrabold uppercase tracking-[1.6px] text-ink-subtle">
+              {s.title}
+            </h2>
+          )}
           {s.items.map((item) => (
             <Row key={item.href} item={item} active={item.href === active} onNavigate={onNavigate} />
           ))}

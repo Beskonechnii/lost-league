@@ -122,8 +122,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ key: st
   const links = playerLinks(player);
   const gaps = playerGaps(player);
   const tags = parseTags(player.tags);
-  // Достижения — свободный текст, одна строка = одна строчка списка; пустые строки отбрасываем.
-  const achievements = (player.achievements ?? "").split("\n").map((s) => s.trim()).filter(Boolean);
+  // Достижения — свободный текст оператора, одна строка = одна строчка списка; пустые отбрасываем.
+  const achievements = (player.achievements ?? "").split("\n").map((x) => x.trim()).filter(Boolean);
 
   return (
     <div className="space-y-6 font-pouf">

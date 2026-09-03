@@ -71,13 +71,10 @@ export async function sendApplication(_state: ApplyState, form: FormData): Promi
     birthday: text("birthday"),
     city: text("city"),
     country: text("country"),
-    dotabuff: text("dotabuff"),
-    stratz: text("stratz"),
-    steam: text("steam"),
+    profileUrl: text("profileUrl"),
     telegram: text("telegram"),
     position: text("position"),
     mmr: text("mmr"),
-    achievements: text("achievements"),
   };
 
   const error = await submitApplication(id, input, form.get("policy") != null);

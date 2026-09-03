@@ -38,7 +38,7 @@
 - Большие доки читаются **срезом по оглавлению**: сперва заголовки `grep -n '^## '`,
   потом нужный диапазон `sed -n 'A,Bp'`. Целиком — только если правда нужен весь файл.
 
-Действующие имена: `pickup` · `stage` · `ship` · `handoff` · `serve` · `roster-sync` · `kit`.
+Действующие имена: `pickup` · `stage` · `ship` · `handoff` · `serve` · `stop` · `roster-sync` · `kit`.
 
 ### Телефон ↔ компьютер
 
@@ -86,7 +86,9 @@
 cd web && npm run dev
 ```
 
-- Порт **3000**. Часто сервер уже запущен в другом окне — Next 16 не даёт поднять второй в той же папке.
+- Порт **3000**; занят — `npm run dev` сам поднимется на 3001, 3002 и дальше (`web/scripts/dev-port.mjs`).
+  Если 3000 держит **наш же** сервер из соседнего окна, второй не поднимется в принципе (Next 16 запрещает
+  два dev-сервера в одной папке) — скрипт это распознаёт и печатает адрес живого. Погасить всё — скилл `stop`.
 - Проверка связки с БД: `GET /api/health` → `{ ok, teams, matches, points }`.
 - `web/.env` (в `.gitignore`, шаблон — `web/.env.example`): `DATABASE_URL`, `OPENAI_API_KEY`,
   `STEAM_API_KEY`, `GOOGLE_CLIENT_ID/SECRET`, `OWNER_EMAIL`, `FRAME_ANCESTORS`, `AUTH_SECRET`.

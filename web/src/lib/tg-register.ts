@@ -18,7 +18,7 @@ import {
   EMPTY_INPUT,
   formatApplication,
   normalizeApplication,
-  profileLinkProblem,
+  anyProfileLinkProblem,
   type Application,
   type ApplicationInput,
 } from "./application";
@@ -32,11 +32,9 @@ export type RegStep =
   | "reg_city"
   | "reg_country"
   | "reg_birthday"
-  | "reg_dotabuff"
-  | "reg_steam"
+  | "reg_profile"
   | "reg_mmr"
   | "reg_position"
-  | "reg_achievements"
   | "reg_confirm";
 
 export const isRegStep = (step: string): step is RegStep => step.startsWith("reg_");
@@ -46,12 +44,11 @@ export type RegState = ApplicationInput;
 
 export const REGISTER_BUTTON = "Зарегистрироваться в лиге";
 
-const SKIP = "Пропустить";
 const SEND = "Отправить";
 const RESTART = "Заполнить заново";
 
 /** Служебные ответы этого сценария — ими нельзя случайно назваться на шаге со свободным текстом. */
-export const REG_SERVICE = [SKIP, SEND, RESTART, REGISTER_BUTTON];
+export const REG_SERVICE = [SEND, RESTART, REGISTER_BUTTON];
 
 /** Порядок вопросов. Сводка (`reg_confirm`) идёт после последнего и в этот список не входит. */
 const FLOW: RegStep[] = [
@@ -60,11 +57,9 @@ const FLOW: RegStep[] = [
   "reg_city",
   "reg_country",
   "reg_birthday",
-  "reg_dotabuff",
-  "reg_steam",
+  "reg_profile",
   "reg_mmr",
   "reg_position",
-  "reg_achievements",
 ];
 
 export const emptyRegistration = (): RegState => ({ ...EMPTY_INPUT });
@@ -98,19 +93,17 @@ export function askReg(step: RegStep, state: RegState): Reply {
       return { text: "<b>Страна</b>:", keyboard: [["Россия", "Беларусь"], ["Казахстан", "Украина"]] };
     case "reg_birthday":
       return { text: "<b>Дата рождения</b> — как 21.04.1998:", keyboard: null };
-    case "reg_dotabuff":
+    case "reg_profile":
       return {
-        text: "<b>Ссылка на Dotabuff</b> — по ней лига находит ваши матчи:\nhttps://www.dotabuff.com/players/123456",
+        text:
+          "<b>Ссылка на профиль</b> — Dotabuff, Stratz или Steam, любая. По ней лига находит ваши матчи:" +
+          "\nhttps://www.dotabuff.com/players/123456",
         keyboard: null,
       };
-    case "reg_steam":
-      return { text: "<b>Ссылка на Steam</b>, если есть:", keyboard: [[SKIP]] };
     case "reg_mmr":
       return { text: "<b>MMR</b> — числом. Он заявленный, его проверит организатор:", keyboard: null };
     case "reg_position":
       return { text: "<b>Основная позиция</b>:", keyboard: positionButtons() };
-    case "reg_achievements":
-      return { text: "<b>Достижения</b> — в лиге и вне её, одной строкой. Нет — пропустите:", keyboard: [[SKIP]] };
     case "reg_confirm":
       return summary(state);
   }
@@ -125,12 +118,10 @@ function summary(state: RegState): Reply {
     // В состоянии дата лежит как yyyy-mm-dd (её понимает <input type=date> на сайте), а человеку
     // показываем в том же виде, в каком спрашивали.
     ["Дата рождения", state.birthday ? formatBirthday(parseBirthday(state.birthday)!) : ""],
-    ["Dotabuff", state.dotabuff],
-    ["Steam", state.steam],
+    ["Профиль", state.profileUrl],
     ["MMR", state.mmr],
     ["Позиция", roleShort(state.position) ?? state.position],
     ["Телеграм", state.telegram ? `@${state.telegram}` : ""],
-    ["Достижения", state.achievements],
   ];
   return {
     text: [
@@ -163,10 +154,8 @@ function problem(step: RegStep, text: string): string | null {
       return text ? null : "Напишите страну.";
     case "reg_birthday":
       return parseBirthday(text) ? null : `Дата «${text}» не разобрана — ждём 21.04.1998.`;
-    case "reg_dotabuff":
-      return text ? profileLinkProblem("dotabuff", text) : "Без ссылки на Dotabuff вас не найти в матчах лиги.";
-    case "reg_steam":
-      return profileLinkProblem("steam", text);
+    case "reg_profile":
+      return text ? anyProfileLinkProblem(text) : "Без ссылки на профиль вас не найти в матчах лиги.";
     case "reg_mmr": {
       const n = Number(text.replace(/\s+/g, ""));
       return Number.isInteger(n) && n >= 0 ? null : "MMR — целое число, например 4200.";
@@ -186,17 +175,12 @@ function remember(step: RegStep, text: string, state: RegState): void {
     case "reg_city": state.city = text; break;
     case "reg_country": state.country = text; break;
     case "reg_birthday": state.birthday = parseBirthday(text)!.toISOString().slice(0, 10); break;
-    case "reg_dotabuff": state.dotabuff = text; break;
-    case "reg_steam": state.steam = text; break;
+    case "reg_profile": state.profileUrl = text; break;
     case "reg_mmr": state.mmr = text.replace(/\s+/g, ""); break;
     case "reg_position": state.position = roleByAnswer(text)!; break;
-    case "reg_achievements": state.achievements = text; break;
     default: break;
   }
 }
-
-/** Можно ли пропустить шаг — необязательных всего два, и у них есть кнопка. */
-const optional = (step: RegStep): boolean => step === "reg_steam" || step === "reg_achievements";
 
 // ── запись в очередь модерации ───────────────────────────────────────────────
 //
@@ -313,14 +297,10 @@ export async function handleRegister(
     return send(state, ctx);
   }
 
-  // Необязательный шаг пропускается кнопкой; пустой ответ на обязательном — повод переспросить.
-  if (optional(step) && text === SKIP) {
-    remember(step, "", state);
-  } else {
-    const claim = problem(step, text);
-    if (claim) return { replies: [{ text: claim }, askReg(step, state)], step, state };
-    remember(step, text, state);
-  }
+  // Необязательных шагов в анкете не осталось: пустой или негодный ответ — повод переспросить.
+  const claim = problem(step, text);
+  if (claim) return { replies: [{ text: claim }, askReg(step, state)], step, state };
+  remember(step, text, state);
 
   const next = FLOW[FLOW.indexOf(step) + 1] ?? "reg_confirm";
   return { replies: [askReg(next, state)], step: next, state };

@@ -6,8 +6,9 @@
 // (/roster/players, статистика, драфт) читают Player без фильтров, и неодобренный человек попал бы
 // в ростер в момент регистрации (docs/archive/ACCOUNTS-PLAN.md §2.1).
 //
-// Ссылки — каждая отдельным полем (требование 6): в общем поле «ссылка на профиль» человек присылал
-// что угодно, а оператору при проверке нужно видеть, что именно он дал — Dotabuff, Stratz или Steam.
+// Ссылка — ОДНА на анкету: Dotabuff, Stratz или Steam на выбор. Из неё выводится account_id, а из
+// него — два остальных адреса (`playerLinks`), поэтому три поля были тремя способами сказать одно.
+// Какая площадка досталась, видно по хосту — оператору этого хватает.
 
 import { parseBirthday, normalizeTelegram, playerAccountId } from "./profiles";
 import { isRole } from "./roles";
@@ -18,13 +19,11 @@ export type Application = {
   birthday: string; // yyyy-mm-dd — уже нормализованная, как её понимает <input type=date>
   city: string;
   country: string;
-  dotabuff: string;
-  stratz: string;
-  steam: string;
+  /** Любая из трёх площадок; остальные лига достроит сама по account_id. */
+  profileUrl: string;
   telegram: string; // хендл без «@» (как в Player.telegram)
   position: string; // ключ из roles.ts либо пусто
   mmr: number | null; // ЗАЯВЛЕННЫЙ игроком; в Player.mmr его переносит оператор при апруве
-  achievements: string;
 };
 
 /** Пустая анкета — начальное состояние формы. */
@@ -34,13 +33,10 @@ export const EMPTY_APPLICATION: Application = {
   birthday: "",
   city: "",
   country: "",
-  dotabuff: "",
-  stratz: "",
-  steam: "",
+  profileUrl: "",
   telegram: "",
   position: "",
   mmr: null,
-  achievements: "",
 };
 
 /** Сырые значения формы: те же ключи, но всё строками (FormData другого не отдаёт). */
@@ -60,7 +56,8 @@ export const EMPTY_INPUT: ApplicationInput = applicationToInput(EMPTY_APPLICATIO
 export function parseApplication(raw: string | null | undefined): Application | null {
   if (!raw) return null;
   try {
-    const data = JSON.parse(raw) as Partial<Application>;
+    // Ключи старых анкет (три ссылки) в тип уже не входят — читаем как есть, поэтому Record.
+    const data = JSON.parse(raw) as Partial<Application> & Record<string, unknown>;
     const text = (v: unknown) => (typeof v === "string" ? v : "");
     return {
       ...EMPTY_APPLICATION,
@@ -69,13 +66,11 @@ export function parseApplication(raw: string | null | undefined): Application | 
       birthday: text(data.birthday),
       city: text(data.city),
       country: text(data.country),
-      dotabuff: text(data.dotabuff),
-      stratz: text(data.stratz),
-      steam: text(data.steam),
+      // Старые анкеты в БД держат три отдельных поля — берём первое заполненное.
+      profileUrl: text(data.profileUrl) || text(data.dotabuff) || text(data.stratz) || text(data.steam),
       telegram: text(data.telegram),
       position: text(data.position),
       mmr: typeof data.mmr === "number" ? data.mmr : null,
-      achievements: text(data.achievements),
     };
   } catch {
     return null;
@@ -93,7 +88,32 @@ const LINK_HOSTS: Record<"dotabuff" | "stratz" | "steam", { re: RegExp; label: s
   steam: { re: /(^|\.)steamcommunity\.com$/i, label: "Steam", example: "https://steamcommunity.com/profiles/7656119…" },
 };
 
-/** Ссылка на профиль: пусто → null, мусор → текст ошибки. Возвращает претензию либо null. */
+/** Какой площадке принадлежит ссылка. Не разобралась или чужой хост → null. */
+export function profileLinkKind(raw: string): keyof typeof LINK_HOSTS | null {
+  const value = raw.trim();
+  if (!value) return null;
+  let host: string;
+  try {
+    host = new URL(value.startsWith("http") ? value : `https://${value}`).hostname;
+  } catch {
+    return null;
+  }
+  for (const kind of ["dotabuff", "stratz", "steam"] as const) {
+    if (LINK_HOSTS[kind].re.test(host)) return kind;
+  }
+  return null;
+}
+
+/** Одна ссылка на профиль — годится любая из трёх площадок. Пусто → null (обязательность отдельно). */
+export function anyProfileLinkProblem(raw: string): string | null {
+  const value = raw.trim();
+  if (!value) return null;
+  return profileLinkKind(value)
+    ? null
+    : "Ждём ссылку на Dotabuff, Stratz или Steam — например https://www.dotabuff.com/players/123456";
+}
+
+/** Ссылка на профиль конкретной площадки: пусто → null, мусор → текст ошибки. */
 export function profileLinkProblem(kind: keyof typeof LINK_HOSTS, raw: string): string | null {
   const value = raw.trim();
   if (!value) return null;
@@ -145,19 +165,14 @@ export function normalizeApplication(input: ApplicationInput): ApplicationResult
   const telegram = normalizeTelegram(input.telegram);
   if (!telegram) return { ok: false, error: `«${input.telegram.trim()}» не похоже на телеграм-хендл` };
 
-  for (const kind of ["dotabuff", "stratz", "steam"] as const) {
-    const problem = profileLinkProblem(kind, input[kind]);
-    if (problem) return { ok: false, error: problem };
+  // Ссылка обязательна: по ней оператор опознаёт человека, а без account_id игрок потом
+  // не находится ни в одном матче (см. §7 CLAUDE.md).
+  if (!input.profileUrl.trim()) {
+    return { ok: false, error: "Дайте ссылку на свой профиль: Dotabuff, Stratz или Steam" };
   }
-  const dotabuff = normalizeLink(input.dotabuff);
-  const stratz = normalizeLink(input.stratz);
-  const steam = normalizeLink(input.steam);
-  // Хотя бы одна ссылка обязательна: по ней оператор опознаёт человека, а без account_id игрок
-  // потом не находится ни в одном матче (см. §7 CLAUDE.md). Все три требовать нельзя — у части
-  // игроков есть не каждый профиль.
-  if (!dotabuff && !stratz && !steam) {
-    return { ok: false, error: "Дайте хотя бы одну ссылку на профиль: Dotabuff, Stratz или Steam" };
-  }
+  const linkProblem = anyProfileLinkProblem(input.profileUrl);
+  if (linkProblem) return { ok: false, error: linkProblem };
+  const profileUrl = normalizeLink(input.profileUrl);
 
   const position = input.position.trim();
   if (!position) return { ok: false, error: "Выберите позицию" };
@@ -178,18 +193,25 @@ export function normalizeApplication(input: ApplicationInput): ApplicationResult
       birthday,
       city,
       country,
-      dotabuff,
-      stratz,
-      steam,
+      profileUrl,
       telegram,
       position,
       mmr,
-      // Достижения — единственное необязательное поле: у новичка их просто нет.
-      achievements: input.achievements.trim(),
     },
   };
 }
 
-/** account_id из ссылок анкеты — им апрув свяжет человека с его матчами. Не вывелся → null. */
+/** account_id из ссылки анкеты — им апрув свяжет человека с его матчами. Не вывелся → null. */
 export const applicationAccountId = (app: Application): string | null =>
-  playerAccountId({ dotabuffUrl: app.dotabuff, stratzUrl: app.stratz, steamUrl: app.steam });
+  playerAccountId({
+    dotabuffUrl: profileLinkKind(app.profileUrl) === "dotabuff" ? app.profileUrl : null,
+    stratzUrl: profileLinkKind(app.profileUrl) === "stratz" ? app.profileUrl : null,
+    steamUrl: profileLinkKind(app.profileUrl) === "steam" ? app.profileUrl : null,
+  });
+
+/** Ссылка анкеты → колонка Player, в которую её класть. */
+export const applicationLinkColumns = (app: Application) => ({
+  dotabuffUrl: profileLinkKind(app.profileUrl) === "dotabuff" ? app.profileUrl : null,
+  stratzUrl: profileLinkKind(app.profileUrl) === "stratz" ? app.profileUrl : null,
+  steamUrl: profileLinkKind(app.profileUrl) === "steam" ? app.profileUrl : null,
+});

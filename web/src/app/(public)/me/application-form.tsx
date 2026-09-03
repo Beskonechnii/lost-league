@@ -6,10 +6,11 @@ import { sendApplication, sendClaim, type ApplyState } from "./actions";
 import { PlayerPicker, type LinkablePlayer } from "./onboarding";
 import { EMPTY_INPUT, applicationToInput, type Application } from "@/lib/application";
 import { ROLES } from "@/lib/roles";
-import { Button } from "@/components/pouf/Button";
+import { Button, buttonClasses } from "@/components/pouf/Button";
 import { Checkbox } from "@/components/pouf/checkbox";
 import { Alert } from "@/components/pouf/feedback";
-import { FormInput, FormTextarea, Label } from "@/components/pouf/Input";
+import { DateField } from "@/components/pouf/date-field";
+import { FormInput, Label } from "@/components/pouf/Input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/pouf/select";
 import { Stepper } from "@/components/pouf/stepper";
 import { RowCard } from "@/components/pouf/surface";
@@ -177,6 +178,13 @@ function ApplicationForm({ application }: { application: Application | null }) {
 
   const req = (n: number) => step === n;
 
+  /** Открыть поиск Dotabuff по нику из первого шага: адрес профиля человек чаще всего не помнит. */
+  const searchDotabuff = () => {
+    const nick = new FormData(formRef.current!).get("nickname");
+    const q = typeof nick === "string" ? nick.trim() : "";
+    window.open(`https://www.dotabuff.com/search?q=${encodeURIComponent(q)}`, "_blank", "noopener");
+  };
+
   return (
     <form ref={formRef} action={action} className="space-y-5">
       <Stepper steps={STEPS} current={step} />
@@ -191,7 +199,7 @@ function ApplicationForm({ application }: { application: Application | null }) {
         </Field>
 
         <Field label="Дата рождения">
-          <FormInput name="birthday" type="date" defaultValue={v.birthday} required={req(0)} />
+          <DateField name="birthday" defaultValue={v.birthday} required={req(0)} />
         </Field>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -211,23 +219,27 @@ function ApplicationForm({ application }: { application: Application | null }) {
       </div>
 
       <div hidden={step !== 1} className="space-y-4">
-        {/* Ссылки — единственное место, где «обязательно» не про каждое поле: у части игроков есть
-            не любой из трёх профилей, поэтому требуем хотя бы один (проверяет сервер). */}
-        <Alert tone="info" block>
-          Заполните хотя бы одну ссылку — по ней вас находят в матчах лиги.
-        </Alert>
-
-        <Field label="Dotabuff">
-          <FormInput name="dotabuff" defaultValue={v.dotabuff} placeholder="https://www.dotabuff.com/players/…" />
+        {/* Ссылка ОДНА и обязательная. Раньше здесь стояли три поля, все необязательные: шаг
+            пролистывался насквозь, а отказ прилетал уже на отправке анкеты. Из любой из трёх
+            выводится account_id, а из него — два остальных адреса (`playerLinks`), так что
+            спрашивать три было тремя способами спросить одно. */}
+        <Field
+          label="Ссылка на профиль"
+          hint="Dotabuff, Stratz или Steam — любая. По ней лига находит вас в матчах, остальные адреса достроим сами."
+        >
+          <FormInput
+            name="profileUrl"
+            defaultValue={v.profileUrl}
+            required={req(1)}
+            placeholder="https://www.dotabuff.com/players/…"
+          />
         </Field>
 
-        <Field label="Stratz">
-          <FormInput name="stratz" defaultValue={v.stratz} placeholder="https://stratz.com/players/…" />
-        </Field>
-
-        <Field label="Steam">
-          <FormInput name="steam" defaultValue={v.steam} placeholder="https://steamcommunity.com/profiles/…" />
-        </Field>
+        {/* «Найти себя» — чтобы не уходить искать адрес руками: открываем поиск Dotabuff уже
+            по нику, введённому на первом шаге. */}
+        <button type="button" onClick={searchDotabuff} className={buttonClasses({ variant: "quiet", size: "sm" })}>
+          Найти себя на Dotabuff
+        </button>
       </div>
 
       <div hidden={step !== 2} className="space-y-4">
@@ -252,10 +264,6 @@ function ApplicationForm({ application }: { application: Application | null }) {
               ))}
             </SelectContent>
           </Select>
-        </Field>
-
-        <Field label="Достижения" optional hint="Свободный список — одна строка на достижение.">
-          <FormTextarea name="achievements" defaultValue={v.achievements} rows={3} />
         </Field>
       </div>
 

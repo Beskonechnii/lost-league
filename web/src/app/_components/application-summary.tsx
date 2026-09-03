@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { Application } from "@/lib/application";
+import { profileLinkKind, type Application } from "@/lib/application";
 import { roleLabel } from "@/lib/roles";
 
 // Анкета-заявка в читаемом виде. Одна разметка на две стороны: карточку в очереди модерации
@@ -12,6 +12,9 @@ function humanBirthday(iso: string): string {
   if (Number.isNaN(date.getTime())) return iso;
   return new Intl.DateTimeFormat("ru", { day: "numeric", month: "long", year: "numeric" }).format(date);
 }
+
+/** Подпись строки со ссылкой — по площадке, которую дал человек. */
+const LINK_LABEL = { dotabuff: "Dotabuff", stratz: "Stratz", steam: "Steam" } as const;
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -50,9 +53,7 @@ export function ApplicationSummary({ application: app }: { application: Applicat
           {app.mmr} <span className="text-xs text-ink-subtle">со слов игрока</span>
         </Row>
       )}
-      {app.dotabuff && <LinkRow label="Dotabuff" url={app.dotabuff} />}
-      {app.stratz && <LinkRow label="Stratz" url={app.stratz} />}
-      {app.steam && <LinkRow label="Steam" url={app.steam} />}
+      {app.profileUrl && <LinkRow label={LINK_LABEL[profileLinkKind(app.profileUrl) ?? "dotabuff"]} url={app.profileUrl} />}
       {app.telegram && (
         <Row label="Telegram">
           <a
@@ -63,11 +64,6 @@ export function ApplicationSummary({ application: app }: { application: Applicat
           >
             @{app.telegram}
           </a>
-        </Row>
-      )}
-      {app.achievements && (
-        <Row label="Достижения">
-          <span className="whitespace-pre-line">{app.achievements}</span>
         </Row>
       )}
     </dl>
