@@ -2,11 +2,11 @@
 // сессия → выбрали ребро → шагаем по графу, копя ответы, пока не упрёмся в ждущую ноду (`ask`,
 // `menu`, `subflow`) или в конец.
 //
-// **Наружу можно вернуть `null`** — «граф про это ничего не знает». С Э4 граф ведёт первый уровень
-// и справочные разделы (профиль, код входа, турниры, состав, команды), а всё, что пишет в базу
-// диалогом — регистрация, правка профиля, заказ встречи, анкеты, — по-прежнему за рукописным
-// `tg-quiz.ts`, и `null` — это шов между ними. На Э5 разделы переедут нодами `subflow`, на Э6 шов
-// исчезнет вместе со старым путём.
+// **Наружу можно вернуть `null`** — «граф про это ничего не знает». С Э5 граф ведёт весь входящий
+// путь: первый уровень, справки (нодами `action`) и диалоги, которые пишут в базу, — регистрацию,
+// правку профиля, заказ встречи и анкеты (нодами `subflow` поверх рукописных модулей). За старым
+// `tg-quiz.ts` остаётся квиз заявки состава и перехваты уровня чата; `null` — это шов между ними,
+// он исчезнет вместе со старым путём на Э6.
 //
 // **Бюджет шагов** — против петли в графе, которую оператор нарисовал мышью. Упёрлись в бюджет,
 // не нашли ноду, не нашли действие — это исключение: пишем в лог, человеку отвечаем понятной
@@ -18,6 +18,7 @@ import { prisma } from "../prisma";
 import { makeScope, type FlowMessage, type FlowScope } from "./context";
 import { FLOW_ACTIONS } from "./actions";
 import { pinnedFlow, liveFlow, type LoadedFlow } from "./store";
+import { FLOW_SUBFLOWS, type SubflowPark, type SubflowResult } from "./subflows";
 import {
   buttonsOf,
   nodeById,
@@ -29,6 +30,7 @@ import {
   type MenuNode,
   type MessageNode,
   type NodeId,
+  type SubflowNode,
 } from "./types";
 
 export type { FlowMessage } from "./context";
@@ -55,8 +57,17 @@ const TROUBLE = "Что-то пошло не так на моей стороне
 
 // ── сессия ───────────────────────────────────────────────────────────────────
 
-/** Где стоит диалог: нода, версия графа (`BotFlow.id`, null — сид из кода) и собранные переменные. */
-type Park = { node: NodeId; versionId: number | null; vars: Record<string, string> };
+/**
+ * Где стоит диалог: нода, версия графа (`BotFlow.id`, null — сид из кода), собранные переменные и —
+ * если разговор внутри ноды `subflow` — состояние самого модуля (`sub`).
+ */
+type Park = {
+  node: NodeId;
+  versionId: number | null;
+  vars: Record<string, string>;
+  /** Шаг и состояние рукописного модуля, которому отдан разговор. `null` — модуля нет. */
+  sub: SubflowPark | null;
+};
 
 async function loadPark(chatId: string): Promise<Park | null> {
   const row = await prisma.botSession.findUnique({ where: { chatId } });
@@ -69,15 +80,25 @@ async function loadPark(chatId: string): Promise<Park | null> {
     // Битые переменные — не повод обрывать разговор: продолжим с пустыми.
     vars = {};
   }
-  return { node: row.flowNode, versionId: row.flowVersion, vars };
+  let sub: SubflowPark | null = null;
+  try {
+    const state = row.state ? (JSON.parse(row.state) as { sub?: SubflowPark }) : null;
+    sub = state?.sub ?? null;
+  } catch {
+    // Битое состояние модуля — тоже не повод обрывать: модуль скажет «диалог потерялся» и вернёт
+    // управление графу по выходу «отменено».
+    sub = null;
+  }
+  return { node: row.flowNode, versionId: row.flowVersion, vars, sub };
 }
 
 async function savePark(chatId: string, park: Park): Promise<void> {
   const data = {
     step: FLOW_STEP,
-    // `state` у графа не используется — он у старого квиза; кладём пустой объект, чтобы строка была
-    // читаемой обоими путями.
-    state: "{}",
+    // В `state` у графа лежит только состояние рукописного модуля, которому отдан разговор
+    // (`subflows.ts`): своих данных у графа тут нет — они в `flowNode`/`flowVars`. Поле общее со
+    // старым квизом, но одновременно им пользуется кто-то один: шаг строки принадлежит одному пути.
+    state: JSON.stringify(park.sub ? { sub: park.sub } : {}),
     flowNode: park.node,
     flowVersion: park.versionId,
     flowVars: JSON.stringify(park.vars),
@@ -149,7 +170,54 @@ function checkAnswer(check: FlowCheck | null | undefined, text: string): string 
  * прошли по дороге. `trail` интерпретатору не нужен — его читает симулятор редактора (Э3), чтобы
  * подсветить на канвасе пройденный путь.
  */
-export type Walk = { replies: Reply[]; park: NodeId | null; trail: NodeId[] };
+export type Walk = {
+  replies: Reply[];
+  park: NodeId | null;
+  trail: NodeId[];
+  /** Состояние модуля, если заснули внутри ноды `subflow`. `null`/нет — модуля в разговоре нет. */
+  sub?: SubflowPark | null;
+};
+
+/**
+ * Параметры ноды считаются с подстановками: `турнир={vars.турнир_id}` — нода объявляет, чем кормит
+ * действие или модуль, а тот не лезет в переменные наугад.
+ */
+async function paramsOf(raw: Record<string, string> | undefined, scope: FlowScope): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(raw ?? {})) out[key] = await scope.render(value);
+  return out;
+}
+
+/**
+ * Ход рукописного модуля: вход в него (`park` не передан) либо очередной шаг внутри.
+ *
+ * В холостом прогоне (симулятор редактора) модуль не запускается вовсе — `null`. Действия там
+ * выполняются по-настоящему, а модули нет, и это не непоследовательность: действие показывает
+ * экран и сразу возвращает управление, а модуль забирает разговор себе и на выходе пишет в базу —
+ * заявку в очередь, предложение сопернику, ответ на анкету. Прогон, который это делает, не проверка,
+ * а вторая жизнь бота.
+ */
+async function stepSubflow(
+  node: SubflowNode,
+  scope: FlowScope,
+  msg: FlowMessage,
+  park: SubflowPark | null,
+  dry: boolean,
+): Promise<SubflowResult | null> {
+  const sub = FLOW_SUBFLOWS[node.flow];
+  if (!sub) throw new Error(`модуль «${node.flow}» не зарегистрирован`);
+  if (dry) return null;
+  const input = { msg, params: await paramsOf(node.params, scope), vars: scope.vars };
+  return park ? sub.step({ ...input, park }) : sub.start(input);
+}
+
+/** Что показывает симулятор вместо модуля: почему экрана нет и куда граф пойдёт дальше. */
+const dryNote = (node: SubflowNode): Reply => ({
+  text:
+    `[прогон] Здесь разговор забирает модуль «${FLOW_SUBFLOWS[node.flow]?.label ?? node.flow}». ` +
+    `В прогоне он не запускается — граф идёт дальше по выходу «готово».`,
+  keyboard: null,
+});
 
 export async function walk(
   flow: LoadedFlow,
@@ -194,19 +262,29 @@ export async function walk(
       case "action": {
         const action = FLOW_ACTIONS[node.action];
         if (!action) throw new Error(`действие «${node.action}» не зарегистрировано`);
-        // Параметры — с подстановками: `{vars.турнир_id}` в редакторе, число на входе действия.
-        const params: Record<string, string> = {};
-        for (const [key, value] of Object.entries(node.params ?? {})) params[key] = await scope.render(value);
-        const done = await action.run({ msg, params, vars: scope.vars, dry });
+        const done = await action.run({ msg, params: await paramsOf(node.params, scope), vars: scope.vars, dry });
         replies.push(...(done.replies ?? []));
         Object.assign(scope.vars, done.vars ?? {});
         if (done.keyboard) rows = done.keyboard;
         id = done.ok ? node.ok : node.fail;
         break;
       }
-      case "subflow":
-        // Обёртка над рукописными модулями — Э5; до неё такой ноды в графе быть не должно.
-        throw new Error(`нода subflow («${node.flow}») пока не поддерживается`);
+      case "subflow": {
+        // Вход в модуль. Клавиатуру, принесённую действием, дальше не тащим: модуль говорит своими
+        // репликами и своей клавиатурой, и приклеивать к ним чужой список было бы враньём.
+        rows = null;
+        const done = await stepSubflow(node, scope, msg, null, dry);
+        if (!done) {
+          replies.push(dryNote(node));
+          id = node.done;
+          break;
+        }
+        replies.push(...done.replies);
+        // Модуль взялся за разговор — дальше по графу не идём: следующее сообщение придёт ему.
+        if (done.kind === "wait") return { replies, park: node.id, trail, sub: done.park };
+        id = done.kind === "done" ? node.done : node.cancel;
+        break;
+      }
       case "end":
         if (node.text) replies.push({ text: await scope.render(node.text), keyboard: null });
         id = node.toMenu ? flow.graph.start : null;
@@ -239,6 +317,8 @@ export async function turn(
   scope: FlowScope,
   msg: FlowMessage,
   dry = false,
+  /** Состояние модуля, если разговор стоит на ноде `subflow` (`BotSession.state` → `sub`). */
+  sub: SubflowPark | null = null,
 ): Promise<Turn> {
   const node = nodeById(flow.graph, at);
   if (!node) return { kind: "lost" };
@@ -265,8 +345,27 @@ export async function turn(
   } else if (node.type === "menu") {
     if (!node.else) return { kind: "outside" };
     next = node.else;
+  } else if (node.type === "subflow") {
+    const done = await stepSubflow(node, scope, msg, sub, dry);
+    // Холостой прогон на ноде модуля не останавливается (`walk` идёт мимо), так что сюда он не
+    // приходит; если всё же пришёл — отдаём наружу, чем врать про несделанный ход.
+    if (!done) return { kind: "outside" };
+    // Модуль ещё ведёт разговор: остаёмся на той же ноде, меняется только его состояние.
+    if (done.kind === "wait") {
+      return { kind: "flow", replies: done.replies, park: node.id, trail: [node.id], sub: done.park };
+    }
+    // Модуль отработал — возвращаемся в граф по «готово» либо «отменено», и его прощальные реплики
+    // идут перед тем, что скажет граф дальше.
+    const rest = await walk(flow, done.kind === "done" ? node.done : node.cancel, scope, msg, dry);
+    return {
+      kind: "flow",
+      replies: [...done.replies, ...rest.replies],
+      park: rest.park,
+      trail: [node.id, ...rest.trail],
+      sub: rest.sub ?? null,
+    };
   } else {
-    // Ждём субфлоу (Э5) — его ответ придёт не отсюда.
+    // Нода не ждущая — стоять на ней разговор не мог; отдаём наружу, а не гадаем.
     return { kind: "outside" };
   }
 
@@ -275,7 +374,9 @@ export async function turn(
 
 /** Записать, где остановились, и отдать ответы. */
 async function settle(chatId: string, flow: LoadedFlow, done: Walk, scope: FlowScope): Promise<Reply[]> {
-  if (done.park) await savePark(chatId, { node: done.park, versionId: flow.id, vars: scope.vars });
+  // `sub` пишем ровно тот, что вернул ход: заснули не на модуле — в строке его состояния и не
+  // будет, иначе брошенная анкета всплыла бы через неделю на другой ноде.
+  if (done.park) await savePark(chatId, { node: done.park, versionId: flow.id, vars: scope.vars, sub: done.sub ?? null });
   else await clearPark(chatId);
   return done.replies;
 }
@@ -329,7 +430,7 @@ export function continueFlow(msg: FlowMessage): Promise<Reply[] | null> {
 
     const flow = await pinnedFlow(park.versionId);
     const scope = makeScope(msg, park.vars);
-    const done = await turn(flow, park.node, scope, msg);
+    const done = await turn(flow, park.node, scope, msg, false, park.sub);
 
     // Ноду вырезали из графа, пока человек на ней стоял. Начинать за него новый диалог не будем —
     // отдаём наружу и снимаем сессию: следующее сообщение начнётся с меню.

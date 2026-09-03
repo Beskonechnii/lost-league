@@ -30,6 +30,7 @@ export function FlowInspector({
   ctxKeys,
   settingKeys,
   actions,
+  subflows,
 }: {
   node: FlowNode | null;
   graph: BotFlowGraph;
@@ -42,6 +43,8 @@ export function FlowInspector({
   settingKeys: string[];
   /** Зарегистрированные действия: подпись, пояснение, обязательные параметры (`bot-flow/actions.ts`). */
   actions: FlowActionInfo[];
+  /** Зарегистрированные модули для ноды «модуль» (`bot-flow/subflows.ts`). Формат тот же. */
+  subflows: FlowActionInfo[];
 }) {
   if (!node) {
     return (
@@ -87,7 +90,7 @@ export function FlowInspector({
         />
       </div>
 
-      <Body node={node} onChange={onChange} refs={REF_LIST} actions={actions} />
+      <Body node={node} onChange={onChange} refs={REF_LIST} actions={actions} subflows={subflows} />
 
       <Ports node={node} graph={graph} onChange={onChange} />
 
@@ -117,11 +120,13 @@ function Body({
   onChange,
   refs,
   actions,
+  subflows,
 }: {
   node: FlowNode;
   onChange: (n: FlowNode) => void;
   refs: string;
   actions: FlowActionInfo[];
+  subflows: FlowActionInfo[];
 }) {
   switch (node.type) {
     case "start":
@@ -277,25 +282,63 @@ function Body({
       );
     }
 
-    case "subflow":
+    case "subflow": {
+      const chosenModule = subflows.find((s) => s.name === node.flow.trim()) ?? null;
       return (
         <>
           <div>
             <Label htmlFor="flow-module">Модуль</Label>
-            <FormInput
+            {/* Список, а не свободный ввод — по той же причине, что у действия: имя сверяется с
+                реестром, и опечатка уронила бы интерпретатор посреди разговора. */}
+            <FormSelect
               id="flow-module"
               size="sm"
-              mono
               className="mt-1 w-full"
               value={node.flow}
-              onChange={(e) => onChange({ ...node, flow: e.target.value })}
-            />
+              onChange={(e) => {
+                const next = subflows.find((s) => s.name === e.target.value);
+                const params = { ...(node.params ?? {}) };
+                for (const key of next?.params ?? []) params[key] ??= "";
+                onChange({ ...node, flow: e.target.value, params });
+              }}
+            >
+              <option value="">— выберите модуль —</option>
+              {subflows.map((s) => (
+                <option key={s.name} value={s.name}>
+                  {s.label} ({s.name})
+                </option>
+              ))}
+              {node.flow.trim() && !chosenModule && <option value={node.flow}>{node.flow} — нет в реестре</option>}
+            </FormSelect>
+            {chosenModule?.hint && <Hint>{chosenModule.hint}</Hint>}
           </div>
-          <Alert tone="warn" block>
-            Модули подключаются на Э5 — пока такая нода отвечает понятной ошибкой и возвращает в меню.
+          <div>
+            <Label htmlFor="flow-module-params">Параметры</Label>
+            <FormTextarea
+              id="flow-module-params"
+              mono
+              rows={2}
+              className="mt-1 w-full"
+              value={Object.entries(node.params ?? {})
+                .map(([k, v]) => `${k}=${v}`)
+                .join("\n")}
+              placeholder={"имя=значение\nодна пара в строке"}
+              onChange={(e) => onChange({ ...node, params: parseParams(e.target.value) })}
+            />
+            <Hint>
+              {chosenModule?.params?.length
+                ? `Модуль принимает: ${chosenModule.params.join(", ")}. В значении работают подстановки — {vars.турнир_id}.`
+                : "Этот модуль параметров не принимает."}
+            </Hint>
+          </div>
+          <Alert tone="info" block>
+            Модуль забирает разговор себе на несколько ходов и говорит своими кнопками. Выход «отменено» —
+            модуль не взялся за работу (нечего заполнять, нет прав); брошенный на середине диалог модули
+            от нормального конца не отличают и оба отдают в «готово».
           </Alert>
         </>
       );
+    }
 
     case "goto":
       return <Hint>Куда ведёт переход — в списке выходов ниже.</Hint>;

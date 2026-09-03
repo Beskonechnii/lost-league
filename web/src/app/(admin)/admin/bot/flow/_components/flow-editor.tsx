@@ -46,6 +46,7 @@ export function FlowEditor({
   versions,
   registries,
   actions,
+  subflows,
 }: {
   initialGraph: BotFlowGraph;
   initialNote: string;
@@ -56,6 +57,8 @@ export function FlowEditor({
   registries: FlowRegistries;
   /** Действия со словами человеку: подпись, пояснение, обязательные параметры (`actions.ts`). */
   actions: FlowActionInfo[];
+  /** Модули для ноды «модуль» — тем же форматом (`subflows.ts`). */
+  subflows: FlowActionInfo[];
 }) {
   const router = useRouter();
   const [graph, setGraph] = useState<BotFlowGraph>(initialGraph);
@@ -225,6 +228,7 @@ export function FlowEditor({
                 ctxKeys={registries.ctxKeys ?? []}
                 settingKeys={registries.settingKeys ?? []}
                 actions={actions}
+                subflows={subflows}
                 onChange={putNode}
                 onDelete={() => {
                   if (!node) return;

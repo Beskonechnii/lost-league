@@ -11,6 +11,7 @@ import { BOT_SETTINGS } from "../bot-settings";
 import { QUIZ_SLOTS } from "../quiz-config";
 import { FLOW_ACTIONS } from "./actions";
 import { CTX_KEYS } from "./context";
+import { FLOW_SUBFLOWS } from "./subflows";
 import type { FlowRegistries } from "./validate";
 
 /** Реестры одним объектом. Простые строки и массивы — их можно отдать клиентскому компоненту. */
@@ -20,6 +21,7 @@ export const flowRegistries = (): FlowRegistries => ({
   // в какой таблице оно лежит (`context.ts` → `settings`).
   settingKeys: [...QUIZ_SLOTS.map((s) => s.key as string), ...BOT_SETTINGS.map((f) => f.key as string)],
   actions: Object.entries(FLOW_ACTIONS).map(([name, a]) => ({ name, provides: a.provides })),
+  subflows: Object.keys(FLOW_SUBFLOWS).map((name) => ({ name })),
 });
 
 /**
@@ -31,3 +33,10 @@ export type FlowActionInfo = { name: string; label: string; hint?: string; param
 
 export const flowActionList = (): FlowActionInfo[] =>
   Object.entries(FLOW_ACTIONS).map(([name, a]) => ({ name, label: a.label, hint: a.hint, params: a.params }));
+
+/**
+ * Модули для инспектора ноды `subflow` — тем же форматом, что и действия: инспектор рисует их
+ * одинаково (список из реестра + параметры), и второй тип ради одного и того же был бы лишним.
+ */
+export const flowSubflowList = (): FlowActionInfo[] =>
+  Object.entries(FLOW_SUBFLOWS).map(([name, s]) => ({ name, label: s.label, hint: s.hint, params: s.params }));

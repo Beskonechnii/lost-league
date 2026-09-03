@@ -106,8 +106,8 @@ export const NODE_KINDS: { type: FlowNodeType; label: string; hint: string }[] =
   { type: "ask", label: "Вопрос", hint: "Ждёт ответ и кладёт его в переменную." },
   { type: "menu", label: "Меню", hint: "Кнопки: каждая — свой выход." },
   { type: "if", label: "Развилка", hint: "Условие над переменными и контекстом." },
-  { type: "action", label: "Действие", hint: "Зовёт функцию из реестра (появятся на Э4)." },
-  { type: "subflow", label: "Модуль", hint: "Отдаёт диалог рукописному модулю (Э5)." },
+  { type: "action", label: "Действие", hint: "Зовёт функцию из реестра: один экран и сразу назад в граф." },
+  { type: "subflow", label: "Модуль", hint: "Отдаёт разговор рукописному модулю на несколько ходов." },
   { type: "goto", label: "Переход", hint: "Чтобы не тянуть длинную связь через весь канвас." },
   { type: "end", label: "Конец", hint: "Попрощаться и вернуть в меню либо закрыть диалог." },
 ];
@@ -129,7 +129,7 @@ export function makeNode(type: FlowNodeType, id: NodeId, x: number, y: number): 
     case "action":
       return { ...base, type, title: "Действие", action: "", params: {}, ok: null, fail: null };
     case "subflow":
-      return { ...base, type, title: "Модуль", flow: "", done: null, cancel: null };
+      return { ...base, type, title: "Модуль", flow: "", params: {}, done: null, cancel: null };
     case "goto":
       return { ...base, type, title: "Переход", target: null };
     case "end":

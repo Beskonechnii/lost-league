@@ -1,4 +1,4 @@
-import { flowActionList, flowRegistries } from "@/lib/bot-flow/registries";
+import { flowActionList, flowRegistries, flowSubflowList } from "@/lib/bot-flow/registries";
 import { editorFlow, listVersions } from "@/lib/bot-flow/store";
 import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { Alert } from "@/components/pouf/feedback";
@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 // Отдельным маршрутом, а не третьей вкладкой /admin/bot: у вкладок там колонка чтения (READ_MAX_W)
 // и форма на форме, а канвасу нужна вся ширина витрины. Право то же — отдельного у бота нет.
 //
-// Реестры (`ctx.*`, `settings.*`, действия) собираются здесь и едут в редактор пропсом: они живут в
+// Реестры (`ctx.*`, `settings.*`, действия, модули) собираются здесь и едут в редактор пропсом: они живут в
 // серверных модулях (`bot-flow/context.ts` тянет prisma), и импортировать их с клиента значило бы
 // утащить в браузер половину рантайма бота. Из них же валидатор узнаёт, что существует, а что
 // опечатка.
@@ -49,6 +49,7 @@ export default async function BotFlowPage() {
         versions={versions}
         registries={flowRegistries()}
         actions={flowActionList()}
+        subflows={flowSubflowList()}
       />
     </main>
   );

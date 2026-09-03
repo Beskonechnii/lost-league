@@ -49,6 +49,8 @@ export type FlowRegistries = {
   settingKeys?: string[];
   /** Зарегистрированные действия и переменные, которые они кладут (`bot-flow/actions.ts`). */
   actions?: { name: string; provides?: string[] }[];
+  /** Зарегистрированные модули — что можно написать в ноде `subflow` (`bot-flow/subflows.ts`). */
+  subflows?: { name: string }[];
 };
 
 /**
@@ -88,6 +90,7 @@ function refsOf(node: FlowNode): Ref[] {
       cond(node.cond);
       break;
     case "action":
+    case "subflow":
       Object.values(node.params ?? {}).forEach(text);
       break;
     case "end":
@@ -304,9 +307,10 @@ export function validateFlow(graph: BotFlowGraph, known: FlowRegistries = {}): F
     }
   }
 
-  /* ── Ноды, которых интерпретатор пока не умеет ──────────────────────────────────────────── */
+  /* ── Ноды, которые зовут код: имя должно быть в реестре ─────────────────────────────────── */
 
   const actionNames = known.actions ? new Set(known.actions.map((a) => a.name)) : null;
+  const subflowNames = known.subflows ? new Set(known.subflows.map((s) => s.name)) : null;
   for (const node of graph.nodes) {
     if (node.type === "action") {
       if (!node.action.trim()) add("error", node.id, "Действие не выбрано: ноде нечего звать.");
@@ -315,7 +319,10 @@ export function validateFlow(graph: BotFlowGraph, known: FlowRegistries = {}): F
       }
     }
     if (node.type === "subflow") {
-      add("error", node.id, "Нода «модуль» появится на Э5: сейчас интерпретатор на ней падает.");
+      if (!node.flow.trim()) add("error", node.id, "Модуль не выбран: ноде некому отдать разговор.");
+      else if (subflowNames && !subflowNames.has(node.flow.trim())) {
+        add("error", node.id, `Модуль «${node.flow}» не зарегистрирован — интерпретатор упадёт на этой ноде.`);
+      }
     }
   }
 

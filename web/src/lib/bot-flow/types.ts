@@ -111,8 +111,18 @@ export type ActionNode = NodeBase & {
   fail: NodeId | null;
 };
 
-/** Передача управления рукописному модулю целиком, пока тот не скажет `done` (Э5). */
-export type SubflowNode = NodeBase & { type: "subflow"; flow: string; done: NodeId | null; cancel: NodeId | null };
+/**
+ * Передача управления рукописному модулю целиком, пока тот не скажет `done` (`subflows.ts`).
+ * Выход «отменено» — модуль не взялся за работу (не капитан, анкет нет, править нечего).
+ */
+export type SubflowNode = NodeBase & {
+  type: "subflow";
+  flow: string;
+  /** Чем кормим модуль: значения с подстановками, как у действия (`турнир: "{vars.турнир_id}"`). */
+  params?: Record<string, string>;
+  done: NodeId | null;
+  cancel: NodeId | null;
+};
 
 /** Переход. Отдельной нодой — чтобы длинную связь на канвасе можно было не тянуть через весь экран. */
 export type GotoNode = NodeBase & { type: "goto"; target: NodeId | null };
