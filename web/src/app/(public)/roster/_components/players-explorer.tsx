@@ -1,18 +1,30 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { PoolPlayer } from "@/lib/roster-data";
+import type { PoolPlayer, PoolTournament } from "@/lib/roster-data";
 import { teamAccent } from "@/lib/profiles";
 import { roleLabel } from "@/lib/roles";
 import { EmptyState } from "@/components/pouf/feedback";
 import { FilterBar } from "./filter-bar";
 import { PlayerMiniCard } from "./player-card";
+import { TournamentGroups } from "./tournament-groups";
 
 // Клиентская витрина пула игроков: фильтр по турниру и поиск — в памяти по загруженному списку
 // (игроков сотни, но не десятки тысяч; фильтр мгновенный). Пара к PoolExplorer для команд.
 // `flagged` — операторская подсветка «нет account_id»; посетителю её не передаём.
 
-export function PlayersExplorer({ players, canFlag }: { players: PoolPlayer[]; canFlag: boolean }) {
+export function PlayersExplorer({
+  players,
+  canFlag,
+  grouped = false,
+  tournaments = [],
+}: {
+  players: PoolPlayer[];
+  canFlag: boolean;
+  /** Разрез «по турнирам»: секция на турнир вместо одного списка (см. GroupSwitch). */
+  grouped?: boolean;
+  tournaments?: PoolTournament[];
+}) {
   const [q, setQ] = useState("");
   const [tournament, setTournament] = useState("");
 
@@ -43,6 +55,7 @@ export function PlayersExplorer({ players, canFlag }: { players: PoolPlayer[]; c
         tournament={tournament}
         onTournament={setTournament}
         count={`${filtered.length} игроков`}
+        hideTournament={grouped}
       />
 
       {filtered.length === 0 ? (
@@ -53,9 +66,24 @@ export function PlayersExplorer({ players, canFlag }: { players: PoolPlayer[]; c
         ) : (
           <EmptyState title="Ничего не найдено">Измените запрос или снимите фильтр по турниру.</EmptyState>
         )
+      ) : grouped ? (
+        <TournamentGroups
+          items={filtered}
+          tournaments={tournaments}
+          tournamentsOf={(p) => p.tournaments}
+          emptyLabel="Вне турниров"
+          render={cards}
+        />
       ) : (
+        cards(filtered)
+      )}
+    </div>
+  );
+
+  function cards(rows: PoolPlayer[]) {
+    return (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((p) => (
+          {rows.map((p) => (
             <PlayerMiniCard
               key={p.id}
               id={p.id}
@@ -83,7 +111,6 @@ export function PlayersExplorer({ players, canFlag }: { players: PoolPlayer[]; c
             />
           ))}
         </div>
-      )}
-    </div>
-  );
+    );
+  }
 }

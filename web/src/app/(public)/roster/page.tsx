@@ -1,11 +1,11 @@
-import { listPoolTeams } from "@/lib/roster-data";
+import { listPoolTeams, poolTournaments } from "@/lib/roster-data";
 import { can } from "@/lib/account";
 import { prisma } from "@/lib/prisma";
 import { SectionHeader } from "@/components/pouf/blocks";
 import { Alert } from "@/components/pouf/feedback";
 import { PillLink } from "@/components/pouf/tabs";
 import { PoolExplorer } from "./_components/pool-explorer";
-import { PoolSwitch } from "./_components/pool-switch";
+import { GroupSwitch, PoolSwitch } from "./_components/pool-switch";
 
 export const dynamic = "force-dynamic";
 
@@ -16,14 +16,17 @@ export const dynamic = "force-dynamic";
 export default async function RosterPoolPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string; by?: string }>;
 }) {
-  const archived = (await searchParams).view === "archive";
-  const [teams, canDelete, archivedCount, pooledCount] = await Promise.all([
+  const params = await searchParams;
+  const archived = params.view === "archive";
+  const grouped = params.by === "tournament";
+  const [teams, canDelete, archivedCount, pooledCount, tournaments] = await Promise.all([
     listPoolTeams({ archived }),
     can("roster.delete"),
     prisma.team.count({ where: { archivedAt: { not: null } } }),
     prisma.team.count({ where: { archivedAt: null } }),
+    poolTournaments(),
   ]);
 
   return (
@@ -34,15 +37,24 @@ export default async function RosterPoolPage({
         aside={<>Команды всех турниров лиги в одном месте</>}
       />
 
-      <PoolSwitch current="teams" />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <PoolSwitch current="teams" group={params.by} />
+        {/* Второй разрез — вид того же списка, поэтому стоит в одной строке с первым, а не над ним. */}
+        <GroupSwitch base="/roster" group={params.by} extra={archived ? "view=archive" : ""} />
+      </div>
 
       {/* Разрез пул/архив виден оператору всегда; посетителю архив ни к чему — показываем только пул. */}
       {canDelete ? (
         <div className="flex flex-wrap items-center gap-2">
-          <PillLink href="/roster" active={!archived} size="md" count={pooledCount}>
+          <PillLink href={grouped ? "/roster?by=tournament" : "/roster"} active={!archived} size="md" count={pooledCount}>
             В пуле
           </PillLink>
-          <PillLink href="/roster?view=archive" active={archived} size="md" count={archivedCount}>
+          <PillLink
+            href={grouped ? "/roster?view=archive&by=tournament" : "/roster?view=archive"}
+            active={archived}
+            size="md"
+            count={archivedCount}
+          >
             Архив
           </PillLink>
         </div>
@@ -55,7 +67,12 @@ export default async function RosterPoolPage({
         </Alert>
       )}
 
-      <PoolExplorer teams={teams} manage={canDelete ? { archived } : undefined} />
+      <PoolExplorer
+        teams={teams}
+        manage={canDelete ? { archived } : undefined}
+        grouped={grouped}
+        tournaments={tournaments}
+      />
     </div>
   );
 }

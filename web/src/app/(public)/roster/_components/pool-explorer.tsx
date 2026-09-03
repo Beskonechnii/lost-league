@@ -1,16 +1,29 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { PoolTeam } from "@/lib/roster-data";
+import type { PoolTeam, PoolTournament } from "@/lib/roster-data";
 import { EmptyState } from "@/components/pouf/feedback";
 import { FilterBar } from "./filter-bar";
 import { TeamCards } from "./team-cards";
+import { TournamentGroups } from "./tournament-groups";
 
 // Клиентская витрина пула: фильтр по турниру и поиск считаются в памяти по уже загруженному списку —
 // команд лиги десятки, отдельные запросы на каждый ввод ни к чему, зато фильтр мгновенный.
 // Разрез «в пуле / архив» — серверный (?view в адресе): это разные выборки, их страница и грузит.
 
-export function PoolExplorer({ teams, manage }: { teams: PoolTeam[]; manage?: { archived: boolean } }) {
+export function PoolExplorer({
+  teams,
+  manage,
+  grouped = false,
+  tournaments = [],
+}: {
+  teams: PoolTeam[];
+  manage?: { archived: boolean };
+  /** Разрез «по турнирам»: секция на турнир вместо одного списка (см. GroupSwitch). */
+  grouped?: boolean;
+  /** Порядок секций — только для разреза по турнирам. */
+  tournaments?: PoolTournament[];
+}) {
   const [q, setQ] = useState("");
   const [tournament, setTournament] = useState(""); // slug турнира или "" — все
   // Убранные оптимистично (архив/возврат/снос): revalidatePath на сервере счётчики обновляет, но новые
@@ -39,6 +52,7 @@ export function PoolExplorer({ teams, manage }: { teams: PoolTeam[]; manage?: { 
 
   return (
     <div className="space-y-4">
+      {/* В разрезе по турнирам селект турнира лишний: секции и есть этот фильтр. */}
       <FilterBar
         query={q}
         onQuery={setQ}
@@ -48,6 +62,7 @@ export function PoolExplorer({ teams, manage }: { teams: PoolTeam[]; manage?: { 
         tournament={tournament}
         onTournament={setTournament}
         count={`${filtered.length} команд`}
+        hideTournament={grouped}
       />
 
       {filtered.length === 0 ? (
@@ -61,6 +76,14 @@ export function PoolExplorer({ teams, manage }: { teams: PoolTeam[]; manage?: { 
         ) : (
           <EmptyState title="Ничего не найдено">Измените запрос или снимите фильтр по турниру.</EmptyState>
         )
+      ) : grouped ? (
+        <TournamentGroups
+          items={filtered}
+          tournaments={tournaments}
+          tournamentsOf={(t) => t.tournaments}
+          emptyLabel="Вне турниров"
+          render={(rows) => <TeamCards teams={rows} manage={manage} onManaged={onManaged} />}
+        />
       ) : (
         <TeamCards teams={filtered} manage={manage} onManaged={onManaged} />
       )}

@@ -22,6 +22,7 @@ export function FilterBar({
   tournament,
   onTournament,
   count,
+  hideTournament = false,
 }: {
   query: string;
   onQuery: (v: string) => void;
@@ -33,6 +34,8 @@ export function FilterBar({
   tournament: string;
   onTournament: (v: string) => void;
   count: string;
+  /** Разрез «по турнирам» уже режет витрину секциями — второй такой же выбор строкой выше лишний. */
+  hideTournament?: boolean;
 }) {
   return (
     // Ширину держат обёртки, а не сами контролы: у поля и триггера селекта в Ките зашит `w-full`
@@ -48,6 +51,7 @@ export function FilterBar({
           aria-label={label}
         />
       </div>
+      {!hideTournament && (
       <div className="w-[11rem] shrink-0">
         <Select value={tournament || ALL} onValueChange={(v) => onTournament(v === ALL ? "" : v)}>
           <SelectTrigger size="sm" aria-label="Фильтр по турниру">
@@ -63,6 +67,7 @@ export function FilterBar({
           </SelectContent>
         </Select>
       </div>
+      )}
       <span className="shrink-0 font-pouf text-sm font-bold tabular-nums text-muted">{count}</span>
     </div>
   );

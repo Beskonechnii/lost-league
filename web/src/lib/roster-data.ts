@@ -277,6 +277,21 @@ export async function listPoolTeams({ archived = false }: { archived?: boolean }
   );
 }
 
+/**
+ * Турниры лиги в том же порядке, в каком они стоят метками на карточках, — свежие сверху.
+ * Нужен разрезу «По турнирам»: у каждой команды и игрока свой список турниров, а порядок секций
+ * на витрине должен быть один на всех, иначе он менялся бы от того, кто попал в выборку первым.
+ */
+export async function poolTournaments(): Promise<PoolTournament[]> {
+  const rows = await prisma.tournament.findMany({
+    where: { status: { not: "draft" } },
+    select: { slug: true, name: true, short: true, status: true, startAt: true },
+  });
+  return rows
+    .sort((a, b) => tournamentRank(a) - tournamentRank(b))
+    .map((t) => ({ slug: t.slug, name: t.name, short: t.short }));
+}
+
 /** Команда игрока в карточке пула — минимум для акцента и подписи. */
 type PoolPlayerTeam = { id: number; slug: string; name: string; tag: string | null; color: string | null; group: string | null };
 
