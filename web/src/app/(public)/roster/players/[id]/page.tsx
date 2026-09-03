@@ -151,13 +151,14 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
           <div className="absolute inset-x-0 bottom-0 h-16 [background:linear-gradient(180deg,transparent,var(--surface))]" />
         </div>
 
-        {/* Жетон номера в ростере — единственная цифра, которую хочется видеть в шапке. */}
-        {player.orderNo != null && (
-          <div className="absolute left-8 top-7 inline-flex h-[52px] items-center gap-[7px] rounded-pill bg-surface px-4 text-[19px] font-black tabular-nums text-[var(--accent-ink)] cushion-row">
-            <span className="text-[11px] font-extrabold uppercase tracking-[0.5px] text-ink-subtle">№</span>
-            {player.orderNo}
-          </div>
-        )}
+        {/* Жетон номера в ростере — единственная цифра, которую хочется видеть в шапке. Номер есть у
+            каждого: по умолчанию это id профиля, тот же, что в адресе страницы; `orderNo` остаётся
+            ручным перекрытием. Лежит поверх аватарки (`z-20`): аватарка наезжает на этот угол, и без
+            слоя жетон проступал из-под неё половиной пилюли. */}
+        <div className="absolute left-8 top-7 z-20 inline-flex h-[52px] items-center gap-[7px] rounded-pill bg-surface px-4 text-[19px] font-black tabular-nums text-[var(--accent-ink)] cushion-row">
+          <span className="text-[11px] font-extrabold uppercase tracking-[0.5px] text-ink-subtle">№</span>
+          {player.orderNo ?? player.id}
+        </div>
 
         <div className="relative mt-[76px] flex flex-col gap-6 px-6 pb-7 sm:flex-row sm:items-end sm:px-8">
           <PlayerAvatar

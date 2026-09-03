@@ -134,7 +134,7 @@ export function PlayerEditor({ id, initial }: { id: number; initial: PlayerForm 
 
       <Fieldset title="Лига">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <TextField label="Порядковый номер" value={v.orderNo} onChange={(x) => set("orderNo", x)} placeholder="1" hint="Номер игрока в лиге; пусто — без номера" />
+          <TextField label="Порядковый номер" value={v.orderNo} onChange={(x) => set("orderNo", x)} placeholder="1" hint="Перекрывает номер в шапке профиля; пусто — номер по id" />
           <TextField label="Ссылка на интервью" value={v.interviewUrl} onChange={(x) => set("interviewUrl", x)} placeholder="https://…" />
         </div>
         <div className="mt-4">

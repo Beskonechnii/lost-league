@@ -180,7 +180,7 @@ model Player {
   country     String?
   banner      String? // баннер профиля (широкая подложка шапки); путь как у photo
   interviewUrl String? // ссылка на интервью игрока, если есть
-  orderNo     Int? // порядковый номер игрока в лиге (ручной, для витрины); null — без номера
+  orderNo     Int? // ручное перекрытие номера в шапке профиля; null — номер по id (он же в адресе)
   achievements String? // достижения внутри и вне лиги — свободный текст, одна строка = одно достижение
   tags        String? // роли в лиге через запятую (player,streamer,caster,partner,organizer) — src/lib/player-tags.ts
   createdAt   DateTime  @default(now())
