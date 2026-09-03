@@ -2,12 +2,12 @@ import Link from "next/link";
 import { playerPath } from "@/lib/profiles";
 import { redirect } from "next/navigation";
 import { currentAccount } from "@/lib/account";
-import { lastProfileEdit } from "@/lib/profile-edit";
+import { lastProfileEdits, type EditField } from "@/lib/profile-edit";
 import { AUTH_MAX_W } from "@/components/pouf/blocks";
 import { Eyebrow } from "@/components/pouf/text";
 import { Breadcrumbs } from "@/app/_components/breadcrumbs";
 import { buttonClasses } from "@/components/pouf/Button";
-import { ProfileForm, type ProfileValues } from "./profile-form";
+import { ProfileForm, type FieldReview, type ProfileValues, type Reviews } from "./profile-form";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Моя анкета" };
@@ -21,9 +21,10 @@ export default async function EditProfilePage() {
   if (!account.player) redirect("/me"); // профиля ещё нет — сначала онбординг в /me
 
   const p = account.player;
-  // MMR правится не напрямую, а заявкой в очередь модерации (решение 04.09.2026), поэтому странице
-  // нужно знать, чем кончилась последняя такая заявка: ждёт решения, приняли или вернули с причиной.
-  const mmrEdit = await lastProfileEdit(p.id, "mmr");
+  // Ник, город, ссылка и MMR правятся не напрямую, а заявкой в очередь модерации (решение
+  // 04.09.2026), поэтому странице нужно знать, чем кончилась последняя заявка по каждому из них:
+  // ждёт решения, приняли или вернули с причиной.
+  const edits = await lastProfileEdits(p.id, ["nickname", "city", "mmr", "dotabuffUrl", "stratzUrl", "steamUrl"]);
   // Ссылки показываем ровно те, что записаны у игрока, а не выведенные из account_id: иначе человек
   // «сохранял» бы то, чего сам не вводил, и выведенная ссылка навсегда становилась бы его полем.
   const values: ProfileValues = {
@@ -38,14 +39,26 @@ export default async function EditProfilePage() {
     mmr: p.mmr != null ? String(p.mmr) : "",
   };
 
-  // Заявка на MMR в работе перекрывает поле: вторая на то же поле всё равно не примется
+  // Заявка в работе перекрывает своё поле: вторая на то же поле всё равно не примется
   // (submitProfileEdit её отобьёт), и лучше сказать об этом до отправки, чем после.
-  const mmrReview =
-    mmrEdit?.status === "pending"
-      ? { state: "pending" as const, value: mmrEdit.newValue }
-      : mmrEdit?.status === "rejected"
-        ? { state: "rejected" as const, value: mmrEdit.newValue, reason: mmrEdit.notes ?? "" }
-        : null;
+  const review = (field: EditField): FieldReview | undefined => {
+    const row = edits.get(field);
+    if (row?.status === "pending") return { state: "pending", value: row.newValue };
+    if (row?.status === "rejected") return { state: "rejected", value: row.newValue, reason: row.notes ?? "" };
+    return undefined;
+  };
+  // Ссылка в форме одна, а колонок под неё три — показываем последнюю по любой из площадок.
+  const linkEdit = (["dotabuffUrl", "stratzUrl", "steamUrl"] as const)
+    .map((f) => ({ field: f, row: edits.get(f) }))
+    .filter((x) => x.row)
+    .sort((a, b) => b.row!.id - a.row!.id)[0];
+
+  const reviews: Reviews = {
+    nickname: review("nickname"),
+    city: review("city"),
+    mmr: review("mmr"),
+    profileUrl: linkEdit ? review(linkEdit.field) : undefined,
+  };
 
   return (
     <main className="flex-1 px-4 py-10 font-pouf md:py-16">
@@ -66,7 +79,7 @@ export default async function EditProfilePage() {
         </p>
 
         <div className="rounded-card bg-surface p-5 cushion-card sm:p-6">
-          <ProfileForm values={values} mmrReview={mmrReview} />
+          <ProfileForm values={values} reviews={reviews} />
         </div>
       </div>
     </main>

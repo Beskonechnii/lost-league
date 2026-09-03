@@ -22,6 +22,7 @@
 // ей с тем, что модуль ждёт в ответ, нельзя.
 
 import { FORMS_BUTTON } from "../tg-forms";
+import { INVITE_NO, INVITE_YES } from "../tg-invites";
 import { MEETING_BUTTON, MR_ACCEPT, MR_COUNTER } from "../tg-meetings";
 import { LEGACY_ROSTER, MENU } from "../tg-menu";
 import { EDIT_BUTTON } from "../tg-profile";
@@ -41,6 +42,9 @@ export const INVITE_KEY = "invite";
 
 /** Ответ на предложение соперника — сценарий, в который входят кнопкой из уведомления. */
 export const ANSWER_KEY = "answer";
+
+/** Ответ на приглашение в состав — тоже вход кнопкой из уведомления (`tg-invites.ts`). */
+export const ROSTER_KEY = "roster-invite";
 
 /** Нода меню — на неё возвращаются концы диалогов, её же показывает /start. */
 export const MENU_NODE = "menu";
@@ -307,10 +311,37 @@ const answerFlow = (): BotFlowGraph => ({
 });
 
 /**
+ * Ответ на приглашение в состав — второй сценарий, в который входят кнопкой из уведомления.
+ * Устроен как `answerFlow`: экрана-входа нет, клавиатуру поставила рассылка (`tg-notify.ts`),
+ * а что случится по нажатию — описано здесь данными.
+ */
+const rosterInviteFlow = (): BotFlowGraph => ({
+  format: 1,
+  key: ROSTER_KEY,
+  title: "Ответ на приглашение",
+  entry: { buttons: [INVITE_YES, INVITE_NO] },
+  start: "start",
+  nodes: [
+    { id: "start", type: "start", title: "Кнопка из уведомления", next: "invite-do", x: 0, y: 0 },
+    {
+      id: "invite-do",
+      type: "subflow",
+      title: "Ответ на приглашение",
+      flow: "ответ_на_приглашение",
+      done: "done",
+      cancel: "done",
+      x: 0,
+      y: 160,
+    },
+    { id: "done", type: "end", title: "В меню", toMenu: true, x: 0, y: 320 },
+  ],
+});
+
+/**
  * Дефолтный набор графов — сидом в коде. Пустая база означает бота со всеми тремя входами, а не
  * бота с одним меню: в `BotFlow` лежат только правки оператора, и правит он их по одному флоу.
  */
-export const defaultFlows = (): BotFlowGraph[] => [mainFlow(), inviteFlow(), answerFlow()];
+export const defaultFlows = (): BotFlowGraph[] => [mainFlow(), inviteFlow(), answerFlow(), rosterInviteFlow()];
 
 /** Дефолтный граф по ключу. Незнакомый ключ — не дефолт, а новый флоу оператора (`blankFlow`). */
 export const defaultFlow = (key: string = FLOW_KEY): BotFlowGraph | null =>

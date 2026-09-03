@@ -7,30 +7,37 @@ import { Alert } from "@/components/pouf/feedback";
 import { DateField } from "@/components/pouf/date-field";
 import { FormInput, Label } from "@/components/pouf/Input";
 
-// Форма правки своей анкеты. Поля, которые игрок ведёт сам, пишутся сразу; MMR — исключение:
-// он уходит ЗАЯВКОЙ в очередь модерации (решение 04.09.2026). Перед новым турниром люди приходят
-// именно за ним, а верить числу на слово лига не может — поэтому поле есть, но пишет его оператор.
+// Форма правки своей анкеты.
+//
+// Полей два сорта, и правило одно на оба входа — сайт и бот (решение 04.09.2026):
+//   · чем человек ПРЕДСТАВЛЕН лиге (ник, город, ссылка на профиль, MMR) — уходит заявкой
+//     в очередь модерации, ту же, куда их шлёт бот (`src/lib/profile-edit.ts`);
+//   · что касается только его самого (имя, страна, дата рождения, телеграм) — пишется сразу.
+// До этого сайт писал напрямую всё, а бот те же поля гнал через оператора: «ник проверяют глазами»
+// было правдой ровно для тех, кто пришёл из телеграма.
+//
 // Роль в составе, TP, номер и фото сюда по-прежнему не входят: это решения лиги, а не анкета.
-// Ник — с оговоркой про лимит «раз в сезон» (проверку делает server-action).
 
 export type ProfileValues = {
   nickname: string;
   realName: string;
   city: string;
   country: string;
-  birthday: string; // yyyy-mm-dd для <input type=date>
+  birthday: string; // yyyy-mm-dd
   telegram: string;
   profileUrl: string;
   mmr: string;
 };
 
-/** Чем кончилась последняя заявка на MMR: ждёт решения или вернули с причиной. */
-export type MmrReview =
+/** Чем кончилась последняя заявка по полю: ждёт решения или вернули с причиной. */
+export type FieldReview =
   | { state: "pending"; value: string }
-  | { state: "rejected"; value: string; reason: string }
-  | null;
+  | { state: "rejected"; value: string; reason: string };
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+/** Ключи — поля этой формы, идущие через очередь. */
+export type Reviews = Partial<Record<"nickname" | "city" | "profileUrl" | "mmr", FieldReview>>;
+
+function Field({ label, hint, children }: { label: string; hint?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
@@ -40,25 +47,61 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
-export function ProfileForm({ values, mmrReview }: { values: ProfileValues; mmrReview: MmrReview }) {
+/**
+ * Поле, которое проверяет оператор. Пока заявка в работе, поле показывает присланное и заблокировано:
+ * вторую заявку на то же поле очередь всё равно не примет (`submitProfileEdit`), и сказать об этом
+ * до отправки честнее, чем отбить после.
+ */
+function QueuedField({
+  label,
+  name,
+  value,
+  review,
+  hint,
+}: {
+  label: string;
+  name: string;
+  value: string;
+  review?: FieldReview;
+  hint?: string;
+}) {
+  const waiting = review?.state === "pending" ? review : null;
+  return (
+    <div className="space-y-2">
+      <Field
+        label={label}
+        hint={waiting ? `Ждёт решения организатора: «${waiting.value}».` : hint}
+      >
+        <FormInput name={name} defaultValue={waiting ? waiting.value : value} disabled={!!waiting} />
+      </Field>
+      {review?.state === "rejected" && (
+        <Alert tone="err" block>
+          «{review.value}» организатор вернул{review.reason ? `: ${review.reason}` : ""}. Поправьте и пришлите снова.
+        </Alert>
+      )}
+    </div>
+  );
+}
+
+export function ProfileForm({ values, reviews }: { values: ProfileValues; reviews: Reviews }) {
   const [state, action, pending] = useActionState<SaveState, FormData>(saveProfile, null);
-  // Заявка в работе — поле только показывает присланное: вторую на то же поле очередь не примет.
-  const waiting = mmrReview?.state === "pending" ? mmrReview : null;
 
   return (
     <form action={action} className="space-y-5 font-pouf">
-      <Field label="Ник в лиге" hint="Отображаемое имя. Менять можно раз в сезон.">
-        <FormInput name="nickname" defaultValue={values.nickname} required />
-      </Field>
+      <QueuedField
+        label="Ник в лиге"
+        name="nickname"
+        value={values.nickname}
+        review={reviews.nickname}
+        hint="Отображаемое имя. Менять можно раз в сезон, и смену подтверждает организатор."
+      />
 
       <Field label="Имя">
         <FormInput name="realName" defaultValue={values.realName} placeholder="Как вас зовут" />
       </Field>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4">
-        <Field label="Город">
-          <FormInput name="city" defaultValue={values.city} />
-        </Field>
+      <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
+        <QueuedField label="Город" name="city" value={values.city} review={reviews.city} />
         <Field label="Страна">
           <FormInput name="country" defaultValue={values.country} />
         </Field>
@@ -72,49 +115,43 @@ export function ProfileForm({ values, mmrReview }: { values: ProfileValues; mmrR
         <FormInput name="telegram" defaultValue={values.telegram} placeholder="@nickname" />
       </Field>
 
-      <Field
+      <QueuedField
         label="Ссылка на профиль"
-        hint="Dotabuff, Stratz или Steam — любая. Из неё определяем account_id, по нему вас находят в матчах лиги, а адреса остальных площадок достраиваются сами."
-      >
-        <FormInput name="profileUrl" defaultValue={values.profileUrl} placeholder="https://www.dotabuff.com/players/…" />
-      </Field>
+        name="profileUrl"
+        value={values.profileUrl}
+        review={reviews.profileUrl}
+        hint="Dotabuff, Stratz или Steam — любая. Из неё определяем account_id, по нему вас находят в матчах лиги."
+      />
 
-      <Field
+      <QueuedField
         label="MMR"
-        hint={
-          waiting ? undefined : "Новое значение уходит организатору на проверку — в профиле оно появится после его решения."
-        }
-      >
-        <FormInput
-          name="mmr"
-          inputMode="numeric"
-          defaultValue={waiting ? waiting.value : values.mmr}
-          disabled={!!waiting}
-          placeholder="Например, 4200"
-        />
-      </Field>
-
-      {waiting && (
-        <Alert tone="info" block>
-          MMR {waiting.value} ждёт решения организатора. Пока он не решит, новую заявку прислать нельзя.
-        </Alert>
-      )}
-      {mmrReview?.state === "rejected" && (
-        <Alert tone="err" block>
-          MMR {mmrReview.value} организатор вернул{mmrReview.reason ? `: ${mmrReview.reason}` : ""}. Поправьте и пришлите снова.
-        </Alert>
-      )}
+        name="mmr"
+        value={values.mmr}
+        review={reviews.mmr}
+        hint="Со слов игрока — новое значение проверяет организатор."
+      />
 
       <Alert tone="info" block>
-        Роль в составе, TP, номер и фото ведёт организатор — этих полей здесь нет.
+        Ник, город, ссылку и MMR подтверждает организатор — они появятся в профиле после его решения.
+        Роль в составе, TP, номер и фото ведёт он же, этих полей здесь нет.
       </Alert>
 
       <Button type="submit" disabled={pending} block>
         {pending ? "Сохраняю…" : "Сохранить анкету"}
       </Button>
 
-      {state?.error && <Alert tone="err" block>{state.error}</Alert>}
-      {state?.ok && <Alert tone="ok">{state.mmrSent ? "Анкета сохранена. MMR ушёл организатору на проверку." : "Анкета сохранена."}</Alert>}
+      {state?.error && (
+        <Alert tone="err" block>
+          {state.error}
+        </Alert>
+      )}
+      {state?.ok && (
+        <Alert tone="ok">
+          {state.sent?.length
+            ? `Анкета сохранена. На проверку ушло: ${state.sent.join(", ")}.`
+            : "Анкета сохранена."}
+        </Alert>
+      )}
     </form>
   );
 }

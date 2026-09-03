@@ -207,6 +207,18 @@ export const lastProfileEdit = (playerId: number, field: EditField) =>
 
 export type LastProfileEdit = Awaited<ReturnType<typeof lastProfileEdit>>;
 
+/** То же сразу по нескольким полям — кабинет показывает состояние каждого поля своей формы. */
+export async function lastProfileEdits(playerId: number, fields: EditField[]) {
+  const rows = await prisma.profileEditRequest.findMany({
+    where: { playerId, field: { in: fields } },
+    orderBy: { id: "asc" },
+  });
+  // Идём по возрастанию id и перезаписываем: в карте остаётся последняя правка каждого поля.
+  const last = new Map<EditField, (typeof rows)[number]>();
+  for (const r of rows) if (isEditField(r.field)) last.set(r.field, r);
+  return last;
+}
+
 /** Сколько правок ждёт решения — для значка на пункте «Модерация» в колонке. */
 export const pendingProfileEditCount = () => prisma.profileEditRequest.count({ where: { status: "pending" } });
 

@@ -50,18 +50,19 @@ export default async function TeamRegistrationsPage({ params }: { params: Promis
   if (!tournament) notFound();
 
   const applications = await listApplications(tournament.id);
+  // Ответы позванных — одним запросом на всю очередь, а не по строке на карточку. Считаем их до
+  // замечаний: отказ игрока — одно из замечаний (`applicationProblems`).
+  const members = await membersByApplication(applications.map((a) => a.id));
   // Замечания считаем только для тех, по кому ещё нужно решение: у одобренных они уже неактуальны,
   // а лишний десяток запросов к базе на каждую строку архива ни к чему.
   const problems = await Promise.all(
     applications.map(async (a) => {
       if (a.status !== "pending") return [] as Problem[];
       const draft = parseDraft(a.payload);
-      return draft ? applicationProblems(draft, a.divisionId) : [];
+      return draft ? applicationProblems(draft, a.divisionId, members.get(a.id) ?? []) : [];
     }),
   );
   const waiting = applications.filter((a) => a.status === "pending").length;
-  // Ответы позванных — одним запросом на всю очередь, а не по строке на карточку.
-  const members = await membersByApplication(applications.map((a) => a.id));
 
   return (
     <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>

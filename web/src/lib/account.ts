@@ -6,16 +6,13 @@ import "server-only";
 import { prisma } from "./prisma";
 import { currentAccountId, setSessionCookie } from "./player-session";
 import type { Role } from "./player-auth";
-import { slugify, playerAccountId, normalizeTelegram, parseBirthday } from "./profiles";
+import { slugify, normalizeTelegram, parseBirthday } from "./profiles";
 import { hashPassword, verifyPassword, passwordProblem } from "./password";
 import { formatPermissions, hasPermission, permissionsOf, type PermissionKey } from "./permissions";
-import { nicknameCooldownLeft } from "./profile-edit";
 import {
   normalizeApplication,
   formatApplication,
   parseApplication,
-  anyProfileLinkProblem,
-  profileLinkKind,
   applicationLinkColumns,
   applicationAccountId,
   type Application,
@@ -143,49 +140,26 @@ export async function createProfileFor(accountId: number, nickname: string): Pro
 // сюда `server-only`, а тот модуль зовёт ещё и бот (обычный node). Двух правил «раз в сезон» быть
 // не должно — иначе бот и сайт однажды разойдутся в том, когда можно снова.
 
+/** Поля анкеты, которые игрок пишет В ПРОФИЛЬ сразу. Ник, город, ссылка и MMR сюда не входят:
+ *  они идут заявкой в очередь модерации — то же правило, что и у бота (`profile-edit.ts`). */
 export type OwnProfileInput = {
-  nickname?: string;
   realName?: string;
-  city?: string;
   country?: string;
   birthday?: string;
   telegram?: string;
-  /** Одна ссылка на профиль — Dotabuff, Stratz или Steam; какая площадка, видно по хосту. */
-  profileUrl?: string;
 };
 
 /** Записать правки анкеты от имени вошедшего игрока. Возвращает ошибку строкой или null при успехе. */
 export async function updateOwnProfile(accountId: number, input: OwnProfileInput): Promise<string | null> {
   const account = await prisma.userAccount.findUnique({ where: { id: accountId }, select: { playerId: true } });
   if (!account?.playerId) return "Профиль не привязан";
-  const player = await prisma.player.findUnique({
-    where: { id: account.playerId },
-    select: { nickname: true, nicknameChangedAt: true },
-  });
-  if (!player) return "Профиль не найден";
-
   const data: Record<string, unknown> = {};
-
-  // Ник — единственное поле с лимитом: slug не меняем, но саму смену ограничиваем «раз в сезон».
-  if (input.nickname !== undefined) {
-    const nick = input.nickname.trim();
-    if (!nick) return "Ник не может быть пустым";
-    if (nick !== player.nickname) {
-      const daysLeft = nicknameCooldownLeft(player.nicknameChangedAt);
-      if (daysLeft > 0) {
-        return `Ник в этом сезоне уже менялся. Сменить снова можно через ${daysLeft} дн. или попросить оператора.`;
-      }
-      data.nickname = nick;
-      data.nicknameChangedAt = new Date();
-    }
-  }
 
   // Простые текстовые поля: пусто → null (дыр в анкете быть не должно).
   const setText = (key: keyof OwnProfileInput, column: string) => {
     if (input[key] !== undefined) data[column] = (input[key] as string).trim() || null;
   };
   setText("realName", "realName");
-  setText("city", "city");
   setText("country", "country");
 
   if (input.telegram !== undefined) {
@@ -206,28 +180,6 @@ export async function updateOwnProfile(accountId: number, input: OwnProfileInput
       if (!date) return `Дата «${raw}» не разобрана — ждём 21.04.1998`;
       data.birthday = date;
     }
-  }
-
-  // Ссылка на профиль — одна: из неё выводится account_id, а из него лига достраивает адреса
-  // остальных площадок (`playerLinks`). Кладём её в колонку своей площадки, две другие чистим —
-  // иначе рядом остался бы адрес, которого человек уже не даёт. Если account_id не вывелся
-  // (например, дали именной адрес Steam), прежний НЕ трогаем: его мог поставить оператор или
-  // resolve-vanity, и терять привязку к статистике из-за правки анкеты нельзя.
-  if (input.profileUrl !== undefined) {
-    const raw = input.profileUrl.trim();
-    const problem = anyProfileLinkProblem(raw);
-    if (problem) return problem;
-    const kind = profileLinkKind(raw);
-    const url = raw.replace(/\/+$/, "") || null;
-    data.dotabuffUrl = kind === "dotabuff" ? url : null;
-    data.stratzUrl = kind === "stratz" ? url : null;
-    data.steamUrl = kind === "steam" ? url : null;
-    const derived = playerAccountId({
-      dotabuffUrl: data.dotabuffUrl as string | null,
-      stratzUrl: data.stratzUrl as string | null,
-      steamUrl: data.steamUrl as string | null,
-    });
-    if (derived) data.accountId = derived;
   }
 
   if (Object.keys(data).length > 0) {

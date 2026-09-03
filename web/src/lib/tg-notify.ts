@@ -14,6 +14,7 @@ import { botConfigured, sendTo } from "./telegram";
 import { parseDraft } from "./team-application";
 import { normalizeTelegram } from "./profiles";
 import { MENU } from "./tg-menu";
+import { INVITE_NO, INVITE_YES } from "./tg-invites";
 import { REGISTER_BUTTON } from "./tg-register";
 import { EDIT_BUTTON } from "./tg-profile";
 import { fieldLabel } from "./profile-edit";
@@ -159,7 +160,11 @@ export async function notifyRosterInvites(
         await sendTo(
           chatId,
           `Вас заявили в состав <b>${teamName}</b> на турнир <b>${row.application.tournament.name}</b>.\n\n` +
-            `Подтвердить или отказаться — в кабинете на сайте, раздел «Приглашения».`,
+            `Ответить можно прямо здесь кнопкой — или в кабинете на сайте, раздел «Приглашения».`,
+          // Клавиатура и есть вход в сценарий ответа: подписи объявлены точкой входа флоу
+          // `roster-invite` (`bot-flow/default-flow.ts`), поэтому кнопку жмут из любого места
+          // разговора и хоть через неделю.
+          [[INVITE_YES], [INVITE_NO]],
         ).catch((e) => console.error(`Не доставлено в чат ${chatId}:`, e));
       }
     } catch (e) {

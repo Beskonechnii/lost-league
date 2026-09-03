@@ -14,7 +14,7 @@ import { prisma } from "./prisma";
 import { slugify, playerAccountId } from "./profiles";
 import { isCoreRole, spotConflict } from "./roster-spots";
 import { registrationOpen, setTeamDivision } from "./tournaments";
-import { syncApplicationMembers } from "./team-invites";
+import { syncApplicationMembers, type InviteRow } from "./team-invites";
 import type { TeamDraft, PlayerDraft } from "./roster-import";
 
 export type { TeamDraft, PlayerDraft };
@@ -199,8 +199,26 @@ export type Problem = { level: "block" | "warn" | "info"; text: string };
  * Что не так с заявкой. `block` не даёт апрувить (данные развалят ростер), `warn` — на усмотрение
  * оператора, `info` — просто «вот что произойдёт при записи».
  */
-export async function applicationProblems(team: TeamDraft, divisionId: number | null): Promise<Problem[]> {
+export async function applicationProblems(
+  team: TeamDraft,
+  divisionId: number | null,
+  /** Ответы позванных, если они уже собраны. Их отсутствие — не «всё хорошо», а «нечего сказать». */
+  invites: InviteRow[] = [],
+): Promise<Problem[]> {
   const problems: Problem[] = [];
+
+  // Отказ игрока апрув не блокирует (ступени параллельные, DECISIONS 04.09.2026), но и молчать
+  // о нём нельзя: счётчик «подтвердили N из M» оператор мог не прочитать, а состав он заводит
+  // насовсем. Поэтому отказ — жёлтое замечание в том же списке, что и остальные претензии.
+  const declined = invites.filter((m) => m.status === "declined").map((m) => m.nickname);
+  if (declined.length)
+    problems.push({
+      level: "warn",
+      text: `Отказались от участия: ${declined.join(", ")} — состав заведётся вместе с ними`,
+    });
+  const silent = invites.filter((m) => m.status === "invited").length;
+  if (silent)
+    problems.push({ level: "info", text: `Ещё не ответили на приглашение: ${silent} из ${invites.length}` });
 
   const existingTeam = await prisma.team.findUnique({ where: { slug: team.slug } });
   if (existingTeam)

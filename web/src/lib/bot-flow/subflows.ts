@@ -29,6 +29,14 @@ import {
   startMeeting,
   type MrState,
 } from "../tg-meetings";
+import {
+  answerInvite,
+  askInvite,
+  emptyInvite,
+  handleInvite,
+  isInvStep,
+  type InvState,
+} from "../tg-invites";
 import { identify } from "../tg-menu";
 import { askEdit, emptyEdit, handleProfileEdit, isPeStep, startProfileEdit, type PeState } from "../tg-profile";
 import { askReg, emptyRegistration, handleRegister, isRegStep, startRegistration, type RegState } from "../tg-register";
@@ -181,6 +189,25 @@ export const FLOW_SUBFLOWS: Record<string, Subflow> = {
     },
     ask: async ({ step, state }) =>
       isFormStep(step) ? askForm(step, (state as FormState | null) ?? { quizId: null, answers: [] }) : null,
+  },
+
+  ответ_на_приглашение: {
+    label: "Ответ на приглашение в состав",
+    hint:
+      "«Иду» и «Не иду» из уведомления о том, что капитан вписал человека в заявку. Приходят вне " +
+      "разговора — клавиатуру поставило само уведомление, поэтому подписи объявлены точкой входа " +
+      "флоу. Отменено — открытых приглашений нет или человек заведён не через бота.",
+    // Одно приглашение закрывается сразу (тогда `start` вернёт `done`, то есть «не взялся» — работа
+    // уже сделана словами), на нескольких модуль переспрашивает, за какую команду ответ.
+    start: async ({ msg }) => enter(await answerInvite(msg.text, { tgId: msg.tgId ?? null })),
+    step: async ({ msg, park }) => {
+      if (!isInvStep(park.step)) return lostStep();
+      const state = (park.state as InvState | null) ?? emptyInvite();
+      const done = await handleInvite(park.step, state, msg.text, { tgId: msg.tgId ?? null });
+      return resume(done, park.step);
+    },
+    ask: async ({ step, state }) =>
+      isInvStep(step) ? askInvite(step, (state as InvState | null) ?? emptyInvite()) : null,
   },
 
   ответ_сопернику: {
