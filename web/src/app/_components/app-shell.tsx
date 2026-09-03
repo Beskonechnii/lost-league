@@ -41,9 +41,18 @@ const ROLE_META: Record<Role, { label: string; dot: string }> = {
   player: { label: "Игрок", dot: "#AEAAA0" },
 };
 
-/** Две буквы на аватар: первые буквы двух слов, иначе первые две буквы одного. */
+/**
+ * Две буквы на аватар: первые буквы двух слов, иначе первые две буквы одного.
+ *
+ * Слова чистим от небуквенного: у «Админ (тест)» второе слово начинается со скобки, и аватар
+ * показывал «А(». Скобки, кавычки и дефисы в имени встречаются постоянно — это не редкий случай.
+ */
 function initials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
+  const words = name
+    .trim()
+    .split(/\s+/)
+    .map((w) => w.replace(/^[^\p{L}\p{N}]+/u, ""))
+    .filter(Boolean);
   if (words.length >= 2) return (words[0][0] + words[1][0]).toLocaleUpperCase("ru");
   return (words[0] ?? "?").slice(0, 2).toLocaleUpperCase("ru");
 }

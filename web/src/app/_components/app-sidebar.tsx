@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "@/components/pouf/Icon";
 import { Sheet } from "@/components/pouf/sheet";
 import { logout } from "@/app/(public)/me/actions";
@@ -250,10 +251,45 @@ function Rail({ sections, footer, account, onToggle }: SidebarProps & { onToggle
   );
 }
 
+/*
+ * Подпись пункта в рельсе. Всплывающая — единственный способ прочитать пункт, когда подписи нет.
+ *
+ * Место ей считается мышью, а не вёрсткой, и вот почему обе простые дороги закрыты. `absolute`
+ * рядом с пунктом срезается прокруткой колонки: у неё `overflow-y: auto`, а он срезает и по
+ * горизонтали. `fixed` без координат из-под обрезки уходит, но встаёт не рядом с пунктом, а
+ * ровно на нём: у выехавшего из потока ребёнка ФЛЕКС-контейнера исходное место — по центру
+ * контейнера, так что подпись ложилась поверх значка (это и было видно на экране).
+ *
+ * Поэтому — `fixed` с координатами от самого пункта, снятыми в момент наведения: колонка к этому
+ * времени уже прокручена, и подпись встаёт там, где пункт сейчас, а не там, где он был при первой
+ * отрисовке.
+ *
+ * И порталом на `body`, а не рядом с пунктом: колонка `sticky`, а `sticky` заводит свой контекст
+ * наложения — подпись из него не выберется никаким `z-index` и уйдёт под содержимое страницы
+ * (её и накрывали карточки канваса). За пределами колонки хватает `z-45`: липкие полосы разделов
+ * идут на 40, а лист и диалог — на 50 и 60, и перекрывать их подпись не должна.
+ */
 function RailButton({ item, active }: { item: NavItem; active: boolean }) {
+  const ref = useRef<HTMLAnchorElement>(null);
+  const [at, setAt] = useState<{ top: number; left: number } | null>(null);
+
+  const show = () => {
+    const box = ref.current?.getBoundingClientRect();
+    if (box) setAt({ top: box.top + box.height / 2, left: box.right + 12 });
+  };
+
   return (
-    <span className="group relative flex items-center justify-center">
+    <span
+      className="relative flex items-center justify-center"
+      onPointerEnter={show}
+      onPointerLeave={() => setAt(null)}
+      // С клавиатуры подпись нужна ровно так же: рельс проходят табом, и «значок без слова» с
+      // клавиатуры читается ещё хуже, чем мышью.
+      onFocus={show}
+      onBlur={() => setAt(null)}
+    >
       <Link
+        ref={ref}
         href={item.href}
         aria-current={active ? "page" : undefined}
         aria-label={item.label}
@@ -271,18 +307,21 @@ function RailButton({ item, active }: { item: NavItem; active: boolean }) {
           {item.badge}
         </span>
       )}
-      {/* Подпись всплывает вправо — единственный способ прочитать пункт в рельсе.
-          `fixed` без смещений, а не `absolute`: колонка прокручивается, а прокручиваемый
-          предок срезал бы всё, что вылезает за его край. Позиция у такого блока остаётся
-          статической — там же, где была бы в потоке, — но обрезка к нему уже не применяется. */}
-      <span className="pointer-events-none fixed z-30 ml-[60px] mt-[1px] hidden items-center gap-2 whitespace-nowrap rounded-[13px] bg-[var(--inverse-surface)] px-3.5 py-2.5 text-[13px] font-extrabold text-[var(--inverse-ink)] shadow-lg group-hover:flex">
-        {item.label}
-        {!!item.badge && (
-          <b className="rounded-pill bg-[var(--down)] px-2 py-px text-[11px] font-black text-[var(--color-err-ink)]">
-            {item.badge}
-          </b>
+      {at &&
+        createPortal(
+          <span
+            style={{ top: at.top, left: at.left, transform: "translateY(-50%)" }}
+            className="pointer-events-none fixed z-[45] flex items-center gap-2 whitespace-nowrap rounded-[13px] bg-[var(--inverse-surface)] px-3.5 py-2.5 text-[13px] font-extrabold text-[var(--inverse-ink)] shadow-lg"
+          >
+            {item.label}
+            {!!item.badge && (
+              <b className="rounded-pill bg-[var(--down)] px-2 py-px text-[11px] font-black text-[var(--color-err-ink)]">
+                {item.badge}
+              </b>
+            )}
+          </span>,
+          document.body,
         )}
-      </span>
     </span>
   );
 }
