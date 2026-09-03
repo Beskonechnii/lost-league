@@ -8,7 +8,7 @@ import { brokenGraph } from "@/lib/bot-flow/editor";
 import { flowNeighbours, flowRegistries } from "@/lib/bot-flow/registries";
 import { makeSet, withFlow } from "@/lib/bot-flow/router";
 import { simulate, type SimState, type SimStep } from "@/lib/bot-flow/simulate";
-import { copyToDraft, liveFlows, publishVersion, saveDraft } from "@/lib/bot-flow/store";
+import { copyToDraft, liveFlow, liveFlows, publishVersion, saveDraft } from "@/lib/bot-flow/store";
 import { validateFlow, type FlowIssue } from "@/lib/bot-flow/validate";
 import { parseGraph, type BotFlowGraph } from "@/lib/bot-flow/types";
 
@@ -35,6 +35,29 @@ const PATH = "/admin/bot/flow";
  * старое, пока его не перезагрузят руками.
  */
 export type FlowResult = { ok: string; graph?: string } | { error: string };
+
+
+/**
+ * Отличается ли новый документ от того, что уже в эфире, чем-нибудь кроме расположения нод.
+ *
+ * Нужно ровно для одной фразы в ответе на публикацию. Случай «перетащил пару нод, нажал „В эфир“ и
+ * пошёл смотреть, что изменилось в боте» стоил живой отладки: в эфир ушла версия, поведение у
+ * которой прежнее, а редактор об этом ничего не сказал. Координаты выкидываем именно потому, что
+ * перетаскивание — не правка поведения.
+ */
+function sameBehaviour(next: BotFlowGraph, live: BotFlowGraph): boolean {
+  const strip = (g: BotFlowGraph) =>
+    JSON.stringify({
+      ...g,
+      nodes: g.nodes.map((n) => {
+        const { x, y, ...rest } = n as typeof n & { x?: number; y?: number };
+        void x;
+        void y;
+        return rest;
+      }),
+    });
+  return strip(next) === strip(live);
+}
 
 /** Разбор и минимальная проверка присланного документа. */
 function readGraph(json: string): { graph: BotFlowGraph } | { error: string } {
@@ -89,10 +112,16 @@ export async function publishFlowDraft(json: string, note: string): Promise<Flow
       revalidatePath(PATH);
       return { error: stop };
     }
+    // Что было в эфире ДО публикации: сравнить надо с ним, поэтому читаем заранее.
+    const before = await liveFlow(read.graph.key);
     const version = await saveDraft(read.graph, note.trim(), read.graph.key);
     await publishVersion(version.id, read.graph.key);
     revalidatePath(PATH);
-    return { ok: `Версия ${version.version} в эфире` };
+    return {
+      ok: sameBehaviour(read.graph, before.graph)
+        ? `Версия ${version.version} в эфире. В боте ничего не изменится: от прежней версии этот граф отличается разве что расположением нод.`
+        : `Версия ${version.version} в эфире`,
+    };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Не удалось опубликовать" };
   }
