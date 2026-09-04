@@ -2,9 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { currentAccount } from "@/lib/account";
-import { applicationProblems, submitTeamApplication, type Problem } from "@/lib/team-application";
+import {
+  applicationProblems,
+  describeApplication,
+  submitTeamApplication,
+  type Problem,
+} from "@/lib/team-application";
 import { notifyRosterInvites } from "@/lib/tg-notify";
-import { tellPlayer } from "@/lib/system-chat";
+import { tellAccount, tellPlayer } from "@/lib/system-chat";
 import { splitTeamName, type PlayerDraft, type TeamDraft } from "@/lib/roster-import";
 import { prisma } from "@/lib/prisma";
 import { isRole } from "@/lib/roles";
@@ -91,7 +96,7 @@ export async function submitApplication(_prev: ApplyState, form: FormData): Prom
     return { problems, error: "Заявку нельзя отправить, пока есть красные замечания" };
 
   try {
-    const { invited } = await submitTeamApplication(
+    const { application, invited } = await submitTeamApplication(
       me.id,
       Number(form.get("tournamentId")),
       input.divisionId,
@@ -100,16 +105,43 @@ export async function submitApplication(_prev: ApplyState, form: FormData): Prom
     // Уведомление — после записи и своим шагом: телеграм может лежать, но заявка уже принята,
     // и ронять из-за него отправку нельзя (тот же уговор, что у решений оператора в tg-notify).
     await notifyRosterInvites(invited, draft.name);
-    // И то же самое в чат продукта — с кнопками прямо в сообщении: у половины лиги бота нет,
-    // а «Сообщения» открыты у каждого игрока (`system-chat.ts`).
+
+    // И то же самое в «Сообщения» — с кнопками прямо в ленте: у половины лиги бота нет, а чат
+    // открыт у каждого игрока (`system-chat.ts`). Подробности одни на всех адресатов
+    // (`describeApplication`): кто заявил, в какую команду, на какой турнир и с кем.
+    const [tournament, division, submitter] = await Promise.all([
+      prisma.tournament.findUnique({ where: { id: application.tournamentId }, select: { name: true } }),
+      application.divisionId
+        ? prisma.division.findUnique({ where: { id: application.divisionId }, select: { name: true } })
+        : Promise.resolve(null),
+      prisma.userAccount.findUnique({
+        where: { id: me.id },
+        select: { name: true, player: { select: { nickname: true } } },
+      }),
+    ]);
+    const details = describeApplication(draft, {
+      tournament: tournament?.name ?? "турнир лиги",
+      division: division?.name ?? null,
+      submitter: submitter?.player?.nickname ?? submitter?.name ?? null,
+    });
+
     for (const row of invited) {
       if (!row.playerId) continue;
-      await tellPlayer(
-        row.playerId,
-        `Капитан заявил вас в состав «${draft.name}» на турнир «${row.application.tournament.name}».`,
-        { kind: "roster-invite", payload: { memberId: row.id } },
-      );
+      await tellPlayer(row.playerId, `Вас заявили в состав команды.\n\n${details}`, {
+        kind: "roster-invite",
+        payload: { memberId: row.id },
+      });
     }
+
+    // Копия подавшему: он только что отправил состав, и подтверждение с теми же подробностями —
+    // единственное место, где он увидит заявку целиком, не открывая её заново.
+    await tellAccount(
+      me.id,
+      `Заявка отправлена организаторам.\n\n${details}\n\n` +
+        (invited.length > 0
+          ? `Позвали в состав: ${invited.length}. Ответы придут сюда же.`
+          : "Все, кого вы вписали, уже были в этой заявке — заново их не звал."),
+    );
     revalidatePath(`/tournaments/${String(form.get("tournamentSlug") ?? "")}/apply`);
     return {
       problems,

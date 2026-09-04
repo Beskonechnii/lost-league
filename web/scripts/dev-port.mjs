@@ -10,19 +10,37 @@ const TRIES = 10;
 // Next 16 не поднимает второй dev-сервер в той же папке — даже на другом порту. Поэтому сперва
 // смотрим, не запущен ли наш же сервер в соседнем окне: если да, печатаем его адрес и выходим
 // без ошибки, вместо невнятного «Another next dev server is already running».
+//
+// Ищем ПО ПАПКЕ, а не по порту: порт нам могли задать любой (PORT из окружения), а живой сервер
+// висит на своём — и перебор диапазона его просто не находил.
 function running() {
-  for (let p = FIRST; p < FIRST + TRIES; p++) {
-    let pids;
+  let pids = [];
+  try {
+    pids = execFileSync("pgrep", ["-f", "next(-server)?( |$)|next dev"], { encoding: "utf8" })
+      .split(/\s+/)
+      .filter(Boolean)
+      .filter((pid) => Number(pid) !== process.pid);
+  } catch {
+    return null; // pgrep ничего не нашёл — значит, и сервера нет
+  }
+
+  for (const pid of pids) {
+    let cwd;
     try {
-      pids = execFileSync("lsof", ["-nP", "-tiTCP:" + p, "-sTCP:LISTEN"], { encoding: "utf8" }).split(/\s+/).filter(Boolean);
-    } catch { continue; }
-    for (const pid of pids) {
-      try {
-        const out = execFileSync("lsof", ["-a", "-p", pid, "-d", "cwd", "-Fn"], { encoding: "utf8" });
-        const cwd = (out.match(/^n(.*)$/m) ?? [])[1];
-        if (cwd === process.cwd()) return { port: p, pid };
-      } catch { /* процесс мог уйти — не беда */ }
+      const out = execFileSync("lsof", ["-a", "-p", pid, "-d", "cwd", "-Fn"], { encoding: "utf8" });
+      cwd = (out.match(/^n(.*)$/m) ?? [])[1];
+    } catch {
+      continue; // процесс мог уйти, пока мы спрашивали
     }
+    if (cwd !== process.cwd()) continue;
+
+    // Порт живого спрашиваем у него самого: он мог подняться на чём угодно.
+    let port = null;
+    try {
+      const out = execFileSync("lsof", ["-nP", "-a", "-p", pid, "-iTCP", "-sTCP:LISTEN"], { encoding: "utf8" });
+      port = (out.match(/:(\d+)\s+\(LISTEN\)/) ?? [])[1] ?? null;
+    } catch { /* слушает не он сам, а его ребёнок — адрес всё равно скажем без порта */ }
+    if (port) return { port, pid };
   }
   return null;
 }

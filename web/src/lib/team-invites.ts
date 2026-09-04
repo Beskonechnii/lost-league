@@ -134,12 +134,6 @@ export const openInvites = (playerId: number) =>
 
 export type OpenInvite = Awaited<ReturnType<typeof openInvites>>[number];
 
-/** Сколько приглашений ждут ответа — значок в колонке. */
-export const openInviteCount = (playerId: number) =>
-  prisma.teamApplicationMember.count({
-    where: { playerId, status: "invited", application: { status: { in: ["pending", "approved"] } } },
-  });
-
 /**
  * Ответ игрока. Идентичность проверяем здесь: `playerId` приходит из сессии, а id строки — из
  * формы, и без сверки чужим приглашением можно было бы ответить за другого.

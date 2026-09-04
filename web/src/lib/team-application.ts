@@ -12,6 +12,7 @@
 
 import { prisma } from "./prisma";
 import { slugify, playerAccountId } from "./profiles";
+import { roleLabel } from "./roles";
 import { isCoreRole, spotConflict } from "./roster-spots";
 import { registrationOpen, setTeamDivision } from "./tournaments";
 import { syncApplicationMembers, type InviteRow } from "./team-invites";
@@ -192,6 +193,37 @@ export const myApplications = (accountId: number, tournamentId?: number) =>
   });
 
 // ── проверки до записи ───────────────────────────────────────────────────────
+
+/**
+ * Заявка словами — ровно тот текст, которым лига рассказывает о ней в «Сообщениях»
+ * (`system-chat.ts`). Один на всех адресатов: позванный игрок и подавший капитан должны видеть
+ * одно и то же, иначе «а мне пришло другое» становится отдельным разговором.
+ *
+ * Состав перечисляем целиком: человека зовут играть с конкретными людьми, и «вас заявили в команду»
+ * без списка не отвечает на первый же вопрос — с кем.
+ */
+export function describeApplication(
+  team: TeamDraft,
+  ctx: { tournament: string; division?: string | null; submitter?: string | null },
+): string {
+  const head = [
+    // Тег показываем, только если он что-то добавляет: у половины команд он равен названию.
+    `Команда: ${team.name}${team.tag && team.tag.toLowerCase() !== team.name.toLowerCase() ? ` (${team.tag})` : ""}`,
+    `Турнир: ${ctx.tournament}${ctx.division ? ` · ${ctx.division}` : ""}`,
+    ctx.submitter ? `Заявил: ${ctx.submitter}` : null,
+  ].filter(Boolean);
+
+  const roster = team.players.map((p) => {
+    const marks = [
+      roleLabel(p.role) ?? null,
+      p.isCaptain ? "капитан" : null,
+      p.mmr ? `${p.mmr} MMR` : null,
+    ].filter(Boolean);
+    return `• ${p.nickname}${marks.length ? ` — ${marks.join(", ")}` : ""}`;
+  });
+
+  return [...head, "", `Состав (${team.players.length}):`, ...roster].join("\n");
+}
 
 export type Problem = { level: "block" | "warn" | "info"; text: string };
 
