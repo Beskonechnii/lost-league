@@ -11,7 +11,7 @@ import {
   loginWithPassword,
   establishSession,
   submitApplication,
-  submitClaim,
+  submitClaimWithApplication,
 } from "@/lib/account";
 import type { ApplicationInput } from "@/lib/application";
 
@@ -39,7 +39,7 @@ export async function register(_state: AuthState, form: FormData): Promise<AuthS
   if (password !== confirm) return { error: "Пароли не совпадают" };
   const res = await registerWithPassword(email, password, name);
   if (!res.ok) return { error: res.error };
-  await establishSession(res.accountId);
+  await establishSession(res.accountId, form.get("remember") != null);
   redirect("/me");
 }
 
@@ -49,7 +49,7 @@ export async function login(_state: AuthState, form: FormData): Promise<AuthStat
   const password = String(form.get("password") ?? "");
   const res = await loginWithPassword(email, password);
   if (!res.ok) return { error: res.error };
-  await establishSession(res.accountId);
+  await establishSession(res.accountId, form.get("remember") != null);
   redirect("/me");
 }
 
@@ -64,18 +64,7 @@ export async function sendApplication(_state: ApplyState, form: FormData): Promi
   const id = await currentAccountId();
   if (id == null) return { error: "Сессия истекла — войдите снова" };
 
-  const text = (key: keyof ApplicationInput) => String(form.get(key) ?? "");
-  const input: ApplicationInput = {
-    nickname: text("nickname"),
-    realName: text("realName"),
-    birthday: text("birthday"),
-    city: text("city"),
-    country: text("country"),
-    profileUrl: text("profileUrl"),
-    telegram: text("telegram"),
-    position: text("position"),
-    mmr: text("mmr"),
-  };
+  const input: ApplicationInput = readApplicationInput(form);
 
   const error = await submitApplication(id, input, form.get("policy") != null);
   if (error) return { error, values: input };
@@ -83,15 +72,35 @@ export async function sendApplication(_state: ApplyState, form: FormData): Promi
   return null;
 }
 
-/** Отправка заявки на привязку к профилю из ростера — вторая ветка той же воронки. */
-export async function sendClaim(_state: ApplyState, form: FormData): Promise<ApplyState> {
+/** Считать анкету из FormData — общий разбор для «новый игрок» и «я уже участник лиги». */
+function readApplicationInput(form: FormData): ApplicationInput {
+  const text = (key: keyof ApplicationInput) => String(form.get(key) ?? "");
+  return {
+    nickname: text("nickname"),
+    realName: text("realName"),
+    realSurname: text("realSurname"),
+    birthday: text("birthday"),
+    city: text("city"),
+    country: text("country"),
+    profileUrl: text("profileUrl"),
+    telegram: text("telegram"),
+    phone: text("phone"),
+    position: text("position"),
+    mmr: text("mmr"),
+  };
+}
+
+/** «Я уже участник лиги»: тот же квиз, но найденный по нику игрок — привязка, а не новый профиль.
+ *  Заполненное в квизе дополняет его карточку (submitClaimWithApplication сам решает, что пусто). */
+export async function sendClaimWithApplication(_state: ApplyState, form: FormData): Promise<ApplyState> {
   const id = await currentAccountId();
   if (id == null) return { error: "Сессия истекла — войдите снова" };
   const playerId = Number(form.get("playerId"));
-  if (!Number.isFinite(playerId) || playerId <= 0) return { error: "Выберите себя из списка" };
+  if (!Number.isFinite(playerId) || playerId <= 0) return { error: "Выберите себя из списка ниже" };
 
-  const error = await submitClaim(id, playerId, form.get("policy") != null);
-  if (error) return { error };
+  const input = readApplicationInput(form);
+  const error = await submitClaimWithApplication(id, playerId, input, form.get("policy") != null);
+  if (error) return { error, values: input };
   revalidatePath("/me");
   return null;
 }

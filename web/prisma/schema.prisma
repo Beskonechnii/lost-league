@@ -187,6 +187,8 @@ model Player {
   nickname    String
   nicknameChangedAt DateTime? // когда игрок сам менял ник — для лимита «раз в сезон»; правка оператором не в счёт
   realName    String?
+  realSurname String? // фамилия отдельно от имени — анкета спрашивает их двумя полями
+  phone       String? // телефон для связи с оператором, со слов игрока
   accountId   String? // Dota/Steam32 account id (для OpenDota)
   mmr         Int? // из таблицы сезона; у команды не хранится — считается по составу
   /// Ранг (rank_tier OpenDota: десятки — медаль, единицы — звезда; 80 = Immortal). В отличие от
@@ -238,6 +240,7 @@ model UserAccount {
   /// по-прежнему один на адрес, а null'ов в sqlite уникальный индекс допускает сколько угодно.
   email     String?  @unique
   googleSub String?  @unique // id google-аккаунта («sub» из id_token); null у аккаунта только с паролем
+  steamId   String?  @unique // steamid64 из OpenID-входа Steam; null у аккаунта без привязки Steam
   // Хеш пароля (scrypt, формат `salt:hash` hex — см. src/lib/password.ts). null = входа по паролю нет,
   // только через Google. Сам пароль в БД не хранится нигде.
   passwordHash String?

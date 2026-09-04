@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { playerPath } from "@/lib/profiles";
 import { googleConfigured } from "@/lib/google-oauth";
+import { steamConfigured } from "@/lib/steam-oauth";
 import { currentAccount, linkablePlayers, effectiveRole, accountStatus, accountApplication } from "@/lib/account";
 import type { Role } from "@/lib/player-auth";
 import { buttonClasses } from "@/components/pouf/Button";
@@ -38,9 +39,10 @@ const dateTime = new Intl.DateTimeFormat("ru", {
 
 // Тексты сообщений из ?error, которыми google-callback уводит обратно (коды — там же).
 const ERRORS: Record<string, string> = {
-  off: "Вход через Google не настроен на этом сервере.",
+  off: "Этот способ входа не настроен на сервере.",
   state: "Сессия входа истекла или не совпала. Попробуйте войти ещё раз.",
   google: "Google не подтвердил вход. Попробуйте ещё раз.",
+  steam: "Steam не подтвердил вход. Попробуйте ещё раз.",
 };
 
 type Account = NonNullable<Awaited<ReturnType<typeof currentAccount>>>;
@@ -218,6 +220,11 @@ function SignedOut() {
         <SocialLink href="/login/tg" label="Войти по коду из Telegram">
           <TelegramIcon />
         </SocialLink>
+        {steamConfigured() && (
+          <SocialLink href="/api/auth/steam/start" label="Войти через Steam">
+            <SteamIcon />
+          </SocialLink>
+        )}
       </div>
     </div>
   );
@@ -300,6 +307,18 @@ function TelegramIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="#229ED9" aria-hidden="true">
       <path d="M21.9 4.34 3.2 11.3c-.9.35-.88 1.64.03 1.93l4.7 1.47 1.8 5.48c.24.72 1.12.9 1.63.35l2.55-2.68 4.66 3.44c.6.44 1.46.11 1.62-.62l3-14.35c.2-.95-.72-1.72-1.6-1.34zM9.7 15.05l-.28 3.9 2.03-2.83 5.6-5.9c.12-.13-.04-.32-.2-.22l-7.15 5.05z" />
+    </svg>
+  );
+}
+
+/** Фирменные шарики Steam — вход по привязанному Steam-аккаунту. */
+function SteamIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#171a21" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 15.2 8 16.9" />
+      <circle cx="9.4" cy="9.2" r="4" />
+      <circle cx="9.4" cy="9.2" r="1.5" fill="#171a21" stroke="none" />
+      <circle cx="16.4" cy="14.4" r="2.6" />
     </svg>
   );
 }

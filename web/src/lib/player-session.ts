@@ -2,7 +2,7 @@
 // `next/headers`, поэтому этот модуль в proxy.ts не тянут (там только чистый player-auth.ts).
 
 import { cookies } from "next/headers";
-import { SESSION_COOKIE, issueSession, readSession, type Role, type Session } from "./player-auth";
+import { SESSION_COOKIE, TTL_MS, issueSession, readSession, type Role, type Session } from "./player-auth";
 
 const cookieOpts = {
   httpOnly: true, // из JS куку не прочитать
@@ -11,8 +11,11 @@ const cookieOpts = {
   path: "/",
 };
 
-export async function setSessionCookie(accountId: number, role: Role): Promise<void> {
-  (await cookies()).set(SESSION_COOKIE, issueSession(accountId, role), cookieOpts);
+/** `remember` — «Запомнить меня»: без него кука сессионная (гаснет с закрытием браузера),
+ *  хотя подписанный токен внутри и так живёт TTL_MS. С флагом кука получает тот же срок явно. */
+export async function setSessionCookie(accountId: number, role: Role, remember = false): Promise<void> {
+  const opts = remember ? { ...cookieOpts, maxAge: TTL_MS / 1000 } : cookieOpts;
+  (await cookies()).set(SESSION_COOKIE, issueSession(accountId, role), opts);
 }
 
 export async function clearSessionCookie(): Promise<void> {

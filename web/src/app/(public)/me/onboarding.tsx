@@ -13,7 +13,24 @@ import { RowCard } from "@/components/pouf/surface";
 //
 // Поиск себя в ростере нужен обоим экранам, поэтому вынесен сюда как PlayerPicker.
 
-export type LinkablePlayer = { id: number; nickname: string; slug: string };
+// Расширенный набор полей нужен «Я уже участник лиги» в анкете (application-form.tsx): найденного
+// по нику игрока квиз подтягивает целиком, дальше доспрашивает только то, чего в ростере ещё нет.
+export type LinkablePlayer = {
+  id: number;
+  nickname: string;
+  slug: string;
+  realName: string | null;
+  realSurname: string | null;
+  telegram: string | null;
+  city: string | null;
+  country: string | null;
+  birthday: Date | null;
+  mmr: number | null;
+  phone: string | null;
+  dotabuffUrl: string | null;
+  stratzUrl: string | null;
+  steamUrl: string | null;
+};
 
 export function Onboarding({ players }: { players: LinkablePlayer[] }) {
   const [mode, setMode] = useState<"pick" | "new" | "existing">("pick");

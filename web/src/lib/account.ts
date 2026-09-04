@@ -217,7 +217,24 @@ export async function linkablePlayers() {
   const taken = new Set(linked.map((l) => l.playerId!));
   const players = await prisma.player.findMany({
     orderBy: { nickname: "asc" },
-    select: { id: true, nickname: true, slug: true },
+    // Расширенный набор полей — чтобы анкета «Я уже участник лиги» подтягивала уже известное
+    // о найденном игроке и просила заполнить только то, чего в ростере ещё нет.
+    select: {
+      id: true,
+      nickname: true,
+      slug: true,
+      realName: true,
+      realSurname: true,
+      telegram: true,
+      city: true,
+      country: true,
+      birthday: true,
+      mmr: true,
+      phone: true,
+      dotabuffUrl: true,
+      stratzUrl: true,
+      steamUrl: true,
+    },
   });
   return players.filter((p) => !taken.has(p.id));
 }
@@ -267,18 +284,52 @@ export async function submitApplication(
   return null;
 }
 
-/** Отправить заявку на привязку к существующему игроку: тот же pending, но вместо анкеты — claim. */
-export async function submitClaim(
+/**
+ * Привязка к найденному в ростере профилю, но с анкетой рядом: экран «Я уже участник лиги»
+ * подтягивает в квиз то, что в Player уже есть, а чего не хватает — доспрашивает у игрока.
+ * Данные из формы дополняют профиль (только пустые поля — свою правку операторской карточки
+ * самозаполнение не перетирает), а сама привязка ждёт подтверждения как обычный claim.
+ */
+export async function submitClaimWithApplication(
   accountId: number,
   playerId: number,
+  input: ApplicationInput,
   policyAccepted: boolean,
 ): Promise<string | null> {
   if (!policyAccepted) return POLICY_REQUIRED;
+  const parsed = normalizeApplication(input);
+  if (!parsed.ok) return parsed.error;
+
   try {
     await claimExisting(accountId, playerId);
   } catch (e) {
     return e instanceof Error ? e.message : "Не удалось подать заявку";
   }
+
+  const app = parsed.value;
+  const player = await prisma.player.findUnique({ where: { id: playerId } });
+  if (player) {
+    const fill: Record<string, unknown> = {};
+    if (!player.realName && app.realName) fill.realName = app.realName;
+    if (!player.realSurname && app.realSurname) fill.realSurname = app.realSurname;
+    if (!player.telegram && app.telegram) fill.telegram = app.telegram;
+    if (!player.phone && app.phone) fill.phone = app.phone;
+    if (!player.city && app.city) fill.city = app.city;
+    if (!player.country && app.country) fill.country = app.country;
+    if (!player.birthday && app.birthday) fill.birthday = parseBirthday(app.birthday);
+    if (!player.mmr && app.mmr != null) fill.mmr = app.mmr;
+    if (!player.accountId) {
+      const accId = applicationAccountId(app);
+      if (accId) fill.accountId = accId;
+    }
+    for (const [column, value] of Object.entries(applicationLinkColumns(app))) {
+      if (value && !(player as Record<string, unknown>)[column]) fill[column] = value;
+    }
+    if (Object.keys(fill).length > 0) {
+      await prisma.player.update({ where: { id: playerId }, data: fill });
+    }
+  }
+
   const now = new Date();
   await prisma.userAccount.update({
     where: { id: accountId },
@@ -348,11 +399,13 @@ async function createPlayerFromApplication(app: Application, mmr: number | null)
       slug,
       nickname: app.nickname,
       realName: app.realName || null,
+      realSurname: app.realSurname || null,
       birthday: app.birthday ? parseBirthday(app.birthday) : null,
       city: app.city || null,
       country: app.country || null,
       ...applicationLinkColumns(app),
       telegram: app.telegram || null,
+      phone: app.phone || null,
       // Без account_id игрок не находится ни в одном матче (§7 CLAUDE.md) — выводим из ссылок сразу.
       accountId: applicationAccountId(app),
       mmr,
@@ -482,13 +535,15 @@ export async function setAccountPermissions(targetId: number, keys: string[]): P
 
 /** Выдать сессию аккаунту с правильной ролью: владельца по OWNER_EMAIL закрепляем в БД (как в OAuth):
  *  роль owner и статус active — он вне воронки, апрувить его некому. */
-export async function establishSession(accountId: number): Promise<void> {
+/** `remember` — «Запомнить меня» с формы: без него кука входа живёт до закрытия браузера,
+ *  хотя сама сессия внутри действительна 30 дней (TTL_MS) — с флагом кука переживает и закрытие. */
+export async function establishSession(accountId: number, remember = false): Promise<void> {
   const account = await prisma.userAccount.findUnique({ where: { id: accountId } });
   if (!account) return;
   if (isOwnerEmail(account.email) && (account.role !== "owner" || account.status !== "active")) {
     await prisma.userAccount.update({ where: { id: account.id }, data: { role: "owner", status: "active" } });
   }
-  await setSessionCookie(account.id, effectiveRole(account));
+  await setSessionCookie(account.id, effectiveRole(account), remember);
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

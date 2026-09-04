@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useId, useState } from "react";
 import Link from "next/link";
 import { register, login, type AuthState } from "./actions";
 import { Button } from "@/components/pouf/Button";
+import { Checkbox } from "@/components/pouf/checkbox";
 import { Alert } from "@/components/pouf/feedback";
 import { FormInput, Label } from "@/components/pouf/Input";
 import { PillButton, PillTrack } from "@/components/pouf/tabs";
@@ -35,6 +36,40 @@ export function AuthForms() {
       </PillTrack>
 
       {mode === "login" ? <LoginForm /> : <RegisterForm />}
+
+      {/* Строка снизу из макета «Вход» — второй, более заметный путь переключить режим,
+          рядом с табами наверху. */}
+      <p className="text-center text-[13px] font-bold text-muted">
+        {mode === "login" ? (
+          <>
+            Нет аккаунта?{" "}
+            <button type="button" onClick={() => setMode("register")} className="font-black text-ink hover:text-[var(--accent-ink)]">
+              Регистрация
+            </button>
+          </>
+        ) : (
+          <>
+            Уже есть аккаунт?{" "}
+            <button type="button" onClick={() => setMode("login")} className="font-black text-ink hover:text-[var(--accent-ink)]">
+              Войти
+            </button>
+          </>
+        )}
+      </p>
+    </div>
+  );
+}
+
+/** «Запомнить меня» — из макета «Вход»: без него кука входа живёт до закрытия браузера. */
+function RememberMe() {
+  const [on, setOn] = useState(false);
+  const id = useId();
+  return (
+    <div className="flex items-center gap-2.5">
+      <Checkbox id={id} name="remember" checked={on} onCheckedChange={(v) => setOn(v === true)} />
+      <label htmlFor={id} className="text-[13px] font-bold text-muted">
+        Запомнить меня
+      </label>
     </div>
   );
 }
@@ -58,6 +93,7 @@ function LoginForm() {
       <Field label="Пароль">
         <FormInput name="password" type="password" autoComplete="current-password" required />
       </Field>
+      <RememberMe />
       <Button type="submit" loading={pending} size="lg" block>
         {pending ? "Вхожу…" : "Войти"}
       </Button>

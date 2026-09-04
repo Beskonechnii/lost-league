@@ -1,10 +1,10 @@
 "use client";
 
-import { useActionState, useId, useRef, useState } from "react";
+import { useActionState, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { sendApplication, sendClaim, type ApplyState } from "./actions";
-import { PlayerPicker, type LinkablePlayer } from "./onboarding";
-import { EMPTY_INPUT, applicationToInput, type Application } from "@/lib/application";
+import { sendApplication, sendClaimWithApplication, type ApplyState } from "./actions";
+import type { LinkablePlayer } from "./onboarding";
+import { EMPTY_INPUT, applicationToInput, type Application, type ApplicationInput } from "@/lib/application";
 import { ROLES } from "@/lib/roles";
 import { Button, buttonClasses } from "@/components/pouf/Button";
 import { Checkbox } from "@/components/pouf/checkbox";
@@ -17,8 +17,9 @@ import { RowCard } from "@/components/pouf/surface";
 
 // Анкета-заявка: единственное, что видит человек в кабинете до одобрения (требование 6).
 // Развилка та же, что в онбординге, но обе ветки заканчиваются не профилем, а заявкой на модерацию:
-// «я новый игрок» → анкета JSON, «я уже в ростере» → заявка на привязку. Player при этом не заводится
-// (docs/archive/ACCOUNTS-PLAN.md §2.1) — иначе неодобренный сразу попал бы в публичный ростер.
+// «я новый игрок» → анкета JSON, «я уже участник лиги» → заявка на привязку с той же анкетой поверх
+// (см. ClaimApplicationForm). Player при новой анкете не заводится (docs/archive/ACCOUNTS-PLAN.md §2.1) —
+// иначе неодобренный сразу попал бы в публичный ростер.
 //
 // С Э8 анкета идёт КВИЗОМ в три шага — по каноническому макету «Вход» (артборды «Шаг 1…3»).
 // Двенадцать полей одним полотном в окне входа читались как стена: человек видел объём раньше,
@@ -123,8 +124,8 @@ export function ApplicationFlow({
           </div>
           <div className="grid gap-2">
             <ForkCard
-              title="Я уже в ростере"
-              hint="Найти себя и подать заявку на привязку профиля."
+              title="Я уже участник лиги"
+              hint="Найти себя по нику — остальное подтянем из ростера."
               onClick={() => setMode("existing")}
             />
             <ForkCard
@@ -198,6 +199,10 @@ function ApplicationForm({ application }: { application: Application | null }) {
           <FormInput name="realName" defaultValue={v.realName} required={req(0)} placeholder="Как вас зовут" />
         </Field>
 
+        <Field label="Фамилия">
+          <FormInput name="realSurname" defaultValue={v.realSurname} required={req(0)} />
+        </Field>
+
         <Field label="Дата рождения">
           <DateField name="birthday" defaultValue={v.birthday} required={req(0)} />
         </Field>
@@ -213,6 +218,10 @@ function ApplicationForm({ application }: { application: Application | null }) {
 
         <Field label="Telegram" hint="Можно с @ или ссылкой — приведём к хендлу.">
           <FormInput name="telegram" defaultValue={v.telegram} required={req(0)} placeholder="@nickname" />
+        </Field>
+
+        <Field label="Телефон">
+          <FormInput name="phone" type="tel" defaultValue={v.phone} required={req(0)} placeholder="+7 900 000-00-00" />
         </Field>
 
         <PolicyCheck required={req(0)} />
@@ -295,19 +304,189 @@ function ApplicationForm({ application }: { application: Application | null }) {
   );
 }
 
-/** Ветка «я уже в ростере»: анкета не нужна — все данные уже в профиле, нужен лишь его выбор. */
+/** Найденный в ростере игрок → значения квиза: что известно, то не переспрашиваем. */
+function inputFromPlayer(player: LinkablePlayer, fallbackNickname: string): ApplicationInput {
+  return {
+    nickname: player.nickname || fallbackNickname,
+    realName: player.realName ?? "",
+    realSurname: player.realSurname ?? "",
+    birthday: player.birthday ? new Date(player.birthday).toISOString().slice(0, 10) : "",
+    city: player.city ?? "",
+    country: player.country ?? "",
+    profileUrl: player.dotabuffUrl || player.stratzUrl || player.steamUrl || "",
+    telegram: player.telegram ?? "",
+    phone: player.phone ?? "",
+    position: "",
+    mmr: player.mmr != null ? String(player.mmr) : "",
+  };
+}
+
+/**
+ * Ветка «я уже участник лиги»: поиск себя по нику вместо анкеты нового игрока — тот же квиз
+ * из трёх шагов, но найденный профиль подтягивает известные поля, а незаполненные (обычно
+ * ссылка на профиль, MMR, позиция) ждут ответа, как и в анкете нового игрока.
+ */
 function ClaimApplicationForm({ players }: { players: LinkablePlayer[] }) {
-  const [state, action, pending] = useActionState<ApplyState, FormData>(sendClaim, null);
+  const [state, action, pending] = useActionState<ApplyState, FormData>(sendClaimWithApplication, null);
+  const [step, setStep] = useState(0);
+  const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<LinkablePlayer | null>(null);
+  const [position, setPosition] = useState("");
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q || picked) return [];
+    return players.filter((p) => p.nickname.toLowerCase().includes(q)).slice(0, 6);
+  }, [players, query, picked]);
+
+  // После ошибки сервер возвращает введённое обратно (values); иначе значения строит найденный
+  // игрок — при первом рендере (никого ещё не нашли) это просто пустая анкета с нашим ником.
+  const v = state?.values ?? (picked ? inputFromPlayer(picked, query) : { ...EMPTY_INPUT, nickname: query });
+
+  const next = () => {
+    if (formRef.current?.reportValidity() === false) return;
+    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  };
+  const req = (n: number) => step === n;
+
+  const searchDotabuff = () => {
+    window.open(`https://www.dotabuff.com/search?q=${encodeURIComponent((picked?.nickname ?? query).trim())}`, "_blank", "noopener");
+  };
 
   return (
-    <form action={action} className="space-y-4">
+    <form ref={formRef} action={action} className="space-y-5">
       <input type="hidden" name="playerId" value={picked?.id ?? ""} />
-      <PlayerPicker players={players} picked={picked} onPick={setPicked} />
-      <PolicyCheck />
-      <Button type="submit" disabled={!picked} loading={pending} size="lg" block>
-        {pending ? "Отправляю…" : "Подать заявку на привязку"}
-      </Button>
+      <Stepper steps={STEPS} current={step} />
+
+      <div hidden={step !== 0} className="space-y-4">
+        <Field label="Ваш ник в ростере" hint="Начните вводить — как найдётесь в списке, остальное подтянем сами.">
+          <FormInput
+            name="nickname"
+            value={picked ? picked.nickname : query}
+            onChange={(e) => {
+              setPicked(null);
+              setQuery(e.target.value);
+            }}
+            autoFocus
+            required={req(0)}
+            placeholder="Например, Miracle-"
+          />
+        </Field>
+
+        {!picked && matches.length > 0 && (
+          <ul className="space-y-1.5">
+            {matches.map((p) => (
+              <li key={p.id}>
+                <RowCard onClick={() => setPicked(p)}>
+                  <span className="text-sm font-black text-ink">{p.nickname}</span>
+                </RowCard>
+              </li>
+            ))}
+          </ul>
+        )}
+        {!picked && query.trim() && matches.length === 0 && (
+          <p className="text-[13px] font-bold leading-[1.45] text-muted">
+            Никого не нашли. Возможно, вас ещё нет в ростере — тогда это анкета нового игрока.
+          </p>
+        )}
+        {picked && (
+          <Alert tone="ok" block>
+            Нашли вас в ростере — известные поля подтянули, доскажите то, чего не хватает.
+          </Alert>
+        )}
+
+        {/* Ключ на игроке — при смене найденного профиля неуправляемые поля должны перечитать
+            новый defaultValue, а не остаться со значениями прошлого совпадения. */}
+        <div key={picked?.id ?? "new"} className="space-y-4">
+          <Field label="Имя">
+            <FormInput name="realName" defaultValue={v.realName} required={req(0)} placeholder="Как вас зовут" />
+          </Field>
+          <Field label="Фамилия">
+            <FormInput name="realSurname" defaultValue={v.realSurname} required={req(0)} />
+          </Field>
+          <Field label="Дата рождения">
+            <DateField name="birthday" defaultValue={v.birthday} required={req(0)} />
+          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Город">
+              <FormInput name="city" defaultValue={v.city} required={req(0)} />
+            </Field>
+            <Field label="Страна">
+              <FormInput name="country" defaultValue={v.country} required={req(0)} />
+            </Field>
+          </div>
+          <Field label="Telegram" hint="Можно с @ или ссылкой — приведём к хендлу.">
+            <FormInput name="telegram" defaultValue={v.telegram} required={req(0)} placeholder="@nickname" />
+          </Field>
+          <Field label="Телефон">
+            <FormInput name="phone" type="tel" defaultValue={v.phone} required={req(0)} placeholder="+7 900 000-00-00" />
+          </Field>
+        </div>
+
+        <PolicyCheck required={req(0)} />
+      </div>
+
+      <div hidden={step !== 1} className="space-y-4">
+        <div key={picked?.id ?? "new"} className="space-y-4">
+          <Field
+            label="Ссылка на профиль"
+            hint="Dotabuff, Stratz или Steam — любая. По ней лига находит вас в матчах, остальные адреса достроим сами."
+          >
+            <FormInput
+              name="profileUrl"
+              defaultValue={v.profileUrl}
+              required={req(1)}
+              placeholder="https://www.dotabuff.com/players/…"
+            />
+          </Field>
+        </div>
+        <button type="button" onClick={searchDotabuff} className={buttonClasses({ variant: "quiet", size: "sm" })}>
+          Найти себя на Dotabuff
+        </button>
+      </div>
+
+      <div hidden={step !== 2} className="space-y-4">
+        <div key={picked?.id ?? "new"}>
+          <Field label="MMR" hint="Со слов игрока — проверит организатор.">
+            <FormInput name="mmr" inputMode="numeric" defaultValue={v.mmr} required={req(2)} placeholder="Например, 4200" />
+          </Field>
+        </div>
+
+        <Field label="Позиция">
+          <input type="hidden" name="position" value={position} />
+          <Select value={position || undefined} onValueChange={setPosition}>
+            <SelectTrigger aria-label="Позиция">
+              <SelectValue placeholder="не выбрана" />
+            </SelectTrigger>
+            <SelectContent>
+              {ROLES.map((r) => (
+                <SelectItem key={r.key} value={r.key}>
+                  {r.position ? `${r.position} — ${r.short}` : r.short}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+      </div>
+
+      <div className="flex gap-3">
+        {step > 0 && (
+          <Button type="button" variant="quiet" size="lg" onClick={() => setStep((s) => s - 1)}>
+            Назад
+          </Button>
+        )}
+        {step < STEPS.length - 1 ? (
+          <Button type="button" size="lg" onClick={next} disabled={step === 0 && !picked} className="flex-1">
+            Далее
+          </Button>
+        ) : (
+          <Button type="submit" loading={pending} disabled={!picked} size="lg" className="flex-1">
+            {pending ? "Отправляю…" : "Отправить заявку"}
+          </Button>
+        )}
+      </div>
+
       {state?.error && (
         <Alert tone="err" block>
           {state.error}

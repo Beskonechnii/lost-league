@@ -16,12 +16,14 @@ import { isRole } from "./roles";
 export type Application = {
   nickname: string;
   realName: string;
+  realSurname: string;
   birthday: string; // yyyy-mm-dd — уже нормализованная, как её понимает <input type=date>
   city: string;
   country: string;
   /** Любая из трёх площадок; остальные лига достроит сама по account_id. */
   profileUrl: string;
   telegram: string; // хендл без «@» (как в Player.telegram)
+  phone: string;
   position: string; // ключ из roles.ts либо пусто
   mmr: number | null; // ЗАЯВЛЕННЫЙ игроком; в Player.mmr его переносит оператор при апруве
 };
@@ -30,11 +32,13 @@ export type Application = {
 export const EMPTY_APPLICATION: Application = {
   nickname: "",
   realName: "",
+  realSurname: "",
   birthday: "",
   city: "",
   country: "",
   profileUrl: "",
   telegram: "",
+  phone: "",
   position: "",
   mmr: null,
 };
@@ -63,12 +67,14 @@ export function parseApplication(raw: string | null | undefined): Application | 
       ...EMPTY_APPLICATION,
       nickname: text(data.nickname),
       realName: text(data.realName),
+      realSurname: text(data.realSurname),
       birthday: text(data.birthday),
       city: text(data.city),
       country: text(data.country),
       // Старые анкеты в БД держат три отдельных поля — берём первое заполненное.
       profileUrl: text(data.profileUrl) || text(data.dotabuff) || text(data.stratz) || text(data.steam),
       telegram: text(data.telegram),
+      phone: text(data.phone),
       position: text(data.position),
       mmr: typeof data.mmr === "number" ? data.mmr : null,
     };
@@ -127,6 +133,15 @@ export function profileLinkProblem(kind: keyof typeof LINK_HOSTS, raw: string): 
   return re.test(host) ? null : `В поле ${label} ждём ссылку на ${label.toLowerCase()}: ${example}`;
 }
 
+/** Телефон → цифры с ведущим «+», если он был. Мусор (буквы, слишком короткая строка) → пусто. */
+function normalizePhone(raw: string): string {
+  const value = raw.trim();
+  const plus = value.startsWith("+") ? "+" : "";
+  const digits = value.replace(/\D/g, "");
+  if (digits.length < 7 || digits.length > 15) return "";
+  return plus + digits;
+}
+
 /** Ссылку приводим к единому виду: со схемой и без хвостовых слэшей — так её потом класть в Player. */
 const normalizeLink = (raw: string): string => {
   const value = raw.trim().replace(/\/+$/, "");
@@ -150,6 +165,9 @@ export function normalizeApplication(input: ApplicationInput): ApplicationResult
   const realName = input.realName.trim();
   if (!realName) return { ok: false, error: "Укажите имя" };
 
+  const realSurname = input.realSurname.trim();
+  if (!realSurname) return { ok: false, error: "Укажите фамилию" };
+
   if (!input.birthday.trim()) return { ok: false, error: "Укажите дату рождения" };
   const date = parseBirthday(input.birthday);
   if (!date) return { ok: false, error: `Дата «${input.birthday.trim()}» не разобрана — ждём 21.04.1998` };
@@ -164,6 +182,10 @@ export function normalizeApplication(input: ApplicationInput): ApplicationResult
   if (!input.telegram.trim()) return { ok: false, error: "Укажите телеграм — по нему с вами свяжется организатор" };
   const telegram = normalizeTelegram(input.telegram);
   if (!telegram) return { ok: false, error: `«${input.telegram.trim()}» не похоже на телеграм-хендл` };
+
+  if (!input.phone.trim()) return { ok: false, error: "Укажите телефон" };
+  const phone = normalizePhone(input.phone);
+  if (!phone) return { ok: false, error: `«${input.phone.trim()}» не похоже на номер телефона` };
 
   // Ссылка обязательна: по ней оператор опознаёт человека, а без account_id игрок потом
   // не находится ни в одном матче (см. §7 CLAUDE.md).
@@ -190,11 +212,13 @@ export function normalizeApplication(input: ApplicationInput): ApplicationResult
     value: {
       nickname,
       realName,
+      realSurname,
       birthday,
       city,
       country,
       profileUrl,
       telegram,
+      phone,
       position,
       mmr,
     },
