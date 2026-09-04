@@ -26,6 +26,10 @@ const nickKey = (v: string) => slugify(v).replace(/[-\d]/g, "");
  * Похожие пары по всему ростеру. Считается в памяти: 200 игроков — это 20 тысяч пар, дешевле, чем
  * четыре запроса с самосоединением, а SQLite всё равно не умеет сравнивать без учёта регистра.
  */
+export async function duplicatesCount(): Promise<number> {
+  return (await findDuplicates()).length;
+}
+
 export async function findDuplicates(): Promise<Pair[]> {
   const players = await prisma.player.findMany({
     include: {

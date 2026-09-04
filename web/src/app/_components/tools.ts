@@ -53,27 +53,19 @@ export const TOOL_GROUPS: ToolGroup[] = [
     ],
   },
   {
-    title: "Архив",
+    title: "Инструменты",
     tools: [
       { href: "/admin/series", perm: "series.edit", label: "Архив серий", icon: "history", desc: "Встречи турнира и карты в них — отсюда стата идёт в статистику." },
-    ],
-  },
-  {
-    title: "Графика",
-    tools: [
       { href: "/studio/editor", perm: "studio", label: "Студия", icon: "photo", desc: "Сборка турнирной графики по данным ростера." },
-    ],
-  },
-  {
-    title: "UI",
-    tools: [
       { href: "/admin/theme", perm: "theme", label: "Тема", icon: "settings", desc: "Цвета UI проекта: акцент, поверхности, текст. Правится и едет в data/theme.json." },
     ],
   },
 ];
 
-/** Инструмент, у которого есть индикатор очереди. Пока такой один — модерация. */
+/** Инструмент, у которого есть индикатор очереди. */
 export const QUEUE_TOOL = "/admin/moderation";
+/** Инструмент, у которого есть индикатор похожих профилей. */
+export const DUPLICATES_TOOL = "/admin/duplicates";
 
 /** Группы, срезанные правами: пустые группы отбрасываем — заголовок без пунктов только мешает. */
 export function toolGroupsFor(perms: PermissionKey[]): ToolGroup[] {

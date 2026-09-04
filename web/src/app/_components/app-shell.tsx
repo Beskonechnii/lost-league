@@ -6,10 +6,11 @@ import { resolveUpload } from "@/lib/uploads";
 import type { Role } from "@/lib/player-auth";
 import { chatIdentity, unreadTotal } from "@/lib/chat";
 import { pendingProfileEditCount } from "@/lib/profile-edit";
+import { duplicatesCount } from "@/lib/duplicates";
 import { onlineCount, onlinePlayerIds } from "@/lib/presence";
 import { AppSidebar } from "./app-sidebar";
 import { ChatLiveProvider } from "./chat-live";
-import { QUEUE_TOOL, toolGroupsFor } from "./tools";
+import { QUEUE_TOOL, DUPLICATES_TOOL, toolGroupsFor } from "./tools";
 import type { NavAccount, NavItem, NavSection } from "./nav-model";
 
 // Хром продукта: сайдбар слева, страница справа — один на обе группы маршрутов (DECISIONS, 02.09).
@@ -81,6 +82,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   // без него вкладки не видно, и в значок их считать нечего.
   const edits = perms.includes("roster.edit") ? await pendingProfileEditCount() : 0;
   const pending = queue.length + claims.length + edits;
+  // Похожие профили — своя очередь под тем же правом, что и правки: обе задачи решает тот, у кого
+  // есть roster.edit, второй счётчик не запрашиваем зря у остальных.
+  const duplicates = perms.includes("roster.edit") ? await duplicatesCount() : 0;
+  const badges: Record<string, number> = { [QUEUE_TOOL]: pending, [DUPLICATES_TOOL]: duplicates };
 
   // Инструменты операторской — из общего реестра, срезанного правами. Пункт без права не рисуется:
   // это витрина, а не защита; сами роуты проверяют право у себя.
@@ -92,7 +97,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       icon: t.icon,
       hint: t.desc,
       soon: t.soon,
-      badge: t.href === QUEUE_TOOL ? pending : undefined,
+      badge: badges[t.href],
     })),
   }));
 
