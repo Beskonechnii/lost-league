@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { UploadKind } from "@/lib/profiles";
+import { IMAGE_NORMS, ratioOf, type ImageSlot } from "@/lib/image-norms";
+import { ImageFit } from "./image-fit";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/pouf/select";
 import { Button } from "@/components/pouf/Button";
 import { Input, Textarea } from "@/components/pouf/Input";
@@ -88,22 +90,34 @@ export function SelectField(props: {
   );
 }
 
-/** Слот картинки: показывает текущую, грузит новую в public/uploads, отдаёт путь наверх. */
+/**
+ * Слот картинки: показывает текущую, принимает новую, проводит её через подгонку под норму
+ * слота (src/lib/image-norms.ts) и грузит результат в public/uploads.
+ *
+ * Подгонка обязательна, а не по желанию: смысл нормы в том, что в uploads не попадает картинка
+ * произвольной формы — иначе квадратные слоты страниц опять начнут резать кадры как придётся.
+ * Куда класть файл (teams/players) выводится из самого слота — два источника правды тут не нужны.
+ */
 export function ImageField(props: {
   label: string;
-  kind: UploadKind;
+  slot: ImageSlot;
   value: string | null;
   onChange: (path: string | null) => void;
+  /** Перекрытие подсказки; по умолчанию берётся из нормы слота. */
   hint?: string;
 }) {
+  const norm = IMAGE_NORMS[props.slot];
+  const kind: UploadKind = props.slot.startsWith("team") ? "teams" : "players";
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Выбранный, но ещё не подогнанный файл — пока он здесь, открыто окно подгонки.
+  const [picked, setPicked] = useState<File | null>(null);
 
   async function upload(file: File) {
     setBusy(true);
     setError(null);
     const body = new FormData();
-    body.set("kind", props.kind);
+    body.set("kind", kind);
     body.set("file", file);
     const res = await fetch("/api/roster/upload", { method: "POST", body });
     const json = (await res.json()) as { path?: string; error?: string };
@@ -116,11 +130,15 @@ export function ImageField(props: {
     <div>
       <Label>{props.label}</Label>
       <div className="flex items-center gap-3 font-pouf">
-        <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-control bg-bg cushion-field">
+        {/* Превью в форме самого слота: оператор видит кадр ровно таким, каким он ляжет на страницу. */}
+        <div
+          className="grid w-24 shrink-0 place-items-center overflow-hidden rounded-control bg-bg cushion-field"
+          style={{ aspectRatio: ratioOf(norm) }}
+        >
           {props.value ? (
             // локальный файл из public/uploads — оптимизация next/image здесь не нужна
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={props.value} alt="" className="h-full w-full object-contain" />
+            <img src={props.value} alt="" className={`h-full w-full ${norm.fit === "cover" ? "object-cover" : "object-contain"}`} />
           ) : (
             <span className="text-xs font-bold text-muted">пусто</span>
           )}
@@ -132,10 +150,12 @@ export function ImageField(props: {
             className="block w-full text-xs font-bold text-ink-muted file:mr-3 file:rounded-[12px] file:border-0 file:bg-accent-fill file:px-3 file:py-1.5 file:font-black file:text-[var(--on-accent)]"
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) void upload(f);
+              // Значение сбрасываем: иначе повторный выбор того же файла не даст события change.
+              e.target.value = "";
+              if (f) setPicked(f);
             }}
           />
-          {props.hint && <p className="mt-1 text-xs font-bold text-muted">{props.hint}</p>}
+          <p className="mt-1 text-xs font-bold text-muted">{props.hint ?? norm.hint}</p>
           {busy && <p className="mt-1 text-xs font-bold text-[var(--accent-ink)]">Загружаю…</p>}
           {error && <p className="mt-1 text-xs font-bold text-rose-700">{error}</p>}
           {props.value && (
@@ -145,6 +165,18 @@ export function ImageField(props: {
           )}
         </div>
       </div>
+
+      {picked && (
+        <ImageFit
+          slot={props.slot}
+          file={picked}
+          onCancel={() => setPicked(null)}
+          onReady={(fitted) => {
+            setPicked(null);
+            void upload(fitted);
+          }}
+        />
+      )}
     </div>
   );
 }

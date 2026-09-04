@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { playerPath } from "@/lib/profiles";
-import { currentAccount, effectiveRole, listAccounts, ownerEmail, type StaffAccount } from "@/lib/account";
+import { currentAccount, effectiveRole, listAccounts, ownerEmails, type StaffAccount } from "@/lib/account";
 import { PERMISSIONS, PERMISSION_GROUPS } from "@/lib/permissions";
 import { Button } from "@/components/pouf/Button";
 import { Checkbox } from "@/components/pouf/checkbox";
@@ -162,7 +162,7 @@ export default async function StaffPage() {
   const owners = accounts.filter((a) => a.effectiveRole === "owner");
   const admins = accounts.filter((a) => a.effectiveRole === "admin");
   const others = accounts.filter((a) => a.effectiveRole === "player");
-  const owner = ownerEmail();
+  const ownerList = ownerEmails();
   const isOwner = me != null && effectiveRole(me) === "owner";
 
   return (
@@ -177,9 +177,9 @@ export default async function StaffPage() {
           title="Владелец"
           hint={
             <>
-              Назначается почтой в <code>OWNER_EMAIL</code>
-              {owner ? <> (<span className="text-ink">{owner}</span>)</> : null}: все права всегда,
-              отобрать их из панели нельзя.
+              Назначается почтой в <code>OWNER_EMAIL</code> (можно несколько через запятую)
+              {ownerList.length ? <> (<span className="text-ink">{ownerList.join(", ")}</span>)</> : null}: все права
+              всегда, отобрать их из панели нельзя.
             </>
           }
         >

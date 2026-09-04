@@ -47,10 +47,10 @@ export function TeamEditor({ id, initial }: { id: number; initial: TeamForm }) {
       </div>
 
       <div className="grid gap-5 sm:grid-cols-3">
-        <ImageField label="Логотип" kind="teams" value={v.logo} onChange={(x) => set("logo", x)} hint="Эмблема, PNG с прозрачностью" />
-        <ImageField label="Wordmark" kind="teams" value={v.wordmark} onChange={(x) => set("wordmark", x)} hint="Надпись-граффити для анонсов" />
-        <ImageField label="Фото команды" kind="teams" value={v.photo} onChange={(x) => set("photo", x)} hint="Кадр в рамку VS-анонса" />
-        <ImageField label="Баннер" kind="teams" value={v.banner} onChange={(x) => set("banner", x)} hint="Широкая подложка шапки страницы команды" />
+        <ImageField label="Логотип" slot="team-logo" value={v.logo} onChange={(x) => set("logo", x)} />
+        <ImageField label="Wordmark" slot="team-wordmark" value={v.wordmark} onChange={(x) => set("wordmark", x)} />
+        <ImageField label="Фото команды" slot="team-photo" value={v.photo} onChange={(x) => set("photo", x)} />
+        <ImageField label="Баннер" slot="team-banner" value={v.banner} onChange={(x) => set("banner", x)} />
       </div>
 
       <SaveButton url={`/api/roster/teams/${id}`} data={v} />
@@ -172,8 +172,8 @@ export function PlayerEditor({ id, initial }: { id: number; initial: PlayerForm 
 
       <Fieldset title="Фото">
         <div className="grid gap-5 sm:grid-cols-2">
-          <ImageField label="Портрет" kind="players" value={v.photo} onChange={(x) => set("photo", x)} hint="Для плашек и анонсов" />
-          <ImageField label="Баннер" kind="players" value={v.banner} onChange={(x) => set("banner", x)} hint="Широкая подложка шапки профиля" />
+          <ImageField label="Портрет" slot="player-photo" value={v.photo} onChange={(x) => set("photo", x)} />
+          <ImageField label="Баннер" slot="player-banner" value={v.banner} onChange={(x) => set("banner", x)} />
         </div>
       </Fieldset>
 

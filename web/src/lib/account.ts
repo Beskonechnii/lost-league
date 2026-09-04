@@ -39,12 +39,23 @@ export async function currentAccount(): Promise<Account | null> {
 // хранит только admin/player, которые раздаёт владелец. Эффективная роль = owner по почте ИЛИ то,
 // что записано. Это одно место правды — им пользуются и вход (какую роль вшить в куку), и панель.
 
-export const ownerEmail = () => (process.env.OWNER_EMAIL ?? "").trim().toLowerCase();
+/**
+ * Адреса владельцев из `OWNER_EMAIL`: одна почта или несколько через запятую. Список, а не одна
+ * строка, потому что у одного человека бывает два входа (рабочая почта и Google), и заводить ради
+ * второго админа с ручной галочкой каждого права — значит держать две правды об одних и тех же
+ * полномочиях. Владельцев по-прежнему назначает только `.env`, из UI список не правится.
+ */
+export function ownerEmails(): string[] {
+  return (process.env.OWNER_EMAIL ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+}
 
 /** Почты может не быть вовсе (аккаунт из бота) — тогда это точно не владелец. */
 export function isOwnerEmail(email: string | null | undefined): boolean {
-  const owner = ownerEmail();
-  return owner.length > 0 && (email ?? "").trim().toLowerCase() === owner;
+  const mail = (email ?? "").trim().toLowerCase();
+  return mail.length > 0 && ownerEmails().includes(mail);
 }
 
 /** Роль, с которой аккаунт реально ходит по сайту: owner по почте перекрывает запись в БД. */

@@ -31,11 +31,16 @@ export function PlayerAvatar({
   // Фото — вырезка на прозрачном фоне, поэтому подложка всегда фирменная: градиент в цвет команды.
   // Один и тот же градиент под фото и под инициалами — карточки выглядят единым набором.
   // Прозрачность цвета в hex-суффиксе: работает с любым значением из поля color.
-  const background = `linear-gradient(150deg, ${accent}80, ${accent}1f 58%, #0a0a0a)`;
+  // Тёмный конец градиента — тот же цвет команды поплотнее, а не чёрный: на светлой бумаге Кита
+  // почти-чёрный угол проступал вдоль скруглённого края тонкой тёмной линией и пачкал угол плитки.
+  const background = `linear-gradient(150deg, ${accent}80, ${accent}1f 58%, ${accent}5c)`;
 
   return (
     <div
-      className={`relative grid shrink-0 place-items-center overflow-hidden border border-white/10 ${
+      // Рамки нет намеренно: `border-white/10` поверх тёмной подложки читался тонкой чёрной
+      // линией по краю кадра — на светлой бумаге Кита именно она бросалась в глаза. Плитка и так
+      // отделена от фона своей подложкой, обводка ей не нужна.
+      className={`relative grid shrink-0 place-items-center overflow-hidden ${
         shape === "circle" ? "rounded-pill" : "rounded-2xl"
       } ${className}`}
       style={{ width: size, height: size, background }}
@@ -48,7 +53,9 @@ export function PlayerAvatar({
         <img src={photo} alt={nickname} className="h-full w-full object-cover object-bottom" />
       ) : (
         <span
-          className="font-bold tracking-tight text-white/85"
+          // Тёмные инициалы на пастельной плитке: подложка теперь светлая по всей площади, и
+          // белые буквы на ней тонули — тем же тёмным по пастели набраны чипы Кита.
+          className="font-black tracking-tight text-ink/75"
           style={{ fontSize: Math.round(size * 0.34) }}
         >
           {initials(nickname)}

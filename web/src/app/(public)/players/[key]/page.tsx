@@ -133,12 +133,15 @@ export default async function PlayerPage({ params }: { params: Promise<{ key: st
           Ник не дублируем: он ниже, в H1. */}
       <Breadcrumbs items={[{ href: "/roster/players", label: "Игроки лиги" }]} />
 
-      {/* ── HERO: только личность. Баннер сверху, аватарка наезжает на него снизу ────────── */}
+      {/* ── HERO: только личность. Баннер на всю плашку, аватарка стоит на нём ───────────── */}
       <section className="relative overflow-hidden rounded-card bg-surface cushion-card">
-        {/* Полоса баннера: своя картинка игрока, иначе мятная подложка Кита. Растушёвка снизу
-            (второй градиент) сажает баннер на бумагу карточки — границы полосы не видно. */}
+        {/* Баннер лежит на всей плашке, а не полосой сверху: полоса резала картинку жёстким краем
+            посреди карточки, и загруженный кадр 1600×540 в ней всё равно не читался. Теперь свой
+            баннер игрока (или мятная подложка Кита, если его нет) заполняет подушку целиком, а
+            контент отделяет от него вуаль — градиент из прозрачного в бумагу карточки: сверху
+            картинка видна во всю ширину, к низу она уходит в поверхность, и тёмный текст читается. */}
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-[150px] overflow-hidden"
+          className="pointer-events-none absolute inset-0 overflow-hidden"
           style={{ background: "linear-gradient(135deg,#dcefe6,#bfe1cf 55%,#a6d3bc)" }}
         >
           {player.banner && (
@@ -151,7 +154,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ key: st
             <img src={main.team.logo} alt="" className="absolute -right-2 -top-7 h-[190px] w-[190px] object-contain opacity-[0.12]" />
           )}
           <div className="absolute inset-0 [background:radial-gradient(80%_140%_at_10%_0%,rgba(255,255,255,.6),transparent_55%)]" />
-          <div className="absolute inset-x-0 bottom-0 h-16 [background:linear-gradient(180deg,transparent,var(--surface))]" />
+          <div className="absolute inset-0 [background:linear-gradient(180deg,transparent_0%,color-mix(in_srgb,var(--surface)_72%,transparent)_38%,color-mix(in_srgb,var(--surface)_94%,transparent)_66%,var(--surface)_100%)]" />
         </div>
 
         {/* Жетон номера в ростере — единственная цифра, которую хочется видеть в шапке. Номер есть у

@@ -92,13 +92,17 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
       />
 
       <Hero>
-        {/* Баннер команды, если он заведён, ложится верхним слоем на ту же подушку и растушёвывается
+        {/* Баннер команды, если он заведён, ложится на всю подушку шапки и растушёвывается
             в её бумагу — приём с шапки игрока. Нет баннера — остаётся мятный свет Кита. */}
         {team.banner && (
-          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[150px] overflow-hidden">
+          <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={team.banner} alt="" className="h-full w-full object-cover" />
-            <div className="absolute inset-x-0 bottom-0 h-20 [background:linear-gradient(180deg,transparent,var(--surface))]" />
+            <img src={team.banner} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            {/* Вуаль вместо жёсткой границы полосы: картинка видна во всю плашку и к низу уходит
+                в бумагу шапки, так что тёмный текст поверх неё читается. Приём с шапки игрока, но
+                вуаль плотнее с самого верха: у команды название стоит у верхнего края плашки, а не
+                на 76px ниже, — прозрачная макушка положила бы его прямо на картинку. */}
+            <div className="absolute inset-0 [background:linear-gradient(180deg,color-mix(in_srgb,var(--surface)_46%,transparent)_0%,color-mix(in_srgb,var(--surface)_84%,transparent)_42%,var(--surface)_100%)]" />
           </div>
         )}
 
