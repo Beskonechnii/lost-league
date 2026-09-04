@@ -4,6 +4,9 @@ import { currentAccount, isActiveAccount, type Account } from "./account";
 import { resolveUpload } from "./uploads";
 import { pushTo, type ChatEventMessage } from "./presence";
 import { MAX_TEXT } from "./chat-limits";
+import { actionOf } from "./chat-actions";
+import type { ChatAction } from "./chat-events";
+import { SYSTEM_NAME } from "./system-chat";
 
 // Личные диалоги игроков: кто имеет право писать, как заводится беседа, чтение и отправка.
 // Доставка «вживую» — не здесь: отправка кладёт сообщение в БД и толкает событие в presence.ts,
@@ -73,7 +76,23 @@ export async function chatAccountOfPlayer(playerId: number): Promise<{ id: numbe
   return acc && isActiveAccount(acc) ? acc : null;
 }
 
-export type Peer = { playerId: number; nickname: string; slug: string; photo: string | null; accountId: number };
+/**
+ * Собеседник. Обычно это игрок лиги, но вторым участником может быть и служебный аккаунт
+ * «Spirit CTRL» (`system-chat.ts`) — у него нет профиля в ростере, поэтому `playerId` и `slug`
+ * пустые, а `system` поднят. Отдельной сущности «системная беседа» нет намеренно: список,
+ * непрочитанное, живой канал и отметка о прочтении работают на ней без единой правки.
+ */
+export type Peer = {
+  accountId: number;
+  system: boolean;
+  playerId: number | null;
+  nickname: string;
+  slug: string | null;
+  photo: string | null;
+};
+
+/** Адрес беседы: у игрока — по его id, у лиги — свой постоянный. */
+export const chatPath = (peer: Peer): string => (peer.system ? "/chat/system" : `/chat/${peer.playerId}`);
 
 /** Собеседник в беседе: второй участник вместе с его профилем. null — беседа не моя. */
 export async function peerOf(conversationId: number, meAccountId: number): Promise<Peer | null> {
@@ -81,17 +100,27 @@ export async function peerOf(conversationId: number, meAccountId: number): Promi
     where: { conversationId },
     select: {
       accountId: true,
-      account: { select: { player: { select: { id: true, nickname: true, slug: true, photo: true } } } },
+      account: {
+        select: { system: true, player: { select: { id: true, nickname: true, slug: true, photo: true } } },
+      },
     },
   });
   if (!members.some((m) => m.accountId === meAccountId)) return null;
 
   const other = members.find((m) => m.accountId !== meAccountId);
-  const player = other?.account.player;
-  if (!other || !player) return null;
+  if (!other) return null;
+
+  // Лига — участник без профиля: у неё своё имя и свой знак вместо фото.
+  if (other.account.system) {
+    return { accountId: other.accountId, system: true, playerId: null, nickname: SYSTEM_NAME, slug: null, photo: null };
+  }
+
+  const player = other.account.player;
+  if (!player) return null;
 
   return {
     accountId: other.accountId,
+    system: false,
     playerId: player.id,
     nickname: player.nickname,
     slug: player.slug,
@@ -164,7 +193,14 @@ export async function unreadTotal(meAccountId: number): Promise<number> {
   return total;
 }
 
-export type ChatLine = { id: number; text: string; createdAt: Date; mine: boolean };
+export type ChatLine = {
+  id: number;
+  text: string;
+  createdAt: Date;
+  mine: boolean;
+  /** Выбор, если сообщение системное: кнопки либо уже сделанный ответ (`chat-actions.ts`). */
+  action?: ChatAction | null;
+};
 
 /**
  * Лента беседы. `afterId` — добор хвоста (клиент так восстанавливается после разрыва канала),
@@ -180,10 +216,20 @@ export async function messages(
     where: { conversationId, ...(opts.afterId ? { id: { gt: opts.afterId } } : {}) },
     orderBy: { id: opts.afterId ? "asc" : "desc" },
     take: limit,
-    select: { id: true, text: true, createdAt: true, senderId: true },
+    select: { id: true, text: true, createdAt: true, senderId: true, kind: true, payload: true },
   });
   const ordered = opts.afterId ? rows : rows.reverse();
-  return ordered.map((r) => ({ id: r.id, text: r.text, createdAt: r.createdAt, mine: r.senderId === meAccountId }));
+  return Promise.all(
+    ordered.map(async (r) => ({
+      id: r.id,
+      text: r.text,
+      createdAt: r.createdAt,
+      mine: r.senderId === meAccountId,
+      // Состояние выбора читается из сущности при каждом рендере: в сообщении его нет (см.
+      // chat-actions.ts), поэтому «принял» видно и тогда, когда ответили из бота или со страницы.
+      action: await actionOf(r.kind, r.payload, meAccountId),
+    })),
+  );
 }
 
 export type SendResult = { ok: true; message: ChatLine } | { ok: false; error: string };
@@ -195,6 +241,8 @@ export async function sendMessage(conversationId: number, me: ChatMe, raw: strin
 
   const peer = await peerOf(conversationId, me.accountId);
   if (!peer) return { ok: false, error: "Это не ваша беседа" };
+  // Лига — канал, а не собеседник: отвечать ей некому, и «сообщение улетело в никуда» хуже отказа.
+  if (peer.system) return { ok: false, error: `${peer.nickname} — служебный канал, писать сюда нельзя` };
 
   const now = Date.now();
   const recent = (flood.get(me.accountId) ?? []).filter((t) => now - t < FLOOD_WINDOW_MS);

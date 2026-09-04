@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { currentAccount } from "@/lib/account";
 import { applicationProblems, submitTeamApplication, type Problem } from "@/lib/team-application";
 import { notifyRosterInvites } from "@/lib/tg-notify";
+import { tellPlayer } from "@/lib/system-chat";
 import { splitTeamName, type PlayerDraft, type TeamDraft } from "@/lib/roster-import";
 import { prisma } from "@/lib/prisma";
 import { isRole } from "@/lib/roles";
@@ -99,6 +100,16 @@ export async function submitApplication(_prev: ApplyState, form: FormData): Prom
     // Уведомление — после записи и своим шагом: телеграм может лежать, но заявка уже принята,
     // и ронять из-за него отправку нельзя (тот же уговор, что у решений оператора в tg-notify).
     await notifyRosterInvites(invited, draft.name);
+    // И то же самое в чат продукта — с кнопками прямо в сообщении: у половины лиги бота нет,
+    // а «Сообщения» открыты у каждого игрока (`system-chat.ts`).
+    for (const row of invited) {
+      if (!row.playerId) continue;
+      await tellPlayer(
+        row.playerId,
+        `Капитан заявил вас в состав «${draft.name}» на турнир «${row.application.tournament.name}».`,
+        { kind: "roster-invite", payload: { memberId: row.id } },
+      );
+    }
     revalidatePath(`/tournaments/${String(form.get("tournamentSlug") ?? "")}/apply`);
     return {
       problems,

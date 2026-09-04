@@ -3,13 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { approveRegistration, can, currentAccount, rejectClaim, rejectRegistration } from "@/lib/account";
 import { prisma } from "@/lib/prisma";
-import { approveProfileEdit, rejectProfileEdit } from "@/lib/profile-edit";
+import { approveProfileEdit, fieldLabel, rejectProfileEdit } from "@/lib/profile-edit";
 import {
   notifyProfileEditApproved,
   notifyProfileEditRejected,
   notifyRegistrationApproved,
   notifyRegistrationRejected,
 } from "@/lib/tg-notify";
+import { tellAccount, tellPlayer } from "@/lib/system-chat";
 
 // Решения по обеим очередям модерации — анкеты и привязки к профилю. Право accounts.approve
 // проверяет сам lib/account.ts — гейт стоит там, чтобы его нельзя было обойти, дойдя до апрува
@@ -37,6 +38,10 @@ export async function approve(_state: ReviewState, form: FormData): Promise<Revi
   // узнает об одобрении, только заглянув в бота сам.
   const player = await prisma.player.findUnique({ where: { id: res.playerId }, select: { nickname: true } });
   await notifyRegistrationApproved(accountId, player?.nickname ?? "Игрок");
+  await tellAccount(
+    accountId,
+    `Добро пожаловать в лигу, ${player?.nickname ?? "игрок"}. Профиль заведён в ростере — можно заполнять анкету и заявляться в составы.`,
+  );
   revalidatePath("/admin/moderation");
   return null;
 }
@@ -48,6 +53,7 @@ export async function reject(_state: ReviewState, form: FormData): Promise<Revie
   const error = await rejectRegistration(accountId, reason);
   if (error) return { error };
   await notifyRegistrationRejected(accountId, reason.trim());
+  await tellAccount(accountId, `Анкету вернул организатор: ${reason.trim()}\n\nПоправьте её в кабинете и пришлите снова.`);
   revalidatePath("/admin/moderation");
   return null;
 }
@@ -89,9 +95,14 @@ export async function approveEdit(_state: ReviewState, form: FormData): Promise<
   const who = await reviewer();
   if ("error" in who) return who;
   const id = editIdOf(form);
+  // Правку читаем ДО апрува: после него это уже история, а сказать надо про поле и игрока.
+  const request = await prisma.profileEditRequest.findUnique({ where: { id }, select: { playerId: true, field: true, newValue: true } });
   const error = await approveProfileEdit(id, who.id);
   if (error) return { error };
   await notifyProfileEditApproved(id);
+  if (request) {
+    await tellPlayer(request.playerId, `Правка принята: «${fieldLabel(request.field)}» теперь ${request.newValue}.`);
+  }
   revalidatePath("/admin/moderation");
   return null;
 }
@@ -101,9 +112,16 @@ export async function rejectEdit(_state: ReviewState, form: FormData): Promise<R
   if ("error" in who) return who;
   const id = editIdOf(form);
   const reason = String(form.get("reason") ?? "");
+  const request = await prisma.profileEditRequest.findUnique({ where: { id }, select: { playerId: true, field: true } });
   const error = await rejectProfileEdit(id, reason, who.id);
   if (error) return { error };
   await notifyProfileEditRejected(id, reason.trim());
+  if (request) {
+    await tellPlayer(
+      request.playerId,
+      `Правку поля «${fieldLabel(request.field)}» вернул организатор: ${reason.trim()}\n\nПоправьте и пришлите снова.`,
+    );
+  }
   revalidatePath("/admin/moderation");
   return null;
 }

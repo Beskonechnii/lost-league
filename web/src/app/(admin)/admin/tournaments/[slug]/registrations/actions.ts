@@ -5,6 +5,7 @@ import { currentAccount, requirePermission } from "@/lib/account";
 import { approveApplication, deleteApplication, formatDraft, parseDraft, rejectApplication } from "@/lib/team-application";
 import { enrichTeam } from "@/lib/enrich";
 import { notifyApproved, notifyRejected } from "@/lib/tg-notify";
+import { tellAccount } from "@/lib/system-chat";
 import { prisma } from "@/lib/prisma";
 
 // Решения по заявкам команд. Право проверяется здесь, у самой записи: страницу можно и не
@@ -35,7 +36,15 @@ export async function approve(_prev: ReviewState, form: FormData): Promise<Revie
     const id = Number(form.get("id"));
     const application = await approveApplication(id, me?.id ?? null);
     // Уведомление после записи и не в транзакции: телеграм лежит — команда всё равно заведена.
-    await notifyApproved(id, parseDraft(application.payload)?.name ?? "Команда");
+    const name = parseDraft(application.payload)?.name ?? "Команда";
+    await notifyApproved(id, name);
+    // Подавшему — в чат продукта: у заявки с сайта есть аккаунт, и это его прямой адрес.
+    if (application.submittedById) {
+      await tellAccount(
+        application.submittedById,
+        `Заявка «${name}» одобрена — команда заведена в лигу. Состав и ближайшие встречи смотрите в турнире.`,
+      );
+    }
     revalidatePath(path(String(form.get("tournamentSlug") ?? "")));
     revalidatePath("/roster/teams");
     return { ok: "Команда заведена" };
@@ -51,7 +60,14 @@ export async function reject(_prev: ReviewState, form: FormData): Promise<Review
     const id = Number(form.get("id"));
     const reason = String(form.get("reason") ?? "");
     const application = await rejectApplication(id, reason, me?.id ?? null);
-    await notifyRejected(id, parseDraft(application.payload)?.name ?? "Команда", reason.trim());
+    const name = parseDraft(application.payload)?.name ?? "Команда";
+    await notifyRejected(id, name, reason.trim());
+    if (application.submittedById) {
+      await tellAccount(
+        application.submittedById,
+        `Заявку «${name}» вернул организатор: ${reason.trim()}\n\nПоправьте состав на странице заявки и отправьте снова.`,
+      );
+    }
     revalidatePath(path(String(form.get("tournamentSlug") ?? "")));
     return { ok: "Заявка возвращена" };
   } catch (e) {

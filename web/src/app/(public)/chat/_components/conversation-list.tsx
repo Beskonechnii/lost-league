@@ -1,5 +1,6 @@
 import Link from "next/link";
-import type { ConversationRow } from "@/lib/chat";
+import { chatPath, type ConversationRow } from "@/lib/chat";
+import { Icon } from "@/components/pouf/Icon";
 import { PlayerAvatar } from "../../roster/_components/avatar";
 import { OnlineDot } from "@/app/_components/chat-live";
 
@@ -16,7 +17,36 @@ function when(at: Date): string {
   return sameDay ? timeShort.format(at) : dateShort.format(at);
 }
 
-export function ConversationList({ rows, activePlayerId }: { rows: ConversationRow[]; activePlayerId?: number }) {
+/**
+ * Знак лиги вместо аватара: у служебного канала нет профиля в ростере, а безликая заглушка с
+ * буквой «S» читалась бы как игрок с пустым фото. Акцентная плитка со звёздочкой — это очевидно
+ * не человек.
+ */
+function SystemMark({ size = 44, active }: { size?: number; active?: boolean }) {
+  return (
+    <span
+      style={{ width: size, height: size }}
+      className={`grid shrink-0 place-items-center rounded-xl ${
+        active ? "bg-[var(--on-accent)] text-[var(--accent-ink)]" : "bg-accent-fill text-[var(--on-accent)] cushion-blob"
+      }`}
+    >
+      <Icon name="sparkle" size={size >= 48 ? "md" : "sm"} />
+    </span>
+  );
+}
+
+export { SystemMark };
+
+export function ConversationList({
+  rows,
+  activePlayerId,
+  activeSystem,
+}: {
+  rows: ConversationRow[];
+  activePlayerId?: number;
+  /** Открыт служебный канал: у него нет playerId, поэтому подсветка своя. */
+  activeSystem?: boolean;
+}) {
   if (rows.length === 0) {
     return (
       <p className="rounded-control bg-surface p-4 text-sm font-bold text-muted cushion-row">
@@ -28,19 +58,25 @@ export function ConversationList({ rows, activePlayerId }: { rows: ConversationR
   return (
     <div className="flex flex-col gap-1.5">
       {rows.map((row) => {
-        const active = row.peer.playerId === activePlayerId;
+        const active = row.peer.system ? !!activeSystem : row.peer.playerId === activePlayerId;
         return (
           <Link
             key={row.id}
-            href={`/chat/${row.peer.playerId}`}
+            href={chatPath(row.peer)}
             aria-current={active ? "page" : undefined}
             className={`flex items-center gap-3 rounded-control p-2.5 transition ${
               active ? "bg-accent-fill text-[var(--on-accent)] cushion-blob" : "bg-surface cushion-row hover:cushion-row-hover"
             }`}
           >
             <div className="relative">
-              <PlayerAvatar photo={row.peer.photo} nickname={row.peer.nickname} size={44} className="rounded-xl" />
-              <OnlineDot playerId={row.peer.playerId} className="absolute -bottom-0.5 -right-0.5" />
+              {row.peer.system ? (
+                <SystemMark active={active} />
+              ) : (
+                <>
+                  <PlayerAvatar photo={row.peer.photo} nickname={row.peer.nickname} size={44} className="rounded-xl" />
+                  <OnlineDot playerId={row.peer.playerId!} className="absolute -bottom-0.5 -right-0.5" />
+                </>
+              )}
             </div>
 
             <div className="min-w-0 flex-1">
