@@ -190,59 +190,90 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:'Nunito',syst
 .calday{aspect-ratio:1;border-radius:12px;display:grid;place-items:center;font-size:13px;font-weight:800;color:var(--ink);}
 .calday.mut{color:var(--sub);}
 .calday.sel{border-radius:999px;color:var(--mint-ink);background:var(--grad-mint);box-shadow:inset 3px 4px 8px rgba(40,105,76,.62),inset -2px -3px 6px rgba(255,255,255,.55),inset 0 0 0 1px rgba(40,105,76,.2);}
+
+/* ——— групповой этап ——— */
+.gwrap{display:grid;grid-template-columns:1fr 1fr;gap:26px;}
+.gcard{border-radius:32px;padding:20px;background:var(--grad-surface);box-shadow:var(--sh-raise);}
+.ghead{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.gtitle{font-size:20px;font-weight:900;letter-spacing:-.4px;}
+.gmeta{margin-left:auto;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--sub);}
+.ggrid{display:grid;grid-template-columns:30px 1fr 46px 46px 62px;align-items:center;font-size:14px;font-weight:800;}
+.ghd{padding:8px 12px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--sub);text-align:center;}
+.ghd.l{text-align:left;}
+.grow{padding:9px 12px;border-radius:18px;}
+.grow+.grow{margin-top:2px;}
+.grow.up{background:var(--grad-mint);box-shadow:var(--sh-mint-sm);color:var(--mint-ink);}
+.gnum{text-align:center;font-variant-numeric:tabular-nums;color:var(--mut);}
+.grow.up .gnum{color:rgba(24,70,54,.8);}
+.gteam{display:flex;align-items:center;gap:10px;min-width:0;}
+.gname{font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* кросс-таблица */
+.cross{border-radius:32px;padding:18px 20px 20px;background:var(--grad-surface);box-shadow:var(--sh-raise);display:inline-block;}
+.ctab{border-collapse:separate;border-spacing:4px;}
+.ctab th{font-size:11px;font-weight:800;color:var(--sub);text-transform:uppercase;letter-spacing:.6px;padding:4px 6px;}
+.ctab th.side{text-align:left;width:180px;text-transform:none;letter-spacing:0;color:var(--ink);}
+.cell{width:56px;height:44px;border-radius:14px;display:grid;place-items:center;font-size:14px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--mut);background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.cell.w{color:#184636;background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+.cell.l{color:#7C2F2F;background:linear-gradient(135deg,#F7DCDC,#EDC0C0);box-shadow:var(--sh-raise-sm);}
+.cell.self{background:linear-gradient(135deg,#E4DFD4,#D6D0C3);box-shadow:var(--sh-carve);color:var(--sub);}
+.cell.soon{color:var(--sub);font-size:12px;font-weight:800;}
+.cside{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:900;}
 </style></helmet>
 <div class="board">
-  <h1 class="title">Кит · Ещё элементы</h1>
-  <p class="subt">Аккордеон, тумблер, radio, пагинация, аватар-группа, календарь.</p>
-  <div class="h2">Аккордеон</div>
-  <div class="acc">
-    <div class="accitem">
-      <div class="acchead">Как считаются очки?<span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 15 6-6 6 6"/></svg></span></div>
-      <div class="accbody">Очки начисляются по сыгранным сериям групповой стадии: победа — 3, поражение — 0. Счёт берётся из привязанных карт архива серий, автоматически.</div>
+  <h1 class="title">Кит · Групповой этап</h1>
+  <p class="subt">Блок группы (мини-таблица с зоной выхода) и кросс-таблица «все со всеми».</p>
+
+  <div class="h2">Блоки групп</div>
+  <div class="gwrap">
+    <div class="gcard">
+      <div class="ghead"><span class="tile acc" style="min-width:0;padding:8px 14px"><span class="tv" style="font-size:20px;margin:0">A</span></span><span class="gtitle">Группа A</span><span class="gmeta">выходят двое</span></div>
+      <div class="ggrid ghd"><div>#</div><div class="l">Команда</div><div>И</div><div>Р</div><div>Очки</div></div>
+      <div class="ggrid grow up"><div class="gnum">1</div><div class="gteam"><span class="tmark" style="width:30px;height:30px;font-size:11px">NC</span><span class="gname">Nova Cats</span></div><div class="gnum">3</div><div class="gnum">+5</div><div style="text-align:center"><span class="pts lead">9</span></div></div>
+      <div class="ggrid grow up"><div class="gnum">2</div><div class="gteam"><span class="tmark" style="width:30px;height:30px;font-size:11px">IL</span><span class="gname">Iron Lotus</span></div><div class="gnum">3</div><div class="gnum">+2</div><div style="text-align:center"><span class="pts">6</span></div></div>
+      <div class="ggrid grow"><div class="gnum">3</div><div class="gteam"><span class="tmark" style="width:30px;height:30px;font-size:11px">SO</span><span class="gname">Stone Owls</span></div><div class="gnum">3</div><div class="gnum">−3</div><div style="text-align:center"><span class="pts">3</span></div></div>
+      <div class="ggrid grow"><div class="gnum">4</div><div class="gteam"><span class="tmark" style="width:30px;height:30px;font-size:11px">PR</span><span class="gname">Pale Riders</span></div><div class="gnum">3</div><div class="gnum">−4</div><div style="text-align:center"><span class="pts">0</span></div></div>
     </div>
-    <div class="accitem"><div class="acchead">Когда встаёт посев плей-офф?<span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></span></div></div>
-    <div class="accitem"><div class="acchead">Что такое TP?<span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></span></div></div>
-  </div>
-  <div class="cols">
-    <div><div class="h2">Тумблер</div>
-      <div class="row" style="gap:26px">
-        <div><div class="lbl">Вкл</div><div class="switch on"><span class="knob"></span></div></div>
-        <div><div class="lbl">Выкл</div><div class="switch off"><span class="knob"></span></div></div>
-      </div>
-    </div>
-    <div><div class="h2">Radio</div>
-      <div class="chkrow"><span class="radio on"><span class="in"></span></span>Single Elimination</div>
-      <div class="chkrow" style="margin-top:14px"><span class="radio off"></span>Double Elimination</div>
-      <div class="chkrow" style="margin-top:14px"><span class="radio off"></span>Round Robin</div>
-    </div>
-  </div>
-  <div class="cols">
-    <div><div class="h2">Пагинация</div>
-      <div class="pager">
-        <span class="pg"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m15 6-6 6 6 6"/></svg></span>
-        <span class="pg on">1</span><span class="pg">2</span><span class="pg">3</span><span class="pg gap">…</span><span class="pg">8</span>
-        <span class="pg"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg></span>
-      </div>
-    </div>
-    <div><div class="h2">Аватар-группа</div>
-      <div class="avg">
-        <span class="av" style="width:46px;height:46px"></span><span class="av" style="width:46px;height:46px"></span><span class="av" style="width:46px;height:46px"></span><span class="av" style="width:46px;height:46px"></span>
-        <span class="more" style="width:46px;height:46px">+5</span>
-      </div>
-      <div class="lbl" style="margin-top:14px">Состав команды · 9 игроков</div>
+
+    <div class="gcard">
+      <div class="ghead"><span class="tile acc" style="min-width:0;padding:8px 14px"><span class="tv" style="font-size:20px;margin:0">B</span></span><span class="gtitle">Группа B</span><span class="gmeta">идёт тур 3</span></div>
+      <div class="ggrid ghd"><div>#</div><div class="l">Команда</div><div>И</div><div>Р</div><div>Очки</div></div>
+      <div class="ggrid grow up"><div class="gnum">1</div><div class="gteam"><span class="tmark" style="width:30px;height:30px;font-size:11px">DH</span><span class="gname">Deep Harbor</span></div><div class="gnum">2</div><div class="gnum">+4</div><div style="text-align:center"><span class="pts lead">6</span></div></div>
+      <div class="ggrid grow up"><div class="gnum">2</div><div class="gteam"><span class="tmark" style="width:30px;height:30px;font-size:11px">RM</span><span class="gname">Red Meridian</span></div><div class="gnum">2</div><div class="gnum">+1</div><div style="text-align:center"><span class="pts">3</span></div></div>
+      <div class="ggrid grow"><div class="gnum">3</div><div class="gteam"><span class="tmark" style="width:30px;height:30px;font-size:11px">BH</span><span class="gname">Blue Harvest</span></div><div class="gnum">2</div><div class="gnum">−1</div><div style="text-align:center"><span class="pts">3</span></div></div>
+      <div class="ggrid grow"><div class="gnum">4</div><div class="gteam"><span class="tmark" style="width:30px;height:30px;font-size:11px">GC</span><span class="gname">Green Circuit</span></div><div class="gnum">2</div><div class="gnum">−4</div><div style="text-align:center"><span class="pts">0</span></div></div>
     </div>
   </div>
-  <div class="h2">Календарь</div>
-  <div class="cal">
-    <div class="calhead">
-      <div class="calnav"><span class="calbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span><span class="calbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></div>
-      <div class="caldrop">Март<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
-      <div class="caldrop yr">2001<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
-    </div>
-    <div class="calgrid">
-      <div class="calwk"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>
-      <div class="caldays"><div class="calday mut">26</div><div class="calday mut">27</div><div class="calday mut">28</div><div class="calday">1</div><div class="calday">2</div><div class="calday">3</div><div class="calday">4</div><div class="calday">5</div><div class="calday">6</div><div class="calday">7</div><div class="calday">8</div><div class="calday">9</div><div class="calday">10</div><div class="calday">11</div><div class="calday sel">12</div><div class="calday">13</div><div class="calday">14</div><div class="calday">15</div><div class="calday">16</div><div class="calday">17</div><div class="calday">18</div><div class="calday">19</div><div class="calday">20</div><div class="calday">21</div><div class="calday">22</div><div class="calday">23</div><div class="calday">24</div><div class="calday">25</div><div class="calday">26</div><div class="calday">27</div><div class="calday">28</div><div class="calday">29</div><div class="calday">30</div><div class="calday">31</div><div class="calday mut">1</div><div class="calday mut">2</div><div class="calday mut">3</div><div class="calday mut">4</div><div class="calday mut">5</div><div class="calday mut">6</div><div class="calday mut">7</div><div class="calday mut">8</div></div>
-    </div>
+
+  <div class="h2">Кросс-таблица группы</div>
+  <div class="cross">
+    <table class="ctab">
+      <tr><th class="side">Группа A</th><th>NC</th><th>IL</th><th>SO</th><th>PR</th></tr>
+      <tr>
+        <th class="side"><span class="cside"><span class="tmark" style="width:30px;height:30px;font-size:11px">NC</span>Nova Cats</span></th>
+        <td><div class="cell self">—</div></td><td><div class="cell w">2:1</div></td><td><div class="cell w">2:0</div></td><td><div class="cell w">2:0</div></td>
+      </tr>
+      <tr>
+        <th class="side"><span class="cside"><span class="tmark" style="width:30px;height:30px;font-size:11px">IL</span>Iron Lotus</span></th>
+        <td><div class="cell l">1:2</div></td><td><div class="cell self">—</div></td><td><div class="cell w">2:1</div></td><td><div class="cell w">2:0</div></td>
+      </tr>
+      <tr>
+        <th class="side"><span class="cside"><span class="tmark" style="width:30px;height:30px;font-size:11px">SO</span>Stone Owls</span></th>
+        <td><div class="cell l">0:2</div></td><td><div class="cell l">1:2</div></td><td><div class="cell self">—</div></td><td><div class="cell w">2:1</div></td>
+      </tr>
+      <tr>
+        <th class="side"><span class="cside"><span class="tmark" style="width:30px;height:30px;font-size:11px">PR</span>Pale Riders</span></th>
+        <td><div class="cell l">0:2</div></td><td><div class="cell l">0:2</div></td><td><div class="cell l">1:2</div></td><td><div class="cell self">—</div></td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="h2">Ячейка кросс-таблицы · состояния</div>
+  <div class="row">
+    <div class="scell"><div class="cell w">2:0</div><div class="scap">Победа</div></div>
+    <div class="scell"><div class="cell l">1:2</div><div class="scap">Поражение</div></div>
+    <div class="scell"><div class="cell soon">19:00</div><div class="scap">Предстоит</div></div>
+    <div class="scell"><div class="cell self">—</div><div class="scap">Своя клетка</div></div>
+    <div class="scell"><div class="cell w h">2:1</div><div class="scap">Hover</div></div>
   </div>
 </div>
 </x-dc>

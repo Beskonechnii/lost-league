@@ -9,7 +9,11 @@
 <helmet><style>
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
 :root{
-  --paper:#E7E3D8;--ink:#33322E;--mut:#807C73;--sub:#AEAAA0;--line:#E0DACE;--line2:#D3CCBE;--mint-ink:#184636;
+  /* --mut затемнён против первой редакции Кита (#807C73 → #69655D, 04.09.2026): на бумаге
+     старое значение давало 3.24:1, а им набрана вся мелочь 11px/800 — шапки колонок, теги,
+     легенды. #69655D — 4.52:1, минимальное значение, проходящее AA. Разбор — DECISIONS.md.
+     --sub (1.81:1) оставлен, но он ДЕКОРАТИВНЫЙ: точка, штрих, разделитель, не текст. */
+  --paper:#E7E3D8;--ink:#33322E;--mut:#69655D;--sub:#AEAAA0;--line:#E0DACE;--line2:#D3CCBE;--mint-ink:#184636;
   --grad-surface:linear-gradient(135deg,#FFFFFF,#F8F4EC 55%,#EEE8DD);
   --grad-mint:linear-gradient(135deg,#D5F2E2,#A9DCC3 52%,#8CCBAD);
   --grad-board:linear-gradient(135deg,#FDFBF6,#F1ECE1);

@@ -2,26 +2,39 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "web-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "web", "run", "dev"],
-      "port": 3000
-    },
-    {
-      "name": "web-dev-4203",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "web", "run", "dev", "--", "-p", "4203"],
-      "port": 4203
-    },
-    {
       "name": "web-attach",
       "port": 3000,
       "url": "http://localhost:3000"
     },
     {
+      "name": "web-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "web",
+        "run",
+        "dev"
+      ],
+      "port": 3000
+    },
+    {
       "name": "web-attach-4203",
       "port": 4203,
       "url": "http://localhost:4203"
+    },
+    {
+      "name": "web-dev-4203",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "web",
+        "run",
+        "dev",
+        "--",
+        "-p",
+        "4203"
+      ],
+      "port": 4203
     }
   ]
 }

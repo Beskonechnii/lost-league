@@ -190,58 +190,82 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:'Nunito',syst
 .calday{aspect-ratio:1;border-radius:12px;display:grid;place-items:center;font-size:13px;font-weight:800;color:var(--ink);}
 .calday.mut{color:var(--sub);}
 .calday.sel{border-radius:999px;color:var(--mint-ink);background:var(--grad-mint);box-shadow:inset 3px 4px 8px rgba(40,105,76,.62),inset -2px -3px 6px rgba(255,255,255,.55),inset 0 0 0 1px rgba(40,105,76,.2);}
+
+/* ——— hero-шапка команды ——— */
+.biglogo{width:150px;height:150px;border-radius:38px;flex:none;display:grid;place-items:center;font-size:38px;font-weight:900;letter-spacing:-1px;color:#184636;background:var(--grad-mint);box-shadow:var(--sh-mint);}
+.tstat{display:flex;gap:12px;flex-wrap:wrap;}
+.rostline{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:20px;background:var(--grad-surface);box-shadow:var(--sh-raise-sm);}
+.rostline .nm{font-size:14px;font-weight:900;}
+.rostline .rl{margin-left:auto;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--sub);}
+.capmark{font-size:10px;font-weight:900;color:#2E7D5E;text-transform:uppercase;letter-spacing:.8px;}
+.hmob{width:390px;border-radius:34px;overflow:hidden;position:relative;background:var(--grad-surface);box-shadow:var(--sh-raise);}
 </style></helmet>
 <div class="board">
-  <h1 class="title">Кит · Ещё элементы</h1>
-  <p class="subt">Аккордеон, тумблер, radio, пагинация, аватар-группа, календарь.</p>
-  <div class="h2">Аккордеон</div>
-  <div class="acc">
-    <div class="accitem">
-      <div class="acchead">Как считаются очки?<span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 15 6-6 6 6"/></svg></span></div>
-      <div class="accbody">Очки начисляются по сыгранным сериям групповой стадии: победа — 3, поражение — 0. Счёт берётся из привязанных карт архива серий, автоматически.</div>
-    </div>
-    <div class="accitem"><div class="acchead">Когда встаёт посев плей-офф?<span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></span></div></div>
-    <div class="accitem"><div class="acchead">Что такое TP?<span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></span></div></div>
-  </div>
-  <div class="cols">
-    <div><div class="h2">Тумблер</div>
-      <div class="row" style="gap:26px">
-        <div><div class="lbl">Вкл</div><div class="switch on"><span class="knob"></span></div></div>
-        <div><div class="lbl">Выкл</div><div class="switch off"><span class="knob"></span></div></div>
+  <h1 class="title">Кит · Hero-шапка команды</h1>
+  <p class="subt">Парная к шапке игрока: лого, название и тег, дивизион, состав, ключевые числа. Тот же рецепт — подложка с мятным светом, вложенные чипы.</p>
+
+  <div class="h2">Шапка · 1220px</div>
+  <div class="hero">
+    <div class="herowash"></div>
+    <div style="position:relative;display:flex;gap:28px;padding:30px">
+      <div class="biglogo">NC</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:34px;font-weight:900;letter-spacing:-.8px">Nova Cats<span style="color:var(--sub);font-size:20px;margin-left:12px">NOVA</span></div>
+        <div style="font-weight:700;color:var(--mut);margin-top:2px">Основан в 2024 · капитан: Placeholder</div>
+        <div class="row" style="gap:9px;margin-top:12px">
+          <span class="herochip tp">Дивизион A</span>
+          <span class="herochip">Сезон 3</span>
+          <span class="herochip"><span class="dot" style="background:linear-gradient(135deg,#B7E4CD,#7FC3A4)"></span>1-е место</span>
+          <span class="herochip">12–2</span>
+          <span class="herochip">карты +17</span>
+        </div>
+        <div class="row" style="gap:9px;margin-top:12px">
+          <span class="linkchip">Dotabuff</span><span class="linkchip">Telegram</span><span class="linkchip">Состав</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px">
+        <span class="btn solid sm">Редактировать</span>
+        <div class="avg" style="margin-top:4px">
+          <span class="av" style="width:38px;height:38px"></span><span class="av" style="width:38px;height:38px"></span><span class="av" style="width:38px;height:38px"></span><span class="av" style="width:38px;height:38px"></span><span class="more" style="width:38px;height:38px">+1</span>
+        </div>
+        <span style="font-size:12px;font-weight:700;color:var(--sub)">slug: nova-cats</span>
       </div>
     </div>
-    <div><div class="h2">Radio</div>
-      <div class="chkrow"><span class="radio on"><span class="in"></span></span>Single Elimination</div>
-      <div class="chkrow" style="margin-top:14px"><span class="radio off"></span>Double Elimination</div>
-      <div class="chkrow" style="margin-top:14px"><span class="radio off"></span>Round Robin</div>
+    <div style="position:relative;border-top:1px solid var(--line);padding:16px 30px;display:flex;gap:12px;flex-wrap:wrap">
+      <div class="tile" style="min-width:120px;padding:12px 16px"><div class="tl">Очки</div><div class="tv">36</div></div>
+      <div class="tile" style="min-width:120px;padding:12px 16px"><div class="tl">Серии</div><div class="tv">14</div></div>
+      <div class="tile" style="min-width:120px;padding:12px 16px"><div class="tl">Карты</div><div class="tv">26–9</div></div>
+      <div class="tile acc" style="min-width:120px;padding:12px 16px"><div class="tl">Серия побед</div><div class="tv">4</div></div>
+      <div class="tile" style="min-width:120px;padding:12px 16px"><div class="tl">Ср. MMR</div><div class="tv">6 400</div></div>
     </div>
   </div>
-  <div class="cols">
-    <div><div class="h2">Пагинация</div>
-      <div class="pager">
-        <span class="pg"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m15 6-6 6 6 6"/></svg></span>
-        <span class="pg on">1</span><span class="pg">2</span><span class="pg">3</span><span class="pg gap">…</span><span class="pg">8</span>
-        <span class="pg"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg></span>
-      </div>
+
+  <div class="h2">Состав в шапке · строка игрока</div>
+  <div class="cols" style="gap:16px">
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="rostline"><span class="av" style="width:34px;height:34px"></span><div><div class="nm">Player One <span class="capmark">капитан</span></div><div class="tsub" style="font-size:11px;font-weight:800;color:var(--sub)">carry · Immortal</div></div><span class="rl">Основа</span></div>
+      <div class="rostline"><span class="av" style="width:34px;height:34px"></span><div><div class="nm">Player Two</div><div class="tsub" style="font-size:11px;font-weight:800;color:var(--sub)">mid · Divine</div></div><span class="rl">Основа</span></div>
+      <div class="rostline"><span class="av" style="width:34px;height:34px"></span><div><div class="nm">Player Three</div><div class="tsub" style="font-size:11px;font-weight:800;color:var(--sub)">offlane · Divine</div></div><span class="rl">Основа</span></div>
     </div>
-    <div><div class="h2">Аватар-группа</div>
-      <div class="avg">
-        <span class="av" style="width:46px;height:46px"></span><span class="av" style="width:46px;height:46px"></span><span class="av" style="width:46px;height:46px"></span><span class="av" style="width:46px;height:46px"></span>
-        <span class="more" style="width:46px;height:46px">+5</span>
-      </div>
-      <div class="lbl" style="margin-top:14px">Состав команды · 9 игроков</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="rostline"><span class="av" style="width:34px;height:34px"></span><div><div class="nm">Player Four</div><div class="tsub" style="font-size:11px;font-weight:800;color:var(--sub)">soft support · Ancient</div></div><span class="rl">Основа</span></div>
+      <div class="rostline"><span class="av" style="width:34px;height:34px"></span><div><div class="nm">Player Five</div><div class="tsub" style="font-size:11px;font-weight:800;color:var(--sub)">hard support · Ancient</div></div><span class="rl">Основа</span></div>
+      <div class="rostline" style="opacity:.75"><span class="av" style="width:34px;height:34px"></span><div><div class="nm">Player Six</div><div class="tsub" style="font-size:11px;font-weight:800;color:var(--sub)">mid · Legend</div></div><span class="rl">Запас</span></div>
     </div>
   </div>
-  <div class="h2">Календарь</div>
-  <div class="cal">
-    <div class="calhead">
-      <div class="calnav"><span class="calbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span><span class="calbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></div>
-      <div class="caldrop">Март<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
-      <div class="caldrop yr">2001<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
+
+  <div class="h2">Мобильный вид · 390px</div>
+  <div class="hmob">
+    <div class="herowash"></div>
+    <div style="position:relative;padding:22px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px">
+      <div class="biglogo" style="width:96px;height:96px;border-radius:28px;font-size:26px">NC</div>
+      <div style="font-size:24px;font-weight:900;letter-spacing:-.6px">Nova Cats <span style="color:var(--sub);font-size:15px">NOVA</span></div>
+      <div class="row" style="gap:8px;justify-content:center"><span class="herochip tp">Дивизион A</span><span class="herochip">1-е место</span><span class="herochip">12–2</span></div>
     </div>
-    <div class="calgrid">
-      <div class="calwk"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>
-      <div class="caldays"><div class="calday mut">26</div><div class="calday mut">27</div><div class="calday mut">28</div><div class="calday">1</div><div class="calday">2</div><div class="calday">3</div><div class="calday">4</div><div class="calday">5</div><div class="calday">6</div><div class="calday">7</div><div class="calday">8</div><div class="calday">9</div><div class="calday">10</div><div class="calday">11</div><div class="calday sel">12</div><div class="calday">13</div><div class="calday">14</div><div class="calday">15</div><div class="calday">16</div><div class="calday">17</div><div class="calday">18</div><div class="calday">19</div><div class="calday">20</div><div class="calday">21</div><div class="calday">22</div><div class="calday">23</div><div class="calday">24</div><div class="calday">25</div><div class="calday">26</div><div class="calday">27</div><div class="calday">28</div><div class="calday">29</div><div class="calday">30</div><div class="calday">31</div><div class="calday mut">1</div><div class="calday mut">2</div><div class="calday mut">3</div><div class="calday mut">4</div><div class="calday mut">5</div><div class="calday mut">6</div><div class="calday mut">7</div><div class="calday mut">8</div></div>
+    <div style="position:relative;border-top:1px solid var(--line);padding:14px 18px;display:flex;gap:10px;justify-content:center">
+      <div class="tile" style="min-width:0;flex:1;padding:10px 12px"><div class="tl">Очки</div><div class="tv" style="font-size:22px">36</div></div>
+      <div class="tile" style="min-width:0;flex:1;padding:10px 12px"><div class="tl">Серии</div><div class="tv" style="font-size:22px">14</div></div>
+      <div class="tile" style="min-width:0;flex:1;padding:10px 12px"><div class="tl">Карты</div><div class="tv" style="font-size:22px">26–9</div></div>
     </div>
   </div>
 </div>

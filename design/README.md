@@ -17,7 +17,8 @@ https://claude.ai/code/artifact/de74082f-62a9-46ca-b381-b12a204ab6d1
 ## Что где
 
 - `kit/build.mjs` — **источник истины**: вся разметка артбордов + общий CSS (pouf-рецепты).
-- `kit/*.dc.html` — вывод генератора, 7 артбордов. Регенерируются: `node build.mjs`.
+  Общий `STYLE` — один на все листы; `EXTRA` держит хвосты CSS, нужные одному листу.
+- `kit/*.dc.html` — вывод генератора, 14 артбордов. Регенерируются: `node build.mjs`.
 - `kit/canvas.json` — раскладка артбордов на канвасе + аннотации.
 - Собранный `lost-clay-kit.html` (~2.6MB) — вывод сборки канваса, в git **не** коммитим.
 
@@ -25,5 +26,15 @@ https://claude.ai/code/artifact/de74082f-62a9-46ca-b381-b12a204ab6d1
 
 1. Правим `kit/build.mjs` (не `.dc.html` — их перезапишет генератор).
 2. `cd design/kit && node build.mjs` — обновит `.dc.html`.
-3. Скилл `design` пересобирает канвас из `.dc.html` + `canvas.json`.
-4. Публикуем **по тому же URL** артефакта (`Artifact url=…`), новый не плодим.
+3. Скилл `design` пересобирает канвас из `.dc.html` + `canvas.json`:
+   `node <база скилла>/seed-canvas.mjs --template <база>/payload.template.html
+   --out lost-clay-kit.html --title "LOST · Кит элементов" --canvas canvas.json --artboard <каждый>.dc.html`,
+   затем `--check`.
+4. Публикуем **по тому же URL** артефакта (`Artifact url=…`, `contract: "0.1.31"`,
+   `capabilities` не передаём — канвас держит своё), новый не плодим.
+
+**Правка мимо репозитория ломает эту схему.** Артборды, добавленные прямо в канвасе (Э1 и Э9 так
+и сделали), генератору неизвестны — и первая же пересборка их стирает. Если правил в канвасе,
+верни правку в `build.mjs`: `seed-canvas.mjs --extract <сохранённая страница> --to <пустая папка>`
+достаёт `.dc.html` и `canvas.json` обратно. Сведено 04.09.2026, все 14 артбордов снова
+генерируются из `build.mjs`.

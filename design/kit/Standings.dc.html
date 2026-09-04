@@ -190,59 +190,142 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:'Nunito',syst
 .calday{aspect-ratio:1;border-radius:12px;display:grid;place-items:center;font-size:13px;font-weight:800;color:var(--ink);}
 .calday.mut{color:var(--sub);}
 .calday.sel{border-radius:999px;color:var(--mint-ink);background:var(--grad-mint);box-shadow:inset 3px 4px 8px rgba(40,105,76,.62),inset -2px -3px 6px rgba(255,255,255,.55),inset 0 0 0 1px rgba(40,105,76,.2);}
+
+/* ——— турнирная таблица ——— */
+.tbl{border-radius:34px;padding:8px;background:var(--grad-surface);box-shadow:var(--sh-raise);}
+.tgrid{display:grid;grid-template-columns:64px 1fr 56px 56px 56px 74px 104px 88px;align-items:center;}
+.thead{padding:14px 18px 12px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--sub);}
+.thead .num,.trow .num{text-align:center;}
+.sortable{display:inline-flex;align-items:center;gap:5px;justify-content:center;}
+.sortable.on{color:var(--mint-ink);}
+.sortcap{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.sortable.on .sortcap{background:var(--grad-mint);box-shadow:var(--sh-mint-sm);color:var(--mint-ink);}
+.trow{padding:11px 18px;border-radius:24px;font-size:14px;font-weight:800;}
+.trow+.trow{margin-top:2px;}
+.trow.zsplit{margin-top:12px;padding-top:16px;border-top:1px dashed var(--line2);}
+.trow.me{background:var(--grad-mint);box-shadow:var(--sh-mint-sm);color:var(--mint-ink);}
+.trow.me .tname{color:var(--mint-ink);}
+.trow.hov{background:var(--grad-surface);box-shadow:var(--sh-raise-sm);transform:translateY(-2px);}
+.trow.out{opacity:.72;}
+.tplace{display:flex;align-items:center;gap:9px;}
+.tpn{font-size:15px;font-weight:900;font-variant-numeric:tabular-nums;width:22px;text-align:right;}
+.tteam{display:flex;align-items:center;gap:12px;min-width:0;}
+.tname{font-size:15px;font-weight:900;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tsub{font-size:11px;font-weight:800;color:var(--sub);text-transform:uppercase;letter-spacing:.6px;}
+.tnum{text-align:center;font-variant-numeric:tabular-nums;color:var(--mut);}
+.tnum.win{color:var(--ink);} .tdiff{text-align:center;font-variant-numeric:tabular-nums;font-weight:900;}
+.tdiff.pos{color:#2E7D5E;} .tdiff.neg{color:#B4595A;}
+.form{display:flex;gap:5px;justify-content:center;}
+.fdot{width:17px;height:17px;border-radius:7px;display:grid;place-items:center;font-size:10px;font-weight:900;}
+.fdot.w{color:#184636;background:linear-gradient(135deg,#D5F2E2,#9CD3B6);box-shadow:var(--sh-mint-sm);}
+.fdot.l{color:#7C2F2F;background:linear-gradient(135deg,#F5D3D3,#E3A3A3);box-shadow:var(--sh-raise-sm);}
+.fdot.n{color:var(--sub);background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.tpts{display:flex;justify-content:flex-end;}
+.zlegend{display:flex;gap:22px;flex-wrap:wrap;align-items:center;font-size:12px;font-weight:800;color:var(--mut);}
+.zlegend .zi{display:inline-flex;align-items:center;gap:9px;}
+/* мобильная строка 390 */
+.mob{width:390px;border-radius:34px;padding:10px;background:var(--grad-surface);box-shadow:var(--sh-raise);}
+.mrow{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:22px;font-weight:800;}
+.mrow+.mrow{margin-top:2px;}
+.mrow.me{background:var(--grad-mint);box-shadow:var(--sh-mint-sm);color:var(--mint-ink);}
+.mmeta{font-size:11px;font-weight:800;color:var(--sub);margin-top:1px;}
 </style></helmet>
 <div class="board">
-  <h1 class="title">Кит · Ещё элементы</h1>
-  <p class="subt">Аккордеон, тумблер, radio, пагинация, аватар-группа, календарь.</p>
-  <div class="h2">Аккордеон</div>
-  <div class="acc">
-    <div class="accitem">
-      <div class="acchead">Как считаются очки?<span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 15 6-6 6 6"/></svg></span></div>
-      <div class="accbody">Очки начисляются по сыгранным сериям групповой стадии: победа — 3, поражение — 0. Счёт берётся из привязанных карт архива серий, автоматически.</div>
+  <h1 class="title">Кит · Турнирная таблица</h1>
+  <p class="subt">Шапка колонок с сортировкой, строка команды, зоны выхода, состояния строки и мобильный вид 390px.</p>
+
+  <div class="h2">Таблица дивизиона · 1220px</div>
+  <div class="tbl">
+    <div class="tgrid thead">
+      <div class="num">#</div>
+      <div>Команда</div>
+      <div class="num"><span class="sortable">И</span></div>
+      <div class="num"><span class="sortable">В</span></div>
+      <div class="num"><span class="sortable">П</span></div>
+      <div class="num"><span class="sortable">Карты</span></div>
+      <div class="num">Форма</div>
+      <div class="num"><span class="sortable on">Очки <span class="sortcap"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4"><path d="M6 15l6-6 6 6"/></svg></span></span></div>
     </div>
-    <div class="accitem"><div class="acchead">Когда встаёт посев плей-офф?<span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></span></div></div>
-    <div class="accitem"><div class="acchead">Что такое TP?<span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="m6 9 6 6 6-6"/></svg></span></div></div>
+
+    <div class="tgrid trow">
+      <div class="tplace"><span class="zbar" style="background:linear-gradient(135deg,#B7E4CD,#7FC3A4)"></span><span class="tpn">1</span></div>
+      <div class="tteam"><span class="tmark" style="width:34px;height:34px">NC</span><div><div class="tname">Nova Cats</div><div class="tsub">Дивизион A</div></div></div>
+      <div class="tnum">14</div><div class="tnum win">12</div><div class="tnum">2</div>
+      <div class="tdiff pos">+17</div>
+      <div class="form"><span class="fdot w">В</span><span class="fdot w">В</span><span class="fdot l">П</span><span class="fdot w">В</span><span class="fdot w">В</span></div>
+      <div class="tpts"><span class="pts lead">36</span></div>
+    </div>
+
+    <div class="tgrid trow hov">
+      <div class="tplace"><span class="zbar" style="background:linear-gradient(135deg,#B7E4CD,#7FC3A4)"></span><span class="tpn">2</span></div>
+      <div class="tteam"><span class="tmark" style="width:34px;height:34px">IL</span><div><div class="tname">Iron Lotus</div><div class="tsub">Дивизион A</div></div></div>
+      <div class="tnum">14</div><div class="tnum win">11</div><div class="tnum">3</div>
+      <div class="tdiff pos">+12</div>
+      <div class="form"><span class="fdot w">В</span><span class="fdot w">В</span><span class="fdot w">В</span><span class="fdot l">П</span><span class="fdot w">В</span></div>
+      <div class="tpts"><span class="pts">33</span></div>
+    </div>
+
+    <div class="tgrid trow me">
+      <div class="tplace"><span class="zbar" style="background:linear-gradient(135deg,#B7E4CD,#7FC3A4)"></span><span class="tpn">3</span></div>
+      <div class="tteam"><span class="tmark" style="width:34px;height:34px">DH</span><div><div class="tname">Deep Harbor</div><div class="tsub" style="color:rgba(24,70,54,.6)">ваша команда</div></div></div>
+      <div class="tnum" style="color:rgba(24,70,54,.75)">14</div><div class="tnum" style="color:var(--mint-ink)">9</div><div class="tnum" style="color:rgba(24,70,54,.75)">5</div>
+      <div class="tdiff" style="color:var(--mint-ink)">+6</div>
+      <div class="form"><span class="fdot w">В</span><span class="fdot l">П</span><span class="fdot w">В</span><span class="fdot w">В</span><span class="fdot n">—</span></div>
+      <div class="tpts"><span class="pts">27</span></div>
+    </div>
+
+    <div class="tgrid trow">
+      <div class="tplace"><span class="zbar" style="background:linear-gradient(135deg,#F3DEA6,#E2BC63)"></span><span class="tpn">4</span></div>
+      <div class="tteam"><span class="tmark" style="width:34px;height:34px">RM</span><div><div class="tname">Red Meridian</div><div class="tsub">Дивизион A</div></div></div>
+      <div class="tnum">14</div><div class="tnum win">7</div><div class="tnum">7</div>
+      <div class="tdiff pos">+1</div>
+      <div class="form"><span class="fdot l">П</span><span class="fdot w">В</span><span class="fdot l">П</span><span class="fdot w">В</span><span class="fdot l">П</span></div>
+      <div class="tpts"><span class="pts">21</span></div>
+    </div>
+
+    <div class="tgrid trow">
+      <div class="tplace"><span class="zbar" style="background:linear-gradient(135deg,#F3DEA6,#E2BC63)"></span><span class="tpn">5</span></div>
+      <div class="tteam"><span class="tmark" style="width:34px;height:34px">BH</span><div><div class="tname">Blue Harvest</div><div class="tsub">Дивизион A</div></div></div>
+      <div class="tnum">14</div><div class="tnum win">6</div><div class="tnum">8</div>
+      <div class="tdiff neg">−4</div>
+      <div class="form"><span class="fdot l">П</span><span class="fdot l">П</span><span class="fdot w">В</span><span class="fdot l">П</span><span class="fdot w">В</span></div>
+      <div class="tpts"><span class="pts">18</span></div>
+    </div>
+
+    <div class="tgrid trow out zsplit">
+      <div class="tplace"><span class="zbar" style="background:linear-gradient(135deg,#F0C4C4,#DE9494)"></span><span class="tpn">6</span></div>
+      <div class="tteam"><span class="tmark" style="width:34px;height:34px">SO</span><div><div class="tname">Stone Owls</div><div class="tsub">Дивизион A</div></div></div>
+      <div class="tnum">14</div><div class="tnum win">2</div><div class="tnum">12</div>
+      <div class="tdiff neg">−22</div>
+      <div class="form"><span class="fdot l">П</span><span class="fdot l">П</span><span class="fdot l">П</span><span class="fdot w">В</span><span class="fdot l">П</span></div>
+      <div class="tpts"><span class="pts">6</span></div>
+    </div>
   </div>
-  <div class="cols">
-    <div><div class="h2">Тумблер</div>
-      <div class="row" style="gap:26px">
-        <div><div class="lbl">Вкл</div><div class="switch on"><span class="knob"></span></div></div>
-        <div><div class="lbl">Выкл</div><div class="switch off"><span class="knob"></span></div></div>
-      </div>
-    </div>
-    <div><div class="h2">Radio</div>
-      <div class="chkrow"><span class="radio on"><span class="in"></span></span>Single Elimination</div>
-      <div class="chkrow" style="margin-top:14px"><span class="radio off"></span>Double Elimination</div>
-      <div class="chkrow" style="margin-top:14px"><span class="radio off"></span>Round Robin</div>
+
+  <div class="h2">Зоны и легенда</div>
+  <div class="zlegend">
+    <span class="zi"><span class="zbar" style="background:linear-gradient(135deg,#B7E4CD,#7FC3A4)"></span>Плей-офф · места 1–3</span>
+    <span class="zi"><span class="zbar" style="background:linear-gradient(135deg,#F3DEA6,#E2BC63)"></span>Плей-ин · места 4–5</span>
+    <span class="zi"><span class="zbar" style="background:linear-gradient(135deg,#F0C4C4,#DE9494)"></span>Вылет · место 6</span>
+  </div>
+
+  <div class="h2">Состояния строки</div>
+  <div style="display:flex;flex-direction:column;gap:12px;max-width:640px">
+    <div class="lbl" style="margin:0">Default · hover · своя команда · вне зоны</div>
+    <div class="tbl" style="padding:6px">
+      <div class="mrow"><span class="tmark" style="width:32px;height:32px">NC</span><div style="flex:1"><div class="tname">Nova Cats</div><div class="mmeta">12–2 · +17</div></div><span class="pts">36</span></div>
+      <div class="mrow" style="background:var(--grad-surface);box-shadow:var(--sh-raise-sm);transform:translateY(-2px)"><span class="tmark" style="width:32px;height:32px">IL</span><div style="flex:1"><div class="tname">Iron Lotus</div><div class="mmeta">11–3 · +12</div></div><span class="pts">33</span></div>
+      <div class="mrow me"><span class="tmark" style="width:32px;height:32px">DH</span><div style="flex:1"><div class="tname">Deep Harbor</div><div class="mmeta" style="color:rgba(24,70,54,.6)">9–5 · +6</div></div><span class="pts">27</span></div>
+      <div class="mrow" style="opacity:.72"><span class="tmark" style="width:32px;height:32px">SO</span><div style="flex:1"><div class="tname">Stone Owls</div><div class="mmeta">2–12 · −22</div></div><span class="pts">6</span></div>
     </div>
   </div>
-  <div class="cols">
-    <div><div class="h2">Пагинация</div>
-      <div class="pager">
-        <span class="pg"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m15 6-6 6 6 6"/></svg></span>
-        <span class="pg on">1</span><span class="pg">2</span><span class="pg">3</span><span class="pg gap">…</span><span class="pg">8</span>
-        <span class="pg"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m9 6 6 6-6 6"/></svg></span>
-      </div>
-    </div>
-    <div><div class="h2">Аватар-группа</div>
-      <div class="avg">
-        <span class="av" style="width:46px;height:46px"></span><span class="av" style="width:46px;height:46px"></span><span class="av" style="width:46px;height:46px"></span><span class="av" style="width:46px;height:46px"></span>
-        <span class="more" style="width:46px;height:46px">+5</span>
-      </div>
-      <div class="lbl" style="margin-top:14px">Состав команды · 9 игроков</div>
-    </div>
-  </div>
-  <div class="h2">Календарь</div>
-  <div class="cal">
-    <div class="calhead">
-      <div class="calnav"><span class="calbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span><span class="calbtn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></div>
-      <div class="caldrop">Март<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
-      <div class="caldrop yr">2001<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></div>
-    </div>
-    <div class="calgrid">
-      <div class="calwk"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>
-      <div class="caldays"><div class="calday mut">26</div><div class="calday mut">27</div><div class="calday mut">28</div><div class="calday">1</div><div class="calday">2</div><div class="calday">3</div><div class="calday">4</div><div class="calday">5</div><div class="calday">6</div><div class="calday">7</div><div class="calday">8</div><div class="calday">9</div><div class="calday">10</div><div class="calday">11</div><div class="calday sel">12</div><div class="calday">13</div><div class="calday">14</div><div class="calday">15</div><div class="calday">16</div><div class="calday">17</div><div class="calday">18</div><div class="calday">19</div><div class="calday">20</div><div class="calday">21</div><div class="calday">22</div><div class="calday">23</div><div class="calday">24</div><div class="calday">25</div><div class="calday">26</div><div class="calday">27</div><div class="calday">28</div><div class="calday">29</div><div class="calday">30</div><div class="calday">31</div><div class="calday mut">1</div><div class="calday mut">2</div><div class="calday mut">3</div><div class="calday mut">4</div><div class="calday mut">5</div><div class="calday mut">6</div><div class="calday mut">7</div><div class="calday mut">8</div></div>
-    </div>
+
+  <div class="h2">Мобильный вид · 390px</div>
+  <div class="mob">
+    <div class="mrow"><span class="tpn">1</span><span class="zbar" style="background:linear-gradient(135deg,#B7E4CD,#7FC3A4)"></span><span class="tmark" style="width:32px;height:32px">NC</span><div style="flex:1;min-width:0"><div class="tname">Nova Cats</div><div class="mmeta">12–2 · карты +17</div></div><span class="pts lead">36</span></div>
+    <div class="mrow"><span class="tpn">2</span><span class="zbar" style="background:linear-gradient(135deg,#B7E4CD,#7FC3A4)"></span><span class="tmark" style="width:32px;height:32px">IL</span><div style="flex:1;min-width:0"><div class="tname">Iron Lotus</div><div class="mmeta">11–3 · карты +12</div></div><span class="pts">33</span></div>
+    <div class="mrow me"><span class="tpn">3</span><span class="zbar" style="background:linear-gradient(135deg,#DFF3E8,#B7E4CD)"></span><span class="tmark" style="width:32px;height:32px">DH</span><div style="flex:1;min-width:0"><div class="tname">Deep Harbor</div><div class="mmeta" style="color:rgba(24,70,54,.6)">9–5 · карты +6</div></div><span class="pts">27</span></div>
+    <div class="mrow"><span class="tpn">4</span><span class="zbar" style="background:linear-gradient(135deg,#F3DEA6,#E2BC63)"></span><span class="tmark" style="width:32px;height:32px">RM</span><div style="flex:1;min-width:0"><div class="tname">Red Meridian</div><div class="mmeta">7–7 · карты +1</div></div><span class="pts">21</span></div>
   </div>
 </div>
 </x-dc>

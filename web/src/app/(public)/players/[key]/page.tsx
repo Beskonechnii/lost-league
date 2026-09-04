@@ -452,8 +452,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ key: st
                         <PlayerAvatar photo={m.photo} nickname={m.nickname} color={teamAccent(spot.team)} size={60} shape="circle" />
                       }
                     >
-                      <span className="block text-[15px] font-black leading-tight text-ink">{m.nickname}</span>
-                      <span className="mt-0.5 block text-[11px] font-extrabold uppercase tracking-[0.4px] text-ink-subtle">
+                      <span className="block truncate text-[15px] font-black leading-tight text-ink">{m.nickname}</span>
+                      <span className="mt-0.5 block truncate text-[11px] font-extrabold uppercase tracking-[0.4px] text-ink-subtle">
                         {roleLabel(m.role) ?? "—"}
                         {m.isCaptain ? " · кэп" : ""}
                       </span>

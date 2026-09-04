@@ -38,6 +38,9 @@ function SelectTrigger({
         "cushion-field outline-none focus:[box-shadow:var(--pouf-field-focus)]",
         "disabled:cursor-not-allowed disabled:opacity-55",
         "data-[placeholder]:text-muted [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        // Значение — единственный тянущийся ребёнок: без min-w-0 длинный ник распирал
+        // триггер и выдавливал шеврон за скруглённый край поля.
+        "[&>span]:min-w-0 [&>span]:truncate [&>span]:text-left",
         className ?? "",
       ].join(" ")}
       {...props}

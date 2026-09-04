@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Children, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { Icon, type IconName } from "./Icon";
 
@@ -125,17 +125,40 @@ export function FactBox({
  * Наезд даёт «стопку», а не сетку: набор читается как одно целое.
  */
 export function OverlapRail({ children, size = "sm" }: { children: ReactNode; size?: "sm" | "lg" }) {
+  // Потолок раскрытия считается здесь, потому что только рельс знает обе величины: сколько
+  // пилюль в ряду и какой он сам ширины. Раскрытая пилюля толкает хвост вправо, поэтому
+  // строка занимает `(n−1) × шаг + ширина раскрытой`; чтобы она не вышла за карточку,
+  // раскрытой достаётся ровно остаток: `100% − (n−1) × шаг`. Проценты у флекс-элемента
+  // считаются от рельса, так что подставлять его ширину числом не нужно.
+  //
+  // Раскрывать ПОВЕРХ соседей (накладкой) нельзя: раскрытая пилюля закрыла бы остальные знаки,
+  // а рельс на то и рельс, что весь набор виден целиком (решение 04.09.2026).
+  const count = Children.toArray(children).length;
+  const step = size === "lg" ? 40 : 32;
+  // `min()` собирается здесь, а не в классе пилюли: запятая внутри произвольного значения
+  // Tailwind (`max-w-[min(a,b)]`) ломает разбор варианта — правило теряет `hover:` и пилюли
+  // разъезжаются раскрытыми сразу. В переменной это обычный CSS, разбирать его Tailwind не надо.
+  // 220px — предел по смыслу: подпись длиннее просто не нужна.
+  const cap = `min(220px, calc(100% - ${Math.max(count - 1, 0) * step}px))`;
+
   return (
-    <div className={`flex items-center ${size === "lg" ? "pb-1.5 pt-3.5" : "h-[54px] pt-1"}`}>{children}</div>
+    // `overflow-x: clip` — страховка поверх расчёта, на случай нестандартного места: жёсткая
+    // граница по краю карточки. Именно clip, а не hidden: hidden по одной оси заставляет вторую
+    // стать `auto` и обрезал бы подъём пилюли, а clip-margin выпускает наружу её тень.
+    <div
+      style={{ "--pill-cap": cap } as CSSProperties}
+      className={`flex min-w-0 items-center overflow-x-clip [overflow-clip-margin:18px] ${
+        size === "lg" ? "pb-1.5 pt-3.5" : "h-[54px] pt-1"
+      }`}
+    >
+      {children}
+    </div>
   );
 }
 
 /**
  * Пилюля рельса. Ссылкой — потому что каждая пилюля куда-то ведёт (профиль соседа,
  * внешний профиль игрока); нераскрытая показывает только знак, раскрытая — подпись.
- *
- * `max-width` в переходе, а не `width`: у подписи ширина по контенту, и анимировать
- * её напрямую нельзя. Потолок берём с запасом — раскрытая пилюля обжимает текст сама.
  */
 export function OverlapPill({
   href,
@@ -157,22 +180,28 @@ export function OverlapPill({
   highlight?: boolean;
 }) {
   const lg = size === "lg";
+  // Пилюля растёт сама и толкает хвост рельса — так весь набор остаётся на виду. Потолок роста
+  // задаёт рельс (`--pill-cap`, остаток свободного места): без него длинный ник выталкивал
+  // последние знаки за скруглённый край карточки.
+  //
+  // `max-width` в переходе, а не `width`: у подписи ширина по контенту, и анимировать её
+  // напрямую нельзя. Что не влезло в потолок — многоточие; полное имя ведёт по ссылке и
+  // лежит в `title`.
   const cls = [
     "group relative flex shrink-0 items-center overflow-hidden rounded-pill bg-surface cushion-row",
     "transition-[max-width,transform,box-shadow] duration-200 ease-out motion-reduce:transition-none",
     "hover:z-10 hover:-translate-y-1 hover:cushion-row-hover",
     "border-[3px]",
     highlight ? "border-[var(--accent-fill)]" : "border-[var(--bg)]",
-    lg
-      ? "h-[66px] max-w-[66px] hover:max-w-[220px] -ml-[26px] first:ml-0"
-      : "h-12 max-w-12 hover:max-w-[220px] -ml-4 first:ml-0",
+    "hover:max-w-[var(--pill-cap,220px)]",
+    lg ? "h-[66px] max-w-[66px] -ml-[26px] first:ml-0" : "h-12 max-w-12 -ml-4 first:ml-0",
   ].join(" ");
 
   const body = (
     <>
       {glyph}
       <span
-        className={`whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover:opacity-100 motion-reduce:transition-none ${
+        className={`min-w-0 truncate opacity-0 transition-opacity duration-150 group-hover:opacity-100 motion-reduce:transition-none ${
           lg ? "pl-[11px] pr-[15px]" : "pr-5"
         }`}
       >
