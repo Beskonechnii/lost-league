@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requirePermission } from "@/lib/account";
+import { prisma } from "@/lib/prisma";
 
 import {
   normalizeDrafts,
@@ -14,13 +15,14 @@ import { readWorkbook, type Grid } from "@/lib/xlsx";
 import { enrichTeams, type EnrichNote } from "@/lib/enrich";
 import { applicationProblems, writeTeamToRoster, type Problem } from "@/lib/team-application";
 
-// Импорт составов мастером в три шага: источник → разбор и правка → запись. Разбор отделён от
-// записи намеренно (TOURNAMENTS-PLAN.md §2.4): файл из чужих рук — всегда сюрприз, и оператор
-// должен увидеть, что получилось, до того как это попадёт в ростер.
+// Импорт составов — отдельная от турниров фича (решение 04.09.2026): разбор ничего не знает про
+// турнир, назначение выбирается ПОСЛЕ разбора и модерации, на последнем шаге, и это может быть
+// дивизион любого турнира или общий пул без привязки. Раньше страница жила внутри карточки
+// конкретного турнира и предлагала только его дивизионы — так и не могла давать выбор.
 //
-// Пишем сразу в ростер, без промежуточной очереди заявок: заявки — это то, что присылают снаружи,
-// а импорт делает сам оператор, и подтверждать самому себе нечего. Проверки при этом те же
-// (`applicationProblems`): блокирующее замечание команду не пропускает.
+// Разбор отделён от записи (TOURNAMENTS-PLAN.md §2.4): файл из чужих рук — всегда сюрприз, и
+// оператор должен увидеть, что получилось, до того как это попадёт в ростер. Пишем сразу, без
+// промежуточной очереди заявок: заявки — то, что присылают снаружи, а импорт делает сам оператор.
 
 /** Что дал каждый лист книги — по этому отчёту видно, какой лист портит разбор. */
 export type SheetReport = { name: string; layout: string; teams: number; players: number };
@@ -135,7 +137,8 @@ export type SaveState = { results?: TeamResult[]; error?: string } | null;
 
 /**
  * Записать разобранное прямо в ростер. Черновик приезжает из превью — тем же JSON, что показали
- * оператору. По каждой команде отдаём отчёт: что записалось, а что остановили замечания.
+ * оператору. Назначение (`divisionId`) выбирается здесь, на записи, а не раньше: пусто — общий
+ * пул без турнира, число — дивизион любого турнира (см. writeTeamToRoster).
  */
 export async function saveDrafts(_prev: SaveState, form: FormData): Promise<SaveState> {
   await requirePermission("tournaments.edit");
@@ -143,7 +146,6 @@ export async function saveDrafts(_prev: SaveState, form: FormData): Promise<Save
   try {
     const divisionRaw = String(form.get("divisionId") ?? "");
     const divisionId = divisionRaw ? Number(divisionRaw) : null;
-    if (!divisionId) return { error: "Выберите дивизион — командам нужно куда встать" };
 
     const teams = JSON.parse(String(form.get("teams") ?? "[]")) as TeamDraft[];
     const picked = new Set(form.getAll("pick").map(String));
@@ -161,8 +163,13 @@ export async function saveDrafts(_prev: SaveState, form: FormData): Promise<Save
       results.push({ team: team.name, ok: true, problems });
     }
 
-    revalidatePath(`/admin/tournaments/${String(form.get("tournamentSlug") ?? "")}`);
-    revalidatePath("/roster/teams");
+    // Дивизион принадлежит конкретному турниру — обновляем именно его карточку, а не гадаем.
+    if (divisionId) {
+      const division = await prisma.division.findUnique({ where: { id: divisionId }, include: { tournament: true } });
+      if (division) revalidatePath(`/admin/tournaments/${division.tournament.slug}`);
+    }
+    revalidatePath("/roster");
+    revalidatePath("/roster/players");
     return { results };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Не удалось записать составы" };

@@ -4,8 +4,11 @@ import { useMemo, useState } from "react";
 import type { PoolTeam, PoolTournament } from "@/lib/roster-data";
 import { EmptyState } from "@/components/pouf/feedback";
 import { FilterBar } from "./filter-bar";
+import { Pager } from "./pager";
 import { TeamCards } from "./team-cards";
 import { TournamentGroups } from "./tournament-groups";
+
+const PAGE_SIZE = 12;
 
 // Клиентская витрина пула: фильтр по турниру и поиск считаются в памяти по уже загруженному списку —
 // команд лиги десятки, отдельные запросы на каждый ввод ни к чему, зато фильтр мгновенный.
@@ -29,6 +32,9 @@ export function PoolExplorer({
   // Убранные оптимистично (архив/возврат/снос): revalidatePath на сервере счётчики обновляет, но новые
   // пропсы до этого клиентского списка не доходили, поэтому карточку прячем здесь сразу после успеха.
   const [removed, setRemoved] = useState<Set<number>>(new Set());
+  // Страница — только для плоского списка: в разрезе по турнирам секции уже делят полотно на части,
+  // второй разбивкой поверх первой только запутаешь.
+  const [page, setPage] = useState(1);
 
   // Опции фильтра — объединение турниров всех команд текущего разреза, свежие сверху уже с сервера.
   const options = useMemo(() => {
@@ -50,17 +56,30 @@ export function PoolExplorer({
 
   const onManaged = (id: number) => setRemoved((prev) => new Set(prev).add(id));
 
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const shownPage = Math.min(page, pageCount);
+  const paged = filtered.slice((shownPage - 1) * PAGE_SIZE, shownPage * PAGE_SIZE);
+
+  const onQuery = (v: string) => {
+    setQ(v);
+    setPage(1);
+  };
+  const onTournament = (v: string) => {
+    setTournament(v);
+    setPage(1);
+  };
+
   return (
     <div className="space-y-4">
       {/* В разрезе по турнирам селект турнира лишний: секции и есть этот фильтр. */}
       <FilterBar
         query={q}
-        onQuery={setQ}
+        onQuery={onQuery}
         placeholder="Поиск команды…"
         label="Поиск команды"
         options={options}
         tournament={tournament}
-        onTournament={setTournament}
+        onTournament={onTournament}
         count={`${filtered.length} команд`}
         hideTournament={grouped}
       />
@@ -85,7 +104,10 @@ export function PoolExplorer({
           render={(rows) => <TeamCards teams={rows} manage={manage} onManaged={onManaged} />}
         />
       ) : (
-        <TeamCards teams={filtered} manage={manage} onManaged={onManaged} />
+        <>
+          <TeamCards teams={paged} manage={manage} onManaged={onManaged} />
+          <Pager page={shownPage} pageCount={pageCount} onPage={setPage} />
+        </>
       )}
     </div>
   );

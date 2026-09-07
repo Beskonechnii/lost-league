@@ -14,7 +14,7 @@ import { Panel } from "../../../../_components/panel";
 import { Field } from "../../_components/fields";
 import { addDivision, autoDraw, removeDivision, saveDivision, saveDraw } from "../../actions";
 import { finishWizard, goToStep, saveDraft } from "../actions";
-import { ImportForm } from "../../[slug]/import/import-form";
+import { ImportForm } from "../../../roster/import/import-form";
 import { isStep, stepIndex, wizardSteps, WIZARD_STEPS, type StepKey } from "../_components/steps";
 
 export const dynamic = "force-dynamic";
@@ -196,8 +196,12 @@ export default async function WizardStep({
               пропустить: составы приедут заявками капитанов.
             </Alert>
             <ImportForm
-              tournamentSlug={tournament.slug}
-              divisions={tournament.divisions.map((d) => ({ id: d.id, name: d.name, short: d.short ?? d.slug }))}
+              tournaments={[{
+                slug: tournament.slug,
+                name: tournament.name,
+                divisions: tournament.divisions.map((d) => ({ id: d.id, name: d.name })),
+              }]}
+              defaultDivisionId={tournament.divisions[0]?.id ?? null}
             />
           </>
         )}

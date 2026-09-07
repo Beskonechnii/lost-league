@@ -9,6 +9,7 @@ import { pendingProfileEditCount } from "@/lib/profile-edit";
 import { duplicatesCount } from "@/lib/duplicates";
 import { onlineCount, onlinePlayerIds } from "@/lib/presence";
 import { AppSidebar } from "./app-sidebar";
+import { Footer } from "./footer";
 import { ChatLiveProvider } from "./chat-live";
 import { QUEUE_TOOL, DUPLICATES_TOOL, toolGroupsFor } from "./tools";
 import type { NavAccount, NavItem, NavSection } from "./nav-model";
@@ -172,7 +173,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     <ChatLiveProvider live={!!chat} initialPlayers={onlinePlayerIds()} initialCount={onlineCount()}>
       <div className="flex flex-1">
         <AppSidebar sections={sections} footer={FOOTER} account={navAccount} />
-        <div className="flex min-w-0 flex-1 flex-col">{children}</div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          {children}
+          <Footer />
+        </div>
       </div>
     </ChatLiveProvider>
   );

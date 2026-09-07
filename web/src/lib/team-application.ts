@@ -377,7 +377,7 @@ async function freePlayerSlug(nickname: string) {
  * MMR из черновика пишем только новым игрокам и только как заявленный: у существующего профиля
  * цифру ставил оператор, и чужая таблица не должна её перебивать (то же правило, что в анкете).
  */
-export async function writeTeamToRoster(draft: TeamDraft, divisionId: number) {
+export async function writeTeamToRoster(draft: TeamDraft, divisionId: number | null) {
   const team =
     (await prisma.team.findUnique({ where: { slug: draft.slug } })) ??
     (await prisma.team.create({ data: { slug: draft.slug, name: draft.name, tag: draft.tag } }));
@@ -431,7 +431,10 @@ export async function writeTeamToRoster(draft: TeamDraft, divisionId: number) {
         }));
   }
 
-  await setTeamDivision(team.id, divisionId);
+  // divisionId=null = общий пул, вне турнира: команда просто не заявляется ни в какой дивизион,
+  // трогать TournamentEntry/зеркало Team.group незачем (setTeamDivision(null) снимал бы её с
+  // ТЕКУЩЕГО турнира, а импортированная в общий пул команда там могла и не стоять).
+  if (divisionId !== null) await setTeamDivision(team.id, divisionId);
   return team;
 }
 

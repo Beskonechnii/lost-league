@@ -21,16 +21,20 @@ import { Stepper } from "@/components/pouf/stepper";
 import { DataCell, DataRow, DataTable } from "@/components/pouf/data-table";
 import { Panel } from "@/app/(admin)/_components/panel";
 
-// Мастер импорта: три пронумерованных шага, назад можно на любой. Раньше все три жили на одном
-// экране простынёй, и было непонятно, что уже сделано, а что ещё нет.
+// Мастер импорта: три пронумерованных шага, назад можно на любой. Разбор не знает про турнир —
+// назначение выбирается на последнем шаге, из ЛЮБОГО турнира сразу (решение 04.09.2026: раньше
+// страница жила внутри карточки одного турнира и предлагала только его дивизионы).
 //
 // Состояние между шагами не храним ни в базе, ни в сессии — разобранный черновик едет обратно тем
 // же JSON, который оператор видел в превью. Что показали, то и запишется.
-//
-// Полоса шагов — китовый `Stepper` (Э9): своя полоса из пилюль со стрелками была третьим
-// степпером на сайте. Шаги здесь живут в состоянии клиента, поэтому возврат — `onClick`, а не адрес.
 
 const STEPS = ["Источник", "Разбор", "Запись"] as const;
+
+export type TournamentOption = {
+  slug: string;
+  name: string;
+  divisions: { id: number; name: string }[];
+};
 
 /**
  * Свёрнутый список замечаний на предупреждающей коже. Не `Alert`: у алерта нет
@@ -52,11 +56,12 @@ function WarnDetails({ summary, children }: { summary: ReactNode; children: Reac
 }
 
 export function ImportForm({
-  tournamentSlug,
-  divisions,
+  tournaments,
+  defaultDivisionId,
 }: {
-  tournamentSlug: string;
-  divisions: { id: number; name: string; short: string }[];
+  tournaments: TournamentOption[];
+  /** Если пришли со страницы конкретного турнира — предвыбрать его первый дивизион, а не общий пул. */
+  defaultDivisionId?: number | null;
 }) {
   const [step, setStep] = useState(0);
   const [parsed, parseAction, parsing] = useActionState<ParseState, FormData>(parseUpload, null);
@@ -285,33 +290,45 @@ export function ImportForm({
           hint="Команды, игроки и составы появятся в ростере сразу. Игроки, которые уже есть, привяжутся к своим профилям. Команду с непроходимым замечанием пропустим — её видно в отчёте."
         >
           <form action={saveAction} className="space-y-4">
-            <input type="hidden" name="tournamentSlug" value={tournamentSlug} />
             <input type="hidden" name="teams" value={JSON.stringify(teams)} />
             {picked.map((t) => (
               <input key={t.slug} type="hidden" name="pick" value={t.slug} />
             ))}
 
             <div className="max-w-xs">
-              <Label htmlFor="divisionId">Дивизион</Label>
+              <Label htmlFor="divisionId">Назначение</Label>
               <FormSelect
                 id="divisionId"
                 name="divisionId"
                 size="sm"
-                defaultValue={divisions[0]?.id ?? ""}
+                defaultValue={defaultDivisionId ?? ""}
                 className="mt-1.5"
               >
-                {divisions.length === 0 && <option value="">в турнире нет дивизионов</option>}
-                {divisions.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
+                {/* Пусто = общий пул, вне турнира — не «дивизион не выбран», а осознанное третье
+                    значение (writeTeamToRoster(divisionId=null) его и ждёт). */}
+                <option value="">Общий ростер — без турнира</option>
+                {tournaments.map((t) =>
+                  t.divisions.length > 0 ? (
+                    <optgroup key={t.slug} label={t.name}>
+                      {t.divisions.map((d) => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                      ))}
+                    </optgroup>
+                  ) : null,
+                )}
               </FormSelect>
+              {tournaments.every((t) => t.divisions.length === 0) && (
+                <span className="mt-1.5 block font-pouf text-[11px] font-bold text-muted">
+                  Ни в одном турнире пока нет дивизионов — доступен только общий ростер.
+                </span>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-2">
               <Button type="button" size="sm" variant="quiet" onClick={() => setStep(1)}>
                 Назад
               </Button>
-              <Button type="submit" size="sm" disabled={saving || divisions.length === 0}>
+              <Button type="submit" size="sm" disabled={saving}>
                 {saving ? "Записываю…" : "Записать в ростер"}
               </Button>
             </div>
@@ -321,8 +338,8 @@ export function ImportForm({
               <div className="space-y-2">
                 <Alert tone="ok" block>
                   Записано команд: {saved.results.filter((r) => r.ok).length} из {saved.results.length}.{" "}
-                  <Link href={`/admin/tournaments/${tournamentSlug}`} className="underline">
-                    Открыть турнир
+                  <Link href="/roster" className="underline">
+                    Открыть ростер
                   </Link>
                 </Alert>
                 <ul className="space-y-1">

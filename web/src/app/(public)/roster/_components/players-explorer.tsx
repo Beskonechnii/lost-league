@@ -6,8 +6,11 @@ import { teamAccent } from "@/lib/profiles";
 import { roleLabel } from "@/lib/roles";
 import { EmptyState } from "@/components/pouf/feedback";
 import { FilterBar } from "./filter-bar";
+import { Pager } from "./pager";
 import { PlayerMiniCard } from "./player-card";
 import { TournamentGroups } from "./tournament-groups";
+
+const PAGE_SIZE = 24;
 
 // Клиентская витрина пула игроков: фильтр по турниру и поиск — в памяти по загруженному списку
 // (игроков сотни, но не десятки тысяч; фильтр мгновенный). Пара к PoolExplorer для команд.
@@ -27,6 +30,7 @@ export function PlayersExplorer({
 }) {
   const [q, setQ] = useState("");
   const [tournament, setTournament] = useState("");
+  const [page, setPage] = useState(1);
 
   const options = useMemo(() => {
     const by = new Map<string, string>();
@@ -44,16 +48,29 @@ export function PlayersExplorer({
     });
   }, [players, q, tournament]);
 
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const shownPage = Math.min(page, pageCount);
+  const paged = filtered.slice((shownPage - 1) * PAGE_SIZE, shownPage * PAGE_SIZE);
+
+  const onQuery = (v: string) => {
+    setQ(v);
+    setPage(1);
+  };
+  const onTournament = (v: string) => {
+    setTournament(v);
+    setPage(1);
+  };
+
   return (
     <div className="space-y-4">
       <FilterBar
         query={q}
-        onQuery={setQ}
+        onQuery={onQuery}
         placeholder="Поиск игрока…"
         label="Поиск игрока"
         options={options}
         tournament={tournament}
-        onTournament={setTournament}
+        onTournament={onTournament}
         count={`${filtered.length} игроков`}
         hideTournament={grouped}
       />
@@ -75,7 +92,10 @@ export function PlayersExplorer({
           render={cards}
         />
       ) : (
-        cards(filtered)
+        <>
+          {cards(paged)}
+          <Pager page={shownPage} pageCount={pageCount} onPage={setPage} />
+        </>
       )}
     </div>
   );
