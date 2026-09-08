@@ -132,6 +132,13 @@ function Column({
 
   return (
     <nav className={inSheet ? "flex flex-col" : shell("rounded-[34px] px-[13px] pb-3.5 pt-2.5")}>
+      {/* В листе бренд тоже нужен: на телефоне кнопка наверху рельса стала значком «меню»
+          (значок без подписи пальцем не угадать), и знак лиги показывать больше негде. */}
+      {inSheet && (
+        <div className="px-2 pb-1">
+          <Brand onNavigate={onNavigate} />
+        </div>
+      )}
       {!inSheet && (
         <div className="flex items-center justify-between gap-2 px-2 pb-1 pt-2">
           <Brand />
@@ -345,16 +352,18 @@ function MobileRail(props: SidebarProps) {
 
   return (
     <nav className={shell("items-center gap-1 rounded-[26px] px-1 py-2")}>
-      {/* Бренд на мобильном — кнопка: пальцем по значку без подписи не угадать, а всплывающих
-          подсказок на тач-экране нет. Отсюда и Sheet: тот же список, но с подписями. */}
+      {/* Вход в лист с подписями. Раньше на этом месте стоял знак лиги — и читался как «на главную»
+          (в десктопном рельсе он ровно этим и является), то есть единственный способ прочитать
+          двенадцать безымянных значков был спрятан за кнопкой, которая обещала другое. Значок
+          «меню» обещает то, что делает; знак переехал в сам лист. */}
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Открыть навигацию"
-        className={`grid h-11 w-11 shrink-0 place-items-center rounded-control-sm bg-surface cushion-row ${focus}`}
+        title="Навигация"
+        className={`grid h-11 w-11 shrink-0 place-items-center rounded-control-sm bg-surface text-ink cushion-row ${focus}`}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/assets/brand/mark.svg" alt="" aria-hidden className="h-7 w-auto" />
+        <Icon name="menu" size="sm" />
       </button>
 
       {props.account && (
@@ -402,9 +411,14 @@ function MobileRail(props: SidebarProps) {
  * в svg зашит светлый #E3E7FF, на бумаге Кита его просто не видно, а через mask цвет берётся
  * из --ink. Ширина задана явно: у маски нет собственных размеров (viewBox 1467×180).
  */
-function Brand() {
+function Brand({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <Link href="/" className={`flex min-w-0 shrink items-center gap-2.5 rounded-control ${focus}`} title="LOST — на главную">
+    <Link
+      href="/"
+      onClick={onNavigate}
+      className={`flex min-w-0 shrink items-center gap-2.5 rounded-control ${focus}`}
+      title="LOST — на главную"
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/assets/brand/mark.svg" alt="" aria-hidden className="h-8 w-auto" />
       <span

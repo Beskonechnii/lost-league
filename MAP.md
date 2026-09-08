@@ -62,6 +62,10 @@ layout, навигация и метаданные. Почему так, а не
 (`_components/tournament-bar.tsx`), а не колонкой. `SubNav` (`_components/sub-nav.tsx`) — ряд
 подвкладок раздела, остался у студии. Вглубь витрин продукта ведут **крошки**, а не кнопка «Назад».
 Тач-цели и промотка активной вкладки — одним токеном в `_components/nav-scroll.ts`. Стандарт — `UI-GUIDELINES.md`.
+**404 и «страница упала»** собирает `_components/stub-page.tsx`; его показывают `app/not-found.tsx`
+(корень — сам оборачивается в `AppShell`, потому что корневой layout навигации не рисует),
+`(public)/not-found.tsx` и `(admin)/not-found.tsx` (колонку даёт layout группы) и клиентская
+граница `app/error.tsx` с `reset()`.
 **Общая обвязка служебных экранов** — `(admin)/_components/`: `admin-header.tsx` (крошки → eyebrow →
 H1 → поясняющая фраза), `panel.tsx` (подушка блока с заголовком, плотность 16px),
 `permission-gate.tsx` (гейт раздела по праву), `session-list.tsx` (архив сессий эфемерного

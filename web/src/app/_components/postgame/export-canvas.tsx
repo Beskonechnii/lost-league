@@ -116,7 +116,7 @@ function Header({ match, names, logos }: { match: MatchReport; names: Names; log
     <div className="flex shrink-0 items-center gap-3">
       <HeaderTeam name={names.radiant} logo={logos.radiant} won={match.radiantWin} chips={sideChips("radiant")} align="left" />
       <div className="flex w-[210px] shrink-0 flex-col items-center">
-        <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-violet-300">League of Spirit</div>
+        <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-violet-300">SPIRIT/CTRL</div>
         <div className="text-[40px] font-black leading-none tabular-nums">
           <span className="text-[var(--pg-radiant)]">{match.radiantScore}</span>
           <span className="text-[var(--pg-muted)]"> – </span>

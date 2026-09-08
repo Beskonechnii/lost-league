@@ -18,8 +18,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LOST — League of Spirit",
-  description: "Стата матчей, таблица лиги и студия графики League of Spirit",
+  // Наружу лига называется SPIRIT/CTRL (решение 28.08.2026 в DECISIONS.md); «LOST» остаётся
+  // внутренним именем — репозиторий, пути, токены. В заголовке вкладки внутреннего имени
+  // быть не должно: посетитель видел то «SPIRIT/CTRL», то «LOST», то «League of Spirit».
+  title: "SPIRIT/CTRL",
+  description: "Стата матчей, таблица лиги и студия графики SPIRIT/CTRL",
 };
 
 export default async function RootLayout({

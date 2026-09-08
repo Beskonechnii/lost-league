@@ -30,7 +30,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   description:
-    "League of Spirit — киберспортивные турниры по Dota 2 в Минске. Таблица дивизиона, составы команд и разбор любого матча Dota 2.",
+    "SPIRIT/CTRL — киберспортивные турниры по Dota 2 в Минске. Таблица дивизиона, составы команд и разбор любого матча Dota 2.",
 };
 
 const SITE = "https://leagueofspirits.ru/lost_s1";
@@ -103,7 +103,7 @@ export default async function Home() {
         <div className="relative px-5 py-8 sm:px-[30px] sm:py-10">
           <Eyebrow>Киберспортивная лига · Минск</Eyebrow>
           <h1 className="mt-3 text-[40px] font-black uppercase leading-[1.02] tracking-[-1.5px] text-ink md:text-[64px]">
-            League of Spirit
+            SPIRIT/CTRL
           </h1>
           <p className="mt-4 max-w-2xl text-[15px] font-bold leading-[1.6] text-ink-muted md:text-[17px]">
             Любительские турниры по Dota 2: дивизионы, групповая стадия и плей-офф, живая таблица и

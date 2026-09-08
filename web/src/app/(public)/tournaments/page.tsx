@@ -27,9 +27,10 @@ function period(t: Row) {
 }
 
 /**
- * Карточка турнира. `current` — тот, что стоит вкладкой в шапке: он крупнее и подписан, чтобы было
- * видно, какой именно турнир сейчас показывает сайт (иначе при двух-трёх турнирах непонятно, чьи
- * таблицы открываются с главной).
+ * Карточка турнира. `current` — текущий сезон лиги: он крупнее и подписан, чтобы было видно, какой
+ * именно турнир сейчас показывает сайт (иначе при двух-трёх турнирах непонятно, чьи таблицы
+ * открываются с главной). Пометка называет факт о турнире, а не устройство интерфейса: «вкладки
+ * в шапке» не существует с Э4b, шапку заменил сайдбар.
  */
 function TournamentCard({ t, teams, current = false }: { t: Row; teams: number; current?: boolean }) {
   const dates = period(t);
@@ -39,7 +40,7 @@ function TournamentCard({ t, teams, current = false }: { t: Row; teams: number; 
     <article className={`rounded-card bg-surface p-5 cushion-card ${current ? "sm:p-6" : ""}`}>
       <div className="flex flex-wrap items-center gap-2">
         <TournamentStatus status={t.status} />
-        {current && <Chip accent>Открывается вкладкой в шапке</Chip>}
+        {current && <Chip accent>Текущий сезон</Chip>}
       </div>
 
       <h2 className={`mt-3 font-black tracking-tight ${current ? "text-2xl" : "text-lg"}`}>

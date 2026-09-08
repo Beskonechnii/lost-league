@@ -84,7 +84,7 @@ export default async function PlayersPage({
   return (
     <div className="space-y-6 font-pouf">
       <SectionHeader
-        eyebrow={`${tournament.name} · ростер`}
+        eyebrow={`${tournament.name} · составы`}
         title="Игроки"
         aside={
           <>

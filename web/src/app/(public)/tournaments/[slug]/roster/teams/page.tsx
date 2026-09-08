@@ -47,7 +47,7 @@ export default async function TeamsPage({
   return (
     <div className="space-y-6 font-pouf">
       <SectionHeader
-        eyebrow={`${tournament.name} · ростер`}
+        eyebrow={`${tournament.name} · составы`}
         title="Команды"
         aside={
           <>

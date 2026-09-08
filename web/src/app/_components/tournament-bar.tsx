@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useLayoutEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { DropdownMenu } from "@/components/pouf/menu";
 import { SITE_MAX_W } from "@/components/pouf/blocks";
@@ -58,7 +59,27 @@ export function TournamentBar({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const activeRef = useScrollActiveIntoView<HTMLAnchorElement>();
+
+  // Ряд проматывается вбок, а его начало липкое — значит, промотка обязана оставлять под липким
+  // блоком место, иначе активная вкладка уезжает под переключатель турнира. Ширину блока меряем,
+  // а не пишем числом: она зависит от имени турнира. Слой `useLayoutEffect` здесь не украшение —
+  // он гарантированно отрабатывает раньше промотки из `useScrollActiveIntoView` (та на `useEffect`).
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const stickyRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const scroller = scrollerRef.current;
+    const sticky = stickyRef.current;
+    if (!scroller || !sticky) return;
+    const measure = () => {
+      scroller.style.scrollPaddingLeft = `${sticky.offsetWidth}px`;
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(sticky);
+    return () => ro.disconnect();
+  }, []);
+
+  const activeRef = useScrollActiveIntoView<HTMLAnchorElement>("nearest");
 
   const root = `/tournaments/${slug}`;
   // Дивизион берём из пути; если стоим на общем разделе турнира (ростер, TP, о турнире) — первый.
@@ -82,12 +103,16 @@ export function TournamentBar({
           { href: `${base}/stats`, label: "Статистика", active: pathname === `${base}/stats` },
         ]
       : []),
-    // На приёме заявок ростер турнира — это и есть заявленные команды (участники), поэтому
-    // показываем одну вкладку под именем этапа: «Заявленные команды» вместо «Ростер». Данные и
-    // страница разные, но обе читают участие (`TournamentEntry`), так что список совпадает.
+    // Вкладка называется «Составы», а не «Ростер»: «Ростер» уже занят пунктом сайдбара, который
+    // ведёт на сквозной пул команд лиги (/roster). Одно слово на два разных экрана — и человек не
+    // понимает, почему список другой; здесь речь именно о составах, заявленных в этот турнир.
+    //
+    // На приёме заявок это и есть заявленные команды (участники), поэтому показываем одну вкладку
+    // под именем этапа: «Заявленные команды». Данные и страница разные, но обе читают участие
+    // (`TournamentEntry`), так что список совпадает.
     showEntrants
       ? { href: `${root}/entrants`, label: "Заявленные команды", active: pathname === `${root}/entrants` }
-      : { href: `${root}/roster/teams`, label: "Ростер", active: pathname.startsWith(`${root}/roster`) },
+      : { href: `${root}/roster/teams`, label: "Составы", active: pathname.startsWith(`${root}/roster`) },
     { href: `${root}/tp`, label: "TP", active: pathname === `${root}/tp` },
     { href: `${root}/about`, label: "О турнире", active: pathname === `${root}/about` },
   ];
@@ -96,7 +121,18 @@ export function TournamentBar({
     // Липнет к верху окна: верхней строки сайта над содержимым больше нет — вся глобальная
     // навигация уехала в сайдбар (DECISIONS, 02.09), и эта строка стала единственным рядом хрома.
     <div className="sticky top-0 z-40 border-b border-hairline bg-canvas/85 font-pouf backdrop-blur">
-      <div className={`mx-auto flex ${SITE_MAX_W} items-center gap-2 overflow-x-auto px-4 py-2 md:px-6`}>
+      {/* Отступ слева отдан липкому блоку (ниже), а не строке: у строки его быть не может — в этом
+          зазоре видны проезжающие под ним вкладки. */}
+      <div ref={scrollerRef} className={`mx-auto flex ${SITE_MAX_W} items-center gap-2 overflow-x-auto py-2 pr-4 md:pr-6`}>
+        {/* Переключатель турнира липнет к левому краю строки. Строка проматывается вбок (на телефоне
+            всегда), а активная вкладка ещё и сама проматывается в вид — и утаскивала имя турнира за
+            край: на 375px первым, что видно, оказывалось «D1 D2 | Таблица», а какой это турнир,
+            из хрома не читалось (UI-GUIDELINES §0, принцип 4 — «где я» видно из хрома).
+            Своя заливка обязательна: под липким элементом проезжают вкладки. */}
+        <div
+          ref={stickyRef}
+          className="sticky left-0 z-10 -my-2 flex shrink-0 items-center bg-canvas py-2 pl-4 pr-2 md:pl-6"
+        >
         {tournaments.length > 0 ? (
           <DropdownMenu
             label="Выбрать турнир"
@@ -112,6 +148,7 @@ export function TournamentBar({
         ) : (
           <span className="shrink-0 px-1 text-[13px] font-black text-ink">{name}</span>
         )}
+        </div>
 
         {/* Сегменты дивизионов показываем только там, где дивизион есть в адресе (таблица, плей-офф,
             статистика). На общих разделах турнира — ростер, TP, «О турнире» — они ни на что не влияют:

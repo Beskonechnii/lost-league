@@ -88,7 +88,7 @@ export function Footer() {
           ))}
         </div>
         <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-hairline pt-4 text-[12px] font-extrabold text-ink-subtle">
-          <span>© {year} League of Spirit</span>
+          <span>© {year} SPIRIT/CTRL</span>
           <span className="flex gap-4 sm:ml-auto">
             <Link href="/rules" className="transition hover:text-ink">
               Правила
