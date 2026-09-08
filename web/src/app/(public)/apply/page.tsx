@@ -1,10 +1,21 @@
-import { ComingSoon } from "@/app/_components/coming-soon";
+import { notFound, redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import { currentTournament, registrationOpen } from "@/lib/tournaments";
 
-export const metadata = { title: "Заявка на турнир" };
+// Заявка подаётся в конкретный турнир (/tournaments/<slug>/apply, TOURNAMENTS-PLAN.md).
+// Общий /apply — сборный пункт для тех, кто пришёл не с карточки турнира, поэтому ищем турнир,
+// куда сейчас правда можно подать: приём заявок идёт не у «текущего» (тот обычно уже играется),
+// а у следующего. Открытость считает `registrationOpen` — одно место правды, срок в нём учтён.
+// Не нашли такого — ведём на страницу текущего турнира со сроками: она полезнее пустой формы.
+export default async function ApplyRedirect() {
+  const open = await prisma.tournament.findMany({
+    where: { status: "registration" },
+    orderBy: [{ startAt: "asc" }, { id: "asc" }],
+  });
+  const target = open.find(registrationOpen);
+  if (target) redirect(`/tournaments/${target.slug}/apply`);
 
-// Общий вход в заявку — вне контекста конкретного турнира. Сама подача устроена per-турнир
-// (/tournaments/<slug>/apply, см. TOURNAMENTS-PLAN.md); эта страница — сборный пункт для тех,
-// кто пришёл не с карточки турнира, и её ещё предстоит собрать (выбор турнира → редирект).
-export default function ApplyPage() {
-  return <ComingSoon title="Заявка на турнир" icon="send" />;
+  const current = await currentTournament();
+  if (!current) notFound();
+  redirect(`/tournaments/${current.slug}/about`);
 }

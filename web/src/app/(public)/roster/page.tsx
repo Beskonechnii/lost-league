@@ -37,28 +37,33 @@ export default async function RosterPoolPage({
         aside={<>Команды всех турниров лиги в одном месте</>}
       />
 
+      {/* Все разрезы списка — одной строкой. Пул/архив стоял отдельным рядом под ней, и у оператора
+          над карточками оказывалось три ряда фильтров подряд (вид списка · разрез · поиск с выбором
+          турнира): «два ряда за один выбор» из UI-GUIDELINES §9, только рядов три. Разрезы — это
+          один уровень L4, значит и место у них одно. */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <PoolSwitch current="teams" group={params.by} />
-        {/* Второй разрез — вид того же списка, поэтому стоит в одной строке с первым, а не над ним. */}
-        <GroupSwitch base="/roster" group={params.by} extra={archived ? "view=archive" : ""} />
-      </div>
-
-      {/* Разрез пул/архив виден оператору всегда; посетителю архив ни к чему — показываем только пул. */}
-      {canDelete ? (
         <div className="flex flex-wrap items-center gap-2">
-          <PillLink href={grouped ? "/roster?by=tournament" : "/roster"} active={!archived} size="md" count={pooledCount}>
-            В пуле
-          </PillLink>
-          <PillLink
-            href={grouped ? "/roster?view=archive&by=tournament" : "/roster?view=archive"}
-            active={archived}
-            size="md"
-            count={archivedCount}
-          >
-            Архив
-          </PillLink>
+          <GroupSwitch base="/roster" group={params.by} extra={archived ? "view=archive" : ""} />
+          {/* Архив виден только оператору: посетителю он ни к чему, у него список один. */}
+          {canDelete && (
+            <>
+              <span aria-hidden className="mx-1 h-5 w-px bg-hairline" />
+              <PillLink href={grouped ? "/roster?by=tournament" : "/roster"} active={!archived} size="md" count={pooledCount}>
+                В пуле
+              </PillLink>
+              <PillLink
+                href={grouped ? "/roster?view=archive&by=tournament" : "/roster?view=archive"}
+                active={archived}
+                size="md"
+                count={archivedCount}
+              >
+                Архив
+              </PillLink>
+            </>
+          )}
         </div>
-      ) : null}
+      </div>
 
       {canDelete && archived && (
         <Alert tone="info" block>

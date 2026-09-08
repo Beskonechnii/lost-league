@@ -1,7 +1,7 @@
-import { ComingSoon } from "@/app/_components/coming-soon";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Архив сезонов" };
-
-export default function TournamentsArchivePage() {
-  return <ComingSoon title="Архив сезонов" icon="history" />;
+// Отдельного архива сезонов нет и к релизу не планируется: список турниров и так делится на
+// текущий и остальные (/tournaments). Адрес оставлен живым — он стоял в подвале.
+export default function TournamentsArchiveRedirect() {
+  redirect("/tournaments");
 }

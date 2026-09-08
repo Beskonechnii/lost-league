@@ -65,7 +65,8 @@ layout, навигация и метаданные. Почему так, а не
 **404 и «страница упала»** собирает `_components/stub-page.tsx`; его показывают `app/not-found.tsx`
 (корень — сам оборачивается в `AppShell`, потому что корневой layout навигации не рисует),
 `(public)/not-found.tsx` и `(admin)/not-found.tsx` (колонку даёт layout группы) и клиентская
-граница `app/error.tsx` с `reset()`.
+граница `app/error.tsx` с `reset()`. **Состояние загрузки** — `loading.tsx` витрин
+(дивизион, оба ростера, карточка игрока) на компонентах `components/pouf/skeleton.tsx`.
 **Общая обвязка служебных экранов** — `(admin)/_components/`: `admin-header.tsx` (крошки → eyebrow →
 H1 → поясняющая фраза), `panel.tsx` (подушка блока с заголовком, плотность 16px),
 `permission-gate.tsx` (гейт раздела по праву), `session-list.tsx` (архив сессий эфемерного

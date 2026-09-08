@@ -3,18 +3,22 @@ import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { Icon } from "@/components/pouf/Icon";
 
 // Низ каждой страницы продукта — по канону Кита «Футер» (design/kit/build.mjs), колонка в колонку.
-// Ссылок на несуществующие разделы в самом футере нет — они ведут на честные заглушки
-// «страница в разработке» (see app/_components/coming-soon.tsx), а не на 404 или на подмену
-// другого раздела.
+//
+// В подвале только живые ссылки. До 08.09 их было одиннадцать, и семь вели на заглушку «страница
+// в разработке» — то есть единственным входом в эти адреса был он же, и весь его смысл сводился
+// к раздаче «скоро». Заглушка честнее 404, но подвал, который на две трети обещает несделанное,
+// врёт на каждой странице сайта. Разделы, у которых есть живой адрес, стали редиректами
+// (`/playoffs`, `/apply`, `/tournaments/archive`); остальные — «Расписание», «О проекте»,
+// «Партнёрам», «Медиакит», «Связаться», «Конфиденциальность» — ждут содержимого вне подвала
+// и вернутся сюда строкой, когда оно появится (`BACKLOG.md`).
 
 const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
   {
     title: "Турниры",
     links: [
       { href: "/tournaments", label: "Текущий сезон" },
-      { href: "/tournaments/archive", label: "Архив сезонов" },
-      { href: "/schedule", label: "Расписание" },
       { href: "/playoffs", label: "Плей-офф" },
+      { href: "/tournaments/archive", label: "Прошлые сезоны" },
     ],
   },
   {
@@ -24,15 +28,6 @@ const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
       { href: "/apply", label: "Заявка на турнир" },
       { href: "/roster", label: "Команды" },
       { href: "/players", label: "Игроки" },
-    ],
-  },
-  {
-    title: "Лига",
-    links: [
-      { href: "/about", label: "О проекте" },
-      { href: "/partners", label: "Партнёрам" },
-      { href: "/contact", label: "Связаться" },
-      { href: "/media-kit", label: "Медиакит" },
     ],
   },
 ];
@@ -46,7 +41,7 @@ export function Footer() {
   return (
     <footer className={`mx-auto w-full ${SITE_MAX_W} px-4 pb-8 md:px-6`}>
       <div className="cushion-card rounded-[38px] bg-surface p-8 md:p-9">
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-[1.4fr_1fr_1fr_1fr]">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-[1.4fr_1fr_1fr]">
           <div>
             <Link href="/" className="flex min-w-0 shrink items-center gap-2.5" title="LOST — на главную">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -92,12 +87,6 @@ export function Footer() {
           <span className="flex gap-4 sm:ml-auto">
             <Link href="/rules" className="transition hover:text-ink">
               Правила
-            </Link>
-            <Link href="/privacy" className="transition hover:text-ink">
-              Конфиденциальность
-            </Link>
-            <Link href="/contact" className="transition hover:text-ink">
-              Контакты
             </Link>
           </span>
         </div>
