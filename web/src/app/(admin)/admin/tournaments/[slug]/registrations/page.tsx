@@ -117,7 +117,7 @@ export default async function TeamRegistrationsPage({ params }: { params: Promis
                             return (
                             <li key={j} className="text-xs">
                               <span className="font-black text-ink">{p.nickname}</span>
-                              {p.realName && <span> · {p.realName}</span>}
+                              {p.realName && <span> · {[p.realName, p.realSurname].filter(Boolean).join(" ")}</span>}
                               <span> · {roleLabel(p.role) ?? "роль не разобрана"}</span>
                               {p.mmr ? <span> · {p.mmr} MMR (заявленный)</span> : null}
                               {p.accountId ? <span> · id {p.accountId}</span> : null}

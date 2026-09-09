@@ -41,6 +41,7 @@ async function buildDraft(input: RosterInput): Promise<TeamDraft> {
     return {
       nickname: p.nickname,
       realName: p.realName,
+      realSurname: p.realSurname,
       role: isRole(row.role) ? row.role : null,
       mmr: p.mmr,
       accountId: playerAccountId(p),

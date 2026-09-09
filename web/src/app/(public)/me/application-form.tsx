@@ -4,14 +4,20 @@ import { useActionState, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { sendApplication, sendClaimWithApplication, type ApplyState } from "./actions";
 import type { LinkablePlayer } from "./onboarding";
-import { EMPTY_INPUT, applicationToInput, type Application, type ApplicationInput } from "@/lib/application";
+import {
+  EMPTY_INPUT,
+  applicationToInput,
+  profileLinkKind,
+  type Application,
+  type ApplicationInput,
+} from "@/lib/application";
+import { splitFullName } from "@/lib/profiles";
 import { ROLES } from "@/lib/roles";
 import { Button, buttonClasses } from "@/components/pouf/Button";
 import { Checkbox } from "@/components/pouf/checkbox";
 import { Alert } from "@/components/pouf/feedback";
 import { DateField } from "@/components/pouf/date-field";
-import { FormInput, Label } from "@/components/pouf/Input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/pouf/select";
+import { FormInput, FormSelect, Label } from "@/components/pouf/Input";
 import { Stepper } from "@/components/pouf/stepper";
 import { RowCard } from "@/components/pouf/surface";
 
@@ -24,26 +30,51 @@ import { RowCard } from "@/components/pouf/surface";
 // С Э8 анкета идёт КВИЗОМ в три шага — по каноническому макету «Вход» (артборды «Шаг 1…3»).
 // Двенадцать полей одним полотном в окне входа читались как стена: человек видел объём раньше,
 // чем смысл. Шаги те же, что в макете: контакты → профили в Доте → рейтинг и позиция.
+//
+// Э13: поля обеих веток живут ОДНИМИ компонентами (ContactFields, ProfileStep, RatingStep).
+// Раньше они были выписаны дважды и успели разъехаться — правку приходилось делать в двух местах,
+// а забытая половина всплывала багом только у той ветки, которую реже открывают.
+//
+// Про `required`: он работает только на НАСТОЯЩЕМ поле формы. У флажка Кита (radix) нативная
+// подложка есть, но она скрыта, и `reportValidity()` на ней возвращает false БЕЗ подсказки —
+// кнопка «Далее» просто переставала работать молча. Поэтому согласие с правилами проверяется
+// состоянием формы и объясняется текстом рядом с флажком, а выпадающие списки анкеты — нативные
+// (`FormSelect`), чтобы браузер показывал претензию у самого поля.
 
 const STEPS = ["Контактная информация", "Киберспортивный профиль", "Рейтинг и позиция"];
+
+/** Страны, между которыми выбирает игрок лиги. Остальное — «Другая» с ручным вводом. */
+const COUNTRIES = ["Россия", "Беларусь", "Казахстан", "Украина"];
+const OTHER_COUNTRY = "__other";
+
+/** Подписи площадок — ими называется ссылка «открыть профиль» под полем. */
+const LINK_LABELS: Record<"dotabuff" | "stratz" | "steam", string> = {
+  dotabuff: "Dotabuff",
+  stratz: "Stratz",
+  steam: "Steam",
+};
 
 function Field({
   label,
   hint,
-  optional,
+  required,
   children,
 }: {
   label: string;
   hint?: React.ReactNode;
-  /** Единственная пометка в анкете: обязательно всё, кроме отмеченного. */
-  optional?: boolean;
+  /** Звёздочка у подписи. Метка о самом поле, а не о текущем шаге: обязательность не мигает. */
+  required?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className="space-y-2">
       <Label>
         {label}
-        {optional && <span className="ml-1 font-bold normal-case tracking-normal text-muted">— необязательно</span>}
+        {required && (
+          <span aria-hidden className="ml-1 text-[var(--color-err-ink)]">
+            *
+          </span>
+        )}
       </Label>
       {children}
       {hint && <p className="text-[13px] font-bold leading-[1.45] text-muted">{hint}</p>}
@@ -51,23 +82,241 @@ function Field({
   );
 }
 
-/** Согласие с правилами — обязательное условие отправки (требование 7). Сервер его перепроверяет. */
-function PolicyCheck({ required = true }: { required?: boolean }) {
-  const [on, setOn] = useState(false);
+/**
+ * Согласие с правилами — обязательное условие отправки (требование 7).
+ *
+ * Состояние живёт в форме, а не здесь: до Э13 флажок держал его сам и полагался на `required`,
+ * который на кнопке-флажке radix не показывает ничего (см. шапку файла). Сервер согласие
+ * всё равно перепроверяет — форму можно обойти.
+ */
+function PolicyCheck({
+  accepted,
+  onChange,
+  invalid,
+}: {
+  accepted: boolean;
+  onChange: (value: boolean) => void;
+  /** Человек нажал «Далее», не приняв правила — объясняем, почему шаг не сменился. */
+  invalid: boolean;
+}) {
   const id = useId();
   return (
-    // Подпись — соседний <label for>, а не обёртка: флажок Кита это <button>, а он лейблу
-    // подчиняется только по `for` (button — labelable-элемент). Обёрткой клик по тексту
-    // дотягивался бы до скрытого input'а radix и рассинхронизировал бы вид с состоянием.
-    <div className="flex items-start gap-2.5 rounded-control bg-surface-2 px-4 py-3 cushion-field">
-      <Checkbox id={id} name="policy" checked={on} onCheckedChange={(v) => setOn(v === true)} required={required} />
-      <label htmlFor={id} className="text-[13px] font-bold leading-[1.5] text-muted">
-        Я прочитал и принимаю{" "}
-        <Link href="/rules" target="_blank" className="font-black text-[var(--accent-ink)] underline-offset-4 hover:underline">
-          правила лиги
-        </Link>
-        .
-      </label>
+    <div className="space-y-1.5">
+      {/* Подпись — соседний <label for>, а не обёртка: флажок Кита это <button>, а он лейблу
+          подчиняется только по `for` (button — labelable-элемент). Обёрткой клик по тексту
+          дотягивался бы до скрытого input'а radix и рассинхронизировал бы вид с состоянием. */}
+      <div className="flex items-start gap-2.5 rounded-control bg-surface-2 px-4 py-3 cushion-field">
+        <Checkbox id={id} name="policy" checked={accepted} onCheckedChange={(v) => onChange(v === true)} />
+        <label htmlFor={id} className="text-[13px] font-bold leading-[1.5] text-muted">
+          Я прочитал и принимаю{" "}
+          <Link href="/rules" target="_blank" className="font-black text-[var(--accent-ink)] underline-offset-4 hover:underline">
+            правила лиги
+          </Link>
+          .
+          <span aria-hidden className="ml-1 text-[var(--color-err-ink)]">
+            *
+          </span>
+        </label>
+      </div>
+      {invalid && (
+        <p role="alert" className="text-[13px] font-extrabold text-[var(--color-err-ink)]">
+          Без согласия с правилами заявку не отправить — отметьте флажок.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Страна — списком, а не свободной строкой: в ростере из-за ручного ввода одна страна писалась
+ * пятью способами («РБ», «Беларусь», «by»), и фильтры по ней не складывались. Редкий случай
+ * закрывает «Другая» с ручным вводом.
+ */
+function CountryField({ defaultValue, required }: { defaultValue: string; required: boolean }) {
+  const initial = defaultValue.trim();
+  const known = COUNTRIES.includes(initial);
+  const [choice, setChoice] = useState(initial ? (known ? initial : OTHER_COUNTRY) : "");
+  const [other, setOther] = useState(known ? "" : initial);
+  const custom = choice === OTHER_COUNTRY;
+
+  return (
+    <div className="space-y-2">
+      {/* Сам список без `name`: значение уезжает соседним полем — так «Другая» и выбор из списка
+          кладут в FormData одно и то же имя, а сервер не знает про эту развилку вовсе. */}
+      <FormSelect
+        aria-label="Страна"
+        value={choice}
+        required={required}
+        onChange={(e) => setChoice(e.target.value)}
+      >
+        <option value="">не выбрана</option>
+        {COUNTRIES.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+        <option value={OTHER_COUNTRY}>Другая</option>
+      </FormSelect>
+      {custom ? (
+        <FormInput
+          name="country"
+          value={other}
+          onChange={(e) => setOther(e.target.value)}
+          required={required}
+          placeholder="Впишите страну"
+        />
+      ) : (
+        <input type="hidden" name="country" value={choice} />
+      )}
+    </div>
+  );
+}
+
+/** Общие поля первого шага. Ник спрашивается по-разному (ввод или поиск в ростере), он снаружи. */
+function ContactFields({ v, required }: { v: ApplicationInput; required: boolean }) {
+  return (
+    <>
+      <Field label="Имя" required>
+        <FormInput name="realName" defaultValue={v.realName} required={required} placeholder="Как вас зовут" />
+      </Field>
+
+      <Field label="Фамилия" required>
+        <FormInput name="realSurname" defaultValue={v.realSurname} required={required} />
+      </Field>
+
+      <Field label="Дата рождения" required>
+        <DateField name="birthday" defaultValue={v.birthday} required={required} />
+      </Field>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Город" required>
+          <FormInput name="city" defaultValue={v.city} required={required} />
+        </Field>
+        <Field label="Страна" required>
+          <CountryField defaultValue={v.country} required={required} />
+        </Field>
+      </div>
+
+      <Field label="Telegram" required hint="Можно с @ или ссылкой — приведём к хендлу.">
+        <FormInput name="telegram" defaultValue={v.telegram} required={required} placeholder="@nickname" />
+      </Field>
+
+      {/* Телефон необязателен: организатор пишет в телеграм, а обязательный номер отсекал тех,
+          кто его не даёт (до Э13 весь шаг был помечен обязательным скопом). */}
+      <Field label="Телефон">
+        <FormInput name="phone" type="tel" defaultValue={v.phone} placeholder="+7 900 000-00-00" />
+      </Field>
+    </>
+  );
+}
+
+/**
+ * Второй шаг: ссылка ОДНА и обязательная. Раньше здесь стояли три поля, все необязательные: шаг
+ * пролистывался насквозь, а отказ прилетал уже на отправке анкеты. Из любой из трёх выводится
+ * account_id, а из него — два остальных адреса (`playerLinks`), так что спрашивать три было
+ * тремя способами спросить одно.
+ */
+function ProfileStep({ v, required, onSearch }: { v: ApplicationInput; required: boolean; onSearch: () => void }) {
+  const [url, setUrl] = useState(v.profileUrl);
+  const kind = profileLinkKind(url);
+  const href = url.trim().startsWith("http") ? url.trim() : `https://${url.trim()}`;
+
+  return (
+    <>
+      <Field
+        label="Ссылка на профиль"
+        required
+        hint="Dotabuff, Stratz или Steam — любая. По ней лига находит вас в матчах, остальные адреса достроим сами."
+      >
+        <FormInput
+          name="profileUrl"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          required={required}
+          placeholder="https://www.dotabuff.com/players/…"
+        />
+      </Field>
+
+      {/* Разобранную ссылку сразу даём открыть: и человек сверяет «я ли это», особенно когда
+          адрес подтянулся из ростера, и опечатка в номере видна до отправки анкеты. */}
+      {kind && (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-[13px] font-black text-[var(--accent-ink)] underline-offset-4 hover:underline"
+        >
+          Открыть профиль на {LINK_LABELS[kind]} ↗ — проверьте, что это вы
+        </a>
+      )}
+
+      {/* «Найти себя» — чтобы не уходить искать адрес руками: открываем поиск Dotabuff уже
+          по нику, введённому на первом шаге. */}
+      <button type="button" onClick={onSearch} className={buttonClasses({ variant: "quiet", size: "sm" })}>
+        Найти себя на Dotabuff
+      </button>
+    </>
+  );
+}
+
+/** Третий шаг: заявленный рейтинг и позиция. */
+function RatingStep({ v, required }: { v: ApplicationInput; required: boolean }) {
+  return (
+    <>
+      <Field label="MMR" required hint="Со слов игрока — проверит организатор.">
+        <FormInput name="mmr" inputMode="numeric" defaultValue={v.mmr} required={required} placeholder="Например, 4200" />
+      </Field>
+
+      <Field label="Позиция" required>
+        {/* Нативный список, а не radix: у radix значение живёт в состоянии, а нативная подложка
+            скрыта — обязательность на ней превращалась в непоказанную ошибку, и незаполненную
+            позицию ловил только сервер, уже после всей анкеты. */}
+        <FormSelect name="position" defaultValue={v.position} required={required} aria-label="Позиция">
+          <option value="">не выбрана</option>
+          {ROLES.map((r) => (
+            <option key={r.key} value={r.key}>
+              {r.position ? `${r.position} — ${r.short}` : r.short}
+            </option>
+          ))}
+        </FormSelect>
+      </Field>
+    </>
+  );
+}
+
+/** Кнопки шага — одни на обе ветки: «Назад» слева, «Далее»/«Отправить» широкой кнопкой. */
+function StepNav({
+  step,
+  pending,
+  onBack,
+  onNext,
+  blocked,
+  submitLabel,
+}: {
+  step: number;
+  pending: boolean;
+  onBack: () => void;
+  onNext: () => void;
+  /** Ветка привязки: пока себя не нашли, идти некуда. */
+  blocked?: boolean;
+  submitLabel: string;
+}) {
+  return (
+    <div className="flex gap-3">
+      {step > 0 && (
+        <Button type="button" variant="quiet" size="lg" onClick={onBack}>
+          Назад
+        </Button>
+      )}
+      {step < STEPS.length - 1 ? (
+        <Button type="button" size="lg" onClick={onNext} disabled={step === 0 && blocked} className="flex-1">
+          Далее
+        </Button>
+      ) : (
+        <Button type="submit" loading={pending} disabled={blocked} size="lg" className="flex-1">
+          {pending ? "Отправляю…" : submitLabel}
+        </Button>
+      )}
     </div>
   );
 }
@@ -81,6 +330,13 @@ function ForkCard({ title, hint, onClick }: { title: string; hint: string; onCli
     </RowCard>
   );
 }
+
+/** Легенда к звёздочкам — иначе метка обязательности читается как случайный символ. */
+const REQUIRED_HINT = (
+  <p className="text-[13px] font-bold leading-[1.45] text-muted">
+    Поля со звёздочкой <span className="text-[var(--color-err-ink)]">*</span> обязательны, остальные — по желанию.
+  </p>
+);
 
 export function ApplicationFlow({
   application,
@@ -165,15 +421,20 @@ export function ApplicationFlow({
 function ApplicationForm({ application }: { application: Application | null }) {
   const [state, action, pending] = useActionState<ApplyState, FormData>(sendApplication, null);
   const [step, setStep] = useState(0);
-  const [position, setPosition] = useState(application?.position ?? "");
+  const [policy, setPolicy] = useState(false);
+  const [policyMissed, setPolicyMissed] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   // После submit React возвращает неуправляемые поля к defaultValue, поэтому «черновик» ответов
   // приходит обратно в состоянии: иначе ошибка в одной строке стирала бы всю анкету.
   const v = state?.values ?? (application ? applicationToInput(application) : EMPTY_INPUT);
 
-  /** Шаг вперёд — только если браузер доволен полями текущего шага (на остальных required нет). */
+  /** Шаг вперёд — только если довольны и браузер (поля шага), и мы (согласие с правилами). */
   const next = () => {
     if (formRef.current?.reportValidity() === false) return;
+    if (step === 0 && !policy) {
+      setPolicyMissed(true);
+      return;
+    }
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
   };
 
@@ -189,109 +450,40 @@ function ApplicationForm({ application }: { application: Application | null }) {
   return (
     <form ref={formRef} action={action} className="space-y-5">
       <Stepper steps={STEPS} current={step} />
+      {REQUIRED_HINT}
 
       <div hidden={step !== 0} className="space-y-4">
-        <Field label="Ник в лиге" hint="Под ним вас увидят в таблицах и на витрине.">
+        <Field label="Ник в лиге" required hint="Под ним вас увидят в таблицах и на витрине.">
           <FormInput name="nickname" defaultValue={v.nickname} required={req(0)} placeholder="Например, Miracle-" />
         </Field>
 
-        <Field label="Имя">
-          <FormInput name="realName" defaultValue={v.realName} required={req(0)} placeholder="Как вас зовут" />
-        </Field>
+        <ContactFields v={v} required={req(0)} />
 
-        <Field label="Фамилия">
-          <FormInput name="realSurname" defaultValue={v.realSurname} required={req(0)} />
-        </Field>
-
-        <Field label="Дата рождения">
-          <DateField name="birthday" defaultValue={v.birthday} required={req(0)} />
-        </Field>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Город">
-            <FormInput name="city" defaultValue={v.city} required={req(0)} />
-          </Field>
-          <Field label="Страна">
-            <FormInput name="country" defaultValue={v.country} required={req(0)} />
-          </Field>
-        </div>
-
-        <Field label="Telegram" hint="Можно с @ или ссылкой — приведём к хендлу.">
-          <FormInput name="telegram" defaultValue={v.telegram} required={req(0)} placeholder="@nickname" />
-        </Field>
-
-        <Field label="Телефон">
-          <FormInput name="phone" type="tel" defaultValue={v.phone} required={req(0)} placeholder="+7 900 000-00-00" />
-        </Field>
-
-        <PolicyCheck required={req(0)} />
+        <PolicyCheck
+          accepted={policy}
+          invalid={policyMissed && !policy}
+          onChange={(value) => {
+            setPolicy(value);
+            if (value) setPolicyMissed(false);
+          }}
+        />
       </div>
 
       <div hidden={step !== 1} className="space-y-4">
-        {/* Ссылка ОДНА и обязательная. Раньше здесь стояли три поля, все необязательные: шаг
-            пролистывался насквозь, а отказ прилетал уже на отправке анкеты. Из любой из трёх
-            выводится account_id, а из него — два остальных адреса (`playerLinks`), так что
-            спрашивать три было тремя способами спросить одно. */}
-        <Field
-          label="Ссылка на профиль"
-          hint="Dotabuff, Stratz или Steam — любая. По ней лига находит вас в матчах, остальные адреса достроим сами."
-        >
-          <FormInput
-            name="profileUrl"
-            defaultValue={v.profileUrl}
-            required={req(1)}
-            placeholder="https://www.dotabuff.com/players/…"
-          />
-        </Field>
-
-        {/* «Найти себя» — чтобы не уходить искать адрес руками: открываем поиск Dotabuff уже
-            по нику, введённому на первом шаге. */}
-        <button type="button" onClick={searchDotabuff} className={buttonClasses({ variant: "quiet", size: "sm" })}>
-          Найти себя на Dotabuff
-        </button>
+        <ProfileStep v={v} required={req(1)} onSearch={searchDotabuff} />
       </div>
 
       <div hidden={step !== 2} className="space-y-4">
-        <Field label="MMR" hint="Со слов игрока — проверит организатор.">
-          <FormInput name="mmr" inputMode="numeric" defaultValue={v.mmr} required={req(2)} placeholder="Например, 4200" />
-        </Field>
-
-        <Field label="Позиция">
-          {/* Селект Кита + скрытое поле: у radix есть своя нативная подложка, но она невидима,
-              и обязательность на ней превращалась бы в непоказанную ошибку валидации.
-              Пустую позицию ловит сервер (normalizeApplication). */}
-          <input type="hidden" name="position" value={position} />
-          <Select value={position || undefined} onValueChange={setPosition}>
-            <SelectTrigger aria-label="Позиция">
-              <SelectValue placeholder="не выбрана" />
-            </SelectTrigger>
-            <SelectContent>
-              {ROLES.map((r) => (
-                <SelectItem key={r.key} value={r.key}>
-                  {r.position ? `${r.position} — ${r.short}` : r.short}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
+        <RatingStep v={v} required={req(2)} />
       </div>
 
-      <div className="flex gap-3">
-        {step > 0 && (
-          <Button type="button" variant="quiet" size="lg" onClick={() => setStep((s) => s - 1)}>
-            Назад
-          </Button>
-        )}
-        {step < STEPS.length - 1 ? (
-          <Button type="button" size="lg" onClick={next} className="flex-1">
-            Далее
-          </Button>
-        ) : (
-          <Button type="submit" loading={pending} size="lg" className="flex-1">
-            {pending ? "Отправляю…" : "Отправить анкету"}
-          </Button>
-        )}
-      </div>
+      <StepNav
+        step={step}
+        pending={pending}
+        onBack={() => setStep((s) => s - 1)}
+        onNext={next}
+        submitLabel="Отправить анкету"
+      />
 
       {/* Сервер проверяет анкету целиком, поэтому его претензия может касаться поля с другого
           шага — тогда возвращаем человека туда, где это поле видно, а не оставляем гадать. */}
@@ -306,10 +498,17 @@ function ApplicationForm({ application }: { application: Application | null }) {
 
 /** Найденный в ростере игрок → значения квиза: что известно, то не переспрашиваем. */
 function inputFromPlayer(player: LinkablePlayer, fallbackNickname: string): ApplicationInput {
+  // В старых карточках ростера «Имя Фамилия» лежит целиком в realName (в таблицах составов колонка
+  // одна). Импорт теперь раскладывает их по двум полям (lib/roster-import.ts), но уже заведённые
+  // профили этого не знают — поэтому здесь подстраховка: фамилии нет, значит она внутри имени.
+  const name = player.realSurname
+    ? { realName: player.realName ?? "", realSurname: player.realSurname }
+    : splitFullName(player.realName);
+
   return {
     nickname: player.nickname || fallbackNickname,
-    realName: player.realName ?? "",
-    realSurname: player.realSurname ?? "",
+    realName: name.realName,
+    realSurname: name.realSurname,
     birthday: player.birthday ? new Date(player.birthday).toISOString().slice(0, 10) : "",
     city: player.city ?? "",
     country: player.country ?? "",
@@ -331,7 +530,8 @@ function ClaimApplicationForm({ players }: { players: LinkablePlayer[] }) {
   const [step, setStep] = useState(0);
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<LinkablePlayer | null>(null);
-  const [position, setPosition] = useState("");
+  const [policy, setPolicy] = useState(false);
+  const [policyMissed, setPolicyMissed] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   const matches = useMemo(() => {
@@ -346,6 +546,10 @@ function ClaimApplicationForm({ players }: { players: LinkablePlayer[] }) {
 
   const next = () => {
     if (formRef.current?.reportValidity() === false) return;
+    if (step === 0 && !policy) {
+      setPolicyMissed(true);
+      return;
+    }
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
   };
   const req = (n: number) => step === n;
@@ -358,9 +562,10 @@ function ClaimApplicationForm({ players }: { players: LinkablePlayer[] }) {
     <form ref={formRef} action={action} className="space-y-5">
       <input type="hidden" name="playerId" value={picked?.id ?? ""} />
       <Stepper steps={STEPS} current={step} />
+      {REQUIRED_HINT}
 
       <div hidden={step !== 0} className="space-y-4">
-        <Field label="Ваш ник в ростере" hint="Начните вводить — как найдётесь в списке, остальное подтянем сами.">
+        <Field label="Ваш ник в ростере" required hint="Начните вводить — как найдётесь в списке, остальное подтянем сами.">
           <FormInput
             name="nickname"
             value={picked ? picked.nickname : query}
@@ -399,93 +604,35 @@ function ClaimApplicationForm({ players }: { players: LinkablePlayer[] }) {
         {/* Ключ на игроке — при смене найденного профиля неуправляемые поля должны перечитать
             новый defaultValue, а не остаться со значениями прошлого совпадения. */}
         <div key={picked?.id ?? "new"} className="space-y-4">
-          <Field label="Имя">
-            <FormInput name="realName" defaultValue={v.realName} required={req(0)} placeholder="Как вас зовут" />
-          </Field>
-          <Field label="Фамилия">
-            <FormInput name="realSurname" defaultValue={v.realSurname} required={req(0)} />
-          </Field>
-          <Field label="Дата рождения">
-            <DateField name="birthday" defaultValue={v.birthday} required={req(0)} />
-          </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Город">
-              <FormInput name="city" defaultValue={v.city} required={req(0)} />
-            </Field>
-            <Field label="Страна">
-              <FormInput name="country" defaultValue={v.country} required={req(0)} />
-            </Field>
-          </div>
-          <Field label="Telegram" hint="Можно с @ или ссылкой — приведём к хендлу.">
-            <FormInput name="telegram" defaultValue={v.telegram} required={req(0)} placeholder="@nickname" />
-          </Field>
-          <Field label="Телефон">
-            <FormInput name="phone" type="tel" defaultValue={v.phone} required={req(0)} placeholder="+7 900 000-00-00" />
-          </Field>
+          <ContactFields v={v} required={req(0)} />
         </div>
 
-        <PolicyCheck required={req(0)} />
+        <PolicyCheck
+          accepted={policy}
+          invalid={policyMissed && !policy}
+          onChange={(value) => {
+            setPolicy(value);
+            if (value) setPolicyMissed(false);
+          }}
+        />
       </div>
 
-      <div hidden={step !== 1} className="space-y-4">
-        <div key={picked?.id ?? "new"} className="space-y-4">
-          <Field
-            label="Ссылка на профиль"
-            hint="Dotabuff, Stratz или Steam — любая. По ней лига находит вас в матчах, остальные адреса достроим сами."
-          >
-            <FormInput
-              name="profileUrl"
-              defaultValue={v.profileUrl}
-              required={req(1)}
-              placeholder="https://www.dotabuff.com/players/…"
-            />
-          </Field>
-        </div>
-        <button type="button" onClick={searchDotabuff} className={buttonClasses({ variant: "quiet", size: "sm" })}>
-          Найти себя на Dotabuff
-        </button>
+      <div hidden={step !== 1} className="space-y-4" key={`profile-${picked?.id ?? "new"}`}>
+        <ProfileStep v={v} required={req(1)} onSearch={searchDotabuff} />
       </div>
 
-      <div hidden={step !== 2} className="space-y-4">
-        <div key={picked?.id ?? "new"}>
-          <Field label="MMR" hint="Со слов игрока — проверит организатор.">
-            <FormInput name="mmr" inputMode="numeric" defaultValue={v.mmr} required={req(2)} placeholder="Например, 4200" />
-          </Field>
-        </div>
-
-        <Field label="Позиция">
-          <input type="hidden" name="position" value={position} />
-          <Select value={position || undefined} onValueChange={setPosition}>
-            <SelectTrigger aria-label="Позиция">
-              <SelectValue placeholder="не выбрана" />
-            </SelectTrigger>
-            <SelectContent>
-              {ROLES.map((r) => (
-                <SelectItem key={r.key} value={r.key}>
-                  {r.position ? `${r.position} — ${r.short}` : r.short}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
+      <div hidden={step !== 2} className="space-y-4" key={`rating-${picked?.id ?? "new"}`}>
+        <RatingStep v={v} required={req(2)} />
       </div>
 
-      <div className="flex gap-3">
-        {step > 0 && (
-          <Button type="button" variant="quiet" size="lg" onClick={() => setStep((s) => s - 1)}>
-            Назад
-          </Button>
-        )}
-        {step < STEPS.length - 1 ? (
-          <Button type="button" size="lg" onClick={next} disabled={step === 0 && !picked} className="flex-1">
-            Далее
-          </Button>
-        ) : (
-          <Button type="submit" loading={pending} disabled={!picked} size="lg" className="flex-1">
-            {pending ? "Отправляю…" : "Отправить заявку"}
-          </Button>
-        )}
-      </div>
+      <StepNav
+        step={step}
+        pending={pending}
+        onBack={() => setStep((s) => s - 1)}
+        onNext={next}
+        blocked={!picked}
+        submitLabel="Отправить заявку"
+      />
 
       {state?.error && (
         <Alert tone="err" block>

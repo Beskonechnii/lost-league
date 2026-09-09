@@ -44,7 +44,8 @@ export function ApplicationSummary({ application: app }: { application: Applicat
       <Row label="Ник">
         <span className="font-semibold">{app.nickname}</span>
       </Row>
-      {app.realName && <Row label="Имя">{app.realName}</Row>}
+      {/* Имя и фамилия — одной строкой: в анкете это два поля, а в сводке они читаются как одно. */}
+      {app.realName && <Row label="Имя">{[app.realName, app.realSurname].filter(Boolean).join(" ")}</Row>}
       {app.birthday && <Row label="Дата рождения">{humanBirthday(app.birthday)}</Row>}
       {place && <Row label="Откуда">{place}</Row>}
       {app.position && <Row label="Позиция">{roleLabel(app.position) ?? app.position}</Row>}

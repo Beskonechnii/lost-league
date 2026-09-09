@@ -20,7 +20,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
 import { PrismaClient } from "../src/generated/prisma/client";
-import { playerAccountId, slugify } from "../src/lib/profiles";
+import { playerAccountId, slugify, splitFullName } from "../src/lib/profiles";
 import { isRole } from "../src/lib/roles";
 import { isCoreRole } from "../src/lib/roster-spots";
 
@@ -165,10 +165,16 @@ async function importPlayer(p: PlayerInput, teamId: number, teamSlug: string) {
     warnings.push(`${teamSlug}/${nickSlug}: узнан по account_id как «${existing.slug}» — сменился ник, профиль тот же`);
   }
 
+  // В roster.json колонка имени одна («Иван Иванов»), а в карточке полей два — раскладываем.
+  // Фамилию пустой не пишем: в таблице ростера её может не быть, а в профиле она уже могла
+  // появиться из анкеты кабинета, и затирать её выгрузкой нельзя.
+  const name = splitFullName(p.realName);
+
   // Карточка игрока — про человека; роль и капитанство лежат на месте в составе (RosterSpot).
   const data = {
     nickname: p.nickname.trim(),
-    realName: clean(p.realName),
+    realName: name.realName || null,
+    ...(name.realSurname ? { realSurname: name.realSurname } : {}),
     // Обогащение: разобранный из ссылки номер записываем в поле — дальше человек ищется по нему
     // сразу, без разбора ссылок, и синк статы видит его без правки руками.
     accountId: identity ?? clean(p.accountId),

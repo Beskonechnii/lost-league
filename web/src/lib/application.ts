@@ -183,9 +183,12 @@ export function normalizeApplication(input: ApplicationInput): ApplicationResult
   const telegram = normalizeTelegram(input.telegram);
   if (!telegram) return { ok: false, error: `«${input.telegram.trim()}» не похоже на телеграм-хендл` };
 
-  if (!input.phone.trim()) return { ok: false, error: "Укажите телефон" };
-  const phone = normalizePhone(input.phone);
-  if (!phone) return { ok: false, error: `«${input.phone.trim()}» не похоже на номер телефона` };
+  // Телефон — единственное необязательное поле анкеты: связываться организатор всё равно будет
+  // телеграмом, а обязательный номер отсекал тех, кто его не даёт. Написали — проверяем.
+  const phone = input.phone.trim() ? normalizePhone(input.phone) : "";
+  if (input.phone.trim() && !phone) {
+    return { ok: false, error: `«${input.phone.trim()}» не похоже на номер телефона` };
+  }
 
   // Ссылка обязательна: по ней оператор опознаёт человека, а без account_id игрок потом
   // не находится ни в одном матче (см. §7 CLAUDE.md).

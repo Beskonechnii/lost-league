@@ -391,6 +391,7 @@ export async function writeTeamToRoster(draft: TeamDraft, divisionId: number | n
           slug: await freePlayerSlug(p.nickname),
           nickname: p.nickname,
           realName: p.realName,
+          realSurname: p.realSurname,
           accountId: p.accountId,
           mmr: p.mmr,
           rank: p.rank ?? null,

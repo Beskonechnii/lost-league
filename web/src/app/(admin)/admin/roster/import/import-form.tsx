@@ -242,7 +242,7 @@ export function ImportForm({
                         {t.players.map((p, i) => (
                           <li key={`${t.slug}-${i}`} className="text-xs font-bold text-muted">
                             <span className="text-ink">{p.nickname}</span>
-                            {p.realName && <span> · {p.realName}</span>}
+                            {p.realName && <span> · {[p.realName, p.realSurname].filter(Boolean).join(" ")}</span>}
                             <span> · {roleLabel(p.role) ?? "роль не разобрана"}</span>
                             {p.mmr && <span> · {p.mmr} MMR</span>}
                             <span className={p.accountId ? "text-[var(--color-ok-ink)]" : "text-[var(--color-warn-ink)]"}>

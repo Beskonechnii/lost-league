@@ -10,13 +10,15 @@
 //     «Роль | ИНФ | MMR» и строки игроков, имя в формате «Имя "Ник" Фамилия».
 // Какая именно пришла, решает `parseGrid`: сначала пробует найти шапку, иначе идёт по блокам.
 
-import { slugify, accountIdFromUrl, normalizeTelegram } from "./profiles";
+import { slugify, accountIdFromUrl, normalizeTelegram, splitFullName } from "./profiles";
 import { roleByPosition, isRole, type RoleKey } from "./roles";
 import type { Grid, Cell } from "./xlsx";
 
 export type PlayerDraft = {
   nickname: string;
+  /** Только имя. В таблицах составов колонка одна («Имя Фамилия») — её разбирает `setRealName`. */
   realName: string | null;
+  realSurname: string | null;
   role: RoleKey | null;
   mmr: number | null;
   accountId: string | null;
@@ -43,6 +45,7 @@ export type TeamDraft = {
 export const emptyPlayer = (nickname: string): PlayerDraft => ({
   nickname,
   realName: null,
+  realSurname: null,
   role: null,
   mmr: null,
   accountId: null,
@@ -99,6 +102,20 @@ export function splitPlayerName(raw: string): { nickname: string; realName: stri
   const nickname = m[2].trim();
   if (!nickname) return null;
   return { nickname, realName: `${m[1].trim()} ${m[3].trim()}`.replace(/\s+/g, " ").trim() || null };
+}
+
+/**
+ * Имя человека из ячейки — в ДВА поля карточки.
+ *
+ * В таблицах составов колонка всегда одна («Имя», «ФИО», либо «Имя "Ник" Фамилия» в блочной
+ * раскладке), а у игрока полей два. До Э13 сюда клалась вся строка целиком, и «Иван Иванов»
+ * приезжал в поле «Имя» — а потом этим же значением заполнялась анкета в кабинете, и человек
+ * видел имя с фамилией в одном слоте при пустом соседнем.
+ */
+export function setRealName(player: PlayerDraft, raw: string | null | undefined) {
+  const { realName, realSurname } = splitFullName(raw);
+  player.realName = realName || null;
+  player.realSurname = realSurname || null;
 }
 
 /**
@@ -209,7 +226,7 @@ function parseColumns(grid: Grid, header: { row: number; map: Map<Column, number
     const parsed = splitPlayerName(nick);
     if (!parsed) continue;
     const player = emptyPlayer(parsed.nickname);
-    player.realName = at(row, "realName") || parsed.realName;
+    setRealName(player, at(row, "realName") || parsed.realName);
     player.role = parseRole(at(row, "role"));
     player.mmr = parseMmr(at(row, "mmr"));
     player.isCaptain = yes(at(row, "captain"));
@@ -298,7 +315,7 @@ function parseBlocks(grid: Grid): TeamDraft[] {
     if (!parsed) continue;
 
     const player = emptyPlayer(parsed.nickname);
-    player.realName = parsed.realName;
+    setRealName(player, parsed.realName);
     // Роль в этих таблицах не пишут: номер 1–5 в колонке «#» и есть позиция, строка без номера —
     // замена (так в них и отмечают шестого).
     const num = cols.num === null ? "" : texts[cols.num];
@@ -359,7 +376,7 @@ export function parsePlayerLines(text: string): PlayerDraft[] {
     const named = leftovers.length ? splitPlayerName(leftovers[0]) : null;
     if (!named) continue; // строка без имени — это шапка или мусор, а не игрок
     player.nickname = named.nickname;
-    player.realName = named.realName ?? leftovers[1] ?? null;
+    setRealName(player, named.realName ?? leftovers[1] ?? null);
     players.push(player);
   }
 

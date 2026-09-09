@@ -7,10 +7,10 @@
 // строки принять, тем же флажком, что и в мастере импорта составов.
 
 import { prisma } from "./prisma";
-import { COUNTRIES, accountIdFromUrl, normalizeTelegram, parseBirthday, slugify } from "./profiles";
+import { COUNTRIES, accountIdFromUrl, normalizeTelegram, parseBirthday, slugify, splitFullName } from "./profiles";
 import type { CrmRow } from "./crm-import";
 
-export type CrmFieldKey = "accountId" | "realName" | "city" | "country" | "telegram" | "birthday" | "steamUrl";
+export type CrmFieldKey = "accountId" | "realName" | "realSurname" | "city" | "country" | "telegram" | "birthday" | "steamUrl";
 
 export type CrmChange = { key: CrmFieldKey; label: string; from: string | null; to: string };
 
@@ -32,6 +32,7 @@ export type CrmMatchResult = {
 const LABELS: Record<CrmFieldKey, string> = {
   accountId: "account_id",
   realName: "имя",
+  realSurname: "фамилия",
   city: "город",
   country: "страна",
   telegram: "телеграм",
@@ -97,12 +98,16 @@ export async function matchCrmRows(rows: CrmRow[], opts: { force?: boolean } = {
       changes.push({ key, label: LABELS[key], from: current, to: value });
     };
 
-    // Имя и фамилия в CRM разнесены по колонкам, а у нас одно поле
-    const realName = [row.realName, row.lastName].map((s) => s?.trim()).filter(Boolean).join(" ");
+    // Имя и фамилия у нас тоже два поля, но колонка «Фамилия» в выгрузке бывает не всегда:
+    // без неё в «Имя» приходит «Иван Иванов» целиком — тогда разбираем строку сами.
+    const name = row.lastName?.trim()
+      ? { realName: row.realName?.trim() ?? "", realSurname: row.lastName.trim() }
+      : splitFullName(row.realName);
     const place = splitPlace(row.city?.trim() ?? "");
 
     put("accountId", accountId, player.accountId);
-    put("realName", realName || null, player.realName);
+    put("realName", name.realName || null, player.realName);
+    put("realSurname", name.realSurname || null, player.realSurname);
     put("city", place.city, player.city);
     put("country", row.country?.trim() || place.country, player.country);
 

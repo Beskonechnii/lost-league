@@ -179,6 +179,22 @@ export const COUNTRIES: Record<string, string> = {
   "Германия": "DE", "Молдова": "MD", "Узбекистан": "UZ", "Кыргызстан": "KG", "Азербайджан": "AZ",
 };
 
+/**
+ * «Иван Иванов» → имя и фамилия по отдельности.
+ *
+ * Нужна везде, где человек пишет себя одной строкой: в таблицах ростера колонка одна («Имя»,
+ * «ФИО»), в старых карточках то же лежит целиком в `Player.realName`, а модель и анкета держат
+ * два поля. Без разбора «Иван Иванов» приезжает в поле «Имя», а «Фамилия» остаётся пустой.
+ *
+ * Правило простое: первое слово — имя, остальное — фамилия. Отчество (если его написали)
+ * приклеится к фамилии — это лучше, чем гадать, где в трёх словах что.
+ */
+export function splitFullName(raw: string | null | undefined): { realName: string; realSurname: string } {
+  const parts = (raw ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { realName: "", realSurname: "" };
+  return { realName: parts[0], realSurname: parts.slice(1).join(" ") };
+}
+
 /** «Беларусь» → «BY». Незнакомая страна — первые две буквы, чтобы плашка не пустовала. */
 export function countryCode(country: string | null | undefined): string | null {
   const name = country?.trim();
