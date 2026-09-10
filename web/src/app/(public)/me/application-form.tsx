@@ -4,6 +4,7 @@ import { useActionState, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { sendApplication, sendClaimWithApplication, saveApplicationDraft, type ApplyState } from "./actions";
 import type { LinkablePlayer } from "./linkable-player";
+import { TelegramLink } from "./telegram-link";
 import {
   EMPTY_INPUT,
   applicationToInput,
@@ -173,8 +174,82 @@ function CountryField({ defaultValue, required }: { defaultValue: string; requir
   );
 }
 
+/**
+ * Телеграм: подтверждение через бота вместо хендла руками (Э19).
+ *
+ * Хендл, вписанный в поле, не проверяет никто — опечатка равна потерянному контакту, а лига узнаёт
+ * об этом ровно тогда, когда человеку надо срочно написать. Кнопка уводит в бота с одноразовым
+ * токеном; вернувшись, страница подставляет хендл сама. Ручной ввод остаётся запасным путём —
+ * как ссылка на профиль рядом со Steam на шаге 2.
+ */
+function TelegramField({
+  v,
+  required,
+  verified,
+  available,
+  onLeave,
+}: {
+  v: ApplicationInput;
+  required: boolean;
+  /** Хендл, подтверждённый привязкой (`UserAccount.tgUsername`), либо null. */
+  verified: string | null;
+  /** Заведён ли бот в окружении: без него кнопки нет вовсе, как у Steam без ключа. */
+  available: boolean;
+  /** Отложить черновик перед уходом в бота. */
+  onLeave: () => void;
+}) {
+  const [handle, setHandle] = useState(v.telegram || verified || "");
+  const norm = (s: string) => s.trim().replace(/^@/, "").toLowerCase();
+  // «Подтверждено» — не про факт привязки, а про то, что в поле стоит ИМЕННО подтверждённый хендл:
+  // править его руками мы разрешаем, и за поправленный бот уже не ручается. Тот же приём, что у Steam.
+  const confirmed = !!verified && norm(handle) === norm(verified);
+
+  return (
+    <>
+      {available && (
+        <TelegramLink
+          linked={confirmed}
+          username={verified}
+          back="/me"
+          beforeOpen={onLeave}
+          okText="Телеграм подтверждён через бота — хендл подставили сами."
+        />
+      )}
+      <Field
+        label="Telegram"
+        required
+        hint={
+          confirmed
+            ? "Подставлен по вашей привязке. Нужен другой — впишите руками."
+            : "Можно с @ или ссылкой — приведём к хендлу."
+        }
+      >
+        <FormInput
+          name="telegram"
+          value={handle}
+          onChange={(e) => setHandle(e.target.value)}
+          required={required}
+          placeholder="@nickname"
+        />
+      </Field>
+    </>
+  );
+}
+
 /** Общие поля первого шага. Ник спрашивается по-разному (ввод или поиск в ростере), он снаружи. */
-function ContactFields({ v, required }: { v: ApplicationInput; required: boolean }) {
+function ContactFields({
+  v,
+  required,
+  telegramVerified,
+  telegramAvailable,
+  onTelegram,
+}: {
+  v: ApplicationInput;
+  required: boolean;
+  telegramVerified: string | null;
+  telegramAvailable: boolean;
+  onTelegram: () => void;
+}) {
   return (
     <>
       <Field label="Имя" required>
@@ -198,9 +273,13 @@ function ContactFields({ v, required }: { v: ApplicationInput; required: boolean
         </Field>
       </div>
 
-      <Field label="Telegram" required hint="Можно с @ или ссылкой — приведём к хендлу.">
-        <FormInput name="telegram" defaultValue={v.telegram} required={required} placeholder="@nickname" />
-      </Field>
+      <TelegramField
+        v={v}
+        required={required}
+        verified={telegramVerified}
+        available={telegramAvailable}
+        onLeave={onTelegram}
+      />
 
       {/* Телефон необязателен: организатор пишет в телеграм, а обязательный номер отсекал тех,
           кто его не даёт (до Э13 весь шаг был помечен обязательным скопом). */}
@@ -413,6 +492,8 @@ export function ApplicationFlow({
   players,
   steamAccountId,
   steamAvailable,
+  telegramVerified,
+  telegramAvailable,
   rejectedReason,
   rejectedAt,
 }: {
@@ -423,6 +504,10 @@ export function ApplicationFlow({
   /** Подтверждённый через Steam account_id аккаунта, либо null. Обе ветки квиза берут его на шаге 2. */
   steamAccountId: string | null;
   steamAvailable: boolean;
+  /** Хендл, подтверждённый привязкой телеграма (Э19), либо null: шаг 1 подставляет его сам. */
+  telegramVerified: string | null;
+  /** Заведён ли бот в окружении — без него кнопки привязки нет вовсе. */
+  telegramAvailable: boolean;
   rejectedReason: string | null;
   /** Дата решения, уже отформатированная на сервере (клиент в другом поясе показал бы своё время). */
   rejectedAt: string | null;
@@ -485,6 +570,8 @@ export function ApplicationFlow({
               draft={draft?.playerId ? null : draft}
               steamAccountId={steamAccountId}
               steamAvailable={steamAvailable}
+              telegramVerified={telegramVerified}
+              telegramAvailable={telegramAvailable}
             />
           ) : (
             <ClaimApplicationForm
@@ -492,6 +579,8 @@ export function ApplicationFlow({
               draft={draft?.playerId ? draft : null}
               steamAccountId={steamAccountId}
               steamAvailable={steamAvailable}
+              telegramVerified={telegramVerified}
+              telegramAvailable={telegramAvailable}
             />
           )}
         </>
@@ -513,11 +602,15 @@ function ApplicationForm({
   draft,
   steamAccountId,
   steamAvailable,
+  telegramVerified,
+  telegramAvailable,
 }: {
   application: Application | null;
   draft: ApplicationDraft | null;
   steamAccountId: string | null;
   steamAvailable: boolean;
+  telegramVerified: string | null;
+  telegramAvailable: boolean;
 }) {
   const [state, action, pending] = useActionState<ApplyState, FormData>(sendApplication, null);
   const [step, setStep] = useState(() => draftStep(draft));
@@ -553,7 +646,13 @@ function ApplicationForm({
           <FormInput name="nickname" defaultValue={v.nickname} required={req(0)} placeholder="Например, Miracle-" />
         </Field>
 
-        <ContactFields v={v} required={req(0)} />
+        <ContactFields
+          v={v}
+          required={req(0)}
+          telegramVerified={telegramVerified}
+          telegramAvailable={telegramAvailable}
+          onTelegram={() => void saveStepDraft(formRef.current, step)}
+        />
 
         <PolicyCheck
           accepted={policy}
@@ -632,11 +731,15 @@ function ClaimApplicationForm({
   draft,
   steamAccountId,
   steamAvailable,
+  telegramVerified,
+  telegramAvailable,
 }: {
   players: LinkablePlayer[];
   draft: ApplicationDraft | null;
   steamAccountId: string | null;
   steamAvailable: boolean;
+  telegramVerified: string | null;
+  telegramAvailable: boolean;
 }) {
   const [state, action, pending] = useActionState<ApplyState, FormData>(sendClaimWithApplication, null);
   const [step, setStep] = useState(() => draftStep(draft));
@@ -725,7 +828,13 @@ function ClaimApplicationForm({
         {/* Ключ на игроке — при смене найденного профиля неуправляемые поля должны перечитать
             новый defaultValue, а не остаться со значениями прошлого совпадения. */}
         <div key={picked?.id ?? "new"} className="space-y-4">
-          <ContactFields v={v} required={req(0)} />
+          <ContactFields
+            v={v}
+            required={req(0)}
+            telegramVerified={telegramVerified}
+            telegramAvailable={telegramAvailable}
+            onTelegram={() => void saveStepDraft(formRef.current, step)}
+          />
         </div>
 
         <PolicyCheck

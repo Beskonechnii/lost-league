@@ -1,5 +1,6 @@
 import { googleConfigured } from "@/lib/google-oauth";
 import { steamConfigured } from "@/lib/steam-oauth";
+import { botConfigured } from "@/lib/telegram";
 import { buttonClasses } from "@/components/pouf/Button";
 import { AuthDivider } from "@/components/pouf/auth";
 import { AuthForms } from "./auth-forms";
@@ -25,41 +26,16 @@ function SocialLink({ href, label, children }: { href: string; label: string; ch
   );
 }
 
-/** Соц-вход, которого ещё нет: тот же кружок Кита, но приглушённый и с меткой «soon».
- *  Не ссылка намеренно — кнопка, ведущая в тупик, хуже честно погашенной. Подсказку и метку
- *  держит обёртка: сам кружок выключен из событий, поэтому не ловит ни курсор, ни ховер. */
-function SocialSoon({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <span className="relative inline-flex" title={`${label} — скоро`}>
-      <span
-        aria-hidden
-        className={buttonClasses({
-          variant: "quiet",
-          size: "lg",
-          shape: "icon",
-          className: "pointer-events-none rounded-pill opacity-45",
-        })}
-      >
-        {children}
-      </span>
-      <span className="pointer-events-none absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded-pill bg-surface-2 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.5px] text-muted cushion-field">
-        soon
-      </span>
-      <span className="sr-only">{label} — скоро</span>
-    </span>
-  );
-}
-
 /** Не вошёл: формы email/пароль + соц-входы. */
 export function Door() {
   return (
     <div>
       <AuthForms />
 
-      {/* Ряд «или через» из макета. Телеграм пока погашен: одним нажатием войти через него нельзя,
-          а страница `/login/tg` (вход по коду) требует сперва списаться с ботом — ссылку на неё
-          присылает сам бот, так что зарегистрированный через телеграм в кабинет попадёт и без этой
-          кнопки. Кружок оживёт на Э19, когда появится привязка через бота (RELEASE-PLAN §E). */}
+      {/* Ряд «или через» из макета. Телеграм ожил на Э19: привязка через бота появилась, значит у
+          аккаунтов есть `tgId` — а с ним `/login/tg` (вход по коду из бота) ведёт в свой кабинет, а
+          не в тупик. Кружок ведёт именно туда: одного нажатия мало (код нужно спросить у бота), и
+          страница объясняет этот шаг словами. */}
       <AuthDivider>или через</AuthDivider>
       <div className="flex justify-center gap-3.5">
         {googleConfigured() && (
@@ -67,9 +43,11 @@ export function Door() {
             <GoogleIcon />
           </SocialLink>
         )}
-        <SocialSoon label="Вход через Telegram">
-          <TelegramIcon />
-        </SocialSoon>
+        {botConfigured() && (
+          <SocialLink href="/login/tg" label="Войти через Telegram">
+            <TelegramIcon />
+          </SocialLink>
+        )}
         {steamConfigured() && (
           <SocialLink href="/api/auth/steam/start" label="Войти через Steam">
             <SteamIcon />
@@ -92,7 +70,7 @@ function GoogleIcon() {
   );
 }
 
-/** Фирменный самолётик Telegram — пока метка «скоро», вход появится на Э19. */
+/** Фирменный самолётик Telegram — вход по коду из бота (`/login/tg`). */
 function TelegramIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="#229ED9" aria-hidden="true">

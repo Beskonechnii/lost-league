@@ -12,6 +12,7 @@
 
 import { sendTo, type Reply } from "./telegram";
 import { rememberChat } from "./tg-menu";
+import { linkTokenIn, redeemLinkToken } from "./tg-link";
 import { respond } from "./bot-flow/run";
 
 /**
@@ -30,7 +31,24 @@ export async function handleMessage(
 ): Promise<Reply[]> {
   // Чат запоминаем при каждом сообщении: позже по нему уйдёт решение организатора по заявке.
   await rememberChat(chatId, username);
-  return respond({ chatId, text: raw.trim(), username, tgId, photoFileId });
+  const text = raw.trim();
+
+  // Привязка по ссылке с сайта (Э19) разбирается ДО графа — в отличие от `/start invite`, который
+  // объявлен точкой входа своего флоу. Причина не в удобстве: хвост здесь не постоянное слово, а
+  // одноразовый токен, и совпадением подписи (`entry.payloads`) его не поймать. Да и править
+  // оператору тут нечего — это не разговор, а погашение ключа: заведомо один ответ на четыре
+  // исхода (привязали / ссылка стара / телеграм занят / аккаунта нет).
+  //
+  // После ответа пропускаем человека в главный флоу обычным `/start`: он пришёл по ссылке впервые,
+  // и оставить его перед пустым чатом — значит закончить привязку тупиком.
+  const token = linkTokenIn(text);
+  if (token) {
+    const linked = await redeemLinkToken(token, { chatId, tgId, username });
+    const menu = await respond({ chatId, text: "/start", username, tgId, photoFileId: null });
+    return [{ text: linked.text }, ...menu];
+  }
+
+  return respond({ chatId, text, username, tgId, photoFileId });
 }
 
 /** Обработать сообщение и ответить в чат. Точка входа для `scripts/bot.ts`. */

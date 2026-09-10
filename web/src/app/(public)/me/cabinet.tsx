@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { accountIdFromSteamId } from "@/lib/profiles";
 import { steamConfigured } from "@/lib/steam-oauth";
+import { botConfigured } from "@/lib/telegram";
 import {
   linkablePlayers,
   effectiveRole,
@@ -76,6 +77,9 @@ export async function Cabinet({ account }: { account: Account }) {
           // вместо того чтобы просить ссылку. Без ключа в окружении кнопки нет вовсе (как у двери).
           steamAccountId={account.steamId ? accountIdFromSteamId(account.steamId) : null}
           steamAvailable={steamConfigured()}
+          // Привязанный телеграм — подтверждённый хендл: шаг 1 подставляет его вместо ручного ввода.
+          telegramVerified={account.tgUsername}
+          telegramAvailable={botConfigured()}
           rejectedReason={account.rejectedReason}
           // Дату решения форматируем на сервере: клиент в другом поясе показал бы своё время
           rejectedAt={account.rejectedReason && account.reviewedAt ? dateTime.format(account.reviewedAt) : null}

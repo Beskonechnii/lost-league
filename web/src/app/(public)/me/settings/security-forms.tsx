@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useId, useState } from "react";
-import { savePassword, deleteAccount, type SecState } from "./actions";
+import { savePassword, deleteAccount, unlinkTg, type SecState } from "./actions";
 import { Button } from "@/components/pouf/Button";
 import { Checkbox } from "@/components/pouf/checkbox";
 import { Alert } from "@/components/pouf/feedback";
@@ -50,6 +50,22 @@ export function PasswordForm({ hasPassword, context }: { hasPassword: boolean; c
       </Button>
       {state?.error && <Alert tone="err" block>{state.error}</Alert>}
       {state?.ok && <Alert tone="ok" block>{state.ok}</Alert>}
+    </form>
+  );
+}
+
+/** Отвязать телеграм — тихой кнопкой под плашкой «привязан»: это не главное действие раздела. */
+export function UnlinkTelegram() {
+  // Обёрткой: у экшена аргументов нет вовсе — отвязка берёт аккаунт из сессии, из формы ей нечего взять.
+  const [state, action, pending] = useActionState<SecState, FormData>(() => unlinkTg(), null);
+  return (
+    <form action={action} className="mt-3 space-y-2">
+      <Button type="submit" variant="quiet" size="sm" disabled={pending}>
+        {pending ? "Отвязываю…" : "Отвязать телеграм"}
+      </Button>
+      {/* Об удаче не рапортуем: раздел тут же перерисовывается кнопкой «Привязать телеграм»,
+          и плашка «отвязано» осталась бы вторым сообщением о том же. Отказ — другое дело. */}
+      {state?.error && <Alert tone="err" block>{state.error}</Alert>}
     </form>
   );
 }

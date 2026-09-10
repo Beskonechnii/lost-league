@@ -2,12 +2,13 @@ import { redirect } from "next/navigation";
 import { currentAccount, effectiveRole } from "@/lib/account";
 import type { Role } from "@/lib/player-auth";
 import { AUTH_MAX_W } from "@/components/pouf/blocks";
-import { StatusPill } from "@/components/pouf/feedback";
+import { Alert, StatusPill } from "@/components/pouf/feedback";
 import { Eyebrow } from "@/components/pouf/text";
 import { Breadcrumbs } from "@/app/_components/breadcrumbs";
 import { playerPath } from "@/lib/profiles";
 import { logout } from "../actions";
-import { PasswordForm, DeleteAccount } from "./security-forms";
+import { TelegramLink } from "../telegram-link";
+import { PasswordForm, DeleteAccount, UnlinkTelegram } from "./security-forms";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Настройки" };
@@ -51,13 +52,15 @@ const ROLE_META: Record<Role, { label: string; tone: "warn" | "info" | "neutral"
   player: { label: "Игрок", tone: "neutral" },
 };
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const { error } = await searchParams;
   const account = await currentAccount();
   if (!account) redirect("/me");
   const role = ROLE_META[effectiveRole(account)];
 
   const hasPassword = !!account.passwordHash;
   const hasGoogle = !!account.googleSub;
+  const hasTelegram = !!account.tgId;
 
   return (
     <main className="flex-1 px-4 py-10 font-pouf md:py-16">
@@ -104,8 +107,27 @@ export default async function SettingsPage() {
           <div className="divide-y divide-hairline">
             <MethodRow label="Google" on={hasGoogle} onText="привязан" offText="не привязан" />
             <MethodRow label="Пароль" on={hasPassword} onText="задан" offText="не задан" />
+            <MethodRow label="Telegram" on={hasTelegram} onText="привязан" offText="не привязан" />
             {account.emailVerified && <MethodRow label="Почта" on onText="подтверждена Google" />}
           </div>
+        </Section>
+
+        {/* Телеграм — не только способ входа, но и канал лиги: решения по заявке и приглашения в
+            состав приходят в этот же чат. Поэтому раздел свой, а не строка в списке выше. */}
+        <Section
+          title="Телеграм"
+          desc="Лига пишет в телеграм: решение по заявке, приглашение в состав, время игры. Привязка идёт через бота — хендл вводить не нужно, телеграм называет вас сам."
+        >
+          {/* Бот не отозвался на выдачу ссылки — говорим об этом здесь же, у самой кнопки. */}
+          {error === "tg-off" && (
+            <div className="mb-3">
+              <Alert tone="err" block>
+                Бот лиги сейчас недоступен — привязать телеграм не выйдет. Попробуйте позже.
+              </Alert>
+            </div>
+          )}
+          <TelegramLink linked={hasTelegram} username={account.tgUsername} back="/me/settings" />
+          {hasTelegram && <UnlinkTelegram />}
         </Section>
 
         <Section

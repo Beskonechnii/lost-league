@@ -27,6 +27,8 @@ const ERRORS: Record<string, string> = {
   // Привязка Steam к аккаунту с почтой упёрлась в чужую привязку. Молча пустить в тот аккаунт
   // нельзя — это и был бы вход под чужим именем (steam-callback, случай «занят»).
   "steam-taken": "Этот аккаунт Steam уже привязан к другому профилю лиги.",
+  // Привязка телеграма: бота нет в окружении или Telegram не ответил (`api/tg/link/start`).
+  "tg-off": "Бот лиги сейчас недоступен — привязать телеграм не выйдет. Впишите хендл руками, мы свяжемся по нему.",
 };
 
 export default async function AccountPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
