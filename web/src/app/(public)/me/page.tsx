@@ -216,15 +216,41 @@ function SocialLink({ href, label, children }: { href: string; label: string; ch
   );
 }
 
+/** Соц-вход, которого ещё нет: тот же кружок Кита, но приглушённый и с меткой «soon».
+ *  Не ссылка намеренно — кнопка, ведущая в тупик, хуже честно погашенной. Подсказку и метку
+ *  держит обёртка: сам кружок выключен из событий, поэтому не ловит ни курсор, ни ховер. */
+function SocialSoon({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <span className="relative inline-flex" title={`${label} — скоро`}>
+      <span
+        aria-hidden
+        className={buttonClasses({
+          variant: "quiet",
+          size: "lg",
+          shape: "icon",
+          className: "pointer-events-none rounded-pill opacity-45",
+        })}
+      >
+        {children}
+      </span>
+      <span className="pointer-events-none absolute -bottom-1.5 left-1/2 -translate-x-1/2 rounded-pill bg-surface-2 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.5px] text-muted cushion-field">
+        soon
+      </span>
+      <span className="sr-only">{label} — скоро</span>
+    </span>
+  );
+}
+
 /** Не вошёл: формы email/пароль + соц-входы. */
 function SignedOut() {
   return (
     <div>
       <AuthForms />
 
-      {/* Ряд «или через» из макета. Кроме Google здесь вход по коду из бота: у зарегистрированного
-          через телеграм нет ни почты, ни пароля, и без этой кнопки он бы не догадался, что кабинет
-          для него вообще открыт. */}
+      {/* Ряд «или через» из макета. Телеграм пока погашен: одним нажатием войти через него нельзя,
+          а страница `/login/tg` (вход по коду) требует сперва списаться с ботом — ссылку на неё
+          присылает сам бот, так что зарегистрированный через телеграм в кабинет попадёт и без этой
+          кнопки. Кружок оживёт на Э19, когда появится привязка через бота (RELEASE-PLAN §E). */}
       <AuthDivider>или через</AuthDivider>
       <div className="flex justify-center gap-3.5">
         {googleConfigured() && (
@@ -232,9 +258,9 @@ function SignedOut() {
             <GoogleIcon />
           </SocialLink>
         )}
-        <SocialLink href="/login/tg" label="Войти по коду из Telegram">
+        <SocialSoon label="Вход через Telegram">
           <TelegramIcon />
-        </SocialLink>
+        </SocialSoon>
         {steamConfigured() && (
           <SocialLink href="/api/auth/steam/start" label="Войти через Steam">
             <SteamIcon />
@@ -317,7 +343,7 @@ function GoogleIcon() {
   );
 }
 
-/** Фирменный самолётик Telegram — вход по коду из бота. */
+/** Фирменный самолётик Telegram — пока метка «скоро», вход появится на Э19. */
 function TelegramIcon() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="#229ED9" aria-hidden="true">

@@ -65,10 +65,10 @@ const button = cva(
         /* Centre labels in the complete cushion silhouette. The old 6px
          * top/bottom bias placed type visibly high once the floor lip and
          * drop-shadow were read as part of the control. */
-        xs: 'text-[12px] px-[10px] py-[5px] min-h-[28px] rounded-[12px]',
-        sm: 'text-[13px] px-4 py-[9px] min-h-[38px] rounded-[14px]',
-        md: 'text-[15px] px-[26px] py-[14px] min-h-12 rounded-control',
-        lg: 'text-[17px] px-8 py-[18px] min-h-14 rounded-control',
+        xs: 'text-[12px] py-[5px] min-h-[28px] rounded-[12px]',
+        sm: 'text-[13px] py-[9px] min-h-[38px] rounded-[14px]',
+        md: 'text-[15px] py-[14px] min-h-12 rounded-control',
+        lg: 'text-[17px] py-[18px] min-h-14 rounded-control',
       },
       variant: {
         solid:
@@ -85,7 +85,18 @@ const button = cva(
         icon: '',
       },
     },
+    /* Горизонтальный отступ живёт ЗДЕСЬ, а не в size, потому что Tailwind не
+     * смотрит на порядок классов в атрибуте: в собранном css `px-0` идёт раньше
+     * `px-8`, и «сбросить» отступ приписанным справа классом нельзя — выигрывал
+     * отступ подписи. Иконочная кнопка получалась шире квадрата, а голая svg
+     * внутри flex-строки ужималась до нулевой ширины (иконки соц-входа на `/me`
+     * рисовались пустыми кружками). Поэтому padding задаётся только форме label,
+     * а форме icon — фиксированная ширина. */
     compoundVariants: [
+      { size: 'xs', shape: 'label', className: 'px-[10px]' },
+      { size: 'sm', shape: 'label', className: 'px-4' },
+      { size: 'md', shape: 'label', className: 'px-[26px]' },
+      { size: 'lg', shape: 'label', className: 'px-8' },
       { size: 'xs', shape: 'icon', className: 'w-[28px] px-0' },
       { size: 'sm', shape: 'icon', className: 'w-[38px] px-0' },
       { size: 'md', shape: 'icon', className: 'w-12 px-0' },
