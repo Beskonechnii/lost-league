@@ -10,6 +10,7 @@
 
 import { prisma } from "./prisma";
 import { currentTournament } from "./tournaments";
+import { resolveUpload } from "./uploads";
 
 export const TP_REASON = "tp";
 
@@ -24,6 +25,62 @@ export async function tpByTournament(tournamentId?: number | null): Promise<Map<
   const totals = new Map<number, number>();
   for (const r of rows) totals.set(r.subjectId, (totals.get(r.subjectId) ?? 0) + r.amount);
   return totals;
+}
+
+/** Строка зачёта: место, игрок и его очки. */
+export type TpRow = {
+  place: number;
+  id: number;
+  slug: string;
+  nickname: string;
+  photo: string | null;
+  score: number;
+};
+
+/**
+ * Верхушка зачёта и место конкретного игрока — для витрины главной.
+ *
+ * Отдельно от страницы `/tp`: та рисует таблицу целиком и берёт весь ростер (`listPlayers`), а
+ * витрине нужны пять строк и своя строка вошедшего. Тянуть ради них всех игроков лиги с составами
+ * незачем — здесь запрашиваются только те, кто попал в выдачу.
+ */
+export async function tpLeaderboard(
+  tournamentId?: number | null,
+  opts: { limit?: number; playerId?: number | null } = {},
+): Promise<{ rows: TpRow[]; me: TpRow | null; total: number }> {
+  const limit = opts.limit ?? 5;
+  const totals = await tpByTournament(tournamentId);
+  // Ноль в зачёт не идёт: таблица про тех, кто уже что-то набрал.
+  const ranked = [...totals.entries()].filter(([, score]) => score > 0).sort((a, b) => b[1] - a[1]);
+
+  const meIndex = opts.playerId ? ranked.findIndex(([id]) => id === opts.playerId) : -1;
+  const wanted = new Set(ranked.slice(0, limit).map(([id]) => id));
+  if (meIndex >= 0) wanted.add(ranked[meIndex][0]);
+  if (wanted.size === 0) return { rows: [], me: null, total: 0 };
+
+  const players = await prisma.player.findMany({
+    where: { id: { in: [...wanted] } },
+    select: { id: true, slug: true, nickname: true, photo: true },
+  });
+  const byId = new Map(players.map((p) => [p.id, p]));
+
+  const row = async (index: number): Promise<TpRow | null> => {
+    const [id, score] = ranked[index];
+    const p = byId.get(id);
+    if (!p) return null; // игрока удалили, а начисления остались — в витрину такую строку не берём
+    return {
+      place: index + 1,
+      id,
+      slug: p.slug,
+      nickname: p.nickname,
+      photo: await resolveUpload("players", p.slug, "photo", p.photo),
+      score,
+    };
+  };
+
+  const rows = (await Promise.all(ranked.slice(0, limit).map((_, i) => row(i)))).filter((r): r is TpRow => r !== null);
+  const me = meIndex >= 0 ? await row(meIndex) : null;
+  return { rows, me, total: ranked.length };
 }
 
 /** История начислений игрока — что и за какой турнир. Для карточки игрока и разбора спорных мест. */

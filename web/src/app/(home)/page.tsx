@@ -10,21 +10,27 @@ import {
 } from "@/lib/tournaments";
 import { listSeries, type SeriesRow } from "@/lib/series";
 import { SITE_MAX_W, StatTile } from "@/components/pouf/blocks";
-import { Eyebrow, Heading } from "@/components/pouf/text";
+import { Eyebrow } from "@/components/pouf/text";
 import { Hero, HeroChip, HeroFooter } from "@/components/pouf/hero";
 import { EmptyState } from "@/components/pouf/feedback";
 import { buttonClasses } from "@/components/pouf/Button";
-import { Icon, type IconName } from "@/components/pouf/Icon";
+import { Icon } from "@/components/pouf/Icon";
 import { SeriesBrief, cutLabel } from "@/app/_components/series-brief";
+import { currentAccountNav } from "@/app/_components/account-nav";
+import { MiniProfile } from "./mini-profile";
+import { TournamentsBlock, isTournamentCut } from "./tournaments-block";
+import { HomeBanner } from "./banner";
+import { PointsBlock } from "./points";
 
-// Входная дверь продукта: что за лига, что в ней происходит прямо сейчас и куда идти дальше.
-// До Э7 здесь стояла тёмная витрина с фиолетовым свечением и четырьмя одинаковыми карточками
-// разделов — «список ссылок», а не лицо лиги. Теперь первым экраном идёт текущий сезон: статус,
-// цифры, ближайшие встречи и последние результаты. Разделы остались, но ниже данных: посетитель
-// приходит смотреть турнир, а не выбирать пункт меню (UI-GUIDELINES §9).
+// Входная дверь продукта — витрина, а не список разделов (Э21 RELEASE-PLAN §E).
 //
-// Стиль — Кит (Light Clay): hero-подушка с мятной подсветкой, плитки чисел, карточки встреч.
-// Цифры берём из базы, а не пишем руками: подписи на витрине не должны расходиться с данными.
+// Порядок блоков отвечает на вопросы в том порядке, в каком они возникают: что это за лига (hero),
+// кто здесь я (мини-профиль), что у лиги происходит (турниры), что мне сейчас сделать (баннер),
+// во что смотреть (матчи) и кто впереди (очки). Плитки «Разделы» с главной сняты: разделы стоят
+// в верхней строке хрома, и повторять их карточками — это и был «список ссылок вместо лица лиги».
+//
+// Сайдбара на этой странице нет — вместо него строка с аватар-меню (`_components/home-shell.tsx`).
+// Почему так решено — в комментарии там же и в UI-GUIDELINES §2.
 
 export const dynamic = "force-dynamic";
 
@@ -35,28 +41,6 @@ export const metadata: Metadata = {
 
 const SITE = "https://leagueofspirits.ru/lost_s1";
 const date = new Intl.DateTimeFormat("ru", { day: "numeric", month: "long" });
-
-/** Постоянные разделы лиги — те же, что в сайдбаре: витрина не заводит своей навигации. */
-const SECTIONS: { href: string; icon: IconName; title: string; text: string }[] = [
-  {
-    href: "/tournaments",
-    icon: "trophy",
-    title: "Турниры",
-    text: "Сезоны и кубки лиги: регламент, сроки, дивизионы и заявленные составы.",
-  },
-  {
-    href: "/roster",
-    icon: "users",
-    title: "Ростер",
-    text: "Все команды лиги и их игроки: составы, роли, MMR и карточка каждого.",
-  },
-  {
-    href: "/rules",
-    icon: "book",
-    title: "Правила лиги",
-    text: "Регламент встреч, переносы, замены и то, за что снимают очки.",
-  },
-];
 
 /**
  * Афиша витрины: что сыграно, что впереди и что показать карточками. Ближайшие сортируем по
@@ -76,7 +60,9 @@ function billboard(series: SeriesRow[], limit = 2) {
   return { played, upcoming, recent: played.slice(0, limit) };
 }
 
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ t?: string }> }) {
+  const { t } = await searchParams;
+  const nav = await currentAccountNav();
   const current = await currentTournament();
   const divisions = current ? await getDivisions(current.id) : [];
 
@@ -96,7 +82,7 @@ export default async function Home() {
   const cut = (s: SeriesRow) => [short.get(s.divisionId ?? -1), cutLabel(s)].filter(Boolean).join(" · ");
 
   return (
-    <main className={`mx-auto w-full ${SITE_MAX_W} flex-1 space-y-8 px-4 py-8 font-pouf md:px-6`}>
+    <main className={`mx-auto w-full ${SITE_MAX_W} flex-1 space-y-8 px-4 pb-8 pt-4 font-pouf md:px-6`}>
       {/* Первый экран: лига и её текущий сезон одной подушкой. Заголовок держит имя лиги —
           это по-прежнему единственное, что должно прочитаться с первой секунды. */}
       <Hero>
@@ -155,32 +141,14 @@ export default async function Home() {
         )}
       </Hero>
 
-      {/* Дивизионы ведут прямо в таблицу — то же решение, что на обзоре турнира: короткий путь
-          к данным для того, кто пришёл впервые и ещё не знает про строку контекста. */}
-      {current && divisions.length > 0 && (
-        <section className="space-y-4">
-          <Eyebrow>Дивизионы сезона</Eyebrow>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {divisions.map((d, i) => (
-              <Link
-                key={d.id}
-                href={`/tournaments/${current.slug}/${d.slug}`}
-                className="flex items-center gap-4 rounded-card bg-surface p-5 cushion-card transition hover:-translate-y-0.5"
-              >
-                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[18px] bg-accent-fill text-lg font-black text-[var(--on-accent)] cushion-control">
-                  {d.short}
-                </span>
-                <span className="min-w-0">
-                  <span className="block truncate text-[17px] font-black tracking-[-0.3px] text-ink">{d.label}</span>
-                  <span className="block text-xs font-extrabold text-muted">
-                    {rosters[i].length} команд · таблица, группы и плей-офф
-                  </span>
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* Кто здесь я: гостю — дверь, новичку — состояние заявки, игроку — его карточка. */}
+      <MiniProfile account={nav.raw} nav={nav} />
+
+      {/* Что у лиги происходит: три разреза турниров, выбор — в адресе (`/?t=next`). */}
+      <TournamentsBlock cut={isTournamentCut(t) ? t : undefined} />
+
+      {/* Что сделать прямо сейчас — одно предложение, выбранное по данным. */}
+      <HomeBanner guest={!nav.raw} />
 
       {/* Афиша и результаты — карточки Кита. Пусто у обоих блоков только до жеребьёвки; тогда
           вместо двух пустых заголовков показываем одно объяснение, почему встреч ещё нет. */}
@@ -226,24 +194,8 @@ export default async function Home() {
         </EmptyState>
       )}
 
-      <section className="space-y-4">
-        <Eyebrow>Разделы</Eyebrow>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {SECTIONS.map((s) => (
-            <Link
-              key={s.href}
-              href={s.href}
-              className="group flex flex-col gap-2 rounded-card bg-surface p-5 cushion-card transition hover:-translate-y-1"
-            >
-              <span className="grid h-11 w-11 place-items-center rounded-[16px] bg-surface-2 text-ink-muted cushion-field">
-                <Icon name={s.icon} size="md" />
-              </span>
-              <Heading level={3}>{s.title}</Heading>
-              <span className="text-sm font-bold leading-relaxed text-muted">{s.text}</span>
-            </Link>
-          ))}
-        </div>
-      </section>
+      {/* Кто впереди в зачёте — и где в нём вошедший. */}
+      <PointsBlock tournament={current} playerId={nav.raw?.player?.id ?? null} />
 
       <p className="text-sm font-bold text-muted">
         Основной сайт лиги и анонсы сезона —{" "}
