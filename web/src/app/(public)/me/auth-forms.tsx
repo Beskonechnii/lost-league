@@ -6,7 +6,8 @@ import { register, login, type AuthState } from "./actions";
 import { Button } from "@/components/pouf/Button";
 import { Checkbox } from "@/components/pouf/checkbox";
 import { Alert } from "@/components/pouf/feedback";
-import { FormInput, Label } from "@/components/pouf/Input";
+import { FormInput, Label, PasswordField } from "@/components/pouf/Input";
+import { PASSWORD_MIN } from "@/lib/password-rules";
 import { PillButton, PillTrack } from "@/components/pouf/tabs";
 
 // Формы входа по email + паролю: два режима — «Войти» и «Регистрация». Рядом с соц-входом
@@ -91,7 +92,7 @@ function LoginForm() {
         <FormInput name="email" type="email" autoComplete="email" placeholder="you@gmail.com" required />
       </Field>
       <Field label="Пароль">
-        <FormInput name="password" type="password" autoComplete="current-password" required />
+        <PasswordField name="password" autoComplete="current-password" required />
       </Field>
       <RememberMe />
       <Button type="submit" loading={pending} size="lg" block>
@@ -114,10 +115,18 @@ function RegisterForm() {
         <FormInput name="email" type="email" autoComplete="email" placeholder="you@gmail.com" required />
       </Field>
       <Field label="Пароль">
-        <FormInput name="password" type="password" autoComplete="new-password" placeholder="Минимум 8 символов" required />
+        {/* Почту в контекст шкалы не отдаём: она в соседнем поле и здесь её ещё нет —
+            совпадение пароля с почтой ловит сервер при отправке. */}
+        <PasswordField
+          name="password"
+          autoComplete="new-password"
+          placeholder={`Минимум ${PASSWORD_MIN} символов`}
+          strength
+          required
+        />
       </Field>
       <Field label="Повторите пароль">
-        <FormInput name="confirm" type="password" autoComplete="new-password" required />
+        <PasswordField name="confirm" autoComplete="new-password" required />
       </Field>
       <Button type="submit" loading={pending} size="lg" block>
         {pending ? "Создаю…" : "Зарегистрироваться"}

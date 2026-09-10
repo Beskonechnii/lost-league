@@ -68,6 +68,8 @@ import {
   IconMapPin,
   IconWind,
   IconDroplet,
+  IconEye,
+  IconEyeOff,
   type IconProps,
 } from '@tabler/icons-react'
 import type { ComponentType, ReactElement } from 'react'
@@ -167,6 +169,9 @@ const ICONS = {
   pin: IconMapPin,
   wind: IconWind,
   drop: IconDroplet,
+  /** Показать скрытое значение (пароль под звёздочками) — и спрятать обратно. */
+  eye: IconEye,
+  'eye-off': IconEyeOff,
 } as const
 
 export type IconName = keyof typeof ICONS

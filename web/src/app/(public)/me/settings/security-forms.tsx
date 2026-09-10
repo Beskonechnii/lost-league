@@ -5,7 +5,8 @@ import { savePassword, deleteAccount, type SecState } from "./actions";
 import { Button } from "@/components/pouf/Button";
 import { Checkbox } from "@/components/pouf/checkbox";
 import { Alert } from "@/components/pouf/feedback";
-import { FormInput, Label } from "@/components/pouf/Input";
+import { Label, PasswordField } from "@/components/pouf/Input";
+import { PASSWORD_MIN, type PasswordContext } from "@/lib/password-rules";
 
 // Формы вкладки «Вход и защита»: смена/задание пароля и удаление аккаунта.
 // Сообщения — алерты Кита (Э7): свои `rounded-md border border-rose-200` тут стояли третьей
@@ -21,20 +22,28 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 /** Смена пароля, а для входивших только через Google — задание пароля впервые (без «текущего»). */
-export function PasswordForm({ hasPassword }: { hasPassword: boolean }) {
+export function PasswordForm({ hasPassword, context }: { hasPassword: boolean; context?: PasswordContext }) {
   const [state, action, pending] = useActionState<SecState, FormData>(savePassword, null);
   return (
     <form action={action} className="space-y-4">
       {hasPassword && (
         <Field label="Текущий пароль">
-          <FormInput name="current" type="password" autoComplete="current-password" required />
+          {/* Без шкалы: текущий пароль уже задан, оценивать его поздно. */}
+          <PasswordField name="current" autoComplete="current-password" required />
         </Field>
       )}
       <Field label="Новый пароль">
-        <FormInput name="next" type="password" autoComplete="new-password" placeholder="Минимум 8 символов" required />
+        <PasswordField
+          name="next"
+          autoComplete="new-password"
+          placeholder={`Минимум ${PASSWORD_MIN} символов`}
+          strength
+          context={context}
+          required
+        />
       </Field>
       <Field label="Повторите новый пароль">
-        <FormInput name="confirm" type="password" autoComplete="new-password" required />
+        <PasswordField name="confirm" autoComplete="new-password" required />
       </Field>
       <Button type="submit" disabled={pending} block>
         {pending ? "Сохраняю…" : hasPassword ? "Сменить пароль" : "Задать пароль"}

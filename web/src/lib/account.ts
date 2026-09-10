@@ -3,11 +3,13 @@
 // правила привязки не разъезжались между страницей /me и админкой.
 
 import "server-only";
+import { headers } from "next/headers";
 import { prisma } from "./prisma";
 import { currentAccountId, setSessionCookie } from "./player-session";
 import type { Role } from "./player-auth";
 import { slugify, normalizeTelegram, parseBirthday } from "./profiles";
 import { hashPassword, verifyPassword, passwordProblem } from "./password";
+import { clientIpFromHeaders, takeLoginAttempt, clearLoginAttempts } from "./rate-limit";
 import { formatPermissions, hasPermission, permissionsOf, type PermissionKey } from "./permissions";
 import {
   normalizeApplication,
@@ -584,7 +586,8 @@ export async function registerWithPassword(email: string, password: string): Pro
   const mail = normEmail(email);
   const ep = emailProblem(mail);
   if (ep) return { ok: false, error: ep };
-  const pp = passwordProblem(password);
+  // Контекст правил — почта: пароль, повторяющий её, знакомый подберёт с первого раза.
+  const pp = passwordProblem(password, { email: mail });
   if (pp) return { ok: false, error: pp };
 
   const existing = await prisma.userAccount.findUnique({ where: { email: mail }, select: { id: true } });
@@ -598,14 +601,33 @@ export async function registerWithPassword(email: string, password: string): Pro
 
 export type LoginResult = { ok: true; accountId: number } | { ok: false; error: string };
 
-/** Вход по email + паролю. Возвращает id аккаунта для выдачи сессии, либо ошибку. */
+/**
+ * Вход по email + паролю. Возвращает id аккаунта для выдачи сессии, либо ошибку.
+ *
+ * Здесь же лимит попыток — на сервере, а не в форме: форму обходит любой curl, а перебор пароля
+ * ровно этим и занимается. Слот занимаем ДО проверки, чтобы считались и промахи по несуществующей
+ * почте, а успех окно сбрасывает — считать надо неудачи, а не входы живого человека.
+ *
+ * Правила `passwordProblem` тут НЕ применяются намеренно: часть паролей заведена по старым
+ * требованиям (минимум был 8), и ужесточение не должно запирать этих людей снаружи. Новые правила
+ * работают при заведении и смене пароля.
+ */
 export async function loginWithPassword(email: string, password: string): Promise<LoginResult> {
   const mail = normEmail(email);
+  const ip = clientIpFromHeaders(await headers());
+
+  const slot = takeLoginAttempt(mail, ip);
+  if (!slot.ok) {
+    const minutes = Math.max(1, Math.ceil(slot.retryAfterSec / 60));
+    return { ok: false, error: `Слишком много попыток входа. Попробуйте через ${minutes} мин.` };
+  }
+
   const account = await prisma.userAccount.findUnique({ where: { email: mail } });
   // Одинаковый текст на «нет такого аккаунта» и «пароль не тот» — не подсказываем, что почта есть.
   if (!account || !verifyPassword(password, account.passwordHash)) {
     return { ok: false, error: "Неверная почта или пароль" };
   }
+  clearLoginAttempts(mail, ip);
   return { ok: true, accountId: account.id };
 }
 
@@ -620,14 +642,18 @@ export async function changePassword(
 ): Promise<string | null> {
   const account = await prisma.userAccount.findUnique({
     where: { id: accountId },
-    select: { passwordHash: true },
+    // Почта и ник — контекст правил: новый пароль не должен их повторять.
+    select: { passwordHash: true, email: true, player: { select: { nickname: true } } },
   });
   if (!account) return "Сессия истекла — войдите снова";
   // Пароль уже задан → без верного текущего менять нельзя (защита от смены по угнанной сессии).
   if (account.passwordHash && !verifyPassword(current, account.passwordHash)) {
     return "Текущий пароль неверен";
   }
-  const pp = passwordProblem(next);
+  const pp = passwordProblem(next, {
+    email: account.email ?? undefined,
+    nickname: account.player?.nickname,
+  });
   if (pp) return pp;
   await prisma.userAccount.update({ where: { id: accountId }, data: { passwordHash: hashPassword(next) } });
   return null;

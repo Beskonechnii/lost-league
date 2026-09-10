@@ -116,7 +116,12 @@ export default async function SettingsPage() {
               : "Вы входите через Google. Можно задать пароль — тогда появится второй способ входа."
           }
         >
-          <PasswordForm hasPassword={hasPassword} />
+          {/* Контекст — только для шкалы под полем: она обязана ругаться на то же, на что
+              ругнётся сервер, иначе «Надёжный» и отказ противоречат друг другу. */}
+          <PasswordForm
+            hasPassword={hasPassword}
+            context={{ email: account.email ?? undefined, nickname: account.player?.nickname }}
+          />
         </Section>
 
         <Section

@@ -4,6 +4,10 @@
 
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 
+// Правила к паролю живут в чистом `password-rules.ts` (их зовёт и форма в браузере), а сюда
+// реэкспортируются — чтобы вызывающим (`account.ts`) не пришлось знать про два модуля.
+export { passwordProblem, PASSWORD_MIN, type PasswordContext } from "./password-rules";
+
 const KEYLEN = 64; // длина производного ключа в байтах
 
 /** Хеш пароля для БД: `<salt hex>:<hash hex>`. Соль своя у каждого — одинаковые пароли дают разный хеш. */
@@ -23,11 +27,4 @@ export function verifyPassword(password: string, stored: string | null | undefin
   const actual = scryptSync(password, Buffer.from(saltHex, "hex"), KEYLEN);
   // Длины равны (обе KEYLEN) — timingSafeEqual не бросит; сравнение постоянного времени.
   return timingSafeEqual(actual, expected);
-}
-
-/** Требования к паролю. Одно место правды — зовут и регистрация, и смена/сброс. Null = ок. */
-export function passwordProblem(password: string): string | null {
-  if (password.length < 8) return "Пароль должен быть не короче 8 символов";
-  if (password.length > 200) return "Слишком длинный пароль";
-  return null;
 }
