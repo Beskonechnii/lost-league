@@ -43,6 +43,7 @@ export const TOOL_GROUPS: ToolGroup[] = [
       { href: "/admin/tp", perm: "tp.edit", label: "TP", icon: "star", desc: "Начисление сезонных очков MVP игрокам." },
       { href: "/admin/bot", perm: "tournaments.edit", label: "Телеграм-бот", icon: "send", desc: "Разговор бота нодами: что он говорит, какие кнопки показывает и куда ведёт каждая. Рядом — тайминги напоминаний." },
       { href: "/admin/duplicates", perm: "roster.edit", label: "Дубли профилей", icon: "users", desc: "Похожие профили одного человека: объединить, переименовать или развести." },
+      { href: "/admin/roster/ranks", perm: "roster.edit", label: "Ранги", icon: "up", desc: "Сверить ранги лиги с OpenDota одной кнопкой и увидеть, у кого он изменился с прошлого раза." },
       { href: "/admin/quizzes", perm: "quizzes", label: "Анкеты", icon: "comment", desc: "Опросы и записи на ивенты: бот собирает ответы в телеграме." },
     ],
   },

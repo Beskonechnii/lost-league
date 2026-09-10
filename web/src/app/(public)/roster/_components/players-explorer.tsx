@@ -113,6 +113,8 @@ export function PlayersExplorer({
               accent={p.main ? teamAccent(p.main.team) : null}
               role={roleLabel(p.main?.role)}
               mmr={p.mmr}
+              rank={p.rank}
+              rankPrev={p.rankPrev}
               country={p.country}
               isCaptain={p.main?.isCaptain ?? false}
               size={56}

@@ -302,6 +302,9 @@ export type PoolPlayer = {
   nickname: string;
   photo: string | null;
   mmr: number | null;
+  /** Ранг Доты и значение до последней смены — медаль со стрелкой в карточке (`pouf/rank.tsx`). */
+  rank: number | null;
+  rankPrev: number | null;
   country: string | null;
   accountId: string | null;
   /** Главное место: действующая команда (по свежести турнира), с ролью и капитанством — для акцента. */
@@ -363,6 +366,8 @@ export async function listPoolPlayers(): Promise<PoolPlayer[]> {
         nickname: p.nickname,
         photo: uploaded.photo,
         mmr: p.mmr,
+        rank: p.rank,
+        rankPrev: p.rankPrev,
         country: p.country,
         accountId: playerAccountId(p),
         main,
