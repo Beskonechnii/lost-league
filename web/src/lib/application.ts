@@ -86,6 +86,52 @@ export function parseApplication(raw: string | null | undefined): Application | 
 /** Анкета → строка для БД. */
 export const formatApplication = (app: Application): string => JSON.stringify(app);
 
+// ── черновик анкеты ───────────────────────────────────────────────────────────
+//
+// Отдельное поле (`UserAccount.applicationDraft`), а не `application`: там лежит прошедший
+// normalizeApplication результат, а черновик по определению невалиден — незаконченный ввод.
+// Пишется на каждом переходе вперёд по шагу квиза, чистится при отправке.
+
+/** Незаконченный квиз: что уже введено, на каком шаге остановились и на чём это восстановить. */
+export type ApplicationDraft = {
+  values: ApplicationInput;
+  step: number;
+  /** Ветка «я уже участник лиги»: найденный в ростере игрок — иначе поиск себя проходится заново. */
+  playerId: number | null;
+  /** Отметка «принимаю правила». Без неё возврат сразу на шаг 3 упирался бы в отказ сервера. */
+  policy: boolean;
+};
+
+/** Черновик → строка для БД. */
+export const formatDraft = (draft: ApplicationDraft): string => JSON.stringify(draft);
+
+// Набор полей анкеты со временем меняется. Черновик со старым набором не «дочитываем» по ключу,
+// а выбрасываем целиком: половина ответов от прошлой версии формы путает сильнее, чем пустой квиз.
+const INPUT_KEYS = Object.keys(EMPTY_INPUT).sort();
+
+/** JSON из БД → черновик. Мусор и чужой набор полей → null: черновик не имеет права ронять форму. */
+export function parseDraft(raw: string | null | undefined): ApplicationDraft | null {
+  if (!raw) return null;
+  try {
+    const data = JSON.parse(raw) as Record<string, unknown>;
+    if (!data || typeof data !== "object") return null;
+
+    const values = data.values;
+    if (!values || typeof values !== "object" || Array.isArray(values)) return null;
+    const keys = Object.keys(values).sort();
+    if (keys.length !== INPUT_KEYS.length || keys.some((k, i) => k !== INPUT_KEYS[i])) return null;
+    if (Object.values(values).some((v) => typeof v !== "string")) return null;
+
+    const step = typeof data.step === "number" && Number.isInteger(data.step) && data.step >= 0 ? data.step : 0;
+    const playerId =
+      typeof data.playerId === "number" && Number.isInteger(data.playerId) && data.playerId > 0 ? data.playerId : null;
+
+    return { values: values as ApplicationInput, step, playerId, policy: data.policy === true };
+  } catch {
+    return null;
+  }
+}
+
 // Хосты, которые ждём в каждом поле ссылки. Проверяем именно хост, а не «разбирается ли в id»:
 // именной адрес Steam (steamcommunity.com/id/<имя>) в id не превращается, но оператору он полезен.
 const LINK_HOSTS: Record<"dotabuff" | "stratz" | "steam", { re: RegExp; label: string; example: string }> = {

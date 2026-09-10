@@ -272,6 +272,9 @@ model UserAccount {
   // публичные витрины читают Player без фильтров, и заведённый заранее неодобренный сразу попал бы
   // в ростер.
   application      String?
+  /// Черновик анкеты: сырой ApplicationInput + номер шага, JSON. В отличие от `application`
+  /// не проходит normalizeApplication — это незаконченный ввод, а не заявка. Чистится при отправке.
+  applicationDraft String?
   policyAcceptedAt DateTime? // когда согласился с политикой площадки (/rules)
   submittedAt      DateTime? // когда отправил заявку — по нему порядок очереди модерации
   reviewedAt       DateTime? // когда рассмотрели

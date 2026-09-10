@@ -13,9 +13,12 @@ import {
   normalizeApplication,
   formatApplication,
   parseApplication,
+  formatDraft,
+  parseDraft,
   applicationLinkColumns,
   applicationAccountId,
   type Application,
+  type ApplicationDraft,
   type ApplicationInput,
 } from "./application";
 
@@ -253,6 +256,19 @@ export async function linkablePlayers() {
 export const accountApplication = (account: { application: string | null }): Application | null =>
   parseApplication(account.application);
 
+/** Незаконченный квиз аккаунта; его нет или он от старой версии формы — null. */
+export const accountApplicationDraft = (account: { applicationDraft: string | null }): ApplicationDraft | null =>
+  parseDraft(account.applicationDraft);
+
+/** Сохранить черновик анкеты. Без проверок и без revalidate: это незаконченный ввод, а не заявка,
+ *  и на разметку страницы он не влияет — форма уже держит эти значения у себя. */
+export async function storeApplicationDraft(accountId: number, draft: ApplicationDraft): Promise<void> {
+  await prisma.userAccount.update({
+    where: { id: accountId },
+    data: { applicationDraft: formatDraft(draft) },
+  });
+}
+
 const POLICY_REQUIRED = "Примите правила лиги — без согласия заявку не отправить";
 
 /** Отправить анкету нового игрока: проверяем, пишем JSON и переводим аккаунт в pending.
@@ -271,6 +287,7 @@ export async function submitApplication(
     where: { id: accountId },
     data: {
       application: formatApplication(parsed.value),
+      applicationDraft: null, // отправленное живёт в application; черновику здесь больше нечего хранить
       claimId: null, // ветка «я новый игрок» отменяет ранее выбранную привязку
       policyAcceptedAt: now,
       submittedAt: now,
@@ -335,6 +352,7 @@ export async function submitClaimWithApplication(
     where: { id: accountId },
     data: {
       application: null, // привязка к готовому профилю анкеты не требует — данные уже в Player
+      applicationDraft: null, // квиз пройден: черновик своё отработал
       policyAcceptedAt: now,
       submittedAt: now,
       status: "pending",
@@ -559,8 +577,10 @@ export function emailProblem(email: string): string | null {
 export type RegisterResult = { ok: true; accountId: number } | { ok: false; error: string };
 
 /** Регистрация по email + паролю. Заводит аккаунт в статусе draft (дефолт схемы) и отдаёт его id —
- *  сессию выдаёт вызывающий, а дальше кабинет требует анкету. Писем не шлём: почтового флоу нет. */
-export async function registerWithPassword(email: string, password: string, name: string): Promise<RegisterResult> {
+ *  сессию выдаёт вызывающий, а дальше кабинет требует анкету. Писем не шлём: почтового флоу нет.
+ *  Имени не спрашиваем: его всё равно спросит анкета, а лишнее поле на входе только удлиняет форму
+ *  (Account.name остаётся — его заполняет Google-вход). */
+export async function registerWithPassword(email: string, password: string): Promise<RegisterResult> {
   const mail = normEmail(email);
   const ep = emailProblem(mail);
   if (ep) return { ok: false, error: ep };
@@ -571,7 +591,7 @@ export async function registerWithPassword(email: string, password: string, name
   if (existing) return { ok: false, error: "Почта уже занята — войдите под ней." };
 
   const account = await prisma.userAccount.create({
-    data: { email: mail, passwordHash: hashPassword(password), name: name.trim() || null },
+    data: { email: mail, passwordHash: hashPassword(password) },
   });
   return { ok: true, accountId: account.id };
 }

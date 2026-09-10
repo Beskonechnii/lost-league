@@ -3,7 +3,14 @@ import { redirect } from "next/navigation";
 import { playerPath } from "@/lib/profiles";
 import { googleConfigured } from "@/lib/google-oauth";
 import { steamConfigured } from "@/lib/steam-oauth";
-import { currentAccount, linkablePlayers, effectiveRole, accountStatus, accountApplication } from "@/lib/account";
+import {
+  currentAccount,
+  linkablePlayers,
+  effectiveRole,
+  accountStatus,
+  accountApplication,
+  accountApplicationDraft,
+} from "@/lib/account";
 import type { Role } from "@/lib/player-auth";
 import { buttonClasses } from "@/components/pouf/Button";
 import { Alert, StatusPill } from "@/components/pouf/feedback";
@@ -108,6 +115,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
           <ProfileCard account={account} role={role} />
           <ApplicationFlow
             application={accountApplication(account)}
+            draft={accountApplicationDraft(account)}
             players={await linkablePlayers()}
             rejectedReason={account.rejectedReason}
             // Дату решения форматируем на сервере: клиент в другом поясе показал бы своё время

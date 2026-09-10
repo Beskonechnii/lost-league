@@ -12,6 +12,7 @@ import {
   establishSession,
   submitApplication,
   submitClaimWithApplication,
+  storeApplicationDraft,
 } from "@/lib/account";
 import type { ApplicationInput } from "@/lib/application";
 
@@ -35,9 +36,8 @@ export async function register(_state: AuthState, form: FormData): Promise<AuthS
   const email = String(form.get("email") ?? "");
   const password = String(form.get("password") ?? "");
   const confirm = String(form.get("confirm") ?? "");
-  const name = String(form.get("name") ?? "");
   if (password !== confirm) return { error: "Пароли не совпадают" };
-  const res = await registerWithPassword(email, password, name);
+  const res = await registerWithPassword(email, password);
   if (!res.ok) return { error: res.error };
   await establishSession(res.accountId, form.get("remember") != null);
   redirect("/me");
@@ -70,6 +70,27 @@ export async function sendApplication(_state: ApplyState, form: FormData): Promi
   if (error) return { error, values: input };
   revalidatePath("/me");
   return null;
+}
+
+/**
+ * Черновик квиза: форма зовёт его на каждом переходе вперёд по шагу.
+ *
+ * Без валидации намеренно — сохраняем ровно то, что человек успел ввести. Без `revalidatePath`:
+ * значения уже в полях формы, перерисовывать страницу не из-за чего (а перерисовка сбросила бы
+ * незакоммиченный ввод текущего шага). Молчит и при истёкшей сессии: черновик — удобство,
+ * ломать им переход на следующий шаг нельзя.
+ */
+export async function saveApplicationDraft(form: FormData): Promise<void> {
+  const id = await currentAccountId();
+  if (id == null) return;
+  const step = Number(form.get("step"));
+  const playerId = Number(form.get("playerId"));
+  await storeApplicationDraft(id, {
+    values: readApplicationInput(form),
+    step: Number.isInteger(step) && step >= 0 ? step : 0,
+    playerId: Number.isInteger(playerId) && playerId > 0 ? playerId : null,
+    policy: form.get("policy") != null,
+  });
 }
 
 /** Считать анкету из FormData — общий разбор для «новый игрок» и «я уже участник лиги». */

@@ -2,13 +2,14 @@
 
 import { useActionState, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { sendApplication, sendClaimWithApplication, type ApplyState } from "./actions";
+import { sendApplication, sendClaimWithApplication, saveApplicationDraft, type ApplyState } from "./actions";
 import type { LinkablePlayer } from "./onboarding";
 import {
   EMPTY_INPUT,
   applicationToInput,
   profileLinkKind,
   type Application,
+  type ApplicationDraft,
   type ApplicationInput,
 } from "@/lib/application";
 import { splitFullName } from "@/lib/profiles";
@@ -331,6 +332,25 @@ function ForkCard({ title, hint, onClick }: { title: string; hint: string; onCli
   );
 }
 
+/**
+ * Отдать серверу состояние квиза (Э14). Зовётся при переходе вперёд по шагу: до этого ответы жили
+ * только между двумя submit'ами одной страницы, и закрытая вкладка стирала всё.
+ *
+ * Ответа не ждём и ошибку глотаем: черновик — удобство, а не условие шага; упавшая запись не должна
+ * запирать человека на текущем экране. Шаг кладём в ту же FormData — сервер разбирает её тем же
+ * `readApplicationInput`, что и отправку.
+ */
+function saveStepDraft(form: HTMLFormElement | null, step: number) {
+  if (!form) return;
+  const data = new FormData(form);
+  data.set("step", String(step));
+  void saveApplicationDraft(data).catch(() => {});
+}
+
+/** Черновик мог прийти с шагом от другой версии формы — за границы квиза его не пускаем. */
+const draftStep = (draft: ApplicationDraft | null): number =>
+  draft ? Math.min(Math.max(draft.step, 0), STEPS.length - 1) : 0;
+
 /** Легенда к звёздочкам — иначе метка обязательности читается как случайный символ. */
 const REQUIRED_HINT = (
   <p className="text-[13px] font-bold leading-[1.45] text-muted">
@@ -340,19 +360,25 @@ const REQUIRED_HINT = (
 
 export function ApplicationFlow({
   application,
+  draft,
   players,
   rejectedReason,
   rejectedAt,
 }: {
   application: Application | null;
+  /** Незаконченный квиз с прошлого захода (Э14): им же выбирается ветка, в которую вернуть человека. */
+  draft: ApplicationDraft | null;
   players: LinkablePlayer[];
   rejectedReason: string | null;
   /** Дата решения, уже отформатированная на сервере (клиент в другом поясе показал бы своё время). */
   rejectedAt: string | null;
 }) {
-  // Если анкету уже присылали (её вернули на доработку) — сразу открываем форму с прежними ответами:
-  // заставлять человека второй раз проходить развилку незачем.
-  const [mode, setMode] = useState<"pick" | "new" | "existing">(application ? "new" : "pick");
+  // Если анкету уже присылали (её вернули на доработку) или квиз брошен на середине — сразу открываем
+  // форму с прежними ответами: заставлять человека второй раз проходить развилку незачем. Ветку
+  // черновика узнаём по найденному игроку: он бывает только у «я уже участник лиги».
+  const [mode, setMode] = useState<"pick" | "new" | "existing">(
+    draft ? (draft.playerId ? "existing" : "new") : application ? "new" : "pick",
+  );
 
   return (
     <div className="space-y-4">
@@ -400,9 +426,9 @@ export function ApplicationFlow({
             ← назад
           </button>
           {mode === "new" ? (
-            <ApplicationForm application={application} />
+            <ApplicationForm application={application} draft={draft?.playerId ? null : draft} />
           ) : (
-            <ClaimApplicationForm players={players} />
+            <ClaimApplicationForm players={players} draft={draft?.playerId ? draft : null} />
           )}
         </>
       )}
@@ -418,15 +444,16 @@ export function ApplicationFlow({
  * ТЕКУЩЕГО шага — иначе браузер отказывался бы отправлять форму из-за невидимого обязательного
  * поля («An invalid form control is not focusable») и молчал бы об этом.
  */
-function ApplicationForm({ application }: { application: Application | null }) {
+function ApplicationForm({ application, draft }: { application: Application | null; draft: ApplicationDraft | null }) {
   const [state, action, pending] = useActionState<ApplyState, FormData>(sendApplication, null);
-  const [step, setStep] = useState(0);
-  const [policy, setPolicy] = useState(false);
+  const [step, setStep] = useState(() => draftStep(draft));
+  const [policy, setPolicy] = useState(draft?.policy ?? false);
   const [policyMissed, setPolicyMissed] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
-  // После submit React возвращает неуправляемые поля к defaultValue, поэтому «черновик» ответов
-  // приходит обратно в состоянии: иначе ошибка в одной строке стирала бы всю анкету.
-  const v = state?.values ?? (application ? applicationToInput(application) : EMPTY_INPUT);
+  // Порядок источников важен. После submit React возвращает неуправляемые поля к defaultValue,
+  // поэтому ответы приходят обратно в состоянии (иначе ошибка в одной строке стирала бы всю анкету) —
+  // и свежая правка обязана перекрыть черновик прошлого захода, а тот — уже отправленную анкету.
+  const v = state?.values ?? draft?.values ?? (application ? applicationToInput(application) : EMPTY_INPUT);
 
   /** Шаг вперёд — только если довольны и браузер (поля шага), и мы (согласие с правилами). */
   const next = () => {
@@ -435,7 +462,9 @@ function ApplicationForm({ application }: { application: Application | null }) {
       setPolicyMissed(true);
       return;
     }
-    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+    const to = Math.min(step + 1, STEPS.length - 1);
+    saveStepDraft(formRef.current, to);
+    setStep(to);
   };
 
   const req = (n: number) => step === n;
@@ -525,12 +554,19 @@ function inputFromPlayer(player: LinkablePlayer, fallbackNickname: string): Appl
  * из трёх шагов, но найденный профиль подтягивает известные поля, а незаполненные (обычно
  * ссылка на профиль, MMR, позиция) ждут ответа, как и в анкете нового игрока.
  */
-function ClaimApplicationForm({ players }: { players: LinkablePlayer[] }) {
+function ClaimApplicationForm({ players, draft }: { players: LinkablePlayer[]; draft: ApplicationDraft | null }) {
   const [state, action, pending] = useActionState<ApplyState, FormData>(sendClaimWithApplication, null);
-  const [step, setStep] = useState(0);
-  const [query, setQuery] = useState("");
-  const [picked, setPicked] = useState<LinkablePlayer | null>(null);
-  const [policy, setPolicy] = useState(false);
+  const [step, setStep] = useState(() => draftStep(draft));
+  const [query, setQuery] = useState(draft?.values.nickname ?? "");
+  // Найденного в ростере игрока черновик хранит id'шником — иначе поиск себя проходился бы заново.
+  // Игрока могли и убрать из ростера, тогда возвращаемся к поиску: id без карточки нам не поможет.
+  const [picked, setPicked] = useState<LinkablePlayer | null>(
+    () => players.find((p) => p.id === draft?.playerId) ?? null,
+  );
+  // Пока человек не тронул поиск, поля показывают черновик; выбрал другого игрока — подтягиваем
+  // его карточку, черновик прошлого захода к ней уже не относится.
+  const [fromDraft, setFromDraft] = useState(draft != null);
+  const [policy, setPolicy] = useState(draft?.policy ?? false);
   const [policyMissed, setPolicyMissed] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -540,9 +576,12 @@ function ClaimApplicationForm({ players }: { players: LinkablePlayer[] }) {
     return players.filter((p) => p.nickname.toLowerCase().includes(q)).slice(0, 6);
   }, [players, query, picked]);
 
-  // После ошибки сервер возвращает введённое обратно (values); иначе значения строит найденный
-  // игрок — при первом рендере (никого ещё не нашли) это просто пустая анкета с нашим ником.
-  const v = state?.values ?? (picked ? inputFromPlayer(picked, query) : { ...EMPTY_INPUT, nickname: query });
+  // После ошибки сервер возвращает введённое обратно (values); следом идёт брошенный на середине
+  // квиз, и только потом карточка найденного игрока — при первом рендере (никого ещё не нашли)
+  // это просто пустая анкета с нашим ником.
+  const v =
+    state?.values ??
+    (fromDraft && draft ? draft.values : picked ? inputFromPlayer(picked, query) : { ...EMPTY_INPUT, nickname: query });
 
   const next = () => {
     if (formRef.current?.reportValidity() === false) return;
@@ -550,7 +589,9 @@ function ClaimApplicationForm({ players }: { players: LinkablePlayer[] }) {
       setPolicyMissed(true);
       return;
     }
-    setStep((s) => Math.min(s + 1, STEPS.length - 1));
+    const to = Math.min(step + 1, STEPS.length - 1);
+    saveStepDraft(formRef.current, to);
+    setStep(to);
   };
   const req = (n: number) => step === n;
 
@@ -571,6 +612,7 @@ function ClaimApplicationForm({ players }: { players: LinkablePlayer[] }) {
             value={picked ? picked.nickname : query}
             onChange={(e) => {
               setPicked(null);
+              setFromDraft(false);
               setQuery(e.target.value);
             }}
             autoFocus

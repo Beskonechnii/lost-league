@@ -113,9 +113,6 @@ function RegisterForm() {
       <Field label="Почта">
         <FormInput name="email" type="email" autoComplete="email" placeholder="you@gmail.com" required />
       </Field>
-      <Field label="Имя (необязательно)">
-        <FormInput name="name" autoComplete="name" placeholder="Как к вам обращаться" />
-      </Field>
       <Field label="Пароль">
         <FormInput name="password" type="password" autoComplete="new-password" placeholder="Минимум 8 символов" required />
       </Field>
