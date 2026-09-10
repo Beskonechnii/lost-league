@@ -12,9 +12,9 @@ import {
   type ApplicationDraft,
   type ApplicationInput,
 } from "@/lib/application";
-import { splitFullName } from "@/lib/profiles";
+import { accountIdFromUrl, dotabuffOf, splitFullName } from "@/lib/profiles";
 import { ROLES } from "@/lib/roles";
-import { Button, buttonClasses } from "@/components/pouf/Button";
+import { Button } from "@/components/pouf/Button";
 import { Checkbox } from "@/components/pouf/checkbox";
 import { Alert } from "@/components/pouf/feedback";
 import { DateField } from "@/components/pouf/date-field";
@@ -216,18 +216,62 @@ function ContactFields({ v, required }: { v: ApplicationInput; required: boolean
  * пролистывался насквозь, а отказ прилетал уже на отправке анкеты. Из любой из трёх выводится
  * account_id, а из него — два остальных адреса (`playerLinks`), так что спрашивать три было
  * тремя способами спросить одно.
+ *
+ * Э15: первым делом предлагаем подтвердить профиль через Steam. Steam называет steamid64 сам —
+ * ошибиться в нём негде, а ручная ссылка остаётся запасным путём для тех, кому в Steam не войти.
+ * Кнопки «Найти себя на Dotabuff» здесь больше нет: она искала по ЛИГОВОМУ нику с первого шага,
+ * а в паблике ник обычно другой — поиск чаще промахивался, чем помогал.
  */
-function ProfileStep({ v, required, onSearch }: { v: ApplicationInput; required: boolean; onSearch: () => void }) {
-  const [url, setUrl] = useState(v.profileUrl);
+function ProfileStep({
+  v,
+  required,
+  steamAccountId,
+  steamAvailable,
+  onSteam,
+}: {
+  v: ApplicationInput;
+  required: boolean;
+  /** account_id, выведенный из привязанного Steam, либо null — Steam к аккаунту не привязан. */
+  steamAccountId: string | null;
+  /** Настроен ли вход через Steam на сервере: без ключа кнопки нет вовсе, как и на входе в кабинет. */
+  steamAvailable: boolean;
+  onSteam: () => void;
+}) {
+  // Подтверждённый Steam подставляет адрес сам; уже заполненное (черновик, карточка ростера) не трогаем.
+  const [url, setUrl] = useState(v.profileUrl || (steamAccountId ? dotabuffOf(steamAccountId) : ""));
   const kind = profileLinkKind(url);
   const href = url.trim().startsWith("http") ? url.trim() : `https://${url.trim()}`;
+  // «Подтверждено» — не про факт привязки, а про то, что в поле стоит ИМЕННО подтверждённый аккаунт:
+  // править ссылку руками мы разрешаем, и за поправленную Steam уже не ручается.
+  const confirmed = steamAccountId != null && accountIdFromUrl(url) === steamAccountId;
 
   return (
     <>
+      {confirmed ? (
+        <Alert tone="ok" block>
+          Профиль подтверждён через Steam — адрес подставили сами.
+        </Alert>
+      ) : steamAvailable ? (
+        <div className="space-y-2">
+          <Button type="button" size="lg" block onClick={onSteam}>
+            Подтвердить через Steam
+          </Button>
+          <p className="text-[13px] font-bold leading-[1.45] text-muted">
+            Steam назовёт ваш профиль сам — искать адрес не придётся. Ответы анкеты сохранятся, вы вернётесь сюда же.
+          </p>
+        </div>
+      ) : null}
+
       <Field
         label="Ссылка на профиль"
         required
-        hint="Dotabuff, Stratz или Steam — любая. По ней лига находит вас в матчах, остальные адреса достроим сами."
+        hint={
+          confirmed
+            ? "Подставлена по вашему Steam. Подтвердили не тот аккаунт — поправьте ссылку руками."
+            : steamAvailable
+              ? "Нет доступа к Steam? Вставьте ссылку руками: Dotabuff, Stratz или Steam — любая, остальные адреса достроим сами."
+              : "Dotabuff, Stratz или Steam — любая. По ней лига находит вас в матчах, остальные адреса достроим сами."
+        }
       >
         <FormInput
           name="profileUrl"
@@ -250,12 +294,6 @@ function ProfileStep({ v, required, onSearch }: { v: ApplicationInput; required:
           Открыть профиль на {LINK_LABELS[kind]} ↗ — проверьте, что это вы
         </a>
       )}
-
-      {/* «Найти себя» — чтобы не уходить искать адрес руками: открываем поиск Dotabuff уже
-          по нику, введённому на первом шаге. */}
-      <button type="button" onClick={onSearch} className={buttonClasses({ variant: "quiet", size: "sm" })}>
-        Найти себя на Dotabuff
-      </button>
     </>
   );
 }
@@ -340,11 +378,22 @@ function ForkCard({ title, hint, onClick }: { title: string; hint: string; onCli
  * запирать человека на текущем экране. Шаг кладём в ту же FormData — сервер разбирает её тем же
  * `readApplicationInput`, что и отправку.
  */
-function saveStepDraft(form: HTMLFormElement | null, step: number) {
-  if (!form) return;
+function saveStepDraft(form: HTMLFormElement | null, step: number): Promise<void> {
+  if (!form) return Promise.resolve();
   const data = new FormData(form);
   data.set("step", String(step));
-  void saveApplicationDraft(data).catch(() => {});
+  return saveApplicationDraft(data).catch(() => {});
+}
+
+/**
+ * Уйти на подтверждение через Steam (Э15). Уход на steamcommunity.com — это уход СО СТРАНИЦЫ
+ * посреди шага 2, поэтому черновик кладём до перехода и дожидаемся записи: иначе Steam съел бы
+ * ответы ровно так, как это чинил Э14. Номер шага — текущий, чтобы вернуться на этот же экран.
+ */
+function leaveForSteam(form: HTMLFormElement | null, step: number) {
+  void saveStepDraft(form, step).then(() => {
+    window.location.href = "/api/auth/steam/start";
+  });
 }
 
 /** Черновик мог прийти с шагом от другой версии формы — за границы квиза его не пускаем. */
@@ -362,6 +411,8 @@ export function ApplicationFlow({
   application,
   draft,
   players,
+  steamAccountId,
+  steamAvailable,
   rejectedReason,
   rejectedAt,
 }: {
@@ -369,6 +420,9 @@ export function ApplicationFlow({
   /** Незаконченный квиз с прошлого захода (Э14): им же выбирается ветка, в которую вернуть человека. */
   draft: ApplicationDraft | null;
   players: LinkablePlayer[];
+  /** Подтверждённый через Steam account_id аккаунта, либо null. Обе ветки квиза берут его на шаге 2. */
+  steamAccountId: string | null;
+  steamAvailable: boolean;
   rejectedReason: string | null;
   /** Дата решения, уже отформатированная на сервере (клиент в другом поясе показал бы своё время). */
   rejectedAt: string | null;
@@ -426,9 +480,19 @@ export function ApplicationFlow({
             ← назад
           </button>
           {mode === "new" ? (
-            <ApplicationForm application={application} draft={draft?.playerId ? null : draft} />
+            <ApplicationForm
+              application={application}
+              draft={draft?.playerId ? null : draft}
+              steamAccountId={steamAccountId}
+              steamAvailable={steamAvailable}
+            />
           ) : (
-            <ClaimApplicationForm players={players} draft={draft?.playerId ? draft : null} />
+            <ClaimApplicationForm
+              players={players}
+              draft={draft?.playerId ? draft : null}
+              steamAccountId={steamAccountId}
+              steamAvailable={steamAvailable}
+            />
           )}
         </>
       )}
@@ -444,7 +508,17 @@ export function ApplicationFlow({
  * ТЕКУЩЕГО шага — иначе браузер отказывался бы отправлять форму из-за невидимого обязательного
  * поля («An invalid form control is not focusable») и молчал бы об этом.
  */
-function ApplicationForm({ application, draft }: { application: Application | null; draft: ApplicationDraft | null }) {
+function ApplicationForm({
+  application,
+  draft,
+  steamAccountId,
+  steamAvailable,
+}: {
+  application: Application | null;
+  draft: ApplicationDraft | null;
+  steamAccountId: string | null;
+  steamAvailable: boolean;
+}) {
   const [state, action, pending] = useActionState<ApplyState, FormData>(sendApplication, null);
   const [step, setStep] = useState(() => draftStep(draft));
   const [policy, setPolicy] = useState(draft?.policy ?? false);
@@ -469,13 +543,6 @@ function ApplicationForm({ application, draft }: { application: Application | nu
 
   const req = (n: number) => step === n;
 
-  /** Открыть поиск Dotabuff по нику из первого шага: адрес профиля человек чаще всего не помнит. */
-  const searchDotabuff = () => {
-    const nick = new FormData(formRef.current!).get("nickname");
-    const q = typeof nick === "string" ? nick.trim() : "";
-    window.open(`https://www.dotabuff.com/search?q=${encodeURIComponent(q)}`, "_blank", "noopener");
-  };
-
   return (
     <form ref={formRef} action={action} className="space-y-5">
       <Stepper steps={STEPS} current={step} />
@@ -499,7 +566,13 @@ function ApplicationForm({ application, draft }: { application: Application | nu
       </div>
 
       <div hidden={step !== 1} className="space-y-4">
-        <ProfileStep v={v} required={req(1)} onSearch={searchDotabuff} />
+        <ProfileStep
+          v={v}
+          required={req(1)}
+          steamAccountId={steamAccountId}
+          steamAvailable={steamAvailable}
+          onSteam={() => leaveForSteam(formRef.current, step)}
+        />
       </div>
 
       <div hidden={step !== 2} className="space-y-4">
@@ -554,7 +627,17 @@ function inputFromPlayer(player: LinkablePlayer, fallbackNickname: string): Appl
  * из трёх шагов, но найденный профиль подтягивает известные поля, а незаполненные (обычно
  * ссылка на профиль, MMR, позиция) ждут ответа, как и в анкете нового игрока.
  */
-function ClaimApplicationForm({ players, draft }: { players: LinkablePlayer[]; draft: ApplicationDraft | null }) {
+function ClaimApplicationForm({
+  players,
+  draft,
+  steamAccountId,
+  steamAvailable,
+}: {
+  players: LinkablePlayer[];
+  draft: ApplicationDraft | null;
+  steamAccountId: string | null;
+  steamAvailable: boolean;
+}) {
   const [state, action, pending] = useActionState<ApplyState, FormData>(sendClaimWithApplication, null);
   const [step, setStep] = useState(() => draftStep(draft));
   const [query, setQuery] = useState(draft?.values.nickname ?? "");
@@ -594,10 +677,6 @@ function ClaimApplicationForm({ players, draft }: { players: LinkablePlayer[]; d
     setStep(to);
   };
   const req = (n: number) => step === n;
-
-  const searchDotabuff = () => {
-    window.open(`https://www.dotabuff.com/search?q=${encodeURIComponent((picked?.nickname ?? query).trim())}`, "_blank", "noopener");
-  };
 
   return (
     <form ref={formRef} action={action} className="space-y-5">
@@ -660,7 +739,13 @@ function ClaimApplicationForm({ players, draft }: { players: LinkablePlayer[]; d
       </div>
 
       <div hidden={step !== 1} className="space-y-4" key={`profile-${picked?.id ?? "new"}`}>
-        <ProfileStep v={v} required={req(1)} onSearch={searchDotabuff} />
+        <ProfileStep
+          v={v}
+          required={req(1)}
+          steamAccountId={steamAccountId}
+          steamAvailable={steamAvailable}
+          onSteam={() => leaveForSteam(formRef.current, step)}
+        />
       </div>
 
       <div hidden={step !== 2} className="space-y-4" key={`rating-${picked?.id ?? "new"}`}>

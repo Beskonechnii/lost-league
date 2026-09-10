@@ -115,6 +115,18 @@ export const steamOf = (accountId: string) =>
 const STEAM64_BASE = BigInt("76561197960265728");
 
 /**
+ * steamid64 из OpenID-входа Steam → Dota account_id (steam32) — обратная сторона `steamOf`.
+ * Отдельной функцией, а не через `accountIdFromUrl`: там это частный случай «просто число»,
+ * и звать разборщик ссылок ради заведомо чистого id — прятать смысл за общим случаем.
+ * Мусор (пустая строка, не-цифры) отдаёт null: steamId в БД пишем мы сами, но тип у поля строковый.
+ */
+export function accountIdFromSteamId(steamId: string): string | null {
+  if (!/^\d+$/.test(steamId.trim())) return null;
+  const id = BigInt(steamId.trim()) - STEAM64_BASE;
+  return id > BigInt(0) ? String(id) : null;
+}
+
+/**
  * Ссылка на профиль → Dota account_id (он же steam32). Понимает то, что реально лежит в CRM и
  * приходит от капитанов: steamcommunity.com/profiles/<steam64>, dotabuff/stratz/opendota и просто
  * число (32- или 64-битное).

@@ -27,8 +27,13 @@ export async function logout(): Promise<void> {
 
 // ── вход/регистрация по email + паролю ─────────────────────────────────────────
 
-// Состояние форм входа: только текст ошибки — успех уводит редиректом, показывать нечего.
-export type AuthState = { error?: string } | null;
+/**
+ * Состояние форм входа. Кроме ошибки возвращаем введённое — после submit React сбрасывает
+ * неуправляемые поля к defaultValue, и отказ сервера («почта занята», «пароль слишком простой»)
+ * стирал заодно и правильно набранную почту (Э15). Пароли сюда не кладём НИКОГДА: их набирают
+ * заново — они и так под звёздочками, и гонять их лишний раз через сеть незачем.
+ */
+export type AuthState = { error?: string; values?: { email: string } } | null;
 
 /** Регистрация: заводим аккаунт и сразу пускаем в кабинет. Писем нет — подтверждать нечего, а до
  *  апрува аккаунт всё равно в воронке (draft) и в лиге ничего не значит. */
@@ -36,9 +41,9 @@ export async function register(_state: AuthState, form: FormData): Promise<AuthS
   const email = String(form.get("email") ?? "");
   const password = String(form.get("password") ?? "");
   const confirm = String(form.get("confirm") ?? "");
-  if (password !== confirm) return { error: "Пароли не совпадают" };
+  if (password !== confirm) return { error: "Пароли не совпадают", values: { email } };
   const res = await registerWithPassword(email, password);
-  if (!res.ok) return { error: res.error };
+  if (!res.ok) return { error: res.error, values: { email } };
   await establishSession(res.accountId, form.get("remember") != null);
   redirect("/me");
 }
@@ -48,7 +53,7 @@ export async function login(_state: AuthState, form: FormData): Promise<AuthStat
   const email = String(form.get("email") ?? "");
   const password = String(form.get("password") ?? "");
   const res = await loginWithPassword(email, password);
-  if (!res.ok) return { error: res.error };
+  if (!res.ok) return { error: res.error, values: { email } };
   await establishSession(res.accountId, form.get("remember") != null);
   redirect("/me");
 }

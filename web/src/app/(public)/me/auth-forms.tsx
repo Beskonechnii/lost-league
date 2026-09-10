@@ -61,7 +61,9 @@ export function AuthForms() {
   );
 }
 
-/** «Запомнить меня» — из макета «Вход»: без него кука входа живёт до закрытия браузера. */
+/** «Запомнить меня» — из макета «Вход»: без него кука входа живёт до закрытия браузера.
+ *  Флажок Кита управляемый (значение в состоянии React), поэтому ответ сервера его не сбрасывает —
+ *  возвращать из AuthState, как почту, тут нечего. */
 function RememberMe() {
   const [on, setOn] = useState(false);
   const id = useId();
@@ -88,8 +90,18 @@ function LoginForm() {
   const [state, action, pending] = useActionState<AuthState, FormData>(login, null);
   return (
     <form action={action} className="space-y-4">
+      {/* Почта возвращается из состояния: после отказа React сбрасывает неуправляемые поля
+          к defaultValue, и без этого «неверный пароль» стирал заодно правильно набранный адрес.
+          Пароль возвращать нечем и незачем — его набирают заново. */}
       <Field label="Почта">
-        <FormInput name="email" type="email" autoComplete="email" placeholder="you@gmail.com" required />
+        <FormInput
+          name="email"
+          type="email"
+          autoComplete="email"
+          defaultValue={state?.values?.email ?? ""}
+          placeholder="you@gmail.com"
+          required
+        />
       </Field>
       <Field label="Пароль">
         <PasswordField name="password" autoComplete="current-password" required />
@@ -111,8 +123,17 @@ function RegisterForm() {
   const [state, action, pending] = useActionState<AuthState, FormData>(register, null);
   return (
     <form action={action} className="space-y-4">
+      {/* Как и на входе: отказ сервера («почта занята», «пароль слишком простой») больше
+          не стирает адрес — только поля паролей, которые всё равно набирают заново. */}
       <Field label="Почта">
-        <FormInput name="email" type="email" autoComplete="email" placeholder="you@gmail.com" required />
+        <FormInput
+          name="email"
+          type="email"
+          autoComplete="email"
+          defaultValue={state?.values?.email ?? ""}
+          placeholder="you@gmail.com"
+          required
+        />
       </Field>
       <Field label="Пароль">
         {/* Почту в контекст шкалы не отдаём: она в соседнем поле и здесь её ещё нет —

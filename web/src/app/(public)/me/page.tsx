@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { playerPath } from "@/lib/profiles";
+import { accountIdFromSteamId, playerPath } from "@/lib/profiles";
 import { googleConfigured } from "@/lib/google-oauth";
 import { steamConfigured } from "@/lib/steam-oauth";
 import {
@@ -50,6 +50,9 @@ const ERRORS: Record<string, string> = {
   state: "Сессия входа истекла или не совпала. Попробуйте войти ещё раз.",
   google: "Google не подтвердил вход. Попробуйте ещё раз.",
   steam: "Steam не подтвердил вход. Попробуйте ещё раз.",
+  // Привязка Steam к аккаунту с почтой упёрлась в чужую привязку. Молча пустить в тот аккаунт
+  // нельзя — это и был бы вход под чужим именем (steam-callback, случай «занят»).
+  "steam-taken": "Этот аккаунт Steam уже привязан к другому профилю лиги.",
 };
 
 type Account = NonNullable<Awaited<ReturnType<typeof currentAccount>>>;
@@ -117,6 +120,10 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
             application={accountApplication(account)}
             draft={accountApplicationDraft(account)}
             players={await linkablePlayers()}
+            // Привязанный Steam — это уже подтверждённый account_id: шаг 2 подставляет его сам,
+            // вместо того чтобы просить ссылку. Без ключа в окружении кнопки нет вовсе (как у входа выше).
+            steamAccountId={account.steamId ? accountIdFromSteamId(account.steamId) : null}
+            steamAvailable={steamConfigured()}
             rejectedReason={account.rejectedReason}
             // Дату решения форматируем на сервере: клиент в другом поясе показал бы своё время
             rejectedAt={account.rejectedReason && account.reviewedAt ? dateTime.format(account.reviewedAt) : null}
