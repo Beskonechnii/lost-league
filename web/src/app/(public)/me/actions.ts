@@ -1,12 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { playerPath } from "@/lib/profiles";
 import { revalidatePath } from "next/cache";
 import { currentAccountId, clearSessionCookie } from "@/lib/player-session";
 import {
-  createProfileFor,
-  claimExisting,
   registerWithPassword,
   loginWithPassword,
   establishSession,
@@ -131,32 +128,6 @@ export async function sendClaimWithApplication(_state: ApplyState, form: FormDat
   return null;
 }
 
-/** Новый игрок завёл профиль по нику — создаём и уводим на его страницу в ростере. */
-export async function createProfile(_state: string | null, form: FormData): Promise<string | null> {
-  const id = await currentAccountId();
-  if (id == null) return "Сессия истекла — войдите снова";
-  const nick = String(form.get("nickname") ?? "").trim();
-  if (!nick) return "Укажите ник";
-  let playerId: number;
-  try {
-    playerId = await createProfileFor(id, nick);
-  } catch (e) {
-    return e instanceof Error ? e.message : "Не удалось создать профиль";
-  }
-  redirect(playerPath(playerId));
-}
-
-/** Заявка на существующего игрока — уходит оператору на подтверждение. */
-export async function claim(_state: string | null, form: FormData): Promise<string | null> {
-  const id = await currentAccountId();
-  if (id == null) return "Сессия истекла — войдите снова";
-  const playerId = Number(form.get("playerId"));
-  if (!Number.isFinite(playerId) || playerId <= 0) return "Выберите себя из списка";
-  try {
-    await claimExisting(id, playerId);
-  } catch (e) {
-    return e instanceof Error ? e.message : "Не удалось подать заявку";
-  }
-  revalidatePath("/me");
-  return null;
-}
+// Действий «завести профиль по нику» и «подать привязку без анкеты» здесь больше нет (Э18): это был
+// второй, обходной вход в лигу — аккаунт без профиля заводил `Player` одним ником, минуя модерацию.
+// Вход остался один, через анкету: `sendApplication` и `sendClaimWithApplication` выше.

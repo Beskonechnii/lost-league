@@ -3,7 +3,7 @@
 import { useActionState, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { sendApplication, sendClaimWithApplication, saveApplicationDraft, type ApplyState } from "./actions";
-import type { LinkablePlayer } from "./onboarding";
+import type { LinkablePlayer } from "./linkable-player";
 import {
   EMPTY_INPUT,
   applicationToInput,

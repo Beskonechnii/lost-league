@@ -237,6 +237,19 @@ export const registrationOpen = (t: { status: string; regCloseAt: Date | null })
   t.status === "registration" && (!t.regCloseAt || t.regCloseAt.getTime() > Date.now());
 
 /**
+ * Турнир, в который прямо сейчас можно заявиться, — самый ранний с открытым приёмом. Это НЕ
+ * «текущий»: тот обычно уже играется, а заявки принимает следующий. Нужен и сборному `/apply`,
+ * и кабинету новичка («что можно уже сейчас»), поэтому живёт здесь, а не копией в каждом.
+ */
+export async function openForRegistration() {
+  const open = await prisma.tournament.findMany({
+    where: { status: "registration" },
+    orderBy: [{ startAt: "asc" }, { id: "asc" }],
+  });
+  return open.find(registrationOpen) ?? null;
+}
+
+/**
  * Из списка команд — те, что реально участвуют в турнире (есть `TournamentEntry` в его дивизионах).
  * Участие — единственный признак «команда в турнире»: одобренная заявка без участия осиротела
  * (команду сняли или сетку пересобрали), и выдавать её за участника нельзя (см. страницу подачи).

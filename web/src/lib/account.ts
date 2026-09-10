@@ -134,16 +134,10 @@ async function uniqueSlug(base: string): Promise<string> {
   return slug;
 }
 
-/** Новый игрок сам завёл профиль: создаём Player и сразу привязываем. Возвращает id профиля
- *  (карточки ростера адресуются числовым id, а не slug — см. /roster/players/[id]). */
-export async function createProfileFor(accountId: number, nickname: string): Promise<number> {
-  const nick = nickname.trim();
-  if (!nick) throw new Error("Укажите ник");
-  const slug = await uniqueSlug(slugify(nick));
-  const player = await prisma.player.create({ data: { slug, nickname: nick } });
-  await prisma.userAccount.update({ where: { id: accountId }, data: { playerId: player.id, claimId: null } });
-  return player.id;
-}
+// Функции «завести Player по одному нику» здесь больше нет (Э18). Она была вторым входом в лигу:
+// аккаунт без профиля создавал себе игрока одной строкой, минуя анкету и модерацию, — и в ростере
+// появлялся человек, о котором лига не знала ничего, кроме ника. Player заводится ровно в одном
+// месте — при апруве заявки (`createPlayerFromApplication`).
 
 // ── правка своей анкеты игроком (self-service) ─────────────────────────────────
 //

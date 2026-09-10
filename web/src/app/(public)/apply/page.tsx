@@ -1,18 +1,12 @@
 import { notFound, redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { currentTournament, registrationOpen } from "@/lib/tournaments";
+import { currentTournament, openForRegistration } from "@/lib/tournaments";
 
 // Заявка подаётся в конкретный турнир (/tournaments/<slug>/apply, TOURNAMENTS-PLAN.md).
 // Общий /apply — сборный пункт для тех, кто пришёл не с карточки турнира, поэтому ищем турнир,
-// куда сейчас правда можно подать: приём заявок идёт не у «текущего» (тот обычно уже играется),
-// а у следующего. Открытость считает `registrationOpen` — одно место правды, срок в нём учтён.
+// куда сейчас правда можно подать (`openForRegistration` — там же учтён срок приёма).
 // Не нашли такого — ведём на страницу текущего турнира со сроками: она полезнее пустой формы.
 export default async function ApplyRedirect() {
-  const open = await prisma.tournament.findMany({
-    where: { status: "registration" },
-    orderBy: [{ startAt: "asc" }, { id: "asc" }],
-  });
-  const target = open.find(registrationOpen);
+  const target = await openForRegistration();
   if (target) redirect(`/tournaments/${target.slug}/apply`);
 
   const current = await currentTournament();
