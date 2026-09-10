@@ -11,10 +11,13 @@ import { roleLabel } from "@/lib/roles";
 import { parseTags, tagLabel } from "@/lib/player-tags";
 import { can, currentAccount } from "@/lib/account";
 import { chatAccountOfPlayer, chatIdentity } from "@/lib/chat";
+import { shardsOfPlayer } from "@/lib/shards";
+import { shardReasonLabel } from "@/lib/shard-grades";
 import { currentTournament, getDivisions } from "@/lib/tournaments";
 import { buttonClasses } from "@/components/pouf/Button";
 import { Chip } from "@/components/pouf/blocks";
 import { RankMedal, RankTrend } from "@/components/pouf/rank";
+import { ShardAmount, ShardBar, ShardGradeBadge, ShardLadder } from "@/components/pouf/shards";
 import { Card } from "@/components/pouf/surface";
 import { Icon } from "@/components/pouf/Icon";
 import { DataRow, Donut, FactBox, OverlapPill, OverlapRail, StatCoin } from "@/components/pouf/profile";
@@ -113,6 +116,9 @@ export default async function PlayerPage({ params }: { params: Promise<{ key: st
   const canWrite = !!me && !!peerAccount && me.playerId !== pid;
   // Свой профиль — он же кабинет: отсюда правят анкету и уходят в настройки аккаунта.
   const mine = me?.playerId === pid;
+  // Осколки — после `mine`: на своей странице к ним идут подсказки «что сделать дальше», на чужой
+  // остаётся только статус. Запрос отдельный, а не в общей пачке выше, именно из-за этой зависимости.
+  const shards = await shardsOfPlayer(pid, mine);
 
   // главное место — первое по порядку ролей: оно и задаёт цвет страницы, и рисуется в крошках
   const main = player.spots[0] ?? null;
@@ -509,6 +515,38 @@ export default async function PlayerPage({ params }: { params: Promise<{ key: st
               <p className="mt-3 text-xs font-bold text-muted">Анкета пока не заполнена.</p>
             )}
           </Card>
+
+          {/* Осколки — статус за участие в жизни лиги, в отличие от TP рядом: тот даётся за игру
+              и обнуляется с сезоном. Пустую карточку не рисуем: у карточки игрока из импорта
+              аккаунта нет вовсе, и «0 осколков» сказало бы про человека неправду. */}
+          {shards.earned > 0 && (
+            <Card>
+              <BlockLabel>Осколки</BlockLabel>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <ShardAmount amount={shards.earned} earned={shards.earned} size="md" />
+                <ShardGradeBadge earned={shards.earned} />
+              </div>
+              {mine && (
+                <div className="mt-4 space-y-4">
+                  <ShardBar earned={shards.earned} />
+                  <ShardLadder earned={shards.earned} />
+                  <ul className="space-y-1 border-t border-hairline pt-3">
+                    {shards.entries.map((e) => (
+                      <li key={e.id} className="flex items-center justify-between gap-3 text-[13px] font-bold">
+                        <span className="min-w-0 truncate text-ink">{e.note ?? shardReasonLabel(e.reason)}</span>
+                        <ShardAmount amount={e.amount} earned={shards.earned} sign />
+                      </li>
+                    ))}
+                  </ul>
+                  {shards.todo.length > 0 && (
+                    <p className="text-xs font-bold text-muted">
+                      {shards.todo[0].hint} <span className="whitespace-nowrap text-ink">+{shards.todo[0].amount}</span>
+                    </p>
+                  )}
+                </div>
+              )}
+            </Card>
+          )}
 
           {achievements.length > 0 && (
             <Card>

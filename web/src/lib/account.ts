@@ -11,6 +11,7 @@ import { slugify, normalizeTelegram, parseBirthday } from "./profiles";
 import { hashPassword, verifyPassword, passwordProblem } from "./password";
 import { clientIpFromHeaders, takeLoginAttempt, clearLoginAttempts } from "./rate-limit";
 import { formatPermissions, hasPermission, permissionsOf, type PermissionKey } from "./permissions";
+import { syncShards } from "./shards";
 import {
   normalizeApplication,
   formatApplication,
@@ -194,6 +195,8 @@ export async function updateOwnProfile(accountId: number, input: OwnProfileInput
 
   if (Object.keys(data).length > 0) {
     await prisma.player.update({ where: { id: account.playerId }, data });
+    // Правка анкеты могла закрыть последнюю дыру — а это веха «анкета заполнена» (lib/shards.ts).
+    await syncShards(accountId);
   }
   return null;
 }
@@ -461,6 +464,9 @@ export async function approveRegistration(accountId: number, mmr: number | null)
       rejectedReason: null, // решение принято, прошлая причина отказа к нему не относится
     },
   });
+  // Осколки начисляются ЗДЕСЬ, а не в экшене админки: путей одобрения два (анкета и привязка), и
+  // оба идут сюда — правило «после апрува» не должно зависеть от того, какую кнопку нажали.
+  await syncShards(accountId);
   return { ok: true, playerId };
 }
 

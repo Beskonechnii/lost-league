@@ -3,6 +3,7 @@ import { verifySteamCallback, steamConfigured } from "@/lib/steam-oauth";
 import { prisma } from "@/lib/prisma";
 import { establishSession } from "@/lib/account";
 import { currentAccountId } from "@/lib/player-session";
+import { syncShards } from "@/lib/shards";
 
 // Возврат от Steam. Два разных дела под одним адресом:
 //
@@ -50,6 +51,9 @@ export async function GET(req: NextRequest) {
         // и подменять их персоной из Steam мы не подписывались.
         data: { steamId: user.steamId, name: me.name ?? user.name ?? null, avatar: me.avatar ?? user.avatar ?? null },
       });
+      // Подтверждённый Steam — веха осколков и, главное, ЛИЧНОСТЬ для их начисления: до неё
+      // отличить второй заход от первого нечем (lib/shards.ts).
+      await syncShards(me.id);
     }
     // Анкету человек бросил на шаге 2, и она вернётся туда сама: перед уходом на Steam форма
     // кладёт черновик с номером шага (см. me/application-form.tsx), а /me открывает квиз по нему.

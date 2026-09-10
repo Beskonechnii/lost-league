@@ -18,6 +18,7 @@
 import { randomBytes } from "node:crypto";
 import { prisma } from "./prisma";
 import { botStartLink } from "./telegram";
+import { syncShards } from "./shards";
 
 /** Сколько живёт токен. Дольше кода входа: между «нажал на сайте» и «открыл телеграм» бывает пауза. */
 export const LINK_TTL_MIN = 30;
@@ -105,6 +106,9 @@ export async function redeemLinkToken(
   // Чат закрепляем за аккаунтом — по нему уходят решения модерации и приглашения в состав
   // (`tg-notify.ts`). Строка чата к этому моменту уже есть: её завёл `rememberChat`.
   await prisma.tgChat.updateMany({ where: { chatId: ctx.chatId }, data: { accountId: account.id } });
+  // Привязанный телеграм — веха осколков (lib/shards.ts). Одобренному начислится сразу, ждущему
+  // решения — при апруве: гейт стоит внутри syncShards, звать её можно откуда угодно.
+  await syncShards(account.id);
 
   const again = account.tgId === ctx.tgId;
   return {

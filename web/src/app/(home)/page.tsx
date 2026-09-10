@@ -21,6 +21,7 @@ import { MiniProfile } from "./mini-profile";
 import { TournamentsBlock, isTournamentCut } from "./tournaments-block";
 import { HomeBanner } from "./banner";
 import { PointsBlock } from "./points";
+import { ShardsBlock } from "./shards";
 
 // Входная дверь продукта — витрина, а не список разделов (Э21 RELEASE-PLAN §E).
 //
@@ -194,8 +195,12 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ t
         </EmptyState>
       )}
 
-      {/* Кто впереди в зачёте — и где в нём вошедший. */}
-      <PointsBlock tournament={current} playerId={nav.raw?.player?.id ?? null} />
+      {/* Две валюты лиги рядом: слева зачёт TP (за игру, сезонный), справа свои осколки (за
+          участие, за всё время). Гостю осколков нет — колонка одна, и разрез не нужен. */}
+      <div className={`grid gap-6 ${nav.raw ? "xl:grid-cols-2" : ""}`}>
+        <PointsBlock tournament={current} playerId={nav.raw?.player?.id ?? null} />
+        {nav.raw && <ShardsBlock accountId={nav.raw.id} />}
+      </div>
 
       <p className="text-sm font-bold text-muted">
         Основной сайт лиги и анонсы сезона —{" "}

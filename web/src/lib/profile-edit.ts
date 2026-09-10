@@ -19,6 +19,7 @@ import { profileLinkProblem, MMR_MAX } from "./application";
 import { accountIdFromUrl, uploadUrl } from "./profiles";
 import { invalidateUploads } from "./uploads";
 import { fetchFile } from "./telegram";
+import { syncShards } from "./shards";
 
 // ── лимит смены ника ─────────────────────────────────────────────────────────
 //
@@ -269,6 +270,10 @@ export async function approveProfileEdit(id: number, reviewedById?: number | nul
     data: { status: "approved", reviewedAt: new Date(), reviewedById: reviewedById ?? null },
   });
   if (request.field === "photo") invalidateUploads("players");
+  // Одобренный город или ссылка могли закрыть последнюю дыру в анкете — а это веха осколков.
+  // Аккаунт есть не у всякой карточки (импортированный ростер), тогда начислять некому.
+  const owner = await prisma.userAccount.findUnique({ where: { playerId: request.playerId }, select: { id: true } });
+  if (owner) await syncShards(owner.id);
   return null;
 }
 
