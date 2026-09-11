@@ -5,7 +5,7 @@
 
 Next.js 16 (App Router, Turbopack) · React 19 · Tailwind v4 · Prisma 7 + SQLite (libsql-адаптер).
 
-Выкладка на сервер — [`../DEPLOY.md`](../DEPLOY.md) (Docker или голый Node; на PHP-хостинг не ставится).
+Выкладка на сервер — [`../docs/DEPLOY.md`](../docs/DEPLOY.md) (Docker или голый Node; на PHP-хостинг не ставится).
 
 ## Первый запуск на новой машине
 
@@ -70,6 +70,6 @@ npm run bot:down    # остановить
 ## Где что
 
 - **[../CLAUDE.md](../CLAUDE.md)** — карта проекта: где что лежит и кто за что отвечает. Начинать отсюда.
-- **[../ARCHITECTURE.md](../ARCHITECTURE.md)** — как устроены подсистемы: модель данных, синк, студия, архив.
+- **[../docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)** — как устроены подсистемы: модель данных, синк, студия, архив.
 - **[../DECISIONS.md](../DECISIONS.md)** — журнал решений с датами: почему сделано именно так.
 - **[AGENTS.md](./AGENTS.md)** — правила работы внутри этой папки (Next 16, Prisma 7).

@@ -36,8 +36,8 @@ bash .claude/skills/serve/stop.sh
   закрыты, пока в `web/.env` пуст `ADMIN_PASSWORD`. Нужен операторский доступ — задать пароль
   и `docker compose up -d` (пересоздаст контейнер под новый env).
 - **Адрес случайный и меняется** при каждом перезапуске туннеля — это природа quick tunnel,
-  не баг. Постоянный адрес — только через домен и именованный туннель (см. `DEPLOY.md`).
+  не баг. Постоянный адрес — только через домен и именованный туннель (см. `docs/DEPLOY.md`).
 - Ссылка жива, пока включён Mac, healthy контейнер и процесс `cloudflared`. pid/лог/адрес —
   в `web/.cache/` (`tunnel.pid`, `tunnel.log`, `tunnel.url`, всё в `.gitignore`).
 - Скрипт под macOS (бинарник `cloudflared` — darwin). На сервере туннель не нужен: там прямой
-  порт за nginx/Caddy, вариант A в `DEPLOY.md`.
+  порт за nginx/Caddy, вариант A в `docs/DEPLOY.md`.
