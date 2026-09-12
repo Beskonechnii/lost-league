@@ -4,7 +4,7 @@ import type { Role } from "@/lib/player-auth";
 import { AUTH_MAX_W } from "@/components/pouf/blocks";
 import { Alert, StatusPill } from "@/components/pouf/feedback";
 import { Eyebrow } from "@/components/pouf/text";
-import { Breadcrumbs } from "@/app/_components/breadcrumbs";
+import { Breadcrumbs } from "@/components/pouf/breadcrumbs";
 import { playerPath } from "@/lib/profiles";
 import { logout } from "../actions";
 import { TelegramLink } from "../telegram-link";

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { currentChatMe, findConversation, listConversations, messages } from "@/lib/chat";
 import { SYSTEM_NAME, systemAccountId } from "@/lib/system-chat";
 import { Icon } from "@/components/pouf/Icon";
-import { Breadcrumbs } from "@/app/_components/breadcrumbs";
+import { Breadcrumbs } from "@/components/pouf/breadcrumbs";
 import { ConversationList, SystemMark } from "../_components/conversation-list";
 import { ChatGate } from "../_components/gate";
 import { Thread } from "../_components/thread";

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Breadcrumbs, type Crumb } from "@/app/_components/breadcrumbs";
+import { Breadcrumbs, type Crumb } from "@/components/pouf/breadcrumbs";
 import { SectionHeader } from "@/components/pouf/blocks";
 
 /* Шапка служебного экрана: крошки → eyebrow → H1 → одна поясняющая фраза.

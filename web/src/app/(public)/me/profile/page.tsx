@@ -5,7 +5,7 @@ import { currentAccount } from "@/lib/account";
 import { lastProfileEdits, type EditField } from "@/lib/profile-edit";
 import { AUTH_MAX_W } from "@/components/pouf/blocks";
 import { Eyebrow } from "@/components/pouf/text";
-import { Breadcrumbs } from "@/app/_components/breadcrumbs";
+import { Breadcrumbs } from "@/components/pouf/breadcrumbs";
 import { buttonClasses } from "@/components/pouf/Button";
 import { ProfileForm, type FieldReview, type ProfileValues, type Reviews } from "./profile-form";
 

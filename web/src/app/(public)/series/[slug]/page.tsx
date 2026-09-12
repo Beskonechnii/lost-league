@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { Icon } from "@/app/_components/postgame/blocks";
 import { Eyebrow } from "@/components/pouf/text";
 import { Chip } from "@/components/pouf/blocks";
-import { Breadcrumbs } from "@/app/_components/breadcrumbs";
+import { Breadcrumbs } from "@/components/pouf/breadcrumbs";
 import { READ_MAX_W } from "@/components/pouf/blocks";
 import { MapPills, ScoreWell, SeriesCard } from "@/components/pouf/series-card";
 import { divisionWithTournament } from "@/lib/tournaments";

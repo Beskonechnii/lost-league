@@ -21,7 +21,7 @@ import { ShardAmount, ShardBar, ShardGradeBadge, ShardLadder } from "@/component
 import { Card } from "@/components/pouf/surface";
 import { Icon } from "@/components/pouf/Icon";
 import { DataRow, Donut, FactBox, OverlapPill, OverlapRail, StatCoin } from "@/components/pouf/profile";
-import { Breadcrumbs } from "@/app/_components/breadcrumbs";
+import { Breadcrumbs } from "@/components/pouf/breadcrumbs";
 import { OnlineDot } from "@/app/_components/chat-live";
 import { PlayerAvatar, TeamLogo } from "../../roster/_components/avatar";
 

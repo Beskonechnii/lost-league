@@ -6,6 +6,11 @@ import { Card } from "@/components/pouf/surface";
 import { Radio, RadioGroup } from "@/components/pouf/radio";
 import { Toggle } from "@/components/pouf/toggle";
 import { Calendar, type CalendarDate } from "@/components/pouf/calendar";
+import { Breadcrumbs } from "@/components/pouf/breadcrumbs";
+import { Pagination } from "@/components/pouf/pagination";
+import { Tooltip } from "@/components/pouf/tooltip";
+import { Accordion, AccordionItem } from "@/components/pouf/accordion";
+import { Button } from "@/components/pouf/Button";
 
 /* Витрина атомов Кита: те же компоненты, что уезжают на экраны, живыми — навести мышью,
  * пройти табом, кликнуть. Витрина ПОКАЗЫВАЕТ соответствие коду; источник вида — канвас Кита,
@@ -58,6 +63,7 @@ export function KitShowcase() {
   const [format, setFormat] = React.useState("single");
   const [live, setLive] = React.useState(true);
   const [day, setDay] = React.useState<CalendarDate | null>({ y: 2001, m: 3, d: 12 });
+  const [page, setPage] = React.useState(1);
 
   return (
     <div className="space-y-8">
@@ -125,6 +131,67 @@ export function KitShowcase() {
           <div className="font-pouf text-[14px] font-extrabold tabular-nums text-ink">
             {day ? `${String(day.d).padStart(2, "0")}.${String(day.m).padStart(2, "0")}.${day.y}` : "не выбрана"}
           </div>
+        </Case>
+      </Atom>
+
+      <Atom name="Крошки" sheet="Breadcrumbs">
+        <Case caption="Путь по разделам">
+          <Breadcrumbs
+            items={[
+              { href: "/tournaments", label: "Турниры" },
+              { href: "/tournaments/lost-s2", label: "LOST Season 2" },
+              { href: "/roster/players", label: "Игроки" },
+            ]}
+          />
+        </Case>
+        <Case caption="Одна ступень">
+          <Breadcrumbs items={[{ href: "/chat", label: "Сообщения" }]} />
+        </Case>
+      </Atom>
+
+      <Atom name="Пагинация" sheet="Pagination">
+        <Case caption="Живая, 8 страниц">
+          <Pagination page={page} pages={8} onPage={setPage} />
+        </Case>
+        <Case caption="Первая: стрелка назад недоступна">
+          <Pagination page={1} pages={8} onPage={() => {}} />
+        </Case>
+        <Case caption="Короткий список — без разрыва">
+          <Pagination page={2} pages={3} onPage={() => {}} />
+        </Case>
+      </Atom>
+
+      <Atom name="Тултип" sheet="Tooltip">
+        <Case caption="По наведению и по Tab">
+          <Tooltip content="Счёт из привязанных карт архива">
+            <Button variant="quiet" size="sm">
+              Откуда счёт?
+            </Button>
+          </Tooltip>
+        </Case>
+        <Case caption="Сбоку">
+          <Tooltip content="Плашка разворачивается сама, если упирается в край" side="right">
+            <Button variant="quiet" size="sm">
+              Справа
+            </Button>
+          </Tooltip>
+        </Case>
+      </Atom>
+
+      <Atom name="Аккордеон" sheet="Accordion">
+        <Case caption="Открыт один пункт за раз">
+          <Accordion className="w-[600px] max-w-full" defaultValue="points">
+            <AccordionItem value="points" title="Как считаются очки?">
+              Очки начисляются по сыгранным сериям групповой стадии: победа — 3, поражение — 0.
+              Счёт берётся из привязанных карт архива серий, автоматически.
+            </AccordionItem>
+            <AccordionItem value="seed" title="Когда встаёт посев плей-офф?">
+              После последнего тура групп: сетка строится по местам в таблице.
+            </AccordionItem>
+            <AccordionItem value="tp" title="Что такое TP?">
+              Очки турнира — вклад результата в общий зачёт сезона.
+            </AccordionItem>
+          </Accordion>
         </Case>
       </Atom>
     </div>

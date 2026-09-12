@@ -1,4 +1,4 @@
-import { Breadcrumbs } from "@/app/_components/breadcrumbs";
+import { Breadcrumbs } from "@/components/pouf/breadcrumbs";
 import { Chip, FORM_MAX_W } from "@/components/pouf/blocks";
 import { Eyebrow } from "@/components/pouf/text";
 

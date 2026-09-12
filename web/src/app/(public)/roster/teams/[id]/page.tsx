@@ -14,7 +14,7 @@ import { Eyebrow } from "@/components/pouf/text";
 import { StatTile } from "@/components/pouf/blocks";
 import { Hero, HeroChip, HeroFooter, HeroLogo, RosterLine } from "@/components/pouf/hero";
 import { SeriesBrief } from "@/app/_components/series-brief";
-import { Breadcrumbs } from "@/app/_components/breadcrumbs";
+import { Breadcrumbs } from "@/components/pouf/breadcrumbs";
 import { PlayerAvatar } from "../../_components/avatar";
 
 export const dynamic = "force-dynamic";

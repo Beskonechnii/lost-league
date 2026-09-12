@@ -6,7 +6,7 @@ import { parseId } from "@/lib/api";
 import { chatAccountOfPlayer, currentChatMe, findConversation, listConversations, messages } from "@/lib/chat";
 import { resolveUpload } from "@/lib/uploads";
 import { Icon } from "@/components/pouf/Icon";
-import { Breadcrumbs } from "@/app/_components/breadcrumbs";
+import { Breadcrumbs } from "@/components/pouf/breadcrumbs";
 import { OnlineDot } from "@/app/_components/chat-live";
 import { PlayerAvatar } from "../../roster/_components/avatar";
 import { ConversationList } from "../_components/conversation-list";
