@@ -1134,6 +1134,71 @@ Footer: `<div class="board">
     </div>
     <div class="fbot" style="justify-content:center;margin-top:18px"><span>© 2026 League of Spirits</span></div>
   </div>
+</div>`,
+
+// ——— Блоки главной: подложка, карточка встречи в колонку, выпадающие панели ———
+HomeBlocks: `<div class="board">
+  <h1 class="title">Кит · Блоки главной</h1>
+  <p class="subt">Заведены при сборке главной: подложка смыслового блока, карточка встречи «команды друг под другом», меню игрока и уведомления в шапке, строка топа без команды.</p>
+
+  <div class="h2">Подложка блока · на ней живут карточки</div>
+  <div class="slab" style="max-width:520px">
+    <div class="shead"><div class="stitle">Заголовок блока</div></div>
+    <div class="mcard">
+      <div class="mchead"><span class="tmark" style="width:22px;height:22px;border-radius:9px;font-size:9px">LC</span><span class="tn">LOST cup #3</span><span class="when">03.09 в 23:30</span></div>
+      <div class="mcteam win"><span class="tmark" style="width:28px;height:28px;border-radius:11px;font-size:10px">TA</span><span class="nm">Название команды</span><span class="sc">2</span></div>
+      <div class="mcteam lose"><span class="tmark" style="width:28px;height:28px;border-radius:11px;font-size:10px">TB</span><span class="nm">Вторая команда</span><span class="sc">1</span></div>
+    </div>
+    <div class="dmore">все матчи <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+  </div>
+
+  <div class="h2">Карточка встречи · состояния счёта</div>
+  <div class="row" style="align-items:flex-start;gap:18px">
+    <div class="mcard" style="width:300px">
+      <div class="mchead"><span class="tmark" style="width:22px;height:22px;border-radius:9px;font-size:9px">LC</span><span class="tn">Сыгран</span><span class="when">03.09 в 23:30</span></div>
+      <div class="mcteam lose"><span class="tmark" style="width:28px;height:28px;border-radius:11px;font-size:10px">TC</span><span class="nm">Третья команда</span><span class="sc">0</span></div>
+      <div class="mcteam win"><span class="tmark" style="width:28px;height:28px;border-radius:11px;font-size:10px">TD</span><span class="nm">Четвёртая</span><span class="sc">2</span></div>
+    </div>
+    <div class="mcard" style="width:300px">
+      <div class="mchead"><span class="tmark" style="width:22px;height:22px;border-radius:9px;font-size:9px">LC</span><span class="tn">Ещё не начат</span><span class="when">завтра в 20:00</span></div>
+      <div class="mcteam soon"><span class="tmark" style="width:28px;height:28px;border-radius:11px;font-size:10px">TE</span><span class="nm">Пятая команда</span><span class="sc">—</span></div>
+      <div class="mcteam soon"><span class="tmark" style="width:28px;height:28px;border-radius:11px;font-size:10px">TF</span><span class="nm">Шестая команда</span><span class="sc">—</span></div>
+    </div>
+  </div>
+
+  <div class="h2">Строка топа · узкая, без колонки команды</div>
+  <div class="top10" style="max-width:340px">
+    <div class="trline slim lead"><div class="trn">1</div><div class="trnick"><span class="av" style="width:30px;height:30px"></span>Ник игрока</div><div class="trval">128</div></div>
+    <div class="trline slim"><div class="trn">2</div><div class="trnick"><span class="av" style="width:30px;height:30px"></span>Второй ник</div><div class="trval">115</div></div>
+  </div>
+
+  <div class="h2">Плитка с набором · шкала заполнения</div>
+  <div class="row">
+    <div class="tile"><div class="tl">Набрано</div><div class="tv">8 / 16</div><div class="meter" style="width:100%;margin-top:8px"><i style="width:50%"></i></div></div>
+    <div class="tile"><div class="tl">Винрейт</div><div class="tv">67%</div><div class="meter" style="width:100%;margin-top:8px"><i style="width:67%"></i></div></div>
+  </div>
+
+  <div class="h2">Колокольчик со счётчиком · меню игрока · уведомления</div>
+  <div class="row" style="align-items:flex-start;gap:24px">
+    <span class="bellwrap"><span class="btn quiet ib round" style="width:48px;height:48px;padding:0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 9a6 6 0 1 0-12 0c0 5-2 6-2 6h16s-2-1-2-6"/><path d="M13.7 19a2 2 0 0 1-3.4 0"/></svg></span><span class="bellbd">3</span></span>
+    <div class="drop menu">
+      <div class="dhead"><span class="av" style="width:42px;height:42px"></span><div><div class="nm">Ник игрока</div><div class="sub">Название команды · оффлейн</div></div></div>
+      <div class="ditem"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg>Мой профиль</div>
+      <div class="ditem"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/></svg>Сообщения<span class="cnt">2</span></div>
+      <div class="dsep"></div>
+      <div class="ditem"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/></svg>Админ</div>
+      <div class="dsep"></div>
+      <div class="ditem"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v2M12 19.5v2M21.5 12h-2M4.5 12h-2"/></svg>Настройки</div>
+      <div class="ditem down"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 8l-4 4 4 4M6 12h10"/></svg>Выйти</div>
+    </div>
+    <div class="drop noti">
+      <div class="dhead"><div><div class="nm">Уведомления</div><div class="sub">3 непрочитанных</div></div><span class="act">прочитать все</span></div>
+      <div class="ngroup">Служебные</div>
+      <div class="nrow unread"><span class="nicon sys"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="8.5"/></svg></span><div class="ntext"><div class="ntitle">Матч через 30 минут</div><div class="nbody">LOST cup #3 · Название команды — Вторая команда</div></div><span class="ntime">19:30</span></div>
+      <div class="ngroup">Личные</div>
+      <div class="nrow"><span class="nicon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/></svg></span><div class="ntext"><div class="ntitle">Сообщение от капитана</div><div class="nbody">«Готов на сегодня? Сбор за 15 минут до старта»</div></div><span class="ntime">18:04</span></div>
+    </div>
+  </div>
 </div>`
 };
 
@@ -1141,6 +1206,63 @@ Footer: `<div class="board">
 // артбордов; сюда попадают только рецепты, которые нужны одному листу и больше нигде.
 // Проверено: ни один селектор отсюда не переопределяет базовый — порядок склейки роли не играет.
 const EXTRA = {
+  // Блоки главной
+  HomeBlocks: `
+/* ——— подложка смыслового блока ——— */
+.slab{border-radius:40px;padding:20px;background:var(--grad-board);box-shadow:var(--sh-raise);display:flex;flex-direction:column;gap:16px;}
+.slab .shead{display:flex;align-items:baseline;gap:14px;padding:0 6px;}
+.stitle{font-size:22px;font-weight:900;letter-spacing:-.5px;}
+/* ссылка «дальше» — всегда внизу блока, по правому краю */
+.dmore{margin-top:auto;padding:4px 6px 0;display:flex;justify-content:flex-end;font-size:13px;font-weight:800;color:var(--mut);align-items:center;gap:6px;}
+/* ——— карточка встречи: команды друг под другом ——— */
+.mcard{border-radius:24px;padding:4px 8px 8px;background:var(--grad-surface);box-shadow:var(--sh-raise-sm);}
+.mchead{display:flex;align-items:center;gap:9px;height:40px;padding:0 10px;border-bottom:1px solid var(--line);}
+.mchead .tn{font-size:12px;font-weight:800;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mchead .when{margin-left:auto;font-size:11.5px;font-weight:800;color:var(--sub);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.mcteam{display:flex;align-items:center;gap:11px;height:40px;padding:0 11px;border-radius:16px;}
+.mcteam .nm{font-size:14px;font-weight:900;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mcteam .sc{margin-left:auto;font-size:17px;font-weight:900;font-variant-numeric:tabular-nums;padding-right:4px;}
+.mcteam.lose .nm,.mcteam.lose .sc{color:var(--sub);}
+.mcteam.win{background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+.mcteam.win .nm,.mcteam.win .sc{color:var(--mint-ink);}
+.mcteam.soon .sc{font-size:13px;color:var(--mut);}
+/* ——— строка топа ——— */
+.top10{border-radius:28px;padding:8px;background:var(--grad-surface);box-shadow:var(--sh-raise);}
+.trline{display:grid;grid-template-columns:34px 1fr 150px 84px;align-items:center;gap:12px;padding:10px 14px;border-radius:22px;font-weight:800;}
+.trline+.trline{margin-top:2px;}
+.trline.slim{grid-template-columns:28px 1fr 60px;gap:10px;height:40px;padding:0 12px;}
+.trline.lead{background:var(--grad-mint);box-shadow:var(--sh-mint-sm);color:var(--mint-ink);}
+.trn{font-size:15px;font-weight:900;font-variant-numeric:tabular-nums;text-align:center;color:var(--mut);}
+.trline.lead .trn{color:var(--mint-ink);}
+.trnick{font-size:15px;font-weight:900;letter-spacing:-.2px;display:flex;align-items:center;gap:10px;min-width:0;}
+.trval{text-align:right;font-size:15px;font-weight:900;font-variant-numeric:tabular-nums;}
+/* ——— колокольчик и выпадающие панели шапки ——— */
+.bellwrap{position:relative;display:grid;place-items:center;}
+.bellbd{position:absolute;top:-2px;right:-2px;min-width:20px;height:20px;padding:0 6px;border-radius:999px;display:grid;place-items:center;font-size:11px;font-weight:900;color:#fff;background:linear-gradient(135deg,#E28B8B,#C25E5E);box-shadow:0 0 0 3px #F6F2EB,0 2px 4px rgba(150,60,60,.4);}
+.drop{border-radius:28px;padding:10px;background:var(--grad-surface);box-shadow:0 0 0 1px rgba(255,255,255,.55),inset 2px 3px 4px -1px rgba(255,255,255,.95),0 30px 60px -12px rgba(60,50,30,.4);}
+.drop.menu{width:280px;} .drop.noti{width:400px;}
+.dhead{display:flex;align-items:center;gap:12px;padding:12px 14px 14px;border-bottom:1px solid var(--line);margin-bottom:8px;}
+.dhead .nm{font-size:15px;font-weight:900;letter-spacing:-.2px;}
+.dhead .sub{font-size:12px;font-weight:800;color:var(--mut);margin-top:3px;}
+.dhead .act{margin-left:auto;font-size:12px;font-weight:800;color:var(--mut);}
+.ditem{display:flex;align-items:center;gap:12px;height:44px;padding:0 14px;border-radius:16px;font-size:14.5px;font-weight:800;color:var(--ink);}
+.ditem svg{flex:none;color:var(--mut);}
+.ditem.on{color:var(--mint-ink);background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+.ditem.on svg{color:var(--mint-ink);}
+.ditem .cnt{margin-left:auto;font-size:11px;font-weight:900;color:#B4595A;}
+.ditem.down{color:#B4595A;} .ditem.down svg{color:#B4595A;}
+.dsep{height:1px;background:var(--line);margin:8px 12px;}
+.nrow{display:flex;gap:12px;padding:12px 14px;border-radius:20px;}
+.nrow+.nrow{margin-top:2px;}
+.nrow.unread{background:var(--grad-board);box-shadow:var(--sh-raise-sm);}
+.nicon{width:34px;height:34px;border-radius:12px;flex:none;display:grid;place-items:center;color:var(--mut);background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.nicon.sys{color:var(--mint-ink);background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+.ntext{min-width:0;}
+.ntitle{font-size:13.5px;font-weight:900;letter-spacing:-.1px;}
+.nbody{font-size:12.5px;font-weight:700;color:var(--mut);margin-top:3px;line-height:1.45;}
+.ntime{margin-left:auto;font-size:11px;font-weight:800;color:var(--sub);white-space:nowrap;}
+.ngroup{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:var(--sub);padding:12px 14px 8px;}
+`,
   // Профиль · атомы
   ProfileAtoms: `
 /* hero — переработка: подложка-баннер + чистая личность (фото · №id · ник · ФИО · роль) */

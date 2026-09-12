@@ -4,33 +4,271 @@
       "file": "Main.dc.html",
       "x": 0,
       "y": 0,
-      "w": 1220,
-      "h": 1380,
-      "title": "Управление и формы"
+      "w": 1100,
+      "h": 1600,
+      "title": "Кит элементов LOST",
+      "page": "page-1"
     },
     {
-      "file": "DataFeedback.dc.html",
-      "x": 1340,
-      "y": 0,
-      "w": 1220,
-      "h": 1340,
-      "title": "Данные и обратная связь"
-    },
-    {
-      "file": "OverlaysStructure.dc.html",
-      "x": 2680,
-      "y": 0,
-      "w": 1220,
-      "h": 1460,
-      "title": "Оверлеи и структура"
-    },
-    {
-      "file": "MoreElements.dc.html",
+      "file": "ButtonSolid.dc.html",
       "x": 0,
-      "y": 1620,
-      "w": 1220,
-      "h": 900,
-      "title": "Ещё элементы"
+      "y": 1860,
+      "w": 980,
+      "h": 1062,
+      "title": "Кнопка · solid",
+      "page": "page-1"
+    },
+    {
+      "file": "ButtonQuiet.dc.html",
+      "x": 1100,
+      "y": 1860,
+      "w": 840,
+      "h": 800,
+      "title": "Кнопка · quiet",
+      "page": "page-1"
+    },
+    {
+      "file": "ButtonIcon.dc.html",
+      "x": 2060,
+      "y": 1860,
+      "w": 780,
+      "h": 670,
+      "title": "Кнопка · иконочная",
+      "page": "page-1"
+    },
+    {
+      "file": "NavPill.dc.html",
+      "x": 0,
+      "y": 3182,
+      "w": 940,
+      "h": 1030,
+      "title": "Пилюля навигации",
+      "page": "page-1"
+    },
+    {
+      "file": "Segmented.dc.html",
+      "x": 1060,
+      "y": 3182,
+      "w": 840,
+      "h": 710,
+      "title": "Сегменты и вкладки",
+      "page": "page-1"
+    },
+    {
+      "file": "Breadcrumbs.dc.html",
+      "x": 2020,
+      "y": 3182,
+      "w": 940,
+      "h": 638,
+      "title": "Крошки",
+      "page": "page-1"
+    },
+    {
+      "file": "Menu.dc.html",
+      "x": 3080,
+      "y": 3182,
+      "w": 840,
+      "h": 1102,
+      "title": "Выпадающее меню",
+      "page": "page-1"
+    },
+    {
+      "file": "SectionHeader.dc.html",
+      "x": 4040,
+      "y": 3182,
+      "w": 1100,
+      "h": 728,
+      "title": "Шапка секции",
+      "page": "page-1"
+    },
+    {
+      "file": "TextField.dc.html",
+      "x": 0,
+      "y": 4544,
+      "w": 900,
+      "h": 944,
+      "title": "Поле ввода",
+      "page": "page-1"
+    },
+    {
+      "file": "Select.dc.html",
+      "x": 1020,
+      "y": 4544,
+      "w": 840,
+      "h": 760,
+      "title": "Select",
+      "page": "page-1"
+    },
+    {
+      "file": "Checkbox.dc.html",
+      "x": 1980,
+      "y": 4544,
+      "w": 780,
+      "h": 828,
+      "title": "Чекбокс",
+      "page": "page-1"
+    },
+    {
+      "file": "Radio.dc.html",
+      "x": 2880,
+      "y": 4544,
+      "w": 780,
+      "h": 702,
+      "title": "Radio",
+      "page": "page-1"
+    },
+    {
+      "file": "Toggle.dc.html",
+      "x": 3780,
+      "y": 4544,
+      "w": 780,
+      "h": 812,
+      "title": "Тумблер",
+      "page": "page-1"
+    },
+    {
+      "file": "Chip.dc.html",
+      "x": 0,
+      "y": 5748,
+      "w": 900,
+      "h": 870,
+      "title": "Чип",
+      "page": "page-1"
+    },
+    {
+      "file": "TournamentStatus.dc.html",
+      "x": 1020,
+      "y": 5748,
+      "w": 840,
+      "h": 640,
+      "title": "Статус турнира",
+      "page": "page-1"
+    },
+    {
+      "file": "StatTile.dc.html",
+      "x": 1980,
+      "y": 5748,
+      "w": 980,
+      "h": 670,
+      "title": "Показатель · StatTile",
+      "page": "page-1"
+    },
+    {
+      "file": "TableBits.dc.html",
+      "x": 3080,
+      "y": 5748,
+      "w": 1100,
+      "h": 840,
+      "title": "Элементы таблицы",
+      "page": "page-1"
+    },
+    {
+      "file": "Alert.dc.html",
+      "x": 0,
+      "y": 6878,
+      "w": 900,
+      "h": 880,
+      "title": "Алерт",
+      "page": "page-1"
+    },
+    {
+      "file": "Toast.dc.html",
+      "x": 1020,
+      "y": 6878,
+      "w": 840,
+      "h": 620,
+      "title": "Тост",
+      "page": "page-1"
+    },
+    {
+      "file": "EmptyState.dc.html",
+      "x": 1980,
+      "y": 6878,
+      "w": 840,
+      "h": 640,
+      "title": "Пустое состояние",
+      "page": "page-1"
+    },
+    {
+      "file": "Skeleton.dc.html",
+      "x": 2940,
+      "y": 6878,
+      "w": 840,
+      "h": 560,
+      "title": "Скелет загрузки",
+      "page": "page-1"
+    },
+    {
+      "file": "Dialog.dc.html",
+      "x": 0,
+      "y": 8018,
+      "w": 900,
+      "h": 700,
+      "title": "Диалог",
+      "page": "page-1"
+    },
+    {
+      "file": "SheetPanel.dc.html",
+      "x": 1020,
+      "y": 8018,
+      "w": 900,
+      "h": 720,
+      "title": "Боковой лист · Sheet",
+      "page": "page-1"
+    },
+    {
+      "file": "Tooltip.dc.html",
+      "x": 2040,
+      "y": 8018,
+      "w": 840,
+      "h": 706,
+      "title": "Тултип",
+      "page": "page-1"
+    },
+    {
+      "file": "Accordion.dc.html",
+      "x": 3000,
+      "y": 8018,
+      "w": 940,
+      "h": 640,
+      "title": "Аккордеон",
+      "page": "page-1"
+    },
+    {
+      "file": "TeamCard.dc.html",
+      "x": 0,
+      "y": 8998,
+      "w": 1100,
+      "h": 1134,
+      "title": "Карточка команды",
+      "page": "page-1"
+    },
+    {
+      "file": "Pagination.dc.html",
+      "x": 1220,
+      "y": 8998,
+      "w": 840,
+      "h": 680,
+      "title": "Пагинация",
+      "page": "page-1"
+    },
+    {
+      "file": "AvatarGroup.dc.html",
+      "x": 2180,
+      "y": 8998,
+      "w": 840,
+      "h": 560,
+      "title": "Аватар-группа",
+      "page": "page-1"
+    },
+    {
+      "file": "Calendar.dc.html",
+      "x": 3140,
+      "y": 8998,
+      "w": 900,
+      "h": 820,
+      "title": "Календарь",
+      "page": "page-1"
     },
     {
       "file": "PlayerHero.dc.html",
@@ -38,7 +276,8 @@
       "y": 1620,
       "w": 1220,
       "h": 700,
-      "title": "Hero-шапка игрока"
+      "title": "Hero-шапка игрока",
+      "page": "page-2"
     },
     {
       "file": "Playoff.dc.html",
@@ -46,15 +285,8 @@
       "y": 1620,
       "w": 1220,
       "h": 860,
-      "title": "Сетка плей-офф"
-    },
-    {
-      "file": "States.dc.html",
-      "x": 0,
-      "y": 2680,
-      "w": 1560,
-      "h": 1120,
-      "title": "Состояния"
+      "title": "Сетка плей-офф",
+      "page": "page-2"
     },
     {
       "file": "ProfileAtoms.dc.html",
@@ -62,7 +294,8 @@
       "y": 2680,
       "w": 1220,
       "h": 1780,
-      "title": "Профиль · атомы"
+      "title": "Профиль · атомы",
+      "page": "page-2"
     },
     {
       "file": "Standings.dc.html",
@@ -70,7 +303,8 @@
       "y": 4620,
       "w": 1220,
       "h": 1660,
-      "title": "Турнирная таблица"
+      "title": "Турнирная таблица",
+      "page": "page-2"
     },
     {
       "file": "SeriesCard.dc.html",
@@ -78,7 +312,8 @@
       "y": 4620,
       "w": 1220,
       "h": 1440,
-      "title": "Карточка встречи"
+      "title": "Карточка встречи",
+      "page": "page-2"
     },
     {
       "file": "Groups.dc.html",
@@ -86,7 +321,8 @@
       "y": 4620,
       "w": 1220,
       "h": 1240,
-      "title": "Групповой этап"
+      "title": "Групповой этап",
+      "page": "page-2"
     },
     {
       "file": "TeamHero.dc.html",
@@ -94,7 +330,8 @@
       "y": 6440,
       "w": 1220,
       "h": 1420,
-      "title": "Hero-шапка команды"
+      "title": "Hero-шапка команды",
+      "page": "page-2"
     },
     {
       "file": "SiteNav.dc.html",
@@ -102,7 +339,8 @@
       "y": 6440,
       "w": 1220,
       "h": 1800,
-      "title": "Шапка сайта и меню"
+      "title": "Шапка сайта и меню",
+      "page": "page-2"
     },
     {
       "file": "Footer.dc.html",
@@ -110,19 +348,106 @@
       "y": 6440,
       "w": 1220,
       "h": 1240,
-      "title": "Футер"
+      "title": "Футер",
+      "page": "page-2"
+    },
+    {
+      "file": "RankMedal.dc.html",
+      "x": 0,
+      "y": 8400,
+      "w": 1220,
+      "h": 1700,
+      "title": "Медаль ранга",
+      "page": "page-2"
+    },
+    {
+      "file": "HomeBlocks.dc.html",
+      "x": 0,
+      "y": 10292,
+      "w": 1220,
+      "h": 1800,
+      "title": "Блоки главной",
+      "page": "page-1"
     }
   ],
   "annotations": [
     {
-      "id": "kit",
+      "id": "grp-1",
       "x": 0,
       "y": -150,
-      "w": 800,
-      "text": "Кит элементов LOST · Light Clay — зафиксированный рецеп (направленный свет ↖, оконтовка, растушёванные тени, idisc/iwell). Лист «Состояния» — hover/press/focus на всех интерактивных. Алерты компактные + мини-пилюли. Единый источник рецептов → перенос в pouf.css прямой."
+      "w": 520,
+      "text": "Фундамент · рецепт Light Clay: цвета, тени, типографика",
+      "page": "page-1"
+    },
+    {
+      "id": "grp-2",
+      "x": 0,
+      "y": 1710,
+      "w": 520,
+      "text": "Действия",
+      "page": "page-1"
+    },
+    {
+      "id": "grp-3",
+      "x": 0,
+      "y": 3032,
+      "w": 520,
+      "text": "Навигация",
+      "page": "page-1"
+    },
+    {
+      "id": "grp-4",
+      "x": 0,
+      "y": 4394,
+      "w": 520,
+      "text": "Формы",
+      "page": "page-1"
+    },
+    {
+      "id": "grp-5",
+      "x": 0,
+      "y": 5598,
+      "w": 520,
+      "text": "Данные",
+      "page": "page-1"
+    },
+    {
+      "id": "grp-6",
+      "x": 0,
+      "y": 6728,
+      "w": 520,
+      "text": "Обратная связь",
+      "page": "page-1"
+    },
+    {
+      "id": "grp-7",
+      "x": 0,
+      "y": 7868,
+      "w": 520,
+      "text": "Оверлеи",
+      "page": "page-1"
+    },
+    {
+      "id": "grp-8",
+      "x": 0,
+      "y": 8848,
+      "w": 520,
+      "text": "Сущности и прочее",
+      "page": "page-1"
     }
   ],
   "launch": {
-    "view": "canvas"
-  }
+    "view": "canvas",
+    "page": "page-1"
+  },
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "Атомы"
+    },
+    {
+      "id": "page-2",
+      "name": "Блоки и экраны"
+    }
+  ]
 }
