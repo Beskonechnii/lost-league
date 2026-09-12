@@ -112,7 +112,7 @@ export async function accountNav(account: Account | null): Promise<AccountNav> {
       href: "/chat",
       label: "Сообщения",
       icon: "comment",
-      hint: "Личные диалоги с игроками лиги",
+      hint: "Переписка с игроками лиги",
       badge: unread,
     });
   cabinet.push({ href: "/me/settings", label: "Настройки", icon: "settings", hint: "Вход, пароль, аккаунт" });

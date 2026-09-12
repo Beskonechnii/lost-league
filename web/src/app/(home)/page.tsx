@@ -54,9 +54,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
 
   const short = new Map(divisions.map((d) => [d.id, d.short]));
 
-  // «Все матчи» ведут в кросс-таблицу личных встреч первого дивизиона — единственное место
-  // продукта, где встречи турнира лежат списком. Отдельной страницы архива встреч нет.
-  const allMatches = current && divisions[0] ? `/tournaments/${current.slug}/${divisions[0].slug}/groups` : undefined;
+  // «Все матчи» ведут на адрес турнира: оттуда строка контекста даёт оба дивизиона и разрезы,
+  // а кросс-таблица одной группы — это уже глубина одного дивизиона. Отдельной страницы всех
+  // встреч лиги в продукте нет.
+  const allMatches = current ? `/tournaments/${current.slug}` : undefined;
 
   return (
     <main className={`mx-auto w-full ${SITE_MAX_W} flex-1 space-y-6 px-4 pb-8 pt-4 font-pouf md:px-6`}>

@@ -21,7 +21,7 @@ const focus = "outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--f
 export function AvatarMenu({
   account,
   items,
-  /** Ссылка в операторскую — только тем, у кого есть хоть один инструмент: с главной сайдбар снят,
+  /** Ссылка в админку — только тем, у кого есть хоть один инструмент: с главной сайдбар снят,
    *  и без этого пункта оператору неоткуда попасть в свои разделы. */
   tools = false,
   /** Подпись под ником. По макету витрины это «команда · позиция»; нет — остаётся роль. */
@@ -92,7 +92,7 @@ export function AvatarMenu({
             <RMenu.Item asChild>
               <Link href="/admin" className="pouf-menu__item">
                 <Icon name="lab" size="sm" />
-                Операторская
+                Админ
               </Link>
             </RMenu.Item>
           )}

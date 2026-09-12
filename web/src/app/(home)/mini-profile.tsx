@@ -96,7 +96,7 @@ export function MiniProfile({
         icon="lab"
         title={nav.account?.role ?? "Оператор лиги"}
         text="Карточки игрока у этого аккаунта нет — витрина показывает лигу глазами посетителя."
-        action={{ href: "/admin", label: "Операторская", quiet: true }}
+        action={{ href: "/admin", label: "Админ", quiet: true }}
       />
     );
 

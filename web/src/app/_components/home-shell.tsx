@@ -8,6 +8,7 @@ import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { Footer } from "./footer";
 import { currentAccountNav } from "./account-nav";
 import { AvatarMenu } from "./avatar-menu";
+import { HomeNavRow, HomeNavSheet, type NavLink } from "./home-nav";
 import { Notifications, type NotificationLine } from "./notifications";
 
 // Хром витрины: верхняя строка вместо сайдбара. Только у главной (`(home)/layout.tsx`).
@@ -22,9 +23,9 @@ import { Notifications, type NotificationLine } from "./notifications";
 // Строка разложена тремя ОСТРОВАМИ по макету `design/home/Menus.dc.html`: у бренда, у разделов и
 // у входа своя подушка с зазором между ними. Одна плита во всю ширину читалась как полка, на
 // которой всё лежит вперемешку; три острова разводят «кто я», «куда пойти» и «что с аккаунтом».
-
-/** Пункт строки. `accent` — «LOST cup», он же текущий турнир: единственный пункт со сроком. */
-type NavLink = { href: string; label: string; accent?: boolean };
+//
+// Ниже `lg` островов нет: три подушки с зазорами в 358px не сходятся, поэтому ряд сам становится
+// одной подушкой (`.mbar` из `Mobile.dc.html`), а разделы уезжают под бургер (`home-nav.tsx`).
 
 const date = new Intl.DateTimeFormat("ru", { day: "2-digit", month: "2-digit" });
 const clock = new Intl.DateTimeFormat("ru", { hour: "2-digit", minute: "2-digit" });
@@ -74,12 +75,13 @@ export async function HomeShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       <header className={`mx-auto w-full ${SITE_MAX_W} px-4 pb-2 pt-5 font-pouf md:px-6`}>
-        {/* Острова переносятся по одному: на узком экране ряд разделов уходит под бренд и вход,
-            а не ужимается в нечитаемые огрызки. */}
-        <div className="flex flex-wrap items-center gap-3">
+        {/* Ниже `lg` подушка одна на весь ряд, с `lg` она распадается на три острова. */}
+        <div className="flex items-center gap-3 max-lg:rounded-card max-lg:bg-surface max-lg:px-3 max-lg:py-2.5 max-lg:cushion-card">
+          <HomeNavSheet links={links} />
+
           <Link
             href="/"
-            className="flex min-w-0 shrink items-center gap-2.5 rounded-card bg-surface px-4 py-2.5 cushion-card"
+            className="flex min-w-0 shrink items-center gap-2.5 rounded-card lg:bg-surface lg:px-4 lg:py-2.5 lg:cushion-card"
             title="SPIRIT/CTRL — главная"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -93,25 +95,9 @@ export async function HomeShell({ children }: { children: React.ReactNode }) {
             />
           </Link>
 
-          {/* На телефоне остров разделов уезжает под строку «бренд — аккаунт» и занимает её целиком:
-              иначе вход отрывается от бренда и висит отдельной строкой посреди шапки. */}
-          <nav className="order-last flex w-full min-w-0 flex-wrap items-center gap-2 rounded-card bg-surface px-3 py-2.5 cushion-card lg:order-none lg:w-auto">
-            {links.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className={`rounded-control-sm px-3 py-2.5 text-[13px] font-extrabold transition sm:px-[18px] ${
-                  l.accent
-                    ? "bg-accent-fill text-[var(--on-accent)] cushion-blob"
-                    : "text-ink-muted hover:bg-surface-2 hover:text-ink"
-                }`}
-              >
-                {l.label}
-              </Link>
-            ))}
-          </nav>
+          <HomeNavRow links={links} />
 
-          <div className="ml-auto flex shrink-0 items-center gap-2.5 rounded-card bg-surface px-3 py-2.5 cushion-card">
+          <div className="ml-auto flex shrink-0 items-center gap-2.5 rounded-card lg:bg-surface lg:px-3 lg:py-2.5 lg:cushion-card">
             {/* Колокольчик есть только у того, кому лига может написать: у гостя и у аккаунта без
                 карточки игрока служебного канала нет вовсе, и пустой значок им ни о чём. */}
             {chat && (

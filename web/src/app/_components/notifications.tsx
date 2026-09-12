@@ -4,6 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Popover as PopoverPrimitive } from "radix-ui";
+import { toast } from "sonner";
+import { IconButton } from "@/components/pouf/Button";
 import { Icon } from "@/components/pouf/Icon";
 import { EmptyState } from "@/components/pouf/feedback";
 
@@ -39,13 +41,19 @@ export function Notifications({
   async function readAll() {
     if (!conversationId || busy) return;
     setBusy(true);
-    await fetch("/api/chat/read", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ conversationId }),
-    }).catch(() => null);
+    try {
+      const res = await fetch("/api/chat/read", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ conversationId }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      router.refresh();
+    } catch {
+      // Молчащая кнопка — не состояние: счётчик остался как был, и об этом надо сказать.
+      toast.error("Не вышло отметить прочитанным");
+    }
     setBusy(false);
-    router.refresh();
   }
 
   return (
@@ -74,10 +82,10 @@ export function Notifications({
           className="pouf-popover w-[min(400px,calc(100vw-24px))] font-pouf"
         >
           <div className="flex items-center gap-3 border-b border-hairline px-3.5 pb-3 pt-3">
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="text-[15px] font-black tracking-[-0.2px] text-ink">Уведомления</div>
               <div className="mt-0.5 text-[12px] font-extrabold text-muted">
-                {unread > 0 ? `${unread} непрочитанных` : "Всё прочитано"}
+                {unread > 0 ? `Непрочитанных: ${unread}` : "Всё прочитано"}
               </div>
             </div>
             {unread > 0 && (
@@ -85,11 +93,23 @@ export function Notifications({
                 type="button"
                 onClick={readAll}
                 disabled={busy}
-                className="ml-auto shrink-0 text-[12px] font-extrabold text-muted transition hover:text-ink disabled:opacity-50"
+                className="shrink-0 text-[12px] font-extrabold text-muted transition hover:text-ink disabled:opacity-50"
               >
                 прочитать все
               </button>
             )}
+            {/* На 390 панель занимает почти весь экран, и «ткнуть мимо» остаётся полоской 12px:
+                явный выход обязателен. */}
+            <PopoverPrimitive.Close asChild>
+              {/* Тач-цель 44×44: панель на 390 занимает почти весь экран, мимо неё не ткнёшь. */}
+              <IconButton
+                size="sm"
+                variant="quiet"
+                label="Закрыть"
+                className="!h-11 !w-11"
+                icon={<Icon name="close" size="sm" />}
+              />
+            </PopoverPrimitive.Close>
           </div>
 
           {lines.length === 0 ? (
