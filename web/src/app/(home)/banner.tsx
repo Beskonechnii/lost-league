@@ -4,13 +4,16 @@ import { Hero } from "@/components/pouf/hero";
 import { Icon, type IconName } from "@/components/pouf/Icon";
 import { buttonClasses } from "@/components/pouf/Button";
 
-// Баннер витрины — одно предложение действия, самое своевременное на сегодня. Не декоративная
-// картинка: что показать, решают данные, поэтому баннер не врёт про открытый приём заявок, когда
-// он закрыт, и не зовёт «вступить» того, кто уже вступил.
+// Герой витрины — левая половина верхнего ряда по макету `design/home/Main.dc.html`: полотно
+// сверху, под ним надпись и одно действие.
 //
-// Порядок такой: пока идёт приём заявок — зовём заявиться (это единственное действие лиги со
-// сроком); нет приёма и человек не в лиге — зовём завести аккаунт; всё остальное — анонсы сезона
-// на основном сайте.
+// Содержание прежнее и по-прежнему решают данные, а не редактор: пока идёт приём заявок — зовём
+// заявиться (это единственное действие лиги со сроком); нет приёма и человек не в лиге — зовём
+// завести аккаунт; всё остальное — анонсы сезона на основном сайте. Поэтому герой не врёт про
+// открытый приём, когда он закрыт, и не зовёт «вступить» того, кто уже вступил.
+//
+// На полотне стоит имя лиги: у макета там «графика новости», раздела новостей в проекте нет, а
+// первый экран обязан назвать, куда человек попал (и это единственный h1 страницы).
 
 const SITE = "https://leagueofspirits.ru/lost_s1";
 const date = new Intl.DateTimeFormat("ru", { day: "numeric", month: "long" });
@@ -30,31 +33,37 @@ function Banner({
 }) {
   const button = buttonClasses();
   return (
-    <Hero>
-      <div className="relative flex flex-wrap items-center gap-5 px-5 py-6 sm:px-[30px]">
-        {/* Значок с текстом — одной неразрывной частью: иначе на 390px кнопка остаётся в строке,
-            а заголовок баннера ужимается до двух слов в строчку. */}
-        <div className="flex min-w-[240px] flex-1 items-center gap-5">
-          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-[20px] bg-accent-fill text-[var(--on-accent)] cushion-blob">
-            <Icon name={icon} size="lg" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-extrabold uppercase tracking-[1.6px] text-ink-subtle">{eyebrow}</p>
-            <h2 className="mt-1 text-[22px] font-black leading-tight tracking-[-0.5px] text-ink sm:text-[26px]">
-              {title}
-            </h2>
-            <p className="mt-1.5 max-w-2xl text-sm font-bold leading-[1.55] text-ink-muted">{text}</p>
-          </div>
+    <Hero className="flex h-full flex-col gap-[18px] p-[22px]">
+      {/* Полотно героя: 300px из макета на широком, ниже — на телефоне, где оно съело бы экран. */}
+      <div className="relative grid h-[170px] shrink-0 place-items-center gap-3 overflow-hidden rounded-card bg-accent-fill px-6 text-center text-[var(--on-accent)] cushion-control sm:h-[300px]">
+        <div>
+          <Icon name={icon} size="lg" />
+          <h1 className="mt-2 text-[28px] font-black uppercase leading-none tracking-[-1px] sm:text-[44px]">
+            SPIRIT/CTRL
+          </h1>
+          <p className="mt-2 text-[11px] font-extrabold uppercase tracking-[1.6px] text-[var(--on-accent-muted)]">
+            Киберспортивная лига · Минск
+          </p>
         </div>
-        {cta.external ? (
-          <a href={cta.href} target="_blank" rel="noreferrer" className={button}>
-            {cta.label}
-          </a>
-        ) : (
-          <Link href={cta.href} className={button}>
-            {cta.label}
-          </Link>
-        )}
+      </div>
+
+      <div className="relative flex min-w-0 flex-1 flex-col gap-2.5 px-2 pb-1">
+        <p className="text-[11px] font-extrabold uppercase tracking-[1.6px] text-ink-subtle">{eyebrow}</p>
+        <h2 className="text-[22px] font-black leading-[1.15] tracking-[-0.8px] text-ink sm:text-[28px]">{title}</h2>
+        <p className="max-w-[560px] text-sm font-bold leading-[1.5] text-ink-muted">{text}</p>
+        {/* Кнопка прижата к низу: высоты героя и карточки игрока в ряду равны, и пустота между
+            текстом и действием не должна собираться посередине. */}
+        <div className="mt-auto pt-2">
+          {cta.external ? (
+            <a href={cta.href} target="_blank" rel="noreferrer" className={button}>
+              {cta.label}
+            </a>
+          ) : (
+            <Link href={cta.href} className={button}>
+              {cta.label}
+            </Link>
+          )}
+        </div>
       </div>
     </Hero>
   );

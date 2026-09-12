@@ -1,0 +1,7 @@
+/* Метр винрейта: процент крупно, счёт побед–поражений справа, полоса под ними.
+   Полоса и подпись — готовые рецепты кита (.meter, .tl), свой здесь только каркас. */
+.wr{border-radius:26px;padding:16px 20px 18px;background:var(--grad-surface);box-shadow:var(--sh-raise);}
+.wr .wrtop{display:flex;align-items:baseline;gap:10px;}
+.wr .wrv{font-size:28px;font-weight:900;letter-spacing:-.5px;font-variant-numeric:tabular-nums;}
+.wr .wrc{margin-left:auto;font-size:12px;font-weight:800;color:var(--mut);font-variant-numeric:tabular-nums;}
+.wr .meter{width:100%;margin-top:12px;}

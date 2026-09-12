@@ -135,10 +135,14 @@ export async function teamDivision(teamId: number) {
 
 // ── турниры ──────────────────────────────────────────────────────────────────
 
+// Команды турнира считаются прямо в выборке (`_count` по дивизионам): витрине нужно число
+// участников на карточке, а второй запрос за ним — это ещё один заход в базу на каждый турнир.
 export const listTournaments = () =>
   prisma.tournament.findMany({
     orderBy: [{ startAt: "desc" }, { id: "desc" }],
-    include: { divisions: { orderBy: [{ orderNo: "asc" }, { id: "asc" }] } },
+    include: {
+      divisions: { orderBy: [{ orderNo: "asc" }, { id: "asc" }], include: { _count: { select: { entries: true } } } },
+    },
   });
 
 export const tournamentBySlug = (slug: string) =>

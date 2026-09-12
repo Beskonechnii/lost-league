@@ -182,6 +182,19 @@ function unreadIn(conversationId: number, meAccountId: number, lastReadAt: Date 
   });
 }
 
+/**
+ * Непрочитанное в одной беседе. Тот же `unreadIn`, только снаружи: колокольчику витрины нужен
+ * счётчик служебного канала отдельно от общей суммы, иначе одно и то же непрочитанное показывалось
+ * бы дважды — на колокольчике и у пункта «Сообщения».
+ */
+export async function unreadInConversation(conversationId: number, meAccountId: number): Promise<number> {
+  const member = await prisma.conversationMember.findUnique({
+    where: { conversationId_accountId: { conversationId, accountId: meAccountId } },
+    select: { lastReadAt: true },
+  });
+  return member ? unreadIn(conversationId, meAccountId, member.lastReadAt) : 0;
+}
+
 /** Сколько непрочитанного всего — счётчик у пункта «Сообщения» в колонке навигации. */
 export async function unreadTotal(meAccountId: number): Promise<number> {
   const mine = await prisma.conversationMember.findMany({

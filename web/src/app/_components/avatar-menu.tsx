@@ -24,10 +24,13 @@ export function AvatarMenu({
   /** Ссылка в операторскую — только тем, у кого есть хоть один инструмент: с главной сайдбар снят,
    *  и без этого пункта оператору неоткуда попасть в свои разделы. */
   tools = false,
+  /** Подпись под ником. По макету витрины это «команда · позиция»; нет — остаётся роль. */
+  subtitle,
 }: {
   account: NavAccount | null;
   items: NavItem[];
   tools?: boolean;
+  subtitle?: string;
 }) {
   // Гостю — не пустое меню, а сама дверь: одно нажатие вместо двух.
   if (!account)
@@ -65,7 +68,7 @@ export function AvatarMenu({
               <span className="block truncate text-[14px] font-black leading-tight text-ink">{account.name}</span>
               <span className="mt-0.5 flex items-center gap-1.5 truncate text-[12px] font-extrabold text-ink-muted">
                 <span className="h-2 w-2 shrink-0 rounded-pill" style={{ background: account.dot }} aria-hidden />
-                {account.role}
+                {subtitle ?? account.role}
               </span>
             </span>
           </div>

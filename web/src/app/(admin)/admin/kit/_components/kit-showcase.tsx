@@ -10,6 +10,7 @@ import { Breadcrumbs } from "@/components/pouf/breadcrumbs";
 import { Pagination } from "@/components/pouf/pagination";
 import { Tooltip } from "@/components/pouf/tooltip";
 import { Accordion, AccordionItem } from "@/components/pouf/accordion";
+import { WinrateMeter } from "@/components/pouf/winrate-meter";
 import { Button } from "@/components/pouf/Button";
 
 /* Витрина атомов Кита: те же компоненты, что уезжают на экраны, живыми — навести мышью,
@@ -131,6 +132,21 @@ export function KitShowcase() {
           <div className="font-pouf text-[14px] font-extrabold tabular-nums text-ink">
             {day ? `${String(day.d).padStart(2, "0")}.${String(day.m).padStart(2, "0")}.${day.y}` : "не выбрана"}
           </div>
+        </Case>
+      </Atom>
+
+      <Atom name="Метр винрейта" sheet="WinrateMeter">
+        <Case caption="Игр нет">
+          <WinrateMeter className="w-[250px] max-w-full" wins={0} losses={0} />
+        </Case>
+        <Case caption="0%">
+          <WinrateMeter className="w-[250px] max-w-full" wins={0} losses={4} />
+        </Case>
+        <Case caption="67% · 12–6">
+          <WinrateMeter className="w-[250px] max-w-full" wins={12} losses={6} />
+        </Case>
+        <Case caption="100%">
+          <WinrateMeter className="w-[250px] max-w-full" wins={5} losses={0} />
         </Case>
       </Atom>
 

@@ -2,76 +2,89 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { accountStatus, effectiveRole, type Account } from "@/lib/account";
 import { playerPath } from "@/lib/profiles";
+import { roleShort } from "@/lib/roles";
+import type { PlayerRecord } from "@/lib/player-record";
 import { buttonClasses } from "@/components/pouf/Button";
-import { Icon } from "@/components/pouf/Icon";
-import { RankBadge } from "@/components/pouf/rank";
+import { Icon, type IconName } from "@/components/pouf/Icon";
+import { StatTile } from "@/components/pouf/blocks";
+import { WinrateMeter } from "@/components/pouf/winrate-meter";
 import type { AccountNav } from "@/app/_components/account-nav";
 
-// Первый блок витрины под шапкой: «а я тут кто». Он отвечает на вопрос до того, как человек
-// начнёт искать себя в таблицах, и у каждого состояния воронки свой ответ:
+// Правая половина верхнего ряда витрины (макет `design/home/Main.dc.html`, карточка 351px):
+// «а я тут кто». Карточка отвечает на вопрос до того, как человек начнёт искать себя в таблицах,
+// и у каждого состояния воронки свой ответ:
 //
 //   гость              — чем лига полезна и одна дверь внутрь;
 //   аккаунт без игрока — что с заявкой (анкета не дописана / ждёт модерации / отказ);
-//   игрок лиги         — его карточка в миниатюре: медаль ранга, команда, TP.
+//   оператор           — вход в его разделы: сайдбара на витрине нет;
+//   игрок лиги         — его карточка в миниатюре: MMR, место в зачёте и винрейт за сезон.
 //
-// Заявку не пересказываем: подробности живут в кабинете (`/me`), тут только строка состояния —
-// витрина не должна превращаться во второй кабинет.
+// Макет рисует два крайних состояния — гостя и игрока лиги; остальные три живут тем же текстом,
+// что до переноса, в той же гостевой раскладке (значок, заголовок, объяснение, кнопка). Заявку не
+// пересказываем: подробности в кабинете (`/me`), тут только строка состояния.
 
-/** Общая рамка блока: подушка Кита, заголовок и содержимое. */
-function Shell({ children }: { children: ReactNode }) {
-  return <section className="rounded-card bg-surface p-5 cushion-card sm:p-6">{children}</section>;
-}
-
-/**
- * Строка блока: слева значок с текстом, справа действие. `min-w` у левой части — не украшение:
- * без него на 390px кнопка оставалась в строке, а колонка с текстом ужималась до одного слова
- * в строчку. Теперь при нехватке места переносится кнопка, а не разваливается текст.
- */
-function Row({ children, action }: { children: ReactNode; action: ReactNode }) {
+/** Оболочка карточки: подушка Кита во всю высоту ряда — нижний край вровень с героем. */
+function Shell({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className="flex flex-wrap items-center gap-4">
-      <div className="flex min-w-[220px] flex-1 items-center gap-4">{children}</div>
-      {action}
-    </div>
+    <section className={`flex h-full flex-col gap-[18px] rounded-card bg-surface p-6 font-pouf cushion-card ${className}`}>
+      {children}
+    </section>
   );
 }
 
-/** Плитка факта: цифра сверху, подпись снизу. Мельче `StatTile` — их тут три в ряд на телефоне. */
-function Fact({ label, value }: { label: string; value: ReactNode }) {
+/** Состояние-обращение: значок, заголовок, объяснение и одна кнопка. Общее у гостя и воронки. */
+function Callout({
+  icon,
+  title,
+  text,
+  action,
+}: {
+  icon: IconName;
+  title: string;
+  text: string;
+  action: { href: string; label: string; quiet?: boolean };
+}) {
   return (
-    <div className="rounded-control bg-surface-2 px-3 py-2.5 cushion-field">
-      <div className="text-[15px] font-black tabular-nums text-ink">{value}</div>
-      <div className="mt-0.5 text-[11px] font-extrabold uppercase tracking-[1px] text-ink-subtle">{label}</div>
-    </div>
+    <Shell className="items-center justify-center text-center">
+      <span className="grid h-24 w-24 shrink-0 place-items-center rounded-pill bg-accent-fill text-[var(--on-accent)] cushion-control">
+        <Icon name={icon} size="lg" />
+      </span>
+      <h2 className="text-xl font-black tracking-[-0.4px] text-ink">{title}</h2>
+      <p className="max-w-[280px] text-[13.5px] font-bold leading-[1.5] text-muted">{text}</p>
+      <Link
+        href={action.href}
+        className={`${buttonClasses({ variant: action.quiet ? "quiet" : "solid", block: true })} mt-auto justify-center`}
+      >
+        {action.label}
+      </Link>
+    </Shell>
   );
 }
 
-export function MiniProfile({ account, nav }: { account: Account | null; nav: AccountNav }) {
+export function MiniProfile({
+  account,
+  nav,
+  record,
+  place,
+}: {
+  account: Account | null;
+  nav: AccountNav;
+  /** Винрейт за сезон — считает `lib/player-record.ts`; у гостя записи нет. */
+  record: PlayerRecord | null;
+  /** Место в зачёте TP текущего турнира. Не набрал очков — места нет. */
+  place: number | null;
+}) {
   const player = account?.player ?? null;
 
   // ── гость ──────────────────────────────────────────────────────────────────
   if (!account)
     return (
-      <Shell>
-        <Row
-          action={
-            <Link href="/me" className={buttonClasses()}>
-              Войти или вступить
-            </Link>
-          }
-        >
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-pill bg-accent-fill text-[var(--on-accent)] cushion-blob">
-            <Icon name="user" size="md" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-[19px] font-black tracking-[-0.3px] text-ink">Вы ещё не в лиге</h2>
-            <p className="mt-1 max-w-xl text-sm font-bold leading-[1.5] text-muted">
-              Заведите аккаунт — и у вас появится карточка игрока с рангом и статистикой, а команда
-              сможет заявить вас в состав на сезон.
-            </p>
-          </div>
-        </Row>
-      </Shell>
+      <Callout
+        icon="user"
+        title="Войди в аккаунт"
+        text="Профиль игрока, статистика сезона и место в рейтинге — после входа."
+        action={{ href: "/me", label: "Войти" }}
+      />
     );
 
   // ── оператор без карточки игрока ───────────────────────────────────────────
@@ -79,25 +92,12 @@ export function MiniProfile({ account, nav }: { account: Account | null; nav: Ac
   // Им полезнее вход в свои разделы — с витрины сайдбар снят, и другой дороги туда отсюда нет.
   if (!player && effectiveRole(account) !== "player")
     return (
-      <Shell>
-        <Row
-          action={
-            <Link href="/admin" className={buttonClasses({ variant: "quiet" })}>
-              Операторская
-            </Link>
-          }
-        >
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-pill bg-surface-2 text-ink-muted cushion-field">
-            <Icon name="lab" size="md" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-[19px] font-black tracking-[-0.3px] text-ink">{nav.account?.role}</h2>
-            <p className="mt-1 max-w-xl text-sm font-bold leading-[1.5] text-muted">
-              Карточки игрока у этого аккаунта нет — витрина показывает лигу глазами посетителя.
-            </p>
-          </div>
-        </Row>
-      </Shell>
+      <Callout
+        icon="lab"
+        title={nav.account?.role ?? "Оператор лиги"}
+        text="Карточки игрока у этого аккаунта нет — витрина показывает лигу глазами посетителя."
+        action={{ href: "/admin", label: "Операторская", quiet: true }}
+      />
     );
 
   // ── аккаунт есть, игрока ещё нет ───────────────────────────────────────────
@@ -127,68 +127,48 @@ export function MiniProfile({ account, nav }: { account: Account | null; nav: Ac
     };
     const s = line[status];
     return (
-      <Shell>
-        <Row
-          action={
-            <Link href="/me" className={buttonClasses({ variant: "quiet" })}>
-              {s.action}
-            </Link>
-          }
-        >
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-pill bg-surface-2 text-ink-muted cushion-field">
-            <Icon name="clock" size="md" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h2 className="text-[19px] font-black tracking-[-0.3px] text-ink">{s.title}</h2>
-            <p className="mt-1 max-w-xl text-sm font-bold leading-[1.5] text-muted">{s.text}</p>
-          </div>
-        </Row>
-      </Shell>
+      <Callout icon="clock" title={s.title} text={s.text} action={{ href: "/me", label: s.action, quiet: true }} />
     );
   }
 
   // ── игрок лиги ─────────────────────────────────────────────────────────────
   const photo = nav.account?.photo ?? null;
-  const facts: { label: string; value: ReactNode }[] = [];
-  if (player.tp > 0) facts.push({ label: "TP", value: player.tp });
-  if (player.mmr != null) facts.push({ label: "MMR", value: player.mmr });
-  if (nav.spot) facts.push({ label: nav.spot.isCaptain ? "Капитан" : "Команда", value: nav.spot.team.name });
+  const position = roleShort(nav.spot?.role);
 
   return (
     <Shell>
-      <Row
-        action={
-          <Link href={playerPath(player)} className={buttonClasses({ variant: "quiet" })}>
-            Мой профиль
-          </Link>
-        }
-      >
+      <div className="flex items-center gap-4">
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element -- путь из uploads, не next/image-ассет
-          <img src={photo} alt="" className="h-14 w-14 shrink-0 rounded-pill object-cover cushion-row" />
+          <img src={photo} alt="" className="h-[76px] w-[76px] shrink-0 rounded-pill object-cover cushion-row" />
         ) : (
-          <span className="grid h-14 w-14 shrink-0 place-items-center rounded-pill bg-accent-fill text-xl font-black text-[var(--on-accent)] cushion-blob">
+          <span className="grid h-[76px] w-[76px] shrink-0 place-items-center rounded-pill bg-accent-fill text-[26px] font-black text-[var(--on-accent)] cushion-blob">
             {nav.account?.initials}
           </span>
         )}
-        <div className="min-w-0 flex-1">
-          <h2 className="truncate text-[21px] font-black tracking-[-0.4px] text-ink">{player.nickname}</h2>
-          <p className="mt-0.5 truncate text-[13px] font-extrabold text-ink-muted">{nav.account?.role}</p>
-        </div>
-      </Row>
-
-      {(player.rank != null || facts.length > 0) && (
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          {player.rank != null && (
-            <span className="rounded-control bg-surface-2 px-3 py-2 cushion-field">
-              <RankBadge tier={player.rank} prev={player.rankPrev} size="sm" />
-            </span>
+        <div className="min-w-0">
+          <div className="truncate text-[22px] font-black tracking-[-0.5px] text-ink">{player.nickname}</div>
+          {nav.spot && <div className="mt-1 truncate text-[13px] font-extrabold text-muted">{nav.spot.team.name}</div>}
+          {position && (
+            <div className="mt-[5px] truncate text-[11px] font-extrabold uppercase tracking-[0.8px] text-ink-subtle">
+              {position}
+            </div>
           )}
-          {facts.map((f) => (
-            <Fact key={f.label} label={f.label} value={f.value} />
-          ))}
         </div>
-      )}
+      </div>
+
+      {/* Показателей ровно три: два числа плиткой и винрейт метром. Прочерк вместо пропуска —
+          иначе на месте незаполненного MMR карточка каждый раз меняет высоту. */}
+      <div className="grid grid-cols-2 gap-3">
+        <StatTile label="MMR" value={player.mmr ?? "—"} />
+        <StatTile label="Место в зачёте" value={place ?? "—"} accent />
+      </div>
+
+      <WinrateMeter wins={record?.wins ?? 0} losses={record?.losses ?? 0} />
+
+      <Link href={playerPath(player)} className={`${buttonClasses({ variant: "quiet", block: true })} mt-auto justify-center`}>
+        Мой профиль
+      </Link>
     </Shell>
   );
 }

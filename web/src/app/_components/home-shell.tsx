@@ -1,10 +1,14 @@
 import "server-only";
 import Link from "next/link";
 import { currentPermissions } from "@/lib/account";
+import { currentTournament } from "@/lib/tournaments";
+import { messages } from "@/lib/chat";
+import { roleShort } from "@/lib/roles";
 import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { Footer } from "./footer";
 import { currentAccountNav } from "./account-nav";
 import { AvatarMenu } from "./avatar-menu";
+import { Notifications, type NotificationLine } from "./notifications";
 
 // Хром витрины: верхняя строка вместо сайдбара. Только у главной (`(home)/layout.tsx`).
 //
@@ -14,22 +18,70 @@ import { AvatarMenu } from "./avatar-menu";
 // этом ровно один, «Главная». Взамен колонка съедает 300px витрины и первым экраном лиги делает
 // список ссылок. Поэтому здесь строка: бренд слева, разделы посередине, аккаунт справа
 // (решение 09.09, §E2 RELEASE-PLAN). Второго ряда хрома на витрине нет — этот единственный.
+//
+// Строка разложена тремя ОСТРОВАМИ по макету `design/home/Menus.dc.html`: у бренда, у разделов и
+// у входа своя подушка с зазором между ними. Одна плита во всю ширину читалась как полка, на
+// которой всё лежит вперемешку; три острова разводят «кто я», «куда пойти» и «что с аккаунтом».
 
-/** Разделы в строке — те же два, что в секции «Лига» сайдбара, плюс регламент из его подвала. */
-const LINKS = [
-  { href: "/tournaments", label: "Турниры" },
-  { href: "/roster", label: "Ростер" },
-  { href: "/rules", label: "Правила" },
-];
+/** Пункт строки. `accent` — «LOST cup», он же текущий турнир: единственный пункт со сроком. */
+type NavLink = { href: string; label: string; accent?: boolean };
+
+const date = new Intl.DateTimeFormat("ru", { day: "2-digit", month: "2-digit" });
+const clock = new Intl.DateTimeFormat("ru", { hour: "2-digit", minute: "2-digit" });
+
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+
+/** Подпись времени строки уведомления: сегодня — часы, вчера — словом, раньше — дата. */
+function when(at: Date, now: Date): string {
+  const days = Math.round((startOfDay(now) - startOfDay(at)) / 86_400_000);
+  if (days === 0) return clock.format(at);
+  if (days === 1) return "вчера";
+  return date.format(at);
+}
 
 export async function HomeShell({ children }: { children: React.ReactNode }) {
-  const [{ account: navAccount, cabinet }, perms] = await Promise.all([currentAccountNav(), currentPermissions()]);
+  const [{ account: navAccount, cabinet, chat, system, spot }, perms, current] = await Promise.all([
+    currentAccountNav(),
+    currentPermissions(),
+    currentTournament(),
+  ]);
+
+  // Строки панели — последние сообщения той же беседы с лигой, что открыта на `/chat/system`.
+  // Непрочитанные всегда свежие: помечаем столько верхних, сколько насчитал колокольчик.
+  const lines: NotificationLine[] = [];
+  if (chat && system.conversationId) {
+    const now = new Date();
+    const tail = (await messages(system.conversationId, chat.accountId, { limit: 20 })).reverse().slice(0, 8);
+    for (const m of tail)
+      lines.push({ id: m.id, text: m.text, time: when(m.createdAt, now), unread: lines.length < system.unread });
+  }
+
+  const links: NavLink[] = [
+    { href: "/", label: "Главная", accent: true },
+    // Турнира нет — пункта нет: пустая ссылка «LOST cup» вела бы в никуда.
+    ...(current ? [{ href: `/tournaments/${current.slug}`, label: "LOST cup", accent: true }] : []),
+    { href: "/roster", label: "Команды" },
+    { href: "/roster/players", label: "Игроки" },
+    { href: "/rules", label: "Правила" },
+  ];
+
+  // Подпись под ником в меню — «команда · позиция» из макета. Своя, а не общая `account.role`:
+  // ту же подпись показывает сайдбар, а его эта задача не трогает.
+  const subtitle = spot
+    ? [spot.team.name, roleShort(spot.role)].filter(Boolean).join(" · ")
+    : undefined;
 
   return (
     <div className="flex min-w-0 flex-1 flex-col">
       <header className={`mx-auto w-full ${SITE_MAX_W} px-4 pb-2 pt-5 font-pouf md:px-6`}>
-        <div className="flex items-center gap-3 rounded-[28px] bg-surface px-4 py-3 cushion-card sm:gap-5 sm:px-5">
-          <Link href="/" className="flex min-w-0 shrink items-center gap-2.5" title="SPIRIT/CTRL — главная">
+        {/* Острова переносятся по одному: на узком экране ряд разделов уходит под бренд и вход,
+            а не ужимается в нечитаемые огрызки. */}
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href="/"
+            className="flex min-w-0 shrink items-center gap-2.5 rounded-card bg-surface px-4 py-2.5 cushion-card"
+            title="SPIRIT/CTRL — главная"
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/assets/brand/mark.svg" alt="" aria-hidden className="h-8 w-auto" />
             {/* На узком экране остаётся один знак: со словом в строку не влезают разделы, а без
@@ -41,20 +93,31 @@ export async function HomeShell({ children }: { children: React.ReactNode }) {
             />
           </Link>
 
-          <nav className="flex min-w-0 items-center gap-1 sm:gap-2">
-            {LINKS.map((l) => (
+          {/* На телефоне остров разделов уезжает под строку «бренд — аккаунт» и занимает её целиком:
+              иначе вход отрывается от бренда и висит отдельной строкой посреди шапки. */}
+          <nav className="order-last flex w-full min-w-0 flex-wrap items-center gap-2 rounded-card bg-surface px-3 py-2.5 cushion-card lg:order-none lg:w-auto">
+            {links.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
-                className="rounded-chip px-2.5 py-2 text-[13.5px] font-extrabold text-ink-muted transition hover:bg-surface-2 hover:text-ink sm:px-3 sm:text-[14.5px]"
+                className={`rounded-control-sm px-3 py-2.5 text-[13px] font-extrabold transition sm:px-[18px] ${
+                  l.accent
+                    ? "bg-accent-fill text-[var(--on-accent)] cushion-blob"
+                    : "text-ink-muted hover:bg-surface-2 hover:text-ink"
+                }`}
               >
                 {l.label}
               </Link>
             ))}
           </nav>
 
-          <div className="ml-auto flex shrink-0 items-center">
-            <AvatarMenu account={navAccount} items={cabinet} tools={perms.length > 0} />
+          <div className="ml-auto flex shrink-0 items-center gap-2.5 rounded-card bg-surface px-3 py-2.5 cushion-card">
+            {/* Колокольчик есть только у того, кому лига может написать: у гостя и у аккаунта без
+                карточки игрока служебного канала нет вовсе, и пустой значок им ни о чём. */}
+            {chat && (
+              <Notifications conversationId={system.conversationId} unread={system.unread} lines={lines} />
+            )}
+            <AvatarMenu account={navAccount} items={cabinet} tools={perms.length > 0} subtitle={subtitle} />
           </div>
         </div>
       </header>

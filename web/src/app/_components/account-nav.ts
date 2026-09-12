@@ -5,7 +5,8 @@ import { playerPath } from "@/lib/profiles";
 import { currentAccount, effectiveRole, type Account } from "@/lib/account";
 import { resolveUpload } from "@/lib/uploads";
 import type { Role } from "@/lib/player-auth";
-import { chatIdentity, unreadTotal } from "@/lib/chat";
+import { chatIdentity, findConversation, unreadInConversation, unreadTotal } from "@/lib/chat";
+import { systemAccountId } from "@/lib/system-chat";
 import type { NavAccount, NavItem } from "./nav-model";
 
 // Кто вошёл — одним ответом на оба хрома продукта: колонку (`app-shell.tsx`) и верхнюю строку
@@ -36,8 +37,11 @@ export function initials(name: string): string {
   return (words[0] ?? "?").slice(0, 2).toLocaleUpperCase("ru");
 }
 
-/** Действующее место в составе: команда и капитанство. */
-export type NavSpot = { isCaptain: boolean; team: { id: number; name: string } };
+/** Действующее место в составе: команда, капитанство и позиция в пятёрке. */
+export type NavSpot = { isCaptain: boolean; role: string | null; team: { id: number; name: string } };
+
+/** Служебный канал лиги: беседа и её непрочитанное — колокольчику витрины. */
+export type NavSystemChat = { conversationId: number | null; unread: number };
 
 export type AccountNav = {
   /** Шапка входа: имя, роль, аватар. null — гость. */
@@ -48,16 +52,30 @@ export type AccountNav = {
   cabinet: NavItem[];
   /** Личка: есть только у игрока лиги — по ней решается и пункт «Сообщения», и живой канал. */
   chat: ReturnType<typeof chatIdentity>;
+  /** Непрочитанное ЛИЧНЫХ бесед — без служебного канала: его считает колокольчик. */
   unread: number;
+  system: NavSystemChat;
   spot: NavSpot | null;
 };
+
+/** Беседа игрока с лигой и её непрочитанное. Нет служебного аккаунта — канала ещё нет. */
+async function systemChat(meAccountId: number): Promise<NavSystemChat> {
+  const systemId = await systemAccountId();
+  const conversationId = systemId ? await findConversation(meAccountId, systemId) : null;
+  return { conversationId, unread: conversationId ? await unreadInConversation(conversationId, meAccountId) : 0 };
+}
 
 export async function accountNav(account: Account | null): Promise<AccountNav> {
   // Чат и присутствие: канал открывает только игрок лиги, а снимок «кто в сети» нужен и гостю.
   const chat = chatIdentity(account);
-  const unread = chat ? await unreadTotal(chat.accountId) : 0;
+  const [total, system] = chat
+    ? await Promise.all([unreadTotal(chat.accountId), systemChat(chat.accountId)])
+    : [0, { conversationId: null, unread: 0 } satisfies NavSystemChat];
+  // Два счётчика не пересекаются и вместе дают прежнюю сумму: колокольчик — служебное,
+  // «Сообщения» — всё остальное. Иначе одно непрочитанное светится в двух местах сразу.
+  const unread = Math.max(0, total - system.unread);
 
-  if (!account) return { account: null, raw: null, cabinet: [], chat, unread, spot: null };
+  if (!account) return { account: null, raw: null, cabinet: [], chat, unread, system, spot: null };
 
   const role = effectiveRole(account);
   const player = account.player;
@@ -68,7 +86,7 @@ export async function accountNav(account: Account | null): Promise<AccountNav> {
     ? await prisma.rosterSpot.findFirst({
         where: { playerId: player.id },
         orderBy: { id: "desc" },
-        select: { isCaptain: true, team: { select: { id: true, name: true } } },
+        select: { isCaptain: true, role: true, team: { select: { id: true, name: true } } },
       })
     : null;
 
@@ -118,6 +136,7 @@ export async function accountNav(account: Account | null): Promise<AccountNav> {
     cabinet,
     chat,
     unread,
+    system,
     spot,
   };
 }

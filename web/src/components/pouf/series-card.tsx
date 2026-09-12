@@ -233,3 +233,87 @@ export function SeriesCard({
     </section>
   );
 }
+
+/* ── столбиком: вторая форма той же карточки (макет `design/home/Main.dc.html`, `.mcard`) ──
+ *
+ * Зачем вариант, а не вторая карточка встречи. Форма «команда · счёт · команда» держится на
+ * ширине: середина фиксирована, по бокам равные колонки. В узкой колонке витрины (400px из
+ * макета) на имя команды остаётся ~140px, и обе стороны превращаются в огрызки с многоточием.
+ * Столбиком имя получает всю ширину, а счёт читается вертикально — как в турнирной сетке.
+ *
+ * Живёт здесь же, рядом с широкой формой: набор состояний (сыграна / ещё не сыграна, кто выиграл)
+ * у них общий, и расходиться им нельзя — иначе на одном сайте два ответа на вопрос «кто победил».
+ */
+
+/** Строка стороны: герб, имя, счёт. Победа — мятная подушка, поражение приглушено. */
+function StackedSide({ team, score, state }: { team: SeriesCardTeam; score: ReactNode; state: "win" | "lose" | "soon" }) {
+  const dim = state !== "win" ? "text-muted" : "";
+  return (
+    <div
+      className={`flex h-10 items-center gap-[11px] rounded-chip px-[11px] ${
+        state === "win" ? "bg-accent-fill text-[var(--on-accent)] cushion-blob" : ""
+      }`}
+    >
+      <TeamMark logo={team.logo} tag={team.tag ?? team.name} name={team.name} size={28} />
+      <span
+        className={`min-w-0 flex-1 truncate text-sm font-black tracking-[-0.2px] ${
+          state === "win" ? "" : state === "lose" ? "text-muted" : "text-ink"
+        }`}
+      >
+        {team.name}
+      </span>
+      <span
+        className={`shrink-0 pr-1 font-black tabular-nums ${state === "soon" ? `text-[13px] ${dim}` : `text-[17px] ${state === "lose" ? "text-muted" : ""}`}`}
+      >
+        {score}
+      </span>
+    </div>
+  );
+}
+
+export function SeriesCardStacked({
+  href,
+  cut,
+  when,
+  home,
+  away,
+  homeScore,
+  awayScore,
+  played,
+}: {
+  /** Адрес встречи. Нет — карточка не кликается (встреча ещё не разобрана). */
+  href?: string;
+  /** Верхняя строка слева: турнир и разрез. */
+  cut: ReactNode;
+  /** Верхняя строка справа: дата и время. */
+  when?: ReactNode;
+  home: SeriesCardTeam;
+  away: SeriesCardTeam;
+  homeScore: number;
+  awayScore: number;
+  /** Сыграна — показываем счёт; нет — прочерки вместо нулей: 0:0 читается как ничья. */
+  played: boolean;
+}) {
+  const state = (mine: number, other: number): "win" | "lose" | "soon" =>
+    !played ? "soon" : mine > other ? "win" : "lose";
+
+  const body = (
+    <>
+      <div className="flex h-10 items-center gap-2.5 border-b border-hairline px-2.5">
+        <span className="min-w-0 flex-1 truncate text-xs font-extrabold text-muted">{cut}</span>
+        {when && <span className="shrink-0 text-[11.5px] font-extrabold tabular-nums text-ink-subtle">{when}</span>}
+      </div>
+      <StackedSide team={home} score={played ? homeScore : "—"} state={state(homeScore, awayScore)} />
+      <StackedSide team={away} score={played ? awayScore : "—"} state={state(awayScore, homeScore)} />
+    </>
+  );
+
+  const cls = "block rounded-blob bg-surface px-2 pb-2 pt-1 font-pouf cushion-row";
+  return href ? (
+    <Link href={href} className={`${cls} transition hover:cushion-row-hover`}>
+      {body}
+    </Link>
+  ) : (
+    <div className={cls}>{body}</div>
+  );
+}

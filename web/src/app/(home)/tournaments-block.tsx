@@ -1,130 +1,104 @@
 import Link from "next/link";
-import { listTournaments, registrationOpen } from "@/lib/tournaments";
-import { buttonClasses } from "@/components/pouf/Button";
-import { Eyebrow } from "@/components/pouf/text";
+import { listTournaments } from "@/lib/tournaments";
+import { StatTile } from "@/components/pouf/blocks";
 import { EmptyState } from "@/components/pouf/feedback";
-import { PillLink } from "@/components/pouf/tabs";
 import { TournamentStatus } from "@/app/_components/tournament-status";
+import { Slab } from "./slab";
 
-// Турниры лиги на витрине — тремя разрезами: что идёт, что впереди, что уже сыграно.
+// Турниры лиги на плите витрины — макет `design/home/Main.dc.html`, блок «Турниры».
 //
-// Разрез живёт в адресе (`/?t=next`), а не в состоянии клиента: правило L4 стандарта — ссылку на
-// разрез должно быть можно кинуть в чат. Заодно блок остаётся серверным, без «use client» ради
-// трёх кнопок.
+// Три карточки, по одной на состояние: что идёт, что набирает заявки, что уже сыграно. Разрезов
+// вкладками (`/?t=next`) здесь больше нет: макет показывает все три состояния разом, и это честнее
+// — у лиги обычно ровно по одному турниру в каждом, и вкладка «Прошедшие» скрывала соседей ради
+// списка из одного элемента. Полный список — по ссылке «все турниры».
 //
 // Черновики не показываем: турнир становится событием лиги, когда его открыли на заявки, — до
 // этого он рабочая заготовка оператора.
 
 type Row = Awaited<ReturnType<typeof listTournaments>>[number];
 
-const CUTS = ["now", "next", "past"] as const;
-export type TournamentCut = (typeof CUTS)[number];
-export const isTournamentCut = (v: string | undefined): v is TournamentCut =>
-  (CUTS as readonly string[]).includes(v ?? "");
+/** Порядок слотов на плите — он же порядок состояний турнира во времени. */
+const SLOTS = ["running", "registration", "finished"] as const;
 
-const CUT_LABELS: Record<TournamentCut, string> = { now: "Идут", next: "Впереди", past: "Прошедшие" };
+const EMPTY_SLOT: Record<(typeof SLOTS)[number], string> = {
+  running: "Идущих турниров\nпока нет",
+  registration: "Приём заявок\nзакрыт",
+  finished: "Завершённых турниров\nпока нет",
+};
 
 const date = new Intl.DateTimeFormat("ru", { day: "numeric", month: "long", year: "numeric" });
+const shortDate = new Intl.DateTimeFormat("ru", { day: "2-digit", month: "2-digit" });
 
-/** Промежуток турнира словами: обе даты, одна или ничего — пустых тире в строке быть не должно. */
-function period(t: Row) {
+/** Подпись под именем турнира: сроки приёма у набора, промежуток у остальных. */
+function subtitle(t: Row): string | null {
+  if (t.status === "registration")
+    return t.regCloseAt ? `Приём заявок до ${shortDate.format(t.regCloseAt)}` : "Приём заявок открыт";
   if (t.startAt && t.endAt) return `${date.format(t.startAt)} — ${date.format(t.endAt)}`;
   if (t.startAt) return `с ${date.format(t.startAt)}`;
   if (t.endAt) return `до ${date.format(t.endAt)}`;
-  return null;
+  return t.format;
 }
 
 function Card({ t }: { t: Row }) {
-  const facts = [period(t), t.format, t.prize && `призовой ${t.prize}`].filter(Boolean);
+  const teams = t.divisions.reduce((n, d) => n + d._count.entries, 0);
   return (
-    <article className="flex flex-col rounded-card bg-surface p-5 cushion-card">
-      <div className="flex flex-wrap items-center gap-2">
+    <article className="flex w-[250px] shrink-0 snap-start flex-col gap-4 rounded-card bg-surface p-[22px] cushion-card sm:w-auto">
+      <div>
         <TournamentStatus status={t.status} />
       </div>
-      <h3 className="mt-3 text-lg font-black tracking-tight">
-        <Link href={`/tournaments/${t.slug}`} className="hover:text-[var(--accent-ink)]">
-          {t.name}
-        </Link>
-      </h3>
-      {facts.length > 0 && <p className="mt-1.5 text-[13px] font-bold text-muted">{facts.join(" · ")}</p>}
-
-      {t.divisions.length > 0 && (
-        <ul className="mt-3 flex flex-wrap gap-2">
-          {t.divisions.map((d) => (
-            <li key={d.id}>
-              <Link
-                href={`/tournaments/${t.slug}/${d.slug}`}
-                className="inline-flex rounded-chip bg-surface px-3 py-1.5 text-[13px] font-black text-ink cushion-field transition hover:text-[var(--accent-ink)]"
-              >
-                {d.label ?? d.name}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <div className="mt-4 flex flex-wrap gap-2 pt-1">
-        <Link href={`/tournaments/${t.slug}`} className={buttonClasses({ size: "sm", variant: "quiet" })}>
-          Открыть турнир
-        </Link>
-        {registrationOpen(t) && (
-          <Link href={`/tournaments/${t.slug}/apply`} className={buttonClasses({ size: "sm" })}>
-            Заявить команду
+      <div className="min-w-0">
+        <h3 className="text-xl font-black tracking-[-0.5px]">
+          <Link href={`/tournaments/${t.slug}`} className="hover:text-[var(--accent-ink)]">
+            {t.name}
           </Link>
+        </h3>
+        {subtitle(t) && (
+          <p className="mt-1 text-xs font-extrabold uppercase tracking-[0.8px] text-ink-subtle">{subtitle(t)}</p>
         )}
+      </div>
+      {/* Два показателя из макета. «Набрано N из M» со шкалой заполнения не рисуем: размера сетки
+          у турнира в модели нет, и знаменатель пришлось бы выдумать. */}
+      <div className="mt-auto grid grid-cols-2 gap-3">
+        <StatTile label="Команд" value={teams} />
+        <StatTile label="Призовой" value={t.prize ?? "—"} />
       </div>
     </article>
   );
 }
 
-export async function TournamentsBlock({ cut }: { cut?: TournamentCut }) {
-  const all = await listTournaments();
-  const groups: Record<TournamentCut, Row[]> = {
-    now: all.filter((t) => t.status === "running"),
-    next: all.filter((t) => t.status === "registration"),
-    // Сыгранные — свежие сверху: `listTournaments` уже сортирует по дате старта вниз.
-    past: all.filter((t) => t.status === "finished"),
-  };
+/** Пустой слот состояния — вдавленная лунка из макета (`.tour.empty`), а не пропуск: без неё
+ *  ряд из двух карточек растягивается и перестаёт совпадать с соседними плитами. */
+function EmptySlot({ text }: { text: string }) {
+  return (
+    <div className="grid w-[250px] shrink-0 snap-start place-items-center whitespace-pre-line rounded-card bg-surface-2 p-[22px] text-center text-[13.5px] font-extrabold leading-[1.5] text-muted cushion-field sm:w-auto">
+      {text}
+    </div>
+  );
+}
 
-  // Разрез по умолчанию — первый непустой: у лиги без идущего сезона витрина не должна открываться
-  // пустой вкладкой, когда рядом есть сыгранные турниры. Но ЯВНО выбранный разрез не подменяем,
-  // даже пустой: молча показать другой список в ответ на нажатие — соврать про то, что нажали.
-  const active = cut ?? CUTS.find((c) => groups[c].length > 0) ?? "now";
-  const rows = groups[active];
+export async function TournamentsBlock() {
+  const all = await listTournaments();
+  // Слот занимает самый свежий турнир состояния: `listTournaments` уже сортирует по старту вниз.
+  const slots = SLOTS.map((status) => ({ status, t: all.find((t) => t.status === status) ?? null }));
+  const any = slots.some((s) => s.t);
 
   return (
-    <section className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Eyebrow>Турниры лиги</Eyebrow>
-        <div className="flex flex-wrap gap-2">
-          {CUTS.map((c) => (
-            <PillLink key={c} href={`/?t=${c}`} active={c === active} size="sm" count={groups[c].length}>
-              {CUT_LABELS[c]}
-            </PillLink>
-          ))}
+    <Slab title="Турниры" more={any ? { href: "/tournaments", label: "все турниры" } : undefined}>
+      {any ? (
+        // На телефоне карточки листаются вбок (аннотация `n-mob`): вертикальный список из трёх
+        // карточек по 250px занимал бы весь первый экран и отодвигал матчи с баллами под сгиб.
+        // Отрицательные поля — чтобы подушки не обрезались краем полосы прокрутки.
+        <div className="-mx-2 flex snap-x snap-mandatory gap-3.5 overflow-x-auto px-2 pb-2 sm:mx-0 sm:grid sm:grid-cols-3 sm:gap-5 sm:overflow-visible sm:px-0">
+          {slots.map((s) =>
+            s.t ? <Card key={s.status} t={s.t} /> : <EmptySlot key={s.status} text={EMPTY_SLOT[s.status]} />,
+          )}
         </div>
-      </div>
-
-      {rows.length === 0 ? (
-        <EmptyState icon="trophy" title="Пока пусто">
-          В этом разрезе турниров нет. Загляните в соседний — или откройте общий список.
-        </EmptyState>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {rows.slice(0, 3).map((t) => (
-            <Card key={t.id} t={t} />
-          ))}
-        </div>
+        <EmptyState icon="trophy" title="Турниров ещё нет">
+          Как только организатор откроет первый турнир, он встанет здесь — со статусом, составом и
+          призовым.
+        </EmptyState>
       )}
-
-      {rows.length > 3 && (
-        <p className="text-sm font-bold text-muted">
-          <Link href="/tournaments" className="text-[var(--accent-ink)] hover:underline">
-            Все турниры лиги
-          </Link>{" "}
-          — ещё {rows.length - 3}
-        </p>
-      )}
-    </section>
+    </Slab>
   );
 }
