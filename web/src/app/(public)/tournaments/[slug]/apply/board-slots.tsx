@@ -3,6 +3,7 @@
 import { DragCard, dropClasses, useDropTarget } from "@/components/pouf/board";
 import { Eyebrow } from "@/components/pouf/text";
 import { Icon } from "@/components/pouf/Icon";
+import { Radio, RadioGroup } from "@/components/pouf/radio";
 import { PlayerLine } from "./board-player";
 import { SLOTS } from "./slots";
 import type { PoolEntry } from "./pool";
@@ -40,8 +41,19 @@ export function SlotBoard({
         </span>
       </div>
 
-      {/* role=radiogroup: капитан один на состав, и кружки у слотов — это выбор одного из многих. */}
-      <div className="space-y-1.5" role="radiogroup" aria-label="Капитан команды">
+      {/* Капитан один на состав — это выбор одного из многих, то есть радиогруппа Кита.
+          Выбранное берётся из состояния доски (`captainId`), а не из DOM: React 19 после
+          серверного экшена сбрасывает поля формы, и нативный `checked` терял отметку,
+          хотя в состоянии капитан оставался. */}
+      <RadioGroup
+        className="space-y-1.5"
+        aria-label="Капитан команды"
+        value={SLOTS.find((s) => slots[s.key] != null && slots[s.key] === captainId)?.key ?? ""}
+        onValueChange={(key) => {
+          const playerId = slots[key];
+          if (playerId) onCaptain(playerId);
+        }}
+      >
         {SLOTS.map((s) => {
           const playerId = slots[s.key];
           return (
@@ -51,13 +63,11 @@ export function SlotBoard({
               label={s.label}
               core={s.core}
               player={playerId ? (byId.get(playerId) ?? null) : null}
-              isCaptain={!!playerId && playerId === captainId}
-              onCaptain={() => playerId && onCaptain(playerId)}
               onClear={() => onClear(s.key)}
             />
           );
         })}
-      </div>
+      </RadioGroup>
 
       <p className="text-xs font-bold leading-[1.5] text-muted">
         Капитан — кружком у слота; это тот, с кем организаторы будут договариваться о встречах, а не
@@ -72,16 +82,12 @@ function SlotRow({
   label,
   core,
   player,
-  isCaptain,
-  onCaptain,
   onClear,
 }: {
   slotKey: string;
   label: string;
   core: boolean;
   player: PoolEntry | null;
-  isCaptain: boolean;
-  onCaptain: () => void;
   onClear: () => void;
 }) {
   const { ref, isOver } = useDropTarget(`slot:${slotKey}`);
@@ -91,34 +97,13 @@ function SlotRow({
       ref={ref}
       className={`flex items-center gap-2 rounded-control p-1.5 transition-[box-shadow,background] ${dropClasses({ isOver, filled: !!player })}`}
     >
-      <label
-        className="relative ml-1 grid h-7 w-7 shrink-0 place-items-center"
+      <Radio
+        value={slotKey}
+        disabled={!player}
+        aria-label={`Капитан — ${label}`}
         title={player ? "Отметить капитаном" : "Слот пуст — капитана ставят на человека"}
-      >
-        <input
-          type="radio"
-          name="captain-slot"
-          checked={isCaptain}
-          onChange={onCaptain}
-          disabled={!player}
-          aria-label={`Капитан — ${label}`}
-          className="peer sr-only"
-        />
-        {/* Кружок Кита (`.radio`): вдавленная лунка, выбранный — мятная подушка с точкой.
-            Вид берётся из состояния доски (`isCaptain`), а НЕ из `:checked` у input: React 19
-            после серверного экшена сбрасывает поля формы, и разметка на `peer-checked` гасила
-            отметку капитана, хотя в состоянии он остался. Фокус-кольцо по-прежнему от input —
-            это его собственное состояние, сбросом оно не задевается. */}
-        <span
-          className={`grid h-7 w-7 place-items-center rounded-pill transition-[box-shadow,background] peer-disabled:opacity-45 peer-focus-visible:[box-shadow:var(--pouf-field),var(--sh-focus)] ${
-            isCaptain ? "bg-accent-fill cushion-blob" : "bg-surface cushion-field"
-          }`}
-        >
-          <span
-            className={`h-2.5 w-2.5 rounded-pill bg-[var(--on-accent)] transition-opacity ${isCaptain ? "opacity-100" : "opacity-0"}`}
-          />
-        </span>
-      </label>
+        className="ml-1"
+      />
 
       {/* На узком экране от подписи остаётся только позиция («Поз. 1»): полная («Поз. 1 · Керри»)
           съедала 96px из 390, и на строку игрока не оставалось ничего — от ника был виден аватар

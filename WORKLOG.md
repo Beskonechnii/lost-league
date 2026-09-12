@@ -9,6 +9,14 @@
 
 ---
 
+## 2026-09-12 — Кит: Radio, Toggle, Calendar и витрина `/admin/kit`
+
+Три атома макета уехали в Кит на токенах: `Radio` (радикс-группа; ею же заменён нативный
+`type="radio"` в заявке на турнир), `Toggle`, `Calendar` (вынут из `date-field.tsx`: шесть недель,
+дни соседних месяцев приглушены). Витрина `/admin/kit` показывает состояния живыми компонентами.
+**Файлы.** `pouf/{radio,toggle,calendar,date-field}.tsx`, `(admin)/admin/kit/**`, `apply/board-slots.tsx`.
+**Дальше.** Подэтап B того же ТЗ: Breadcrumbs, Pagination, Tooltip, Accordion.
+
 ## 2026-09-11 — Кит элементов разобран на компонентные артборды
 
 Четыре витрины-свалки распались на 29 артбордов, по одному на компонент; лист «Состояния»
@@ -85,28 +93,3 @@
 Вход — 10 неудач за 15 минут на пару «почта+IP». Старые короткие пароли продолжают работать.
 **Файлы.** `lib/password-rules.ts`, `lib/password-blocklist.ts`, `lib/rate-limit.ts`,
 `lib/account.ts`, `pouf/Input.tsx` (позже `pouf/password-field.tsx`), `me/auth-forms.tsx`.
-
-## 2026-09-10 — Э15: Steam вместо поиска по нику
-
-Callback различает вход и привязку по своей сессии: сессии нет — вход, есть и `steamId` свободен —
-привязка без новой сессии, занят другим — отказ `?error=steam-taken`. «Найти себя на Dotabuff»
-снята. Перед уходом на Steam форма дожидается записи черновика. Формы входа не теряют почту.
-**Файлы.** `api/auth/steam/callback/route.ts`, `lib/profiles.ts`, `me/application-form.tsx`,
-`me/actions.ts`, `me/auth-forms.tsx`.
-**Дальше.** Приёмка 1–3 ждёт `STEAM_API_KEY` в `web/.env`.
-
-## 2026-09-10 — Э14: черновик анкеты на сервере
-
-Черновик пишется при каждом переходе вперёд (`saveApplicationDraft` → `storeApplicationDraft`),
-возврат открывает нужную ветку квиза на сохранённом шаге, отправка его чистит. Против ТЗ хранит
-ещё `playerId` и `policy` — без второго возврат на шаг 3 упирался бы в отказ «Примите правила».
-**Файлы.** `schema.prisma` + миграция `20260910120000_application_draft`, `lib/application.ts`,
-`lib/account.ts`, `me/actions.ts`, `me/application-form.tsx`.
-
-## 2026-09-09 — Э13: баги анкеты
-
-Все семь пунктов закрыты. Галочка правил проверяется состоянием формы: скрытая подложка radix
-возвращала `reportValidity() === false`, и «Далее» переставала работать молча. Позиция и страна —
-нативные `FormSelect`. Телефон стал необязательным. Имя и фамилия разводятся в импорте ростера.
-**Файлы.** `me/application-form.tsx` (переписан), `lib/application.ts`, `lib/profiles.ts`,
-`lib/roster-import.ts`, `lib/team-application.ts`, `lib/crm-match.ts`, `scripts/import-roster.ts`.
