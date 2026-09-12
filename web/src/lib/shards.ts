@@ -23,6 +23,7 @@
 import { prisma } from "./prisma";
 import { accountIdFromSteamId, playerAccountId, playerGaps } from "./profiles";
 import { shardGrade, shardProgress, type ShardGrade, type ShardReason } from "./shard-grades";
+import { resolveUpload } from "./uploads";
 
 /** Что и сколько дают. Числа — здесь и только здесь; витрина берёт их отсюда же. */
 export const SHARD_AWARDS: { reason: Exclude<ShardReason, "manual">; amount: number; hint: string }[] = [
@@ -191,4 +192,72 @@ export const shardsOfAccount = (accountId: number) => viewOf(accountId, true);
 export async function shardsOfPlayer(playerId: number, own = false): Promise<ShardsView> {
   const account = await prisma.userAccount.findUnique({ where: { playerId }, select: { id: true } });
   return account ? viewOf(account.id, own) : emptyShards();
+}
+
+/**
+ * Верхушка топа осколков и место конкретного игрока — для вкладки «Shards» на витрине.
+ *
+ * Форма строки намеренно совпадает с `TpRow`: обе вкладки блока «Баллы» рисует один компонент,
+ * и расхождение полей дало бы два почти одинаковых списка с разной разметкой.
+ *
+ * Подлежащее осколков — АККАУНТ, а зачёта — карточка игрока (см. комментарий `ShardEntry`).
+ * Поэтому топ идёт через `UserAccount.playerId`: аккаунт без карточки в лигу ещё не принят и в
+ * публичной витрине ему делать нечего, даже если вехи он уже набрал.
+ */
+export type ShardRow = { place: number; id: number; slug: string; nickname: string; photo: string | null; score: number };
+
+export async function shardLeaderboard(
+  opts: { limit?: number; playerId?: number | null } = {},
+): Promise<{ rows: ShardRow[]; me: ShardRow | null; total: number }> {
+  const limit = opts.limit ?? 5;
+  // Только плюсовые строки — то же правило, по которому считается грейд (`viewOf`): траты, когда
+  // появятся, не должны ронять место в топе.
+  const sums = await prisma.shardEntry.groupBy({
+    by: ["accountId"],
+    where: { amount: { gt: 0 } },
+    _sum: { amount: true },
+  });
+  if (sums.length === 0) return { rows: [], me: null, total: 0 };
+
+  const accounts = await prisma.userAccount.findMany({
+    where: { id: { in: sums.map((s) => s.accountId) }, playerId: { not: null } },
+    select: { id: true, playerId: true },
+  });
+  const playerByAccount = new Map(accounts.map((a) => [a.id, a.playerId!]));
+
+  const ranked = sums
+    .flatMap((s) => {
+      const playerId = playerByAccount.get(s.accountId);
+      const score = s._sum.amount ?? 0;
+      return playerId && score > 0 ? [[playerId, score] as const] : [];
+    })
+    .sort((a, b) => b[1] - a[1]);
+  if (ranked.length === 0) return { rows: [], me: null, total: 0 };
+
+  const meIndex = opts.playerId ? ranked.findIndex(([id]) => id === opts.playerId) : -1;
+  const wanted = new Set(ranked.slice(0, limit).map(([id]) => id));
+  if (meIndex >= 0) wanted.add(ranked[meIndex][0]);
+
+  const players = await prisma.player.findMany({
+    where: { id: { in: [...wanted] } },
+    select: { id: true, slug: true, nickname: true, photo: true },
+  });
+  const byId = new Map(players.map((p) => [p.id, p]));
+
+  const row = async (index: number): Promise<ShardRow | null> => {
+    const [id, score] = ranked[index];
+    const p = byId.get(id);
+    if (!p) return null; // карточку удалили, а начисления остались — такую строку в витрину не берём
+    return {
+      place: index + 1,
+      id,
+      slug: p.slug,
+      nickname: p.nickname,
+      photo: await resolveUpload("players", p.slug, "photo", p.photo),
+      score,
+    };
+  };
+
+  const rows = (await Promise.all(ranked.slice(0, limit).map((_, i) => row(i)))).filter((r): r is ShardRow => r !== null);
+  return { rows, me: meIndex >= 0 ? await row(meIndex) : null, total: ranked.length };
 }

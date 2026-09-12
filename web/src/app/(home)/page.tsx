@@ -9,7 +9,7 @@ import { MiniProfile } from "./mini-profile";
 import { TournamentsBlock } from "./tournaments-block";
 import { MatchesBlock, isMatchCut } from "./matches-block";
 import { HomeBanner } from "./banner";
-import { PointsBlock } from "./points";
+import { PointsBlock, isPointsCut } from "./points";
 
 // Входная дверь продукта — витрина, а не список разделов (Э21 RELEASE-PLAN §E).
 //
@@ -37,8 +37,8 @@ export const metadata: Metadata = {
 
 const SITE = "https://leagueofspirits.ru/lost_s1";
 
-export default async function Home({ searchParams }: { searchParams: Promise<{ m?: string }> }) {
-  const { m } = await searchParams;
+export default async function Home({ searchParams }: { searchParams: Promise<{ m?: string; p?: string }> }) {
+  const { m, p } = await searchParams;
   const nav = await currentAccountNav();
   const current = await currentTournament();
   const divisions = current ? await getDivisions(current.id) : [];
@@ -82,7 +82,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
           divisionShort={short}
           more={allMatches}
         />
-        <PointsBlock tournament={current} playerId={playerId} />
+        <PointsBlock tournament={current} playerId={playerId} cut={isPointsCut(p) ? p : "tp"} />
       </div>
 
       <p className="text-sm font-bold text-muted">
