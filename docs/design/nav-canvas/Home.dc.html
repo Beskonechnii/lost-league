@@ -1,0 +1,147 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap">
+  <style>
+    /* Токены Light Clay — перенос из web/src/components/pouf/pouf.css буква в букву. */
+    :root {
+      --bg: #e7e3d8; --surface: #f8f4ec; --carve: #ece7dd;
+      --ink: #33322e; --muted: #69655d; --subtle: #aeaaa0;
+      --line: #e0dace; --line-strong: #d3ccbe;
+      --accent-fill: #a9dcc3; --on-accent: #184636; --accent-ink: #2e7d5e;
+      --err-ink: #7c2f2f; --lip: 3px;
+      --font: 'Nunito', 'SF Pro Rounded', system-ui, sans-serif;
+      --grad-surface: linear-gradient(135deg, #ffffff, #f8f4ec 55%, #eee8dd);
+      --grad-accent: linear-gradient(135deg, #d5f2e2, #a9dcc3 52%, #8ccbad);
+      --grad-board: linear-gradient(135deg, #fdfbf6, #f1ece1);
+    }
+    body { margin: 0; font-family: var(--font); color: var(--ink); }
+    a { color: #2e7d5e; } a:hover { color: #184636; }
+    /* Пластилиновые тени Кита. Раскладку правим в панели, тени — часть материала. */
+    .sh-card {
+      box-shadow: 0 0 0 1px rgba(255,255,255,.55), inset 2px 3px 4px -1px rgba(255,255,255,.95),
+        inset -3px -4px 7px -2px rgba(150,135,105,.3), inset 0 calc(-1 * var(--lip)) 0 rgba(178,164,132,.24),
+        0 4px 7px rgba(120,108,78,.15), 0 22px 40px -8px rgba(120,108,78,.3), 0 58px 88px -24px rgba(120,108,78,.22);
+    }
+    .sh-row {
+      box-shadow: 0 0 0 1px rgba(255,255,255,.55), inset 2px 2px 3px -1px rgba(255,255,255,.95),
+        inset -2px -3px 4px -1px rgba(150,135,105,.28), 0 3px 5px rgba(120,108,78,.16), 0 12px 22px -5px rgba(120,108,78,.28);
+    }
+    .sh-board {
+      box-shadow: 0 0 0 1px rgba(255,255,255,.6), inset 3px 4px 6px -1px rgba(255,255,255,.95),
+        inset -4px -5px 10px -2px rgba(150,135,105,.22), inset 0 -4px 0 rgba(178,164,132,.2),
+        0 6px 10px rgba(120,108,78,.14), 0 34px 60px -10px rgba(120,108,78,.3), 0 90px 130px -30px rgba(120,108,78,.2);
+    }
+    .sh-blob {
+      box-shadow: 0 0 0 1px rgba(255,255,255,.4), inset 2px 2px 3px -1px rgba(255,255,255,.9),
+        inset -2px -3px 4px -1px rgba(70,140,105,.38), 0 3px 5px rgba(80,150,115,.26), 0 12px 22px -5px rgba(80,150,115,.42);
+    }
+    .sh-control {
+      box-shadow: 0 0 0 1px rgba(255,255,255,.4), inset 2px 3px 4px -1px rgba(255,255,255,.9),
+        inset -3px -4px 6px -2px rgba(70,140,105,.4), inset 0 calc(-1 * var(--lip)) 0 rgba(84,150,116,.45),
+        0 4px 7px rgba(80,150,115,.26), 0 16px 28px -6px rgba(80,150,115,.42), 0 34px 50px -16px rgba(80,150,115,.26);
+    }
+    .sh-field {
+      box-shadow: inset 2px 3px 5px rgba(120,108,78,.26), inset -1px -1px 1px rgba(255,255,255,.55), inset 0 -1px 0 rgba(255,255,255,.4);
+    }
+    .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+    .wordmark { background: var(--ink); -webkit-mask: url(wordmark.svg) center/contain no-repeat; mask: url(wordmark.svg) center/contain no-repeat; }
+  </style>
+</helmet>
+<div style="display: flex; flex-direction: column; width: 1440px; height: 900px; box-sizing: border-box; background: var(--bg); font-family: var(--font); color: var(--ink); overflow: hidden">
+  <!-- Единственная верхняя строка продукта: только у витрины (главная), вместо сайдбара. -->
+  <header style="width: 100%; box-sizing: border-box; padding: 20px 24px 8px">
+    <div class="sh-card" style="display: flex; align-items: center; gap: 20px; border-radius: 28px; background: var(--grad-surface); padding: 12px 20px">
+      <div style="display: flex; align-items: center; gap: 10px">
+        <img src="mark.svg" alt="" style="height: 32px; width: auto">
+        <span class="wordmark" style="display: block; height: 15px; width: 122px"></span>
+      </div>
+      <nav style="display: flex; align-items: center; gap: 8px">
+        <span style="border-radius: 16px; padding: 8px 12px; font-size: 14.5px; font-weight: 800; color: var(--muted)">Турниры</span>
+        <span style="border-radius: 16px; padding: 8px 12px; font-size: 14.5px; font-weight: 800; color: var(--muted)">Ростер</span>
+        <span style="border-radius: 16px; padding: 8px 12px; font-size: 14.5px; font-weight: 800; color: var(--muted)">Правила</span>
+      </nav>
+      <span class="sh-control" style="margin-left: auto; border-radius: 22px; background: var(--grad-accent); padding: 10px 20px; font-size: 14px; font-weight: 900; color: var(--on-accent)">Войти</span>
+    </div>
+  </header>
+
+  <!-- Первый экран витрины: обещание лиги, вход в текущий турнир и четыре цифры сезона. -->
+  <div style="display: flex; flex-direction: column; gap: 14px; padding: 6px 24px 0">
+    <div class="sh-board" style="border-radius: 46px; background: linear-gradient(115deg, #dff0e6, #f6f2ea 58%, #f1ece1); padding: 34px 40px 22px">
+      <span class="eyebrow" style="color: var(--muted)">Киберспортивная лига &middot; Минск</span>
+      <h1 style="margin: 12px 0 0; font-size: 56px; font-weight: 900; letter-spacing: -1.5px; line-height: 1">SPIRIT/CTRL</h1>
+      <p style="margin: 16px 0 0; max-width: 560px; font-size: 15px; font-weight: 700; line-height: 1.5; color: var(--muted)">Любительские турниры по Dota 2: дивизионы, групповая стадия и плей-офф, живая таблица и разбор каждой сыгранной карты.</p>
+      <div style="display: flex; align-items: center; gap: 10px; margin-top: 20px">
+        <span class="sh-blob" style="border-radius: 999px; background: var(--grad-accent); padding: 8px 16px; font-size: 13px; font-weight: 900; color: var(--on-accent)">LOST Season 2</span>
+        <span class="sh-row" style="border-radius: 999px; background: var(--surface); padding: 8px 16px; font-size: 13px; font-weight: 800; color: var(--muted)">Идёт</span>
+      </div>
+      <div style="margin-top: 18px">
+        <span class="sh-control" style="display: inline-flex; border-radius: 22px; background: var(--grad-accent); padding: 13px 24px; font-size: 15px; font-weight: 900; color: var(--on-accent)">Смотреть таблицу</span>
+      </div>
+
+      <!-- Четыре цифры сезона: первая акцентная, остальные нейтральные. -->
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 30px">
+        <sc-for list="{{stats}}" as="s" hint-placeholder-count="4">
+          <div class="{{s.shadow}}" style="border-radius: 24px; padding: 14px 18px; background: {{s.bg}}">
+            <div style="font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: {{s.labelInk}}">{{s.label}}</div>
+            <div style="margin-top: 6px; font-size: 26px; font-weight: 900; color: {{s.valueInk}}">{{s.value}}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <!-- Приглашение гостю. Одна строка, одна кнопка. -->
+    <div class="sh-card" style="display: flex; align-items: center; gap: 16px; border-radius: 30px; background: var(--grad-surface); padding: 18px 22px">
+      <span class="sh-row" style="display: grid; place-items: center; height: 42px; width: 42px; flex-shrink: 0; border-radius: 999px; background: var(--surface)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#69655d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"></circle><path d="M5 20a7 7 0 0 1 14 0"></path></svg>
+      </span>
+      <span style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+        <span style="font-size: 15px; font-weight: 900">Вы ещё не в лиге</span>
+        <span style="font-size: 13px; font-weight: 700; line-height: 1.45; color: var(--muted)">Заведите аккаунт — и у вас появится карточка игрока с рангом и статистикой, а команда сможет заявить вас в состав на сезон.</span>
+      </span>
+      <span class="sh-control" style="margin-left: auto; flex-shrink: 0; border-radius: 22px; background: var(--grad-accent); padding: 13px 22px; font-size: 14px; font-weight: 900; color: var(--on-accent)">Войти или вступить</span>
+    </div>
+
+    <!-- Список турниров лиги: eyebrow + фильтры одной строкой. -->
+    <div style="display: flex; align-items: center; gap: 10px; padding: 8px 6px 0">
+      <span class="eyebrow" style="color: var(--muted)">Турниры лиги</span>
+      <span style="margin-left: auto; display: flex; gap: 8px">
+        <span class="sh-blob" style="border-radius: 999px; background: var(--grad-accent); padding: 7px 14px; font-size: 12px; font-weight: 900; color: var(--on-accent)">Идут <b>1</b></span>
+        <span class="sh-row" style="border-radius: 999px; background: var(--surface); padding: 7px 14px; font-size: 12px; font-weight: 800; color: var(--muted)">Впереди <b>1</b></span>
+        <span class="sh-row" style="border-radius: 999px; background: var(--surface); padding: 7px 14px; font-size: 12px; font-weight: 800; color: var(--muted)">Прошедшие <b>0</b></span>
+      </span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+      <div class="sh-card" style="border-radius: 30px; background: var(--grad-surface); padding: 20px">
+        <span class="sh-blob" style="display: inline-flex; border-radius: 999px; background: var(--grad-accent); padding: 6px 14px; font-size: 12px; font-weight: 900; color: var(--on-accent)">Идёт</span>
+        <div style="margin-top: 12px; font-size: 20px; font-weight: 900">LOST Season 2</div>
+        <div style="margin-top: 6px; font-size: 12.5px; font-weight: 700; color: var(--muted)">2 дивизиона &middot; групповая стадия + плей-офф &middot; 28 команд</div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const mint = { bg: 'linear-gradient(135deg, #d5f2e2, #a9dcc3 52%, #8ccbad)', labelInk: '#184636', valueInk: '#184636', shadow: 'sh-blob' };
+    const plain = { bg: '#f8f4ec', labelInk: '#69655d', valueInk: '#33322e', shadow: 'sh-row' };
+    const stats = [
+      { label: 'Команд', value: '28', ...mint },
+      { label: 'Дивизионов', value: '2', ...plain },
+      { label: 'Сыграно встреч', value: '101', ...plain },
+      { label: 'Впереди', value: '0', ...plain },
+    ];
+    return { stats };
+  }
+}
+</script>
+</body>
+</html>

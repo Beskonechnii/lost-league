@@ -1,0 +1,225 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap">
+  <style>
+    /* Токены Light Clay — перенос из web/src/components/pouf/pouf.css буква в букву. */
+    :root {
+      --bg: #e7e3d8; --surface: #f8f4ec; --carve: #ece7dd;
+      --ink: #33322e; --muted: #69655d; --subtle: #aeaaa0;
+      --line: #e0dace; --line-strong: #d3ccbe;
+      --accent-fill: #a9dcc3; --on-accent: #184636; --accent-ink: #2e7d5e;
+      --err-ink: #7c2f2f; --lip: 3px;
+      --font: 'Nunito', 'SF Pro Rounded', system-ui, sans-serif;
+      --grad-surface: linear-gradient(135deg, #ffffff, #f8f4ec 55%, #eee8dd);
+      --grad-accent: linear-gradient(135deg, #d5f2e2, #a9dcc3 52%, #8ccbad);
+      --grad-board: linear-gradient(135deg, #fdfbf6, #f1ece1);
+    }
+    body { margin: 0; font-family: var(--font); color: var(--ink); }
+    a { color: #2e7d5e; } a:hover { color: #184636; }
+    /* Пластилиновые тени Кита. Раскладку правим в панели, тени — часть материала. */
+    .sh-card {
+      box-shadow: 0 0 0 1px rgba(255,255,255,.55), inset 2px 3px 4px -1px rgba(255,255,255,.95),
+        inset -3px -4px 7px -2px rgba(150,135,105,.3), inset 0 calc(-1 * var(--lip)) 0 rgba(178,164,132,.24),
+        0 4px 7px rgba(120,108,78,.15), 0 22px 40px -8px rgba(120,108,78,.3), 0 58px 88px -24px rgba(120,108,78,.22);
+    }
+    .sh-row {
+      box-shadow: 0 0 0 1px rgba(255,255,255,.55), inset 2px 2px 3px -1px rgba(255,255,255,.95),
+        inset -2px -3px 4px -1px rgba(150,135,105,.28), 0 3px 5px rgba(120,108,78,.16), 0 12px 22px -5px rgba(120,108,78,.28);
+    }
+    .sh-board {
+      box-shadow: 0 0 0 1px rgba(255,255,255,.6), inset 3px 4px 6px -1px rgba(255,255,255,.95),
+        inset -4px -5px 10px -2px rgba(150,135,105,.22), inset 0 -4px 0 rgba(178,164,132,.2),
+        0 6px 10px rgba(120,108,78,.14), 0 34px 60px -10px rgba(120,108,78,.3), 0 90px 130px -30px rgba(120,108,78,.2);
+    }
+    .sh-blob {
+      box-shadow: 0 0 0 1px rgba(255,255,255,.4), inset 2px 2px 3px -1px rgba(255,255,255,.9),
+        inset -2px -3px 4px -1px rgba(70,140,105,.38), 0 3px 5px rgba(80,150,115,.26), 0 12px 22px -5px rgba(80,150,115,.42);
+    }
+    .sh-control {
+      box-shadow: 0 0 0 1px rgba(255,255,255,.4), inset 2px 3px 4px -1px rgba(255,255,255,.9),
+        inset -3px -4px 6px -2px rgba(70,140,105,.4), inset 0 calc(-1 * var(--lip)) 0 rgba(84,150,116,.45),
+        0 4px 7px rgba(80,150,115,.26), 0 16px 28px -6px rgba(80,150,115,.42), 0 34px 50px -16px rgba(80,150,115,.26);
+    }
+    .sh-field {
+      box-shadow: inset 2px 3px 5px rgba(120,108,78,.26), inset -1px -1px 1px rgba(255,255,255,.55), inset 0 -1px 0 rgba(255,255,255,.4);
+    }
+    .eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+    .wordmark { background: var(--ink); -webkit-mask: url(wordmark.svg) center/contain no-repeat; mask: url(wordmark.svg) center/contain no-repeat; }
+  </style>
+</helmet>
+<div style="display: flex; width: 1440px; height: 900px; box-sizing: border-box; background: var(--bg); font-family: var(--font); color: var(--ink); overflow: hidden">
+  <!-- L1 — глобальный сайдбар, 332px (300 колонка + 32 поле под тень). Свёрнутый вариант 108px. -->
+  <aside style="width: 332px; flex-shrink: 0; padding: 16px; box-sizing: border-box; height: 900px">
+    <nav class="sh-card" style="display: flex; flex-direction: column; height: 100%; box-sizing: border-box; border-radius: 34px; background: var(--grad-surface); padding: 10px 13px 14px">
+      <!-- бренд + свернуть -->
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 8px 4px">
+        <div style="display: flex; align-items: center; gap: 10px">
+          <img src="mark.svg" alt="" style="height: 32px; width: auto">
+          <span class="wordmark" style="display: block; height: 15px; width: 122px"></span>
+        </div>
+        <span class="sh-row" style="display: grid; place-items: center; height: 34px; width: 34px; border-radius: 12px; background: var(--surface); color: var(--subtle); font-size: 15px; font-weight: 900">&lsaquo;</span>
+      </div>
+
+      <!-- профиль-блок: единственный вход в аккаунт -->
+      <div class="sh-row" style="display: flex; align-items: center; gap: 12px; margin: 8px 2px; border-radius: 24px; background: var(--surface); padding: 11px 12px">
+        <span style="display: grid; place-items: center; height: 44px; width: 44px; flex-shrink: 0; border-radius: 999px; background: var(--accent-fill); color: var(--on-accent)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"></circle><path d="M5 20a7 7 0 0 1 14 0"></path></svg></span>
+        <span style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+          <span style="font-size: 15px; font-weight: 900; line-height: 1.15">Войти</span>
+          <span style="font-size: 12px; font-weight: 800; color: var(--muted)">Кабинет и заявка в лигу</span>
+        </span>
+        <span style="margin-left: auto; color: var(--subtle); font-size: 14px; font-weight: 900">&rsaquo;</span>
+      </div>
+
+      <!-- поиск по лиге -->
+      <div class="sh-field" style="display: flex; align-items: center; gap: 8px; margin: 2px; border-radius: 22px; background: var(--carve); padding: 10px 14px">
+        <span style="flex: 1; font-size: 13px; font-weight: 700; color: var(--subtle)">Поиск по лиге…</span>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#aeaaa0" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 6px; padding: 10px 12px 2px">
+        <span style="height: 7px; width: 7px; border-radius: 999px; background: #2e7d5e"></span>
+        <span style="font-size: 11px; font-weight: 800; color: var(--muted)"><b style="color: var(--ink)">1</b> в сети</span>
+      </div>
+
+      <!-- пункты -->
+      <div style="display: flex; flex-direction: column; gap: 2px; margin-top: 4px">
+        <span style="display: flex; align-items: center; gap: 12px; border-radius: 16px; padding: 11px 14px; font-size: 14.5px; font-weight: 800">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"></path></svg>
+          Главная
+        </span>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 2px; margin-top: 10px">
+        <span style="padding: 4px 12px 8px; font-size: 11px; font-weight: 800; letter-spacing: 1.6px; text-transform: uppercase; color: var(--subtle)">Лига</span>
+        <span class="sh-blob" style="display: flex; align-items: center; gap: 12px; border-radius: 16px; background: var(--grad-accent); padding: 11px 14px; font-size: 14.5px; font-weight: 800; color: var(--on-accent)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v4a5 5 0 0 1-10 0z"></path><path d="M7 5H4v2a3 3 0 0 0 3 3M17 5h3v2a3 3 0 0 1-3 3"></path><path d="M12 13v4M9 21h6l-1-4h-4z"></path></svg>
+          Турниры
+        </span>
+        <span style="display: flex; align-items: center; gap: 12px; border-radius: 16px; padding: 11px 14px; font-size: 14.5px; font-weight: 800">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"></circle><path d="M3.5 19a5.5 5.5 0 0 1 11 0"></path><path d="M16 6.2a3 3 0 0 1 0 5.6M17.5 19a5.4 5.4 0 0 0-2.2-4.3"></path></svg>
+          Ростер
+        </span>
+      </div>
+
+      <div style="margin-top: auto; display: flex; flex-direction: column; gap: 2px; padding-top: 12px">
+        <span style="display: flex; align-items: center; gap: 12px; border-radius: 16px; padding: 11px 14px; font-size: 14.5px; font-weight: 800">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H19v16H5.5A1.5 1.5 0 0 1 4 18.5z"></path><path d="M8 4v16"></path></svg>
+          Правила лиги
+        </span>
+      </div>
+    </nav>
+  </aside>
+  <!-- страница -->
+  <div style="display: flex; flex-direction: column; min-width: 0; flex: 1">
+    <!-- L2 + L3 в одной строке: турнир и дивизион слева, этапы справа от разделителя -->
+    <div style="display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--line); background: rgba(231,227,216,.85); padding: 8px 24px">
+      <span class="sh-field" style="display: inline-flex; flex-shrink: 0; align-items: center; gap: 6px; border-radius: 14px; background: var(--surface); padding: 9px 14px; font-size: 13px; font-weight: 900">LOST Season 2 <span style="color: var(--muted)">&#9662;</span></span>
+      <span class="sh-control" style="display: inline-flex; flex-shrink: 0; border-radius: 14px; background: var(--grad-accent); padding: 9px 14px; font-size: 13px; font-weight: 900; color: var(--on-accent)">D1</span>
+      <span style="display: inline-flex; flex-shrink: 0; border-radius: 14px; padding: 9px 14px; font-size: 13px; font-weight: 900; color: var(--muted)">D2</span>
+      <span style="height: 20px; width: 1px; background: var(--line-strong); margin: 0 6px"></span>
+      <nav style="display: flex; gap: 8px">
+        <span class="sh-control" style="display: inline-flex; flex-shrink: 0; border-radius: 14px; background: var(--grad-accent); padding: 9px 14px; font-size: 13px; font-weight: 900; color: var(--on-accent)">Таблица</span>
+        <span style="display: inline-flex; flex-shrink: 0; border-radius: 14px; padding: 9px 14px; font-size: 13px; font-weight: 900; color: var(--muted)">Группы</span>
+        <span style="display: inline-flex; flex-shrink: 0; border-radius: 14px; padding: 9px 14px; font-size: 13px; font-weight: 900; color: var(--muted)">Плей-офф</span>
+        <span style="display: inline-flex; flex-shrink: 0; border-radius: 14px; padding: 9px 14px; font-size: 13px; font-weight: 900; color: var(--muted)">Статистика</span>
+        <span style="display: inline-flex; flex-shrink: 0; border-radius: 14px; padding: 9px 14px; font-size: 13px; font-weight: 900; color: var(--muted)">Составы</span>
+        <span style="display: inline-flex; flex-shrink: 0; border-radius: 14px; padding: 9px 14px; font-size: 13px; font-weight: 900; color: var(--muted)">TP</span>
+        <span style="display: inline-flex; flex-shrink: 0; border-radius: 14px; padding: 9px 14px; font-size: 13px; font-weight: 900; color: var(--muted)">О турнире</span>
+      </nav>
+    </div>
+
+    <!-- тело страницы: padding 32/24, контейнер до 1536px -->
+    <main style="display: flex; flex-direction: column; gap: 14px; padding: 32px 24px; min-width: 0">
+      <span class="eyebrow" style="color: var(--muted)">LOST Season 2</span>
+      <div style="display: flex; align-items: flex-end; gap: 16px">
+        <h1 style="margin: 0; font-size: 36px; font-weight: 900; letter-spacing: -.5px">LOST D1</h1>
+        <span style="margin-left: auto; font-size: 12.5px; font-weight: 800; color: var(--muted)">сыграно 56 из 56 встреч &middot; стадия завершена</span>
+      </div>
+
+      <div style="display: flex; align-items: baseline; gap: 10px; margin-top: 6px">
+        <h2 style="margin: 0; font-size: 22px; font-weight: 900">Группа A</h2>
+        <span style="font-size: 12px; font-weight: 800; color: var(--muted)">8 команд</span>
+      </div>
+
+      <!-- подушка таблицы -->
+      <div class="sh-card" style="border-radius: 30px; background: var(--grad-surface); padding: 16px 18px">
+        <div style="display: grid; grid-template-columns: 6px 22px 32px minmax(0, 1fr) 46px 46px 46px 62px 128px 64px; align-items: center; gap: 12px; padding: 4px 8px 10px; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--muted)">
+          <span></span><span>#</span><span></span><span>Команда</span>
+          <span style="text-align: center">И</span><span style="text-align: center">В</span><span style="text-align: center">П</span>
+          <span style="text-align: center">Карты</span><span style="text-align: center">Форма</span><span style="text-align: center">Очки</span>
+        </div>
+
+        <sc-for list="{{rows}}" as="row" hint-placeholder-count="8">
+          <div style="display: grid; grid-template-columns: 6px 22px 32px minmax(0, 1fr) 46px 46px 46px 62px 128px 64px; align-items: center; gap: 12px; padding: 9px 8px; border-top: 1px solid var(--line)">
+            <span style="height: 26px; width: 6px; border-radius: 999px; background: {{row.zone}}"></span>
+            <span style="font-size: 14px; font-weight: 900; color: var(--muted)">{{row.place}}</span>
+            <span style="display: grid; place-items: center; height: 30px; width: 30px; border-radius: 999px; background: var(--grad-accent); color: var(--on-accent); font-size: 11px; font-weight: 900">{{row.mono}}</span>
+            <span style="display: flex; flex-direction: column; gap: 1px; min-width: 0">
+              <span style="font-size: 14.5px; font-weight: 900">{{row.name}}</span>
+              <span style="font-size: 11px; font-weight: 800; letter-spacing: .06em; color: var(--muted)">{{row.tag}}</span>
+            </span>
+            <span style="text-align: center; font-size: 14px; font-weight: 800">{{row.g}}</span>
+            <span style="text-align: center; font-size: 14px; font-weight: 800">{{row.w}}</span>
+            <span style="text-align: center; font-size: 14px; font-weight: 800">{{row.l}}</span>
+            <span style="text-align: center; font-size: 14px; font-weight: 800; color: {{row.diffColor}}">{{row.diff}}</span>
+            <span style="display: flex; justify-content: center; gap: 4px">
+              <sc-for list="{{row.form}}" as="f" hint-placeholder-count="5">
+                <span style="display: grid; place-items: center; height: 17px; width: 17px; border-radius: 7px; font-size: 10px; font-weight: 900; background: {{f.bg}}; color: {{f.ink}}">{{f.t}}</span>
+              </sc-for>
+            </span>
+            <span style="display: flex; justify-content: center">
+              <span class="{{row.ptsShadow}}" style="min-width: 34px; border-radius: 999px; padding: 6px 12px; text-align: center; font-size: 14px; font-weight: 900; background: {{row.ptsBg}}; color: {{row.ptsInk}}">{{row.pts}}</span>
+            </span>
+          </div>
+        </sc-for>
+
+        <div style="display: flex; gap: 20px; padding: 14px 8px 2px; font-size: 11px; font-weight: 800; color: var(--muted)">
+          <span style="display: flex; align-items: center; gap: 6px"><span style="height: 10px; width: 6px; border-radius: 999px; background: #9cd3b6"></span>Верхняя сетка</span>
+          <span style="display: flex; align-items: center; gap: 6px"><span style="height: 10px; width: 6px; border-radius: 999px; background: #e8c56e"></span>Нижняя сетка</span>
+          <span style="display: flex; align-items: center; gap: 6px"><span style="height: 10px; width: 6px; border-radius: 999px; background: #e39191"></span>Вылет</span>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const W = { t: 'В', bg: '#a9dcc3', ink: '#184636' };
+    const L = { t: 'П', bg: '#e39191', ink: '#7c2f2f' };
+    const form = (s) => s.split('').map((c) => (c === 'w' ? W : L));
+    const raw = [
+      ['ГУЗЛИКИ', 'ГУЗЛИ', 'ГУ', 7, 6, 1, '+7', 'wwwwp', 15],
+      ['Ethereal', 'ETHRL', 'ET', 7, 5, 2, '+6', 'pwwww', 15],
+      ['300$', '300', '30', 7, 4, 3, '+3', 'pwpww', 13],
+      ['morbus mentis', 'MORME', 'MO', 7, 4, 3, '+2', 'wppww', 12],
+      ['Eclipse Gaming', 'EG', 'EC', 7, 4, 3, '+2', 'pwppw', 12],
+      ['Gitlz', 'GITLZ', 'GI', 7, 3, 4, '−3', 'ppwpw', 8],
+      ['4naturala', '4NATU', '4N', 7, 2, 5, '−5', 'wpppw', 7],
+      ['5KN', '5KN', '5K', 7, 0, 7, '−12', 'ppppp', 2],
+    ];
+    // Зона — цвет полоски слева: верхняя сетка / нижняя / вылет.
+    const zone = (i) => (i < 4 ? '#9cd3b6' : i < 6 ? '#e8c56e' : '#e39191');
+    const rows = raw.map((r, i) => ({
+      place: i + 1, name: r[0], tag: r[1], mono: r[2], g: r[3], w: r[4], l: r[5], diff: r[6],
+      diffColor: r[6].startsWith('+') ? '#2e7d5e' : '#7c2f2f',
+      form: form(r[7]), pts: r[8], zone: zone(i),
+      // Лидеры группы держат мятную пилюлю, остальные — обычную подушку.
+      ptsBg: i < 1 ? 'linear-gradient(135deg, #d5f2e2, #a9dcc3 52%, #8ccbad)' : '#f8f4ec',
+      ptsInk: i < 1 ? '#184636' : '#33322e',
+      ptsShadow: i < 1 ? 'sh-blob' : 'sh-row',
+    }));
+    return { rows };
+  }
+}
+</script>
+</body>
+</html>
