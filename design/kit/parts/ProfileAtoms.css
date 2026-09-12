@@ -1,0 +1,99 @@
+
+/* hero — переработка: подложка-баннер + чистая личность (фото · №id · ник · ФИО · роль) */
+.herobanner{position:absolute;top:0;left:0;right:0;height:150px;overflow:hidden;pointer-events:none;background:linear-gradient(135deg,#DCEFE6,#BFE1CF 55%,#A6D3BC);}
+.herobanner:before{content:"";position:absolute;inset:0;background:radial-gradient(80% 140% at 10% 0%,rgba(255,255,255,.6),transparent 55%);}
+.herobanner:after{content:"";position:absolute;left:0;right:0;bottom:0;height:64px;background:linear-gradient(180deg,transparent,rgba(248,244,236,.94));}
+.heromono{position:absolute;right:-6px;top:-28px;width:190px;height:190px;color:#184636;opacity:.10;}
+.herobody{position:relative;display:flex;align-items:flex-end;gap:26px;padding:0 32px 30px;margin-top:76px;}
+.bigav.ring{box-shadow:var(--sh-mint),0 0 0 6px #F6F2EB;}
+.idcoin{position:absolute;left:32px;top:28px;min-width:52px;height:52px;padding:0 16px;border-radius:999px;display:inline-flex;align-items:center;gap:7px;font-weight:900;font-variant-numeric:tabular-nums;font-size:19px;color:var(--mint-ink);background:var(--grad-surface);box-shadow:var(--sh-raise-sm);}
+.idcoin small{font-size:11px;font-weight:800;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;}
+.pname{font-size:40px;font-weight:900;letter-spacing:-1px;line-height:1;}
+.preal{font-weight:700;color:var(--mut);margin-top:8px;font-size:16px;}
+.proles{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px;}
+.chip.warn{color:#7A5A16;background:linear-gradient(135deg,#F7E3AA,#E8C56E);box-shadow:0 0 0 1px rgba(255,255,255,.4),inset 2px 2px 3px -1px rgba(255,255,255,.85),inset -2px -3px 4px -1px rgba(150,110,30,.35),0 3px 5px rgba(150,120,50,.22),0 12px 22px -5px rgba(150,120,50,.34);}
+/* ── страница профиля игрока ── */
+.ppgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,400px);gap:26px;margin-top:26px;align-items:start;}
+.ppcol{display:flex;flex-direction:column;gap:26px;min-width:0;}
+.pcard{border-radius:30px;background:var(--grad-surface);box-shadow:var(--sh-raise);padding:24px 26px;min-width:0;}
+/* сегмент-контрол во всю ширину блока (Официальные/Рейтинговые, Турнирные/Рейтинг) */
+.segfull{display:flex;gap:6px;padding:6px;border-radius:16px;background:var(--carve-bg);box-shadow:var(--sh-carve);margin:2px 0 14px;}
+.segfull .s{flex:1;min-width:0;text-align:center;border-radius:11px;padding:8px 4px;font-size:11px;font-weight:800;letter-spacing:-.1px;color:var(--mut);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.segfull .s.on{color:var(--mint-ink);background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+/* блок ссылок: ширина = самая широкая раскрытая ссылка (не растягиваем на всю колонку) */
+.linksbox{align-self:flex-start;}
+.phead{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.plink{font-size:12px;font-weight:800;color:#3FA981;}
+/* бублик карьеры */
+.donutwrap{display:flex;align-items:center;gap:28px;flex-wrap:wrap;}
+.donut{position:relative;width:206px;height:206px;border-radius:999px;flex:none;background:conic-gradient(#8CC9AA 0 62%,#DCD6C9 62% 100%);box-shadow:0 0 0 1px rgba(255,255,255,.5),inset 0 0 0 1px rgba(120,108,78,.14),0 12px 26px -6px rgba(120,108,78,.28);}
+.donuthole{position:absolute;inset:24px;border-radius:999px;background:var(--grad-surface);box-shadow:var(--sh-raise-sm);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;}
+.donuthole .big{font-size:44px;font-weight:900;letter-spacing:-1px;color:var(--mint-ink);font-variant-numeric:tabular-nums;line-height:1;}
+.donuthole .cap{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--sub);}
+.coins{flex:1;min-width:220px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.coin{display:flex;flex-direction:column;align-items:center;gap:9px;}
+.coindisc{width:60px;height:60px;border-radius:999px;display:grid;place-items:center;color:var(--mint-ink);background:linear-gradient(135deg,#FFFFFF,#E6F4EE);box-shadow:0 0 0 1px rgba(255,255,255,.5),inset 1px 1px 2px rgba(255,255,255,.95),inset -1px -3px 5px rgba(70,140,105,.34),0 5px 9px -1px rgba(40,100,76,.3);}
+.coinv{font-size:16px;font-weight:900;letter-spacing:-.4px;font-variant-numeric:tabular-nums;text-align:center;white-space:nowrap;}
+.coinl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--sub);text-align:center;}
+/* строка игры / героя */
+.grow{display:flex;align-items:center;gap:10px;border-radius:18px;padding:11px 12px;background:var(--grad-surface);box-shadow:var(--sh-raise-sm);}
+.gbar{width:6px;height:38px;border-radius:999px;flex:none;box-shadow:0 0 0 1px rgba(255,255,255,.35),inset 1px 1px 1px rgba(255,255,255,.4),inset -1px -2px 2px rgba(0,0,0,.18);}
+.gbar.win{background:linear-gradient(180deg,#A9DCC3,#8CC9AA);} .gbar.lose{background:linear-gradient(180deg,#E7A9A9,#D48B8B);}
+.gthumb{width:58px;height:40px;border-radius:11px;flex:none;box-shadow:inset 0 0 0 1px rgba(255,255,255,.4),inset -1px -2px 3px rgba(0,0,0,.18),0 2px 4px rgba(120,108,78,.2);}
+.gmid{flex:1;min-width:0;display:flex;flex-direction:column;} .gtop{display:block;font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;} .gtop .wl{margin-right:6px;} .gsub{display:block;font-size:12px;font-weight:700;color:var(--mut);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wl{font-weight:900;} .wl.w{color:var(--mint-ink);} .wl.l{color:#B4595A;}
+.gkda{text-align:right;flex:none;font-variant-numeric:tabular-nums;} .gkda .m{font-size:16px;font-weight:900;} .gkda .s{font-size:11px;font-weight:800;color:var(--sub);margin-top:2px;}
+.kk{color:var(--mint-ink);} .kd{color:#B4595A;} .ka{color:#5B7596;} .kx{color:var(--sub);}
+.heroesgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;}
+/* единая сетка одинаковых строк (игры и герои) в 2 колонки */
+.rowgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.hwr{margin-left:auto;flex:none;font-size:15px;font-weight:900;color:var(--mint-ink);font-variant-numeric:tabular-nums;}
+.hwr{margin-left:auto;font-size:14px;font-weight:900;color:var(--mint-ink);font-variant-numeric:tabular-nums;}
+/* правый рельс — данные */
+.facts{display:grid;grid-template-columns:1fr 1fr;gap:18px 16px;}
+.fk{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--sub);margin-bottom:3px;}
+.fv{font-size:19px;font-weight:900;letter-spacing:-.3px;} .fv small{font-size:13px;font-weight:800;color:var(--mut);} .fv.acc{color:var(--mint-ink);}
+.achv{display:flex;align-items:flex-start;gap:10px;font-size:14px;font-weight:700;color:var(--ink);} .achv+.achv{margin-top:12px;}
+.achv .adot{width:22px;height:22px;border-radius:999px;flex:none;margin-top:1px;display:grid;place-items:center;color:var(--mint-ink);background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+/* основную колонну делим: узкие «Последние игры» + «Герои» */
+.mainsplit{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:stretch;}
+.mainsplit .pcard{padding:20px 18px;}
+/* данные — россыпь маленьких блоков */
+.factgrid{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+.factbox{border-radius:16px;padding:12px 14px;background:var(--grad-surface);box-shadow:var(--sh-raise-sm);}
+.trole{margin-left:auto;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--sub);}
+.you{color:var(--mint-ink);}
+/* Герои — квадратные плитки, инфа стопкой (без наслаивания) */
+.htiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.htile{border-radius:18px;padding:12px;min-width:0;background:var(--grad-surface);box-shadow:var(--sh-raise-sm);}
+.htile .th{display:block;width:100%;height:58px;border-radius:12px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.4),inset -1px -2px 3px rgba(0,0,0,.18);}
+.htile .nm{font-size:13.5px;font-weight:900;margin-top:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hbot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;}
+.hbot .rec{font-size:11.5px;font-weight:700;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wrpill{flex:none;font-size:12px;font-weight:900;color:var(--mint-ink);background:var(--grad-mint);box-shadow:var(--sh-mint-sm);border-radius:999px;padding:3px 10px;}
+/* строка игры — квадратная миниатюра, K/D/A жёстко справа */
+.gthumb.sq{width:36px;height:36px;border-radius:10px;}
+.gkda{min-width:52px;}
+/* ссылки — крупные иконки внахлёст, раскрываются при наведении */
+.linkstack{display:flex;padding-top:4px;height:54px;align-items:center;}
+.lk{position:relative;display:inline-flex;align-items:center;height:48px;max-width:48px;flex:none;padding:0;border-radius:999px;overflow:hidden;color:var(--mint-ink);background:var(--grad-surface);box-shadow:var(--sh-raise-sm);border:3px solid #F6F2EB;margin-left:-16px;cursor:pointer;transition:max-width .22s ease,transform .16s ease,box-shadow .16s ease;}
+.lk:first-child{margin-left:0;}
+.lk .lki{width:22px;height:22px;flex:none;margin:0 13px;}
+.lk .lkt{white-space:nowrap;font-size:14px;font-weight:800;color:var(--ink);padding-right:20px;opacity:0;transition:opacity .16s ease;}
+.lk:hover{max-width:220px;z-index:5;transform:translateY(-5px);box-shadow:0 0 0 1px rgba(255,255,255,.5),inset 2px 3px 4px -1px rgba(255,255,255,.95),inset -3px -4px 6px -2px rgba(70,140,105,.34),0 12px 22px -4px rgba(80,150,115,.4);}
+.lk:hover .lkt{opacity:1;}
+@media (prefers-reduced-motion:reduce){.lk{transition:none;}}
+/* Команда — крупная карточка + интерактивные мини-карточки игроков (как ссылки) */
+.teamcardbig{display:flex;align-items:center;gap:14px;border-radius:22px;padding:15px 18px;background:var(--grad-surface);box-shadow:var(--sh-raise);}
+/* мини-карточки игроков внахлёст: наведённая всплывает поверх и раскрывается в имя+роль */
+.playstack{display:flex;align-items:center;padding:14px 0 6px;}
+.pcardm{position:relative;display:flex;align-items:center;height:66px;width:auto;max-width:66px;flex:none;min-width:0;overflow:hidden;border-radius:999px;background:var(--grad-surface);box-shadow:var(--sh-raise-sm);border:3px solid #F6F2EB;margin-left:-26px;cursor:pointer;transition:max-width .26s ease,transform .16s ease,box-shadow .16s ease;}
+.pcardm:first-child{margin-left:0;}
+.pcardm .pav{width:60px;height:60px;flex:none;border-radius:999px;display:grid;place-items:center;color:#fff;font-weight:900;font-size:22px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35),inset -1px -3px 5px rgba(0,0,0,.2);}
+.pcardm .pinfo{padding:0 15px 0 11px;min-width:0;}
+.pcardm .pnm{font-size:15px;font-weight:900;white-space:nowrap;}
+.pcardm .prl{font-size:11px;font-weight:800;letter-spacing:.4px;color:var(--sub);text-transform:uppercase;white-space:nowrap;margin-top:2px;}
+/* раскрытие по ширине текста (max-content), с потолком чтобы не выйти за правый край блока */
+.pcardm:hover{max-width:200px;z-index:6;transform:translateY(-6px);box-shadow:0 0 0 1px rgba(255,255,255,.5),inset 2px 3px 4px -1px rgba(255,255,255,.95),inset -3px -4px 6px -2px rgba(150,135,105,.28),0 14px 24px -4px rgba(120,108,78,.4);}
+.pcardm.me{border-color:#CDEBD9;} .pcardm.me .pnm{color:var(--mint-ink);}
+@media (prefers-reduced-motion:reduce){.pcardm{transition:none;}}

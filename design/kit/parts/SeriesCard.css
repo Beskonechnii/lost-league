@@ -1,0 +1,32 @@
+
+/* ——— карточка встречи (серии) ——— */
+.scard{border-radius:30px;padding:20px 22px;background:var(--grad-surface);box-shadow:var(--sh-raise);width:498px;}
+.scard.wide{width:100%;}
+.stop{display:flex;align-items:center;gap:10px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--sub);}
+.stop .right{margin-left:auto;}
+.sbody{display:grid;grid-template-columns:1fr 118px 1fr;align-items:center;gap:12px;margin-top:16px;}
+.steam{display:flex;align-items:center;gap:12px;min-width:0;}
+.steam.rev{flex-direction:row-reverse;text-align:right;}
+.sname{font-size:17px;font-weight:900;letter-spacing:-.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.stag{font-size:11px;font-weight:800;color:var(--sub);text-transform:uppercase;letter-spacing:.6px;}
+.sscore{display:flex;align-items:center;justify-content:center;gap:8px;border-radius:22px;padding:10px 0;background:var(--carve-bg);box-shadow:var(--sh-carve);font-variant-numeric:tabular-nums;}
+.sscore b{font-size:26px;font-weight:900;letter-spacing:-1px;}
+.sscore .dash{color:var(--sub);font-weight:900;}
+.sscore b.lose{color:var(--sub);}
+.sscore.soon{font-size:15px;font-weight:900;color:var(--mut);letter-spacing:-.2px;}
+.sfoot{display:flex;align-items:center;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;font-weight:800;color:var(--mut);}
+.sfoot .right{margin-left:auto;}
+.livedot{width:9px;height:9px;border-radius:999px;background:linear-gradient(135deg,#F0A0A0,#D06B6B);box-shadow:0 0 0 3px rgba(208,107,107,.18);}
+.maps{display:flex;gap:6px;}
+.map{min-width:34px;height:26px;border-radius:10px;display:grid;place-items:center;font-size:11px;font-weight:900;color:var(--mut);background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.map.w{color:#184636;background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+/* строка расписания */
+.srow{display:grid;grid-template-columns:96px 1fr 92px 1fr 130px;align-items:center;gap:12px;padding:13px 18px;border-radius:24px;background:var(--grad-surface);box-shadow:var(--sh-raise-sm);}
+.stime{font-size:13px;font-weight:900;color:var(--mut);font-variant-numeric:tabular-nums;}
+.stime i{display:block;font-style:normal;font-size:11px;color:var(--sub);font-weight:800;}
+/* мобильная карточка */
+.smob{width:358px;}
+.smob .sbody{grid-template-columns:1fr 70px 1fr;gap:8px;}
+.smob .sname{font-size:14px;}
+.smob .tmark{width:32px;height:32px;font-size:11px;}
+.smob .sname{font-size:15px;}

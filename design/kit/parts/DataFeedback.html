@@ -1,0 +1,70 @@
+<div class="board">
+  <h1 class="title">Кит · Данные и обратная связь</h1>
+  <p class="subt">Чипы, статусы, показатели, элементы таблицы, алерты и тосты.</p>
+  <div class="cols">
+    <div><div class="h2">Чипы</div>
+      <div class="row"><span class="chip plain">carry</span><span class="chip plain">mid</span><span class="chip sel"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5L20 6"/></svg>Выбрано</span><span class="chip dis">Недоступно</span></div>
+      <div class="lbl" style="margin-top:18px">Зоны таблицы</div>
+      <div class="row"><span class="chip plain"><span class="dot" style="background:#7FC9AC"></span>Верхняя сетка</span><span class="chip plain"><span class="dot" style="background:#63C7BE"></span>Нижняя</span><span class="chip plain"><span class="dot" style="background:#E79B9B"></span>Вылет</span></div>
+    </div>
+    <div><div class="h2">Статусы турнира</div>
+      <div class="row">
+        <span class="badge" style="background:linear-gradient(135deg,#EFEBE2,#DFD9CD);color:#8A867D">Черновик</span>
+        <span class="badge" style="background:linear-gradient(135deg,#C4E2F3,#98C5E4);color:#1E4A66">Приём заявок</span>
+        <span class="badge" style="background:linear-gradient(135deg,#D6F0E1,#9CD3B6);color:#184636">Идёт</span>
+        <span class="badge" style="background:linear-gradient(135deg,#F7E3AA,#E8C56E);color:#7A5A16">Завершён</span>
+      </div>
+    </div>
+  </div>
+  <div class="h2">Показатели · StatTile</div>
+  <div class="row" style="gap:14px">
+    <div class="tile acc"><div class="tl">Место</div><div class="tv">1</div><div class="th" style="color:rgba(24,70,54,.72)">из 8</div></div>
+    <div class="tile"><div class="tl">Очки</div><div class="tv">18</div><div class="th">6 побед</div></div>
+    <div class="tile"><div class="tl">Разница</div><div class="tv" style="color:#3FA981">+11</div></div>
+    <div class="tile"><div class="tl">Винрейт</div><div class="tv">74%</div></div>
+    <div class="tile" style="min-width:230px"><div class="tl">Сила состава · MMR</div><div class="tv">11 240</div><div class="meter" style="margin-top:11px"><i style="width:78%"></i></div></div>
+  </div>
+  <div class="h2">Элементы таблицы</div>
+  <div class="row" style="gap:24px">
+    <div><div class="lbl">Место + зона</div><span class="zbar" style="background:#7FC9AC"></span> <span style="font-weight:900;font-size:16px;margin-left:6px">1</span></div>
+    <div><div class="lbl">Лого команды</div><span class="tmark" style="width:40px;height:40px">NV</span></div>
+    <div><div class="lbl">Аватар</div><span class="av" style="width:40px;height:40px;display:inline-block"></span></div>
+    <div><div class="lbl">Очки · лидер / обычные</div><span class="pts lead">9</span> <span class="pts" style="margin-left:8px">6</span></div>
+    <div><div class="lbl">Счёт W–L</div><span style="font-weight:800;font-size:15px"><span style="color:#3FA981">3</span><span style="color:var(--sub)">–0</span></span></div>
+  </div>
+  <div class="cols">
+    <div><div class="h2">Алерты — компактные</div>
+      <div class="alertcol">
+        <div class="alert ok"><span class="aic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#184636" stroke-width="2.6"><path d="m5 12 5 5L20 6"/></svg></span>Заявка принята</div>
+        <div class="alert warn"><span class="aic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7A5A16" stroke-width="2.4"><path d="M12 4 2 20h20z"/><path d="M12 10v4M12 17h.01"/></svg></span>3 игрока без account_id</div>
+        <div class="alert err"><span class="aic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C2F2F" stroke-width="2.4"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16h.01"/></svg></span>Матч не найден</div>
+      </div>
+      <div class="lbl" style="margin-top:16px">Мини — статус-пилюли</div>
+      <div class="row" style="gap:9px">
+        <span class="alert ok mini"><span class="aic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#184636" stroke-width="3"><path d="m5 12 5 5L20 6"/></svg></span>Принята</span>
+        <span class="alert warn mini"><span class="aic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7A5A16" stroke-width="2.6"><path d="M12 4 2 20h20z"/></svg></span>Проверьте id</span>
+        <span class="alert err mini"><span class="aic"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7C2F2F" stroke-width="2.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v6"/></svg></span>Ошибка</span>
+      </div>
+    </div>
+    <div><div class="h2">Тосты</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="toast" style="color:#184636;background:linear-gradient(135deg,#D6F0E1,#9CD3B6)"><span class="tic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#184636" stroke-width="2.6"><path d="m5 12 5 5L20 6"/></svg></span>Результат сохранён</div>
+        <div class="toast" style="color:#7C2F2F;background:linear-gradient(135deg,#F5C8C8,#E39191)"><span class="tic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C2F2F" stroke-width="2.4"><path d="M6 6l12 12M18 6 6 18"/></svg></span>Не удалось сохранить</div>
+      </div>
+    </div>
+  </div>
+  <div class="cols">
+    <div><div class="h2">Пустое состояние</div>
+      <div class="empty">
+        <span class="tmark" style="width:52px;height:52px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#807C73" stroke-width="2"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 10h16"/></svg></span>
+        <div style="font-size:17px;font-weight:900;margin-top:4px">Групп ещё нет</div>
+        <div style="font-size:13px;font-weight:700;color:var(--mut);max-width:280px;line-height:1.5">Жеребьёвка не проведена. Как только команды разложат по группам — появятся таблицы и сетка.</div>
+      </div>
+    </div>
+    <div><div class="h2">Скелет загрузки</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="sk" style="height:18px;width:60%"></div><div class="sk" style="height:18px;width:85%"></div><div class="sk" style="height:66px;border-radius:22px"></div>
+      </div>
+    </div>
+  </div>
+</div>

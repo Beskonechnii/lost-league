@@ -1,0 +1,9 @@
+
+/* ——— hero-шапка команды ——— */
+.biglogo{width:150px;height:150px;border-radius:38px;flex:none;display:grid;place-items:center;font-size:38px;font-weight:900;letter-spacing:-1px;color:#184636;background:var(--grad-mint);box-shadow:var(--sh-mint);}
+.tstat{display:flex;gap:12px;flex-wrap:wrap;}
+.rostline{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:20px;background:var(--grad-surface);box-shadow:var(--sh-raise-sm);}
+.rostline .nm{font-size:14px;font-weight:900;}
+.rostline .rl{margin-left:auto;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--sub);}
+.capmark{font-size:10px;font-weight:900;color:#2E7D5E;text-transform:uppercase;letter-spacing:.8px;}
+.hmob{width:390px;border-radius:34px;overflow:hidden;position:relative;background:var(--grad-surface);box-shadow:var(--sh-raise);}

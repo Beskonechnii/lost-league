@@ -1,0 +1,81 @@
+<div class="board">
+  <h1 class="title">Кит · Шапка сайта и мобильное меню</h1>
+  <p class="subt">Четыре уровня навигации из UI-GUIDELINES: L1 глобальный, L2 контекст турнира, L3 вкладки раздела, L4 — в теле страницы. Тач-цель на мобильном — 44px.</p>
+
+  <div class="h2">L1 · верхняя строка · гость</div>
+  <div class="bar">
+    <div class="brand"><span class="blogo">L</span>LEAGUE OF SPIRITS</div>
+    <div class="navset" style="margin-left:18px"><span class="pill on">Турниры</span><span class="pill">Команды</span><span class="pill">Игроки</span><span class="pill">Правила</span></div>
+    <div class="spacer"></div>
+    <span class="btn sm quiet"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Поиск</span>
+    <span class="btn sm solid">Войти</span>
+  </div>
+
+  <div class="lbl" style="margin-top:22px">Вошедший · виден ник, а не «Кабинет». Пункт «Админ» — только у админа</div>
+  <div class="bar">
+    <div class="brand"><span class="blogo">L</span>LEAGUE OF SPIRITS</div>
+    <div class="navset" style="margin-left:18px"><span class="pill on">Турниры</span><span class="pill">Команды</span><span class="pill">Игроки</span><span class="pill">Правила</span><span class="sep"></span><span class="pill">Админ</span></div>
+    <div class="spacer"></div>
+    <span class="btn sm quiet ib round"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></span>
+    <span class="userchip"><span class="av" style="width:30px;height:30px"></span>Ник игрока<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 9l6 6 6-6"/></svg></span>
+  </div>
+
+  <div class="h2">L2 · контекст турнира</div>
+  <div class="l2bar">
+    <span class="tsel">LOST Season 3<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 9l6 6 6-6"/></svg></span>
+    <span class="segset"><span class="seg on">D1</span><span class="seg">D2</span></span>
+    <div class="spacer"></div>
+    <span class="chip sel"><span class="dot" style="background:linear-gradient(135deg,#B7E4CD,#7FC3A4)"></span>Идёт</span>
+    <span class="chip plain">28 команд</span>
+  </div>
+
+  <div class="h2">L3 · вкладки раздела (не больше семи)</div>
+  <div class="l3bar">
+    <span class="tab on">Таблица</span><span class="tab">Группы</span><span class="tab">Плей-офф</span><span class="tab">Статистика</span><span class="tab">Ростер</span><span class="tab">TP</span>
+  </div>
+
+  <div class="h2">Сборка · L1 + L2 + L3 (sticky-стопка)</div>
+  <div style="display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:32px;background:var(--carve-bg);box-shadow:var(--sh-carve)">
+    <div class="bar" style="padding:10px 14px">
+      <div class="brand"><span class="blogo">L</span>LEAGUE OF SPIRITS</div>
+      <div class="navset" style="margin-left:18px"><span class="pill on">Турниры</span><span class="pill">Команды</span><span class="pill">Игроки</span></div>
+      <div class="spacer"></div>
+      <span class="userchip"><span class="av" style="width:28px;height:28px"></span>Ник игрока</span>
+    </div>
+    <div class="l2bar"><span class="tsel">LOST Season 3<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 9l6 6 6-6"/></svg></span><span class="segset"><span class="seg on">D1</span><span class="seg">D2</span></span><div class="spacer"></div><span class="chip plain">тур 7 из 14</span></div>
+    <div class="l3bar"><span class="tab on">Таблица</span><span class="tab">Группы</span><span class="tab">Плей-офф</span><span class="tab">Статистика</span><span class="tab">Ростер</span><span class="tab">TP</span></div>
+  </div>
+
+  <div class="h2">Мобильный · 390px</div>
+  <div class="row" style="align-items:flex-start;gap:32px">
+    <div class="mwrap">
+      <div class="lbl">Свёрнутая шапка: лого + бургер, L2 остаётся на виду</div>
+      <div class="mbar">
+        <span class="burger"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span>
+        <div class="brand" style="font-size:14px"><span class="blogo" style="width:34px;height:34px;border-radius:12px;font-size:13px">L</span>LOST</div>
+        <div class="spacer"></div>
+        <span class="av" style="width:38px;height:38px"></span>
+      </div>
+      <div class="l2bar" style="padding:9px 12px"><span class="tsel" style="padding:8px 12px;font-size:13px">Season 3<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 9l6 6 6-6"/></svg></span><span class="segset" style="padding:7px;gap:7px"><span class="seg on" style="padding:10px 16px;font-size:13px">D1</span><span class="seg" style="padding:10px 16px;font-size:13px">D2</span></span></div>
+      <div class="lbl" style="margin-top:6px">L3 — горизонтальный скролл, активная промотана в вид</div>
+      <div class="mtabs"><span class="tab on">Таблица</span><span class="tab">Группы</span><span class="tab">Плей-офф</span><span class="tab">Стат…</span></div>
+    </div>
+
+    <div>
+      <div class="lbl">Меню в Sheet — разделы L1, тач-цель 44px</div>
+      <div class="msheet">
+        <div style="display:flex;align-items:center;gap:12px;padding:4px 6px 14px">
+          <div class="brand" style="font-size:14px"><span class="blogo" style="width:34px;height:34px;border-radius:12px;font-size:13px">L</span>LEAGUE OF SPIRITS</div>
+          <div class="spacer"></div><span class="xbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 6l12 12M18 6L6 18"/></svg></span>
+        </div>
+        <div class="mlink on"><span class="idisc"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>Турниры<span class="cnt">3</span></div>
+        <div class="mlink"><span class="idisc neu"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M4 20v-2a5 5 0 015-5h6a5 5 0 015 5v2"/><circle cx="12" cy="7" r="4"/></svg></span>Команды<span class="cnt">28</span></div>
+        <div class="mlink"><span class="idisc neu"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><circle cx="12" cy="8" r="4"/><path d="M5 20a7 7 0 0114 0"/></svg></span>Игроки<span class="cnt">140</span></div>
+        <div class="mlink"><span class="idisc neu"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M6 4h12v16H6z"/><path d="M9 9h6M9 13h6"/></svg></span>Правила</div>
+        <div class="msep"></div>
+        <div class="mlink"><span class="av" style="width:26px;height:26px"></span>Кабинет</div>
+        <div class="mlink down" style="color:#B4595A">Выйти</div>
+      </div>
+    </div>
+  </div>
+</div>

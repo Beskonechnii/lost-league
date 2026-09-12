@@ -1,0 +1,60 @@
+<div class="board">
+  <h1 class="title">Кит · Оверлеи и структура</h1>
+  <p class="subt">Модалки, меню, шапка секции, крошки и карточки-сущности.</p>
+  <div class="h2">Шапка секции · SectionHeader</div>
+  <div class="raise" style="padding:24px 26px;display:flex;justify-content:space-between;align-items:flex-end;gap:16px">
+    <div><p class="eyebrow">LOST Season 2</p><h1 class="sh1">Division 1</h1></div>
+    <div style="display:flex;gap:12px;align-items:center;padding-bottom:6px"><span style="font-size:14px;font-weight:800;color:#B98A2E">сыграно 24 из 28</span><span class="btn solid">Действие</span></div>
+  </div>
+  <div class="h2" style="margin-top:22px">Крошки</div>
+  <div class="crumbs"><span class="c">Турниры</span><span>/</span><span class="c">LOST Season 2</span><span>/</span><span class="c">Игроки</span><span>/</span><span>Nirvana</span></div>
+  <div class="cols">
+    <div><div class="h2">Диалог</div>
+      <div class="scrim"><div class="dialog">
+        <div class="dhead"><div><div class="dtitle">Удалить серию?</div><div class="ddesc">Карты серии и её результат уйдут из архива. Таблица и сетка пересчитаются.</div></div><span class="xbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6 6 18"/></svg></span></div>
+        <div class="row" style="margin-top:20px;gap:12px"><span class="btn quiet">Отмена</span><span class="btn solid" style="background:linear-gradient(135deg,#F5C8C8,#E08B8B);color:#7C2F2F;box-shadow:0 0 0 1px rgba(255,255,255,.4),inset 2px 3px 4px -1px rgba(255,255,255,.85),inset -3px -4px 6px -2px rgba(150,60,60,.4),0 4px 7px rgba(170,80,80,.28),0 16px 28px -6px rgba(170,80,80,.4)">Удалить</span></div>
+      </div></div>
+    </div>
+    <div><div class="h2">Боковой лист · Sheet</div>
+      <div class="scrim" style="justify-content:flex-end;padding:0;overflow:hidden"><div class="sheet">
+        <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:var(--sub);margin-bottom:14px">Меню</div>
+        <div class="navlink on">Турниры</div><div class="navlink">Ростер</div><div class="navlink">Правила</div><div class="navlink">Кабинет</div>
+      </div></div>
+    </div>
+  </div>
+  <div class="cols">
+    <div><div class="h2">Выпадающее меню</div>
+      <div class="menu">
+        <div class="mi hl"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9"/><path d="M16 4l4 4L8 20H4v-4z"/></svg>Редактировать</div>
+        <div class="mi"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Дублировать</div>
+        <div class="msep"></div>
+        <div class="mi down"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>Удалить</div>
+      </div>
+    </div>
+    <div><div class="h2">Тултип</div>
+      <div style="padding-top:8px"><span class="tip">Счёт из привязанных карт архива</span></div>
+      <div class="lbl" style="margin-top:28px">RowCard — выбор из списка</div>
+      <div style="display:flex;flex-direction:column;gap:10px;width:280px">
+        <div class="rowcard sel"><span class="av" style="width:38px;height:38px"></span><div><div style="font-weight:900;font-size:14px;color:#184636">Yatoro</div><div style="font-size:12px;font-weight:700;color:rgba(24,70,54,.72)">carry · капитан</div></div></div>
+        <div class="rowcard idle"><span class="av" style="width:38px;height:38px"></span><div><div style="font-weight:900;font-size:14px">Larl</div><div style="font-size:12px;font-weight:700;color:var(--mut)">mid</div></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="h2">Карточка команды</div>
+  <div class="row" style="align-items:flex-start">
+    <div class="tcard">
+      <div style="display:flex;align-items:center;gap:12px"><span class="tmark" style="width:48px;height:48px;font-size:13px">NV</span><div><div style="font-size:18px;font-weight:900">Nirvana</div><div style="font-size:12px;font-weight:700;color:var(--sub)">5 игроков</div></div><span class="chip sel" style="margin-left:auto;font-size:11px;padding:6px 12px">D1</span></div>
+      <div style="margin-top:12px">
+        <div class="prow" style="border-top:none"><span class="av" style="width:28px;height:28px"></span><span style="font-weight:800;font-size:14px">Yatoro</span><span class="prole">carry</span></div>
+        <div class="prow"><span class="av" style="width:28px;height:28px"></span><span style="font-weight:800;font-size:14px">Larl</span><span class="prole">mid</span></div>
+        <div class="prow"><span class="av" style="width:28px;height:28px"></span><span style="font-weight:800;font-size:14px">Collapse</span><span class="prole">offlane</span></div>
+      </div>
+    </div>
+    <div class="tcard" style="width:220px">
+      <div class="lbl">Мини-карточка игрока</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:9px;padding:8px 0">
+        <span class="av" style="width:68px;height:68px"></span><div style="font-weight:900;font-size:16px">Larl</div><span class="chip plain" style="font-size:11px;padding:6px 12px">mid · 10 800</span>
+      </div>
+    </div>
+  </div>
+</div>

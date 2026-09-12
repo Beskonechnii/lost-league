@@ -1,0 +1,28 @@
+
+/* ——— групповой этап ——— */
+.gwrap{display:grid;grid-template-columns:1fr 1fr;gap:26px;}
+.gcard{border-radius:32px;padding:20px;background:var(--grad-surface);box-shadow:var(--sh-raise);}
+.ghead{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.gtitle{font-size:20px;font-weight:900;letter-spacing:-.4px;}
+.gmeta{margin-left:auto;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--sub);}
+.ggrid{display:grid;grid-template-columns:30px 1fr 46px 46px 62px;align-items:center;font-size:14px;font-weight:800;}
+.ghd{padding:8px 12px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--sub);text-align:center;}
+.ghd.l{text-align:left;}
+.grow{padding:9px 12px;border-radius:18px;}
+.grow+.grow{margin-top:2px;}
+.grow.up{background:var(--grad-mint);box-shadow:var(--sh-mint-sm);color:var(--mint-ink);}
+.gnum{text-align:center;font-variant-numeric:tabular-nums;color:var(--mut);}
+.grow.up .gnum{color:rgba(24,70,54,.8);}
+.gteam{display:flex;align-items:center;gap:10px;min-width:0;}
+.gname{font-size:14px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* кросс-таблица */
+.cross{border-radius:32px;padding:18px 20px 20px;background:var(--grad-surface);box-shadow:var(--sh-raise);display:inline-block;}
+.ctab{border-collapse:separate;border-spacing:4px;}
+.ctab th{font-size:11px;font-weight:800;color:var(--sub);text-transform:uppercase;letter-spacing:.6px;padding:4px 6px;}
+.ctab th.side{text-align:left;width:180px;text-transform:none;letter-spacing:0;color:var(--ink);}
+.cell{width:56px;height:44px;border-radius:14px;display:grid;place-items:center;font-size:14px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--mut);background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.cell.w{color:#184636;background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+.cell.l{color:#7C2F2F;background:linear-gradient(135deg,#F7DCDC,#EDC0C0);box-shadow:var(--sh-raise-sm);}
+.cell.self{background:linear-gradient(135deg,#E4DFD4,#D6D0C3);box-shadow:var(--sh-carve);color:var(--sub);}
+.cell.soon{color:var(--sub);font-size:12px;font-weight:800;}
+.cside{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:900;}

@@ -1,0 +1,55 @@
+
+/* ——— подложка смыслового блока ——— */
+.slab{border-radius:40px;padding:20px;background:var(--grad-board);box-shadow:var(--sh-raise);display:flex;flex-direction:column;gap:16px;}
+.slab .shead{display:flex;align-items:baseline;gap:14px;padding:0 6px;}
+.stitle{font-size:22px;font-weight:900;letter-spacing:-.5px;}
+/* ссылка «дальше» — всегда внизу блока, по правому краю */
+.dmore{margin-top:auto;padding:4px 6px 0;display:flex;justify-content:flex-end;font-size:13px;font-weight:800;color:var(--mut);align-items:center;gap:6px;}
+/* ——— карточка встречи: команды друг под другом ——— */
+.mcard{border-radius:24px;padding:4px 8px 8px;background:var(--grad-surface);box-shadow:var(--sh-raise-sm);}
+.mchead{display:flex;align-items:center;gap:9px;height:40px;padding:0 10px;border-bottom:1px solid var(--line);}
+.mchead .tn{font-size:12px;font-weight:800;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mchead .when{margin-left:auto;font-size:11.5px;font-weight:800;color:var(--sub);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.mcteam{display:flex;align-items:center;gap:11px;height:40px;padding:0 11px;border-radius:16px;}
+.mcteam .nm{font-size:14px;font-weight:900;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mcteam .sc{margin-left:auto;font-size:17px;font-weight:900;font-variant-numeric:tabular-nums;padding-right:4px;}
+.mcteam.lose .nm,.mcteam.lose .sc{color:var(--sub);}
+.mcteam.win{background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+.mcteam.win .nm,.mcteam.win .sc{color:var(--mint-ink);}
+.mcteam.soon .sc{font-size:13px;color:var(--mut);}
+/* ——— строка топа ——— */
+.top10{border-radius:28px;padding:8px;background:var(--grad-surface);box-shadow:var(--sh-raise);}
+.trline{display:grid;grid-template-columns:34px 1fr 150px 84px;align-items:center;gap:12px;padding:10px 14px;border-radius:22px;font-weight:800;}
+.trline+.trline{margin-top:2px;}
+.trline.slim{grid-template-columns:28px 1fr 60px;gap:10px;height:40px;padding:0 12px;}
+.trline.lead{background:var(--grad-mint);box-shadow:var(--sh-mint-sm);color:var(--mint-ink);}
+.trn{font-size:15px;font-weight:900;font-variant-numeric:tabular-nums;text-align:center;color:var(--mut);}
+.trline.lead .trn{color:var(--mint-ink);}
+.trnick{font-size:15px;font-weight:900;letter-spacing:-.2px;display:flex;align-items:center;gap:10px;min-width:0;}
+.trval{text-align:right;font-size:15px;font-weight:900;font-variant-numeric:tabular-nums;}
+/* ——— колокольчик и выпадающие панели шапки ——— */
+.bellwrap{position:relative;display:grid;place-items:center;}
+.bellbd{position:absolute;top:-2px;right:-2px;min-width:20px;height:20px;padding:0 6px;border-radius:999px;display:grid;place-items:center;font-size:11px;font-weight:900;color:#fff;background:linear-gradient(135deg,#E28B8B,#C25E5E);box-shadow:0 0 0 3px #F6F2EB,0 2px 4px rgba(150,60,60,.4);}
+.drop{border-radius:28px;padding:10px;background:var(--grad-surface);box-shadow:0 0 0 1px rgba(255,255,255,.55),inset 2px 3px 4px -1px rgba(255,255,255,.95),0 30px 60px -12px rgba(60,50,30,.4);}
+.drop.menu{width:280px;} .drop.noti{width:400px;}
+.dhead{display:flex;align-items:center;gap:12px;padding:12px 14px 14px;border-bottom:1px solid var(--line);margin-bottom:8px;}
+.dhead .nm{font-size:15px;font-weight:900;letter-spacing:-.2px;}
+.dhead .sub{font-size:12px;font-weight:800;color:var(--mut);margin-top:3px;}
+.dhead .act{margin-left:auto;font-size:12px;font-weight:800;color:var(--mut);}
+.ditem{display:flex;align-items:center;gap:12px;height:44px;padding:0 14px;border-radius:16px;font-size:14.5px;font-weight:800;color:var(--ink);}
+.ditem svg{flex:none;color:var(--mut);}
+.ditem.on{color:var(--mint-ink);background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+.ditem.on svg{color:var(--mint-ink);}
+.ditem .cnt{margin-left:auto;font-size:11px;font-weight:900;color:#B4595A;}
+.ditem.down{color:#B4595A;} .ditem.down svg{color:#B4595A;}
+.dsep{height:1px;background:var(--line);margin:8px 12px;}
+.nrow{display:flex;gap:12px;padding:12px 14px;border-radius:20px;}
+.nrow+.nrow{margin-top:2px;}
+.nrow.unread{background:var(--grad-board);box-shadow:var(--sh-raise-sm);}
+.nicon{width:34px;height:34px;border-radius:12px;flex:none;display:grid;place-items:center;color:var(--mut);background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.nicon.sys{color:var(--mint-ink);background:var(--grad-mint);box-shadow:var(--sh-mint-sm);}
+.ntext{min-width:0;}
+.ntitle{font-size:13.5px;font-weight:900;letter-spacing:-.1px;}
+.nbody{font-size:12.5px;font-weight:700;color:var(--mut);margin-top:3px;line-height:1.45;}
+.ntime{margin-left:auto;font-size:11px;font-weight:800;color:var(--sub);white-space:nowrap;}
+.ngroup{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:var(--sub);padding:12px 14px 8px;}

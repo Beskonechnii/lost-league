@@ -1,53 +1,3 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <script src="./support.js"></script>
-</head>
-<body>
-<x-dc>
-<helmet><style>
-
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
-:root{
-  --paper:#E7E3D8;--ink:#33322E;--mut:#69655D;--sub:#AEAAA0;--line:#E0DACE;--line2:#D3CCBE;--mint-ink:#184636;
-  --grad-surface:linear-gradient(135deg,#FFFFFF,#F8F4EC 55%,#EEE8DD);
-  --grad-board:linear-gradient(135deg,#FDFBF6,#F1ECE1);
-  --sh-raise-sm:0 0 0 1px rgba(255,255,255,.55),inset 2px 2px 3px -1px rgba(255,255,255,.95),inset -2px -3px 4px -1px rgba(150,135,105,.28),0 3px 5px rgba(120,108,78,.16),0 12px 22px -5px rgba(120,108,78,.28);
-  --sh-carve:inset 2px 3px 5px rgba(120,108,78,.26),inset -1px -1px 1px rgba(255,255,255,.55),inset 0 -1px 0 rgba(255,255,255,.4);
-  --carve-bg:#ECE7DD;
-  --ok:#9CD3B6;--ok-ink:#184636;--err:#E39191;--err-ink:#7C2F2F;
-}
-*{box-sizing:border-box;} h1,h2,h3,p{margin:0;}
-body{margin:0;background:var(--paper);color:var(--ink);font-family:'Nunito',system-ui,sans-serif;-webkit-font-smoothing:antialiased;background-image:radial-gradient(120% 80% at 12% 0%,rgba(255,255,255,.42),transparent 55%);}
-.board{margin:40px;padding:44px 48px 58px;border-radius:46px;background:var(--grad-board);max-width:1120px;
-  box-shadow:0 0 0 1px rgba(255,255,255,.6),inset 3px 4px 6px -1px rgba(255,255,255,.95),inset -4px -5px 10px -2px rgba(150,135,105,.22),inset 0 -4px 0 rgba(178,164,132,.2),0 6px 10px rgba(120,108,78,.14),0 34px 60px -10px rgba(120,108,78,.30),0 90px 130px -30px rgba(120,108,78,.20);}
-.title{font-size:36px;font-weight:900;letter-spacing:-1.2px;}
-.subt{color:var(--mut);font-weight:700;font-size:14px;margin-top:8px;max-width:70ch;line-height:1.5;}
-.h2{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:2px;color:var(--sub);margin:36px 0 18px;border-top:1px solid var(--line);padding-top:22px;}
-.lbl{font-size:11px;font-weight:800;color:var(--mut);text-transform:uppercase;letter-spacing:.6px;margin-bottom:11px;}
-.row{display:flex;gap:16px;flex-wrap:wrap;align-items:center;}
-.note{font-size:13px;font-weight:700;color:var(--mut);margin-top:14px;max-width:78ch;line-height:1.55;}
-/* МЕДАЛЬ. Подушка тона ступени + светлое донце + римская цифра + звёзды по нижней дуге.
-   Тень нейтральная (рецепт .raise-sm), а не мятная: диск красится в тон медали. */
-.medal{display:inline-grid;place-items:center;border-radius:999px;box-shadow:var(--sh-raise-sm);}
-.stack{display:flex;flex-direction:column;align-items:center;gap:9px;width:106px;}
-.cap{font-size:12px;font-weight:800;color:var(--mut);text-align:center;}
-.trend{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:800;font-variant-numeric:tabular-nums;}
-.trend.up{background:var(--ok);color:var(--ok-ink);} .trend.dn{background:var(--err);color:var(--err-ink);}
-.badge{display:inline-flex;align-items:center;gap:9px;}
-.badge-t{font-size:14px;font-weight:800;}
-.well{border-radius:24px;background:var(--carve-bg);box-shadow:var(--sh-carve);padding:20px 22px;}
-.raise{border-radius:30px;background:var(--grad-surface);box-shadow:var(--sh-raise-sm);}
-table{border-collapse:separate;border-spacing:0;width:100%;font-size:13px;}
-th{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);text-align:left;padding:0 12px 12px;}
-td{padding:10px 12px;font-weight:800;border-top:1px solid var(--line);}
-td.m{color:var(--mut);font-weight:700;}
-.mini{display:flex;align-items:center;gap:12px;border-radius:22px;padding:10px;background:var(--grad-surface);box-shadow:var(--sh-raise-sm);width:330px;}
-.av{width:56px;height:56px;border-radius:14px;display:grid;place-items:center;font-weight:900;color:#5B4B7A;background:linear-gradient(150deg,#D9C9F2,#BFA9E4);}
-.chip{display:inline-flex;align-items:center;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:700;color:var(--mut);background:var(--carve-bg);box-shadow:var(--sh-carve);}
-
-</style></helmet>
 <div class="board">
 <h1 class="title">Кит · Медаль ранга Dota</h1>
 <p class="subt">Ранг приезжает из OpenDota (<code>rank_tier</code>: десятки — ступень, единицы — звёзды; 80 — Immortal) и до Э20 показывался строкой «Властелин 5» в четырёх местах сразу. Знак нужен, чтобы список игроков читался взглядом, а не по слову. Рисунок СВОЙ: медали Valve — их арт, вендорить его нельзя, поэтому композиция собрана языком Кита — подушка в тон ступени, светлое донце, римская цифра и звёзды по нижней дуге.</p>
@@ -99,6 +49,3 @@ td.m{color:var(--mut);font-weight:700;}
 </div>
 <p class="note">В карточке медаль идёт без подписи: на слово места нет, а знак читается и так — название висит подсказкой. Бейджа дивизиона отдельным атомом нет: его роль играет китовый Chip, второй атом был бы копией.</p>
 </div>
-</x-dc>
-</body>
-</html>

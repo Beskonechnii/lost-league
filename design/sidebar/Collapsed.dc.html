@@ -9,7 +9,11 @@
 <helmet><style>
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
 :root{
-  --paper:#E7E3D8;--ink:#33322E;--mut:#807C73;--sub:#AEAAA0;--line:#E0DACE;--line2:#D3CCBE;--mint-ink:#184636;
+  /* --mut затемнён против первой редакции Кита (#807C73 → #69655D, 04.09.2026): на бумаге
+     старое значение давало 3.24:1, а им набрана вся мелочь 11px/800 — шапки колонок, теги,
+     легенды. #69655D — 4.52:1, минимальное значение, проходящее AA. Разбор — DECISIONS.md.
+     --sub (1.81:1) оставлен, но он ДЕКОРАТИВНЫЙ: точка, штрих, разделитель, не текст. */
+  --paper:#E7E3D8;--ink:#33322E;--mut:#69655D;--sub:#AEAAA0;--line:#E0DACE;--line2:#D3CCBE;--mint-ink:#184636;
   --grad-surface:linear-gradient(135deg,#FFFFFF,#F8F4EC 55%,#EEE8DD);
   --grad-mint:linear-gradient(135deg,#D5F2E2,#A9DCC3 52%,#8CCBAD);
   --grad-board:linear-gradient(135deg,#FDFBF6,#F1ECE1);
@@ -46,7 +50,7 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:'Nunito',syst
 .press{background:linear-gradient(135deg,#B8E2CB,#8CC9AA);box-shadow:0 0 0 1px rgba(255,255,255,.3),inset 3px 4px 8px rgba(40,105,76,.5),inset -1px -1px 2px rgba(255,255,255,.4);transform:translateY(3px);}
 .disabled{color:#9C988F;background:linear-gradient(135deg,#EFEBE2,#DFD9CD);box-shadow:0 0 0 1px rgba(255,255,255,.4),inset 1px 1px 2px rgba(255,255,255,.6),inset -1px -2px 3px rgba(150,135,105,.2),0 3px 6px rgba(120,108,78,.12);}
 .quiet{color:var(--ink);background:var(--grad-surface);box-shadow:var(--sh-raise-sm);}
-.ib{width:52px;padding:0;justify-content:center;} .ib.sm{width:42px;} .ib.lg{width:60px;}
+.ib{width:52px;padding:0;justify-content:center;} .ib.sm{width:42px;} .ib.lg{width:60px;} .ib.round{border-radius:999px;}
 .spin{width:16px;height:16px;border-radius:50%;border:3px solid rgba(24,70,54,.3);border-top-color:#184636;display:inline-block;}
 /* pills */
 .pill{display:inline-flex;align-items:center;border-radius:20px;padding:11px 18px;font-size:13px;font-weight:800;color:var(--mut);}
@@ -172,6 +176,20 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:'Nunito',syst
 .mteam+.mteam{border-top:1px solid var(--line);}
 .mteam.win{color:var(--mint-ink);} .mteam .sc{margin-left:auto;font-weight:900;font-variant-numeric:tabular-nums;}
 .mteam.win .sc{color:var(--mint-ink);} .mteam.lose .sc{color:var(--sub);}
+/* calendar — атом даты: нав/месяц/год блоками, выбранный день вдавлен и кругл */
+.cal{width:420px;border-radius:30px;padding:22px;background:var(--grad-surface);box-shadow:var(--sh-raise);}
+.calhead{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+.calnav{display:flex;gap:8px;}
+.calbtn{width:44px;height:44px;border-radius:999px;display:grid;place-items:center;color:var(--mut);background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.caldrop{flex:1;display:flex;align-items:center;justify-content:space-between;gap:8px;border-radius:15px;padding:12px 16px;font-size:14px;font-weight:800;color:var(--ink);background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.caldrop.yr{flex:none;width:104px;}
+.calgrid{border-radius:22px;padding:15px;background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.calwk{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:9px;}
+.calwk span{text-align:center;font-size:10px;font-weight:800;color:var(--sub);text-transform:uppercase;letter-spacing:.4px;}
+.caldays{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+.calday{aspect-ratio:1;border-radius:12px;display:grid;place-items:center;font-size:13px;font-weight:800;color:var(--ink);}
+.calday.mut{color:var(--sub);}
+.calday.sel{border-radius:999px;color:var(--mint-ink);background:var(--grad-mint);box-shadow:inset 3px 4px 8px rgba(40,105,76,.62),inset -2px -3px 6px rgba(255,255,255,.55),inset 0 0 0 1px rgba(40,105,76,.2);}
 
 .sbstage{margin:40px;padding:44px;border-radius:48px;background:var(--grad-board);display:inline-block;
   box-shadow:0 0 0 1px rgba(255,255,255,.6),inset 3px 4px 6px -1px rgba(255,255,255,.95),inset -4px -5px 10px -2px rgba(150,135,105,.22),inset 0 -4px 0 rgba(178,164,132,.2),0 6px 10px rgba(120,108,78,.14),0 34px 60px -10px rgba(120,108,78,.30),0 90px 130px -30px rgba(120,108,78,.20);}

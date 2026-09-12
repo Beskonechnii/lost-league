@@ -1,0 +1,95 @@
+<div class="board">
+  <h1 class="title">Профиль игрока · атомы</h1>
+  <p class="subt">Новые компоненты профиля — для переиспользования и детальной правки. Стиль наследует Кит.</p>
+
+  <div class="h2">Hero-шапка · подложка + личность</div>
+  <div class="hero">
+    <div class="herobanner">
+      <svg class="heromono" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="4">
+        <path d="M50 6 L88 27 V63 L50 94 L12 63 V27 Z"></path>
+        <path d="M50 32 L69 42 V60 L50 71 L31 60 V42 Z" stroke-width="3"></path>
+      </svg>
+    </div>
+    <div class="idcoin"><small>№</small>12</div>
+    <div class="herobody">
+      <div class="bigav ring">Y</div>
+      <div style="flex:1;min-width:0;padding-bottom:4px">
+        <div class="pname">Yatoro</div>
+        <div class="preal">Илья Мулярчук</div>
+        <div class="proles">
+          <span class="chip sel"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M3 7l4 3 5-6 5 6 4-3-2 12H5L3 7z"></path></svg>Капитан</span>
+          <span class="chip warn">Организатор</span>
+          <span class="chip plain">carry</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="h2">Карьера · бублик, показатели, сегменты</div>
+  <div class="pcard" style="max-width:600px">
+    <div class="segfull" style="max-width:300px;margin-top:0">
+      <span class="s on">Лига</span><span class="s">По турнирам</span>
+    </div>
+    <div class="donutwrap">
+      <div class="donut"><div class="donuthole"><div class="big">62%</div><div class="cap">винрейт</div></div></div>
+      <div class="coins">
+        <div class="coin"><div class="coindisc"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 6l4-2-2 4M14 6l-8 8-3 4 4-3 8-8M14 6l4 4-8 8"/></svg></div><div class="coinv">6.4/4.1/9.8</div><div class="coinl">Ср. KDA</div></div>
+        <div class="coin"><div class="coindisc"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></div><div class="coinv">612 / 658</div><div class="coinl">GPM / XPM</div></div>
+        <div class="coin"><div class="coindisc"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="6" width="16" height="13" rx="2"/><path d="M8 3v4M16 3v4M4 11h16"/></svg></div><div class="coinv">34:12</div><div class="coinl">Ср. время</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="h2">Строка · игра / герой (единый компонент)</div>
+  <div class="rowgrid" style="max-width:620px">
+    <div class="grow">
+      <span class="gthumb sq" style="background:linear-gradient(140deg,#8a5a3a,#3a251a)"></span>
+      <span class="gmid"><span class="gtop"><span class="wl w">W</span>Aurora</span><span class="gsub">D1 · плей-офф</span></span>
+      <span class="gkda"><span class="m"><span class="kk">11</span><span class="kx">/</span><span class="kd">3</span><span class="kx">/</span><span class="ka">14</span></span></span>
+    </div>
+    <div class="grow">
+      <span class="gthumb sq" style="background:linear-gradient(140deg,#3a557f,#1a2536)"></span>
+      <span class="gmid"><span class="gtop">Juggernaut</span><span class="gsub">31 карта · <span style="color:var(--mint-ink)">21</span>–<span style="color:#B4595A">10</span></span></span>
+      <span class="hwr">68%</span>
+    </div>
+  </div>
+
+  <div class="h2">Команда · карточка + мини-карточки игроков (внахлёст, раскрытие)</div>
+  <div class="pcard" style="max-width:420px">
+    <div class="teamcardbig">
+      <span class="tmark" style="width:56px;height:56px;font-size:16px;border-radius:16px">NV</span>
+      <div style="flex:1;min-width:0"><div style="font-size:21px;font-weight:900">Nirvana</div></div>
+      <span class="chip sel" style="padding:7px 15px;font-size:12px">D1</span>
+    </div>
+    <div class="playstack">
+      <span class="pcardm me"><span class="pav" style="background:linear-gradient(145deg,#A9DCC3,#5b9b74)">Y</span><span class="pinfo"><div class="pnm">Yatoro</div><div class="prl">carry · кэп</div></span></span>
+      <span class="pcardm"><span class="pav" style="background:linear-gradient(145deg,#8fb0dd,#3a557f)">L</span><span class="pinfo"><div class="pnm">Larl</div><div class="prl">mid</div></span></span>
+      <span class="pcardm"><span class="pav" style="background:linear-gradient(145deg,#b79ad6,#5a3a7f)">C</span><span class="pinfo"><div class="pnm">Collapse</div><div class="prl">offlane</div></span></span>
+      <span class="pcardm"><span class="pav" style="background:linear-gradient(145deg,#d6a0b6,#7f3a5f)">M</span><span class="pinfo"><div class="pnm">Mira</div><div class="prl">soft sup</div></span></span>
+      <span class="pcardm"><span class="pav" style="background:linear-gradient(145deg,#d6c48a,#7f6a3a)">M</span><span class="pinfo"><div class="pnm">Miposhka</div><div class="prl">hard sup</div></span></span>
+    </div>
+  </div>
+
+  <div class="h2">Данные · мини-блоки</div>
+  <div class="factgrid" style="max-width:420px">
+    <div class="factbox"><div class="fk">MMR</div><div class="fv">12&nbsp;400</div></div>
+    <div class="factbox"><div class="fk">Ранг</div><div class="fv" style="font-size:16px">Immortal</div></div>
+    <div class="factbox"><div class="fk">TP</div><div class="fv acc">45</div></div>
+    <div class="factbox"><div class="fk">Возраст</div><div class="fv">22 <small>года</small></div></div>
+  </div>
+
+  <div class="h2">Ссылки · иконки внахлёст (раскрытие по тексту)</div>
+  <div class="linkstack">
+    <span class="lk"><svg class="lki" viewBox="0 0 24 24" fill="currentColor"><path d="M22 3 2 11l6 2 2 6 3-4 5 4 4-16z"/></svg><span class="lkt">@yatoro</span></span>
+    <span class="lk"><svg class="lki" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 20V10M12 20V4M19 20v-7"/></svg><span class="lkt">Dotabuff</span></span>
+    <span class="lk"><svg class="lki" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M3 12h4l3 7 4-14 3 7h4"/></svg><span class="lkt">Stratz</span></span>
+    <span class="lk"><svg class="lki" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="8"/><circle cx="15.5" cy="9" r="2.2" fill="currentColor" stroke="none"/></svg><span class="lkt">Steam</span></span>
+  </div>
+
+  <div class="h2">Достижения</div>
+  <div style="max-width:420px">
+    <div class="achv"><span class="adot"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M5 13l4 4L19 7l-2-2-8 8-2-2z"/></svg></span>Чемпион LOST Season 1</div>
+    <div class="achv"><span class="adot"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M5 13l4 4L19 7l-2-2-8 8-2-2z"/></svg></span>MVP группового этапа</div>
+    <div class="achv"><span class="adot"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M5 13l4 4L19 7l-2-2-8 8-2-2z"/></svg></span>Клуб 10 000 MMR</div>
+  </div>
+</div>

@@ -1,0 +1,39 @@
+
+/* ——— турнирная таблица ——— */
+.tbl{border-radius:34px;padding:8px;background:var(--grad-surface);box-shadow:var(--sh-raise);}
+.tgrid{display:grid;grid-template-columns:64px 1fr 56px 56px 56px 74px 104px 88px;align-items:center;}
+.thead{padding:14px 18px 12px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--sub);}
+.thead .num,.trow .num{text-align:center;}
+.sortable{display:inline-flex;align-items:center;gap:5px;justify-content:center;}
+.sortable.on{color:var(--mint-ink);}
+.sortcap{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.sortable.on .sortcap{background:var(--grad-mint);box-shadow:var(--sh-mint-sm);color:var(--mint-ink);}
+.trow{padding:11px 18px;border-radius:24px;font-size:14px;font-weight:800;}
+.trow+.trow{margin-top:2px;}
+.trow.zsplit{margin-top:12px;padding-top:16px;border-top:1px dashed var(--line2);}
+.trow.me{background:var(--grad-mint);box-shadow:var(--sh-mint-sm);color:var(--mint-ink);}
+.trow.me .tname{color:var(--mint-ink);}
+.trow.hov{background:var(--grad-surface);box-shadow:var(--sh-raise-sm);transform:translateY(-2px);}
+.trow.out{opacity:.72;}
+.tplace{display:flex;align-items:center;gap:9px;}
+.tpn{font-size:15px;font-weight:900;font-variant-numeric:tabular-nums;width:22px;text-align:right;}
+.tteam{display:flex;align-items:center;gap:12px;min-width:0;}
+.tname{font-size:15px;font-weight:900;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tsub{font-size:11px;font-weight:800;color:var(--sub);text-transform:uppercase;letter-spacing:.6px;}
+.tnum{text-align:center;font-variant-numeric:tabular-nums;color:var(--mut);}
+.tnum.win{color:var(--ink);} .tdiff{text-align:center;font-variant-numeric:tabular-nums;font-weight:900;}
+.tdiff.pos{color:#2E7D5E;} .tdiff.neg{color:#B4595A;}
+.form{display:flex;gap:5px;justify-content:center;}
+.fdot{width:17px;height:17px;border-radius:7px;display:grid;place-items:center;font-size:10px;font-weight:900;}
+.fdot.w{color:#184636;background:linear-gradient(135deg,#D5F2E2,#9CD3B6);box-shadow:var(--sh-mint-sm);}
+.fdot.l{color:#7C2F2F;background:linear-gradient(135deg,#F5D3D3,#E3A3A3);box-shadow:var(--sh-raise-sm);}
+.fdot.n{color:var(--sub);background:var(--carve-bg);box-shadow:var(--sh-carve);}
+.tpts{display:flex;justify-content:flex-end;}
+.zlegend{display:flex;gap:22px;flex-wrap:wrap;align-items:center;font-size:12px;font-weight:800;color:var(--mut);}
+.zlegend .zi{display:inline-flex;align-items:center;gap:9px;}
+/* мобильная строка 390 */
+.mob{width:390px;border-radius:34px;padding:10px;background:var(--grad-surface);box-shadow:var(--sh-raise);}
+.mrow{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:22px;font-weight:800;}
+.mrow+.mrow{margin-top:2px;}
+.mrow.me{background:var(--grad-mint);box-shadow:var(--sh-mint-sm);color:var(--mint-ink);}
+.mmeta{font-size:11px;font-weight:800;color:var(--sub);margin-top:1px;}

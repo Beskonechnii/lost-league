@@ -5,7 +5,8 @@ import { writeFileSync, readFileSync } from "node:fs";
 // рецепты композиции самой главной — сетка 60/40, карточки турниров, топы.
 const kitSrc = readFileSync(new URL("../kit/build.mjs", import.meta.url), "utf8");
 const STYLE = kitSrc.match(/const STYLE = `([\s\S]*?)`;/)[1];
-const kitExtra = (name) => kitSrc.match(new RegExp("\\n  " + name + ": `([\\s\\S]*?)`,\\n"))[1];
+// хвост CSS листа кита лежит рядом с его разметкой — kit/parts/<Имя>.css
+const kitExtra = (name) => readFileSync(new URL(`../kit/parts/${name}.css`, import.meta.url), "utf8");
 const BASE = STYLE + kitExtra("SiteNav") + kitExtra("SeriesCard") + kitExtra("Standings");
 
 const HOME = `
