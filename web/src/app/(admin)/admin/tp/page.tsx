@@ -1,6 +1,7 @@
 import { listPlayers } from "@/lib/roster-data";
 import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { TpAdmin } from "./_components/tp-admin";
+import { AdminHeader } from "../../_components/admin-header";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 import { currentTournament } from "@/lib/tournaments";
 import { tpByTournament } from "@/lib/tp";
@@ -24,8 +25,13 @@ export default async function TpAdminPage() {
 
   return (
     <main className={`mx-auto w-full ${SITE_MAX_W} flex-1 px-4 py-8 md:px-6`}>
-      <TpAdmin
+      {/* Шапка — на странице, а не в редакторе: путь до раздела рисует `AdminHeader`, и он же
+          ставит первой крошкой возврат на хаб. */}
+      <AdminHeader
+        eyebrow="Служебная часть · зачёт"
         title={current ? `TP · ${current.short ?? current.name}` : "TP"}
+      />
+      <TpAdmin
         players={players.map((p) => ({ id: p.id, nickname: p.nickname, tp: season.get(p.id) ?? 0 }))}
       />
     </main>

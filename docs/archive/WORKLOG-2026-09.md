@@ -7,6 +7,15 @@
 
 ---
 
+## 2026-09-11 — Перестройка доков, роли-сабагенты, MVP
+
+Корень сжат до шести файлов: большие справочники уехали в `docs/`, закрытые планы — в
+`docs/archive/`, журналы обрезаны до формата. Заведены `MVP.md`, `docs/tasks/` (одно ТЗ — один файл)
+и четыре роли-агента: `pm`, `design`, `seo`, `qa`; DEV остался `stage`.
+**Файлы.** `CLAUDE.md`, `MVP.md`, `BACKLOG.md`, `DECISIONS.md`, `WORKLOG.md`, `docs/**`,
+`.claude/agents/{pm,design,seo,qa}.md`, `.claude/agents/stage.md`, `.claude/skills/*/SKILL.md`.
+**Дальше.** Блокеры релиза лежат в `docs/tasks/` — начинать с `01-vps-i-baza.md`.
+
 ## 2026-09-10 — Э22: осколки — валюта участия, грейды и витрина (RELEASE-PLAN §E)
 
 - **Отдельная таблица, а не строка в реестре баллов.** `ShardEntry` заведена рядом с `PointsEntry`,

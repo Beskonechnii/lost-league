@@ -10,7 +10,7 @@ import { Input as PoufInput } from "@/components/pouf/Input";
 import { Card } from "@/components/pouf/surface";
 import { Sheet } from "@/components/pouf/sheet";
 import { Segmented } from "@/components/pouf/Segmented";
-import { Heading, Eyebrow, Text } from "@/components/pouf/text";
+import { Text } from "@/components/pouf/text";
 
 // Команду не показываем и не храним у TP: зачёт сквозной по сезонам, а составы от сезона к сезону
 // меняются — привязка к команде тут только путала бы.
@@ -204,7 +204,7 @@ function AwardSheet({ players, open, onOpenChange, onSaved }: {
   );
 }
 
-export function TpAdmin({ players, title = "TP" }: { players: Row[]; title?: string }) {
+export function TpAdmin({ players }: { players: Row[] }) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [only, setOnly] = useState<"all" | "scored">("scored");
@@ -221,22 +221,18 @@ export function TpAdmin({ players, title = "TP" }: { players: Row[]; title?: str
   const scored = players.filter((p) => p.tp > 0).length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <Eyebrow>Служебная часть · зачёт</Eyebrow>
-          <Heading level={1}>{title}</Heading>
-        </div>
-        <div className="flex flex-wrap items-center gap-4">
-          <Text size="sm" muted>
-            Идут в{" "}
-            <Link href="/tp" className="font-bold text-[var(--accent-ink)] hover:underline">
-              публичный зачёт
-            </Link>
-            . Набрали: {scored} · всего {total} TP
-          </Text>
-          <PoufButton onClick={() => setAward(true)}>+ Начислить очки</PoufButton>
-        </div>
+    // Заголовка здесь больше нет: крошки и H1 рисует страница (`AdminHeader`), иначе на экране
+    // два заголовка и путь до раздела не показать — шапка серверная, а это редактор.
+    <div className="mt-6 space-y-6">
+      <div className="flex flex-wrap items-center gap-4">
+        <Text size="sm" muted>
+          Идут в{" "}
+          <Link href="/tp" className="font-bold text-[var(--accent-ink)] hover:underline">
+            публичный зачёт
+          </Link>
+          . Набрали: {scored} · всего {total} TP
+        </Text>
+        <PoufButton onClick={() => setAward(true)}>+ Начислить очки</PoufButton>
       </div>
 
       <AwardSheet players={players} open={award} onOpenChange={setAward} onSaved={() => router.refresh()} />

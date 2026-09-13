@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listQuizzes, quizOpen } from "@/lib/quizzes";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 import { READ_MAX_W } from "@/components/pouf/blocks";
+import { AdminHeader } from "../../_components/admin-header";
 import { NewQuizForm } from "./_components/new-quiz-form";
 
 export const metadata = { title: "Анкеты" };
@@ -23,12 +24,11 @@ export default async function QuizzesPage() {
 
   return (
     <main className={`mx-auto w-full ${READ_MAX_W} flex-1 px-4 py-8 md:px-6`}>
-      <h1 className="text-xl font-bold tracking-tight">Анкеты</h1>
-      <p className="mt-2 max-w-2xl text-sm text-ink-muted">
+      <AdminHeader title="Анкеты">
         Опросы и записи на ивенты, которые бот собирает в телеграме: запись на шоуматч, заявка кастера,
         любой вопрос к аудитории. Заявка команды живёт отдельно — у неё свои проверки и очередь
         модерации.
-      </p>
+      </AdminHeader>
 
       <NewQuizForm />
 

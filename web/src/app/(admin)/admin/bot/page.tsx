@@ -3,6 +3,7 @@ import { loadBotSettingsForEditor } from "@/lib/bot-settings";
 import { telegramConfigured } from "@/lib/telegram";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 import { READ_MAX_W } from "@/components/pouf/blocks";
+import { AdminHeader } from "../../_components/admin-header";
 import { BotSettingsAdmin } from "./_components/bot-settings-admin";
 
 export const metadata = { title: "Телеграм-бот" };
@@ -24,12 +25,15 @@ export default async function BotPage() {
 
   return (
     <main className={`mx-auto w-full ${READ_MAX_W} flex-1 px-4 py-8 md:px-6`}>
-      <h1 className="text-xl font-bold tracking-tight">Телеграм-бот</h1>
+      <AdminHeader title="Телеграм-бот">
+        По каким таймингам бот пишет сам: напоминания о встречах и утренний дайджест. Что он
+        говорит в разговоре — соседний экран «Флоу».
+      </AdminHeader>
 
       {/* Флоу — соседний маршрут, а не вкладка: канвасу нужна вся ширина витрины, а здесь колонка
           чтения. Ссылка стоит первой строкой, потому что «что бот говорит» оператор ищет чаще, чем
           «за сколько напоминать». */}
-      <div className="mt-5 flex flex-wrap gap-2">
+      <div className="mt-6 flex flex-wrap gap-2">
         <Link
           href="/admin/bot/flow"
           className="rounded-md border border-hairline bg-surface-1 px-3 py-1.5 text-sm text-ink-muted hover:text-ink"

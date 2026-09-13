@@ -9,6 +9,18 @@
 
 ---
 
+## 2026-09-14 — Долги приёмки ТЗ 08: путь до раздела и два бейджа
+
+Восемь служебных экранов получили шапку `AdminHeader` (она же ставит крошку «Админ» и возврат на
+хаб): tp, bot, quizzes, match, vision, stats, studio/editor, theme — свои H1 у них убраны, у tp и
+theme заголовок уехал из клиентского редактора на страницу. Очередь модерации считает один
+`lib/moderation.ts` — плитка хаба и чип раздела теперь дают одно число (четыре очереди), бейдж
+«Дубли профилей» вернулся на свою плитку.
+**Файлы.** `lib/moderation.ts` (новый), `(admin)/admin/{page,moderation,tp,bot,quizzes,vision,stats,theme}`,
+`(admin)/{match,studio/editor}/page.tsx`, `BACKLOG.md`.
+**Дальше.** qa: перепроверить критерий 11 ТЗ 08. `/admin/1x1` крошку имел и до правки (через
+`WorkInProgress`) — в списке долга он был ошибочно.
+
 ## 2026-09-14 — ТЗ 09: раздел «Турниры»
 
 Серия (`Tournament.series`) и лимит команд (`Division.teamLimit`) заведены аддитивной миграцией;
@@ -87,12 +99,3 @@ notifications,account-nav,avatar-menu}`, `(home)/{page,banner,mini-profile}`, `p
 (палитра, пять теней, шкала Nunito). Канвас разделён на страницы «Атомы» и «Блоки и экраны».
 **Файлы.** Артефакт Кита `de74082f…` (правится через `--extract`), `.claude/skills/kit/SKILL.md`,
 `DECISIONS.md`. **Дальше.** Новый компонент заводится своим артбордом, общие витрины не возвращаем.
-
-## 2026-09-11 — Перестройка доков, роли-сабагенты, MVP
-
-Корень сжат до шести файлов: большие справочники уехали в `docs/`, закрытые планы — в
-`docs/archive/`, журналы обрезаны до формата. Заведены `MVP.md`, `docs/tasks/` (одно ТЗ — один файл)
-и четыре роли-агента: `pm`, `design`, `seo`, `qa`; DEV остался `stage`.
-**Файлы.** `CLAUDE.md`, `MVP.md`, `BACKLOG.md`, `DECISIONS.md`, `WORKLOG.md`, `docs/**`,
-`.claude/agents/{pm,design,seo,qa}.md`, `.claude/agents/stage.md`, `.claude/skills/*/SKILL.md`.
-**Дальше.** Блокеры релиза лежат в `docs/tasks/` — начинать с `01-vps-i-baza.md`.

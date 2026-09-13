@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button as PoufButton } from "@/components/pouf/Button";
 import { Badge } from "@/components/pouf/media";
-import { Heading, Eyebrow, Text } from "@/components/pouf/text";
+import { Text } from "@/components/pouf/text";
 import {
   DEFAULT_THEME,
   FIELDS,
@@ -167,28 +167,24 @@ export function ThemeAdmin({ initial }: { initial: Theme }) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <Eyebrow>Служебная часть · оформление</Eyebrow>
-          <Heading level={1}>Тема</Heading>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {flash && (
-            <Text size="sm" muted>
-              ✓ сохранено
-            </Text>
-          )}
-          <PoufButton variant="quiet" onClick={() => setDraft(DEFAULT_THEME)} disabled={busy}>
-            Сбросить к дефолту
-          </PoufButton>
-          <PoufButton variant="quiet" onClick={() => setDraft(saved)} disabled={busy || !dirty}>
-            Отменить правки
-          </PoufButton>
-          <PoufButton onClick={save} loading={busy} disabled={!dirty}>
-            Сохранить
-          </PoufButton>
-        </div>
+    // Заголовка здесь нет: крошки и H1 рисует страница (`AdminHeader`) — шапка серверная,
+    // а это клиентский редактор.
+    <div className="mt-6 space-y-6">
+      <div className="flex flex-wrap items-center gap-3">
+        {flash && (
+          <Text size="sm" muted>
+            ✓ сохранено
+          </Text>
+        )}
+        <PoufButton variant="quiet" onClick={() => setDraft(DEFAULT_THEME)} disabled={busy}>
+          Сбросить к дефолту
+        </PoufButton>
+        <PoufButton variant="quiet" onClick={() => setDraft(saved)} disabled={busy || !dirty}>
+          Отменить правки
+        </PoufButton>
+        <PoufButton onClick={save} loading={busy} disabled={!dirty}>
+          Сохранить
+        </PoufButton>
       </div>
 
       <Text size="sm" muted>

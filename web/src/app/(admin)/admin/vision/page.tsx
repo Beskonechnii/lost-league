@@ -4,6 +4,7 @@ import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { VisionMap } from "@/app/_components/postgame/vision-map";
 import { listTeamsWithWards, teamVision, mapVision } from "@/lib/vision";
 import { denyUnlessPermission } from "../../_components/permission-gate";
+import { AdminHeader } from "../../_components/admin-header";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Карта вардов" };
@@ -36,10 +37,9 @@ export default async function VisionPage({
 
   return (
     <main className={`mx-auto w-full ${SITE_MAX_W} flex-1 px-4 py-8 font-pouf md:px-6`}>
-      <h1 className="text-[28px] font-black tracking-[-0.5px] text-ink md:text-4xl">Карта вардов</h1>
-      <p className="mt-1 text-sm font-bold text-muted">
+      <AdminHeader eyebrow="Служебная часть · аналитика" title="Карта вардов">
         Расстановка вардов команды по всем её картам из архива. Выбери команду — увидишь сводное наложение и каждую карту отдельно.
-      </p>
+      </AdminHeader>
 
       {teams.length === 0 ? (
         <div className="mt-6 rounded-card bg-surface p-6 text-sm font-bold text-muted cushion-card">

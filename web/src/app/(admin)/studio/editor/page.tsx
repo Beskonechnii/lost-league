@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { Eyebrow } from "@/components/pouf/text";
+import { AdminHeader } from "../../_components/admin-header";
 import { CreateDesign } from "./_components/create-design";
 import { DeleteDesign } from "./_components/delete-design";
 import { GraphicsShelf } from "./_components/graphics-shelf";
@@ -29,13 +29,11 @@ export default async function EditorHome() {
 
   return (
     <div className="space-y-8 font-pouf">
-      <div>
-        <Eyebrow className="mb-2">Служебная часть · графика</Eyebrow>
-        <h1 className="text-[28px] font-black tracking-[-0.5px] text-ink md:text-4xl">Редактор</h1>
-        <p className="mt-1.5 text-sm font-bold text-muted">
-          Свободный холст: текст, фигуры и картинки из медиатеки расставляются вручную. Экспорт — PNG в натуральном размере.
-        </p>
-      </div>
+      {/* Студия лежит вне /admin, но входит в служебную часть: шапка и возврат на хаб у неё общие
+          с остальными инструментами. */}
+      <AdminHeader eyebrow="Служебная часть · графика" title="Редактор">
+        Свободный холст: текст, фигуры и картинки из медиатеки расставляются вручную. Экспорт — PNG в натуральном размере.
+      </AdminHeader>
 
       {/* Мастер-шаблоны отдельно и сверху: из них собирается графика серий, поэтому удалять их нельзя */}
       <Section

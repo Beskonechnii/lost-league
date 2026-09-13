@@ -2,9 +2,9 @@ import Link from "next/link";
 import { getLeaders, METRICS, type Subject } from "@/lib/leaders";
 import { getDivisions } from "@/lib/tournaments";
 import { isStage } from "@/lib/stages";
-import { Eyebrow } from "@/components/pouf/text";
 import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { denyUnlessPermission } from "../../_components/permission-gate";
+import { AdminHeader } from "../../_components/admin-header";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Показатели" };
@@ -104,8 +104,7 @@ export default async function AdminStatsPage({ searchParams }: { searchParams: P
 
   return (
     <main className={`mx-auto w-full ${SITE_MAX_W} flex-1 px-4 py-8 font-pouf md:px-6`}>
-      <Eyebrow className="mb-2">Служебная часть · показатели</Eyebrow>
-      <h1 className="text-[28px] font-black tracking-[-0.5px] text-ink md:text-4xl">Показатели турнира</h1>
+      <AdminHeader eyebrow="Служебная часть · показатели" title="Показатели турнира" />
 
       <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
         <div className="flex flex-wrap gap-2">

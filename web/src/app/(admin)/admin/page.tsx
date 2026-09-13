@@ -1,6 +1,8 @@
 import { HubGroupedTiles } from "@/app/_components/hub-tiles";
-import { currentPermissions, pendingClaims, pendingRegistrations } from "@/lib/account";
-import { QUEUE_TOOL, toolGroupsFor } from "@/app/_components/tools";
+import { currentPermissions } from "@/lib/account";
+import { moderationQueues } from "@/lib/moderation";
+import { duplicatesCount } from "@/lib/duplicates";
+import { DUPLICATES_TOOL, QUEUE_TOOL, toolGroupsFor } from "@/app/_components/tools";
 import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { Alert } from "@/components/pouf/feedback";
 
@@ -14,15 +16,19 @@ export const metadata = { title: "Инструменты" };
 
 export default async function AdminHome() {
   const perms = await currentPermissions();
-  const canApprove = perms.includes("accounts.approve");
-  const [queue, claims] = canApprove
-    ? await Promise.all([pendingRegistrations(), pendingClaims()])
-    : [[], []];
-  const pending = queue.length + claims.length;
+  const mayEdit = perms.includes("roster.edit");
+
+  // Очередь считаем тем же вызовом, что и сама /admin/moderation: число на плитке — обещание,
+  // и оно должно совпасть со списком, который человек там увидит.
+  const pending = perms.includes("accounts.approve") ? (await moderationQueues(mayEdit)).total : 0;
+  // Дубли — вторая очередь под правом roster.edit. Оба индикатора жили в удалённом сайдбаре;
+  // на хабе они на плитках своих инструментов.
+  const duplicates = mayEdit ? await duplicatesCount() : 0;
+  const badges: Record<string, number> = { [QUEUE_TOOL]: pending, [DUPLICATES_TOOL]: duplicates };
 
   const groups = toolGroupsFor(perms).map((g) => ({
     title: g.title,
-    tiles: g.tools.map((t) => (t.href === QUEUE_TOOL && pending > 0 ? { ...t, badge: pending } : t)),
+    tiles: g.tools.map((t) => (badges[t.href] ? { ...t, badge: badges[t.href] } : t)),
   }));
 
   return (

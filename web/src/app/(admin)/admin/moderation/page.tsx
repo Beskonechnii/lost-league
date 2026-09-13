@@ -2,14 +2,13 @@ import Link from "next/link";
 import { playerPath } from "@/lib/profiles";
 import {
   can,
-  pendingClaims,
-  pendingRegistrations,
   accountApplication,
   type PendingClaim,
   type PendingRegistration,
 } from "@/lib/account";
-import { fieldLabel, pendingProfileEdits, type PendingProfileEdit } from "@/lib/profile-edit";
-import { parseDraft, pendingApplications } from "@/lib/team-application";
+import { fieldLabel, type PendingProfileEdit } from "@/lib/profile-edit";
+import { moderationQueues } from "@/lib/moderation";
+import { parseDraft } from "@/lib/team-application";
 import { roleLabel } from "@/lib/roles";
 import { membersByApplication, type InviteRow } from "@/lib/team-invites";
 import { ApplicationSummary } from "@/app/_components/application-summary";
@@ -65,12 +64,9 @@ export default async function ModerationPage({ searchParams }: { searchParams: P
   const mayEdit = await can("roster.edit");
   const wanted: TabKey = isTab(raw) ? raw : "profiles";
   const tab: TabKey = wanted === "edits" && !mayEdit ? "profiles" : wanted;
-  const [queue, claims, teams, edits] = await Promise.all([
-    pendingRegistrations(),
-    pendingClaims(),
-    pendingApplications(),
-    mayEdit ? pendingProfileEdits() : Promise.resolve([]),
-  ]);
+  // Очереди и их сумму считает `lib/moderation.ts` — тот же вызов стоит за бейджем плитки на хабе,
+  // иначе числа у входа и в списке расходятся.
+  const { profiles: queue, links: claims, teams, edits, total } = await moderationQueues(mayEdit);
   const counts: Record<TabKey, number> = {
     profiles: queue.length,
     links: claims.length,
@@ -79,7 +75,6 @@ export default async function ModerationPage({ searchParams }: { searchParams: P
   };
   const teamMembers = await membersByApplication(teams.map((t) => t.id));
   const tabs = TABS.filter((t) => !("permission" in t) || mayEdit);
-  const total = counts.profiles + counts.links + counts.teams + counts.edits;
 
   return (
     <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
@@ -177,7 +172,7 @@ function TeamApplications({
   rows,
   members,
 }: {
-  rows: Awaited<ReturnType<typeof pendingApplications>>;
+  rows: Awaited<ReturnType<typeof moderationQueues>>["teams"];
   members: Map<number, InviteRow[]>;
 }) {
   if (rows.length === 0) {

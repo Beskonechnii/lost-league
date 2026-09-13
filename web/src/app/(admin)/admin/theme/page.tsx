@@ -2,6 +2,7 @@ import { readTheme } from "@/lib/theme-store";
 import { ThemeAdmin } from "./_components/theme-admin";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 import { SITE_MAX_W } from "@/components/pouf/blocks";
+import { AdminHeader } from "../../_components/admin-header";
 
 export const metadata = { title: "Тема" };
 
@@ -15,6 +16,9 @@ export default async function ThemePage() {
   const theme = await readTheme();
   return (
     <main className={`mx-auto w-full ${SITE_MAX_W} flex-1 px-4 py-8 md:px-6`}>
+      {/* Шапка на странице: путь до раздела и возврат на хаб рисует общий `AdminHeader`,
+          редактор ниже отвечает только за цвета. */}
+      <AdminHeader eyebrow="Служебная часть · оформление" title="Тема" />
       <ThemeAdmin initial={theme} />
     </main>
   );
