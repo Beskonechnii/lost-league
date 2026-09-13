@@ -18,6 +18,8 @@ export function Field({
   hint,
   children,
   span,
+  options,
+  inputMode,
 }: {
   name: string;
   label: string;
@@ -31,6 +33,9 @@ export function Field({
   children?: ReactNode;
   /** Занять несколько колонок сетки формы. */
   span?: 2 | 3;
+  /** Подсказка уже заведённых значений при вводе (`<datalist>`) — поле остаётся свободным. */
+  options?: string[];
+  inputMode?: "numeric";
 }) {
   const common = {
     name,
@@ -50,7 +55,22 @@ export function Field({
         ) : textarea ? (
           <FormTextarea {...common} rows={4} />
         ) : (
-          <FormInput {...common} type={type} size="sm" />
+          <>
+            <FormInput
+              {...common}
+              type={type}
+              size="sm"
+              inputMode={inputMode}
+              list={options ? `${common.id}-list` : undefined}
+            />
+            {options && (
+              <datalist id={`${common.id}-list`}>
+                {options.map((o) => (
+                  <option key={o} value={o} />
+                ))}
+              </datalist>
+            )}
+          </>
         )}
       </div>
       {hint && <span className="mt-1.5 block font-pouf text-[11px] font-bold text-muted">{hint}</span>}

@@ -158,6 +158,7 @@ export type TournamentInput = {
   description?: string | null;
   format?: string | null;
   prize?: string | null;
+  series?: string | null;
   status?: string | null;
   startAt?: string | null;
   endAt?: string | null;
@@ -201,6 +202,7 @@ function tournamentData(input: TournamentInput) {
     description: clean(input.description),
     format: clean(input.format),
     prize: clean(input.prize),
+    series: clean(input.series),
     ...(status && isTournamentStatus(status) ? { status } : {}),
     startAt: date(input.startAt),
     endAt: date(input.endAt),
@@ -346,6 +348,98 @@ export async function deleteTournament(id: number) {
   return tournament;
 }
 
+// ── серии ────────────────────────────────────────────────────────────────────
+
+/**
+ * Серия, которая идёт в разделе первой группой. Единственное место в коде, где название серии
+ * зашито: остальное — значение поля `Tournament.series`, которое оператор вводит руками
+ * (решение Стаса 13.09.2026: ни словаря серий, ни enum, ни справочника).
+ */
+export const LOST_SERIES = "LOST";
+
+/** Подпись группы для турниров с пустым полем серии. */
+export const NO_SERIES_TITLE = "Прочие турниры";
+
+/** Ключ группировки: «LOST Cup» и «lost cup» — одна серия, а не две. */
+export const seriesKey = (v: string | null | undefined) => (v ?? "").trim().toLowerCase();
+
+export type SeriesGroup<T> = { key: string; title: string; items: T[] };
+
+/**
+ * Турниры по сериям: LOST первой, остальные следом в порядке пришедшего списка (он идёт
+ * `startAt desc`, значит свежая серия выше), турниры без серии — последней группой.
+ * Подпись группы — как ввёл оператор у первого её турнира: регистр в ключ не входит.
+ */
+export function groupBySeries<T extends { series: string | null }>(list: T[]): SeriesGroup<T>[] {
+  const groups = new Map<string, SeriesGroup<T>>();
+  for (const t of list) {
+    const key = seriesKey(t.series);
+    const found = groups.get(key);
+    if (found) found.items.push(t);
+    else groups.set(key, { key, title: key === "" ? NO_SERIES_TITLE : t.series!.trim(), items: [t] });
+  }
+  // Сортировка стабильна, поэтому у «остальных серий» сохраняется порядок первого появления.
+  const rank = (key: string) => (key === seriesKey(LOST_SERIES) ? 0 : key === "" ? 2 : 1);
+  return [...groups.values()].sort((a, b) => rank(a.key) - rank(b.key));
+}
+
+/**
+ * Уже заведённые серии — подсказка оператору при вводе. Без неё опечатка заводит вторую группу
+ * вместо попадания в существующую (цена решения «серия — свободное поле»).
+ */
+export async function listSeries(): Promise<string[]> {
+  const rows = await prisma.tournament.findMany({
+    where: { series: { not: null } },
+    orderBy: [{ startAt: "desc" }, { id: "desc" }],
+    select: { series: true },
+  });
+  const seen = new Map<string, string>();
+  for (const r of rows) {
+    const key = seriesKey(r.series);
+    if (key && !seen.has(key)) seen.set(key, r.series!.trim());
+  }
+  return [...seen.values()];
+}
+
+// ── места ────────────────────────────────────────────────────────────────────
+
+/** Счётчик мест: сколько команд записано и сколько влезает. `limit: null` — без ограничения. */
+export type Seats = { taken: number; limit: number | null };
+
+/**
+ * Места турнира — сумма по дивизионам. Знаменатель показываем, только если лимит задан у ВСЕХ
+ * дивизионов: неполная сумма врёт (12 мест одного дивизиона выдаются за вместимость турнира).
+ */
+export const tournamentSeats = (divisions: { teamLimit: number | null; _count: { entries: number } }[]): Seats => ({
+  taken: divisions.reduce((n, d) => n + d._count.entries, 0),
+  limit:
+    divisions.length > 0 && divisions.every((d) => d.teamLimit !== null)
+      ? divisions.reduce((n, d) => n + (d.teamLimit ?? 0), 0)
+      : null,
+});
+
+/** Мест больше нет: лимит задан и уже выбран. Превышение (13 из 12) — тоже «нет». */
+export const seatsFull = (s: Seats) => s.limit !== null && s.taken >= s.limit;
+
+/**
+ * Предупреждение о превышении лимита с числами — одно на все три пути записи (апрув заявки,
+ * ручное добавление команды, перестановка между дивизионами). `null` — лимит записи не мешает.
+ *
+ * Запрета здесь нет намеренно: лимит — правило лиги, а не ограничение базы, и последнее слово
+ * за организатором (решение Стаса 13.09.2026).
+ */
+export const overflowWarning = (label: string, s: Seats): string | null =>
+  seatsFull(s) ? `${label}: ${s.taken} из ${s.limit}, команда станет ${s.taken + 1}-й` : null;
+
+/** Места дивизионов турнира по id — там, где дивизионы уже есть, а участий в выборке нет. */
+export async function divisionSeats(tournamentId: number): Promise<Map<number, Seats>> {
+  const rows = await prisma.division.findMany({
+    where: { tournamentId },
+    select: { id: true, teamLimit: true, _count: { select: { entries: true } } },
+  });
+  return new Map(rows.map((d) => [d.id, { taken: d._count.entries, limit: d.teamLimit }]));
+}
+
 // ── дивизионы ────────────────────────────────────────────────────────────────
 
 export type DivisionInput = {
@@ -356,6 +450,7 @@ export type DivisionInput = {
   orderNo?: number | null;
   mmrFrom?: number | null;
   mmrTo?: number | null;
+  teamLimit?: number | null;
 };
 
 export async function createDivision(tournamentId: number, input: DivisionInput) {
@@ -375,6 +470,7 @@ export async function createDivision(tournamentId: number, input: DivisionInput)
       orderNo: input.orderNo ?? (last ? last.orderNo + 1 : 0),
       mmrFrom: input.mmrFrom ?? null,
       mmrTo: input.mmrTo ?? null,
+      teamLimit: input.teamLimit ?? null,
     },
   });
 }
@@ -399,6 +495,7 @@ export async function updateDivision(id: number, input: DivisionInput) {
       ...(input.orderNo === undefined || input.orderNo === null ? {} : { orderNo: input.orderNo }),
       mmrFrom: input.mmrFrom ?? null,
       mmrTo: input.mmrTo ?? null,
+      teamLimit: input.teamLimit ?? null,
     },
   });
 

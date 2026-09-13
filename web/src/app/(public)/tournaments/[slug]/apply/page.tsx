@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { registrationOpen, teamsInTournament, tournamentBySlug } from "@/lib/tournaments";
+import { divisionSeats, registrationOpen, seatsFull, teamsInTournament, tournamentBySlug } from "@/lib/tournaments";
 import { currentAccount } from "@/lib/account";
 import { myApplications, parseDraft } from "@/lib/team-application";
 import { botStartLink } from "@/lib/telegram";
@@ -60,6 +60,7 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
   const me = await currentAccount();
   const all = me ? await myApplications(me.id, tournament.id) : [];
   const open = registrationOpen(tournament);
+  const seats = await divisionSeats(tournament.id);
 
   // «Принята» — только если команда реально в турнире (есть участие). Одобренная заявка без участия
   // осиротела: команду сняли или сетку пересобрали. Такую заявку для подачи не показываем — иначе
@@ -199,7 +200,11 @@ export default async function ApplyPage({ params }: { params: Promise<{ slug: st
           <ApplyBoard
             tournamentId={tournament.id}
             tournamentSlug={tournament.slug}
-            divisions={tournament.divisions.map((d) => ({ id: d.id, name: d.name }))}
+            divisions={tournament.divisions.map((d) => {
+              // Мест нет — капитан должен узнать об этом до отправки, а не из ответа сервера.
+              const s = seats.get(d.id) ?? { taken: 0, limit: d.teamLimit };
+              return { id: d.id, name: d.name, taken: s.taken, limit: s.limit, full: seatsFull(s) };
+            })}
             pool={pool}
             taken={taken}
             inviteUrl={inviteUrl}

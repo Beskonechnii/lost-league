@@ -35,6 +35,7 @@ const tournamentInput = (form: FormData) => ({
   description: text(form, "description"),
   format: text(form, "format"),
   prize: text(form, "prize"),
+  series: text(form, "series"),
   status: text(form, "status"),
   startAt: text(form, "startAt"),
   endAt: text(form, "endAt"),
@@ -53,6 +54,9 @@ export async function saveTournament(_state: SaveState, form: FormData): Promise
     const tournament = await updateTournament(Number(form.get("id")), tournamentInput(form));
     revalidatePath("/admin/tournaments");
     revalidatePath(`/admin/tournaments/${tournament.slug}`);
+    // Серия правится здесь же, а группы раздела и ленту хронологии рисует она.
+    revalidatePath("/tournaments");
+    revalidatePath("/tournaments/archive");
     return { ok: true };
   } catch (e) {
     // Чаще всего сюда прилетает занятый слаг: показать причину полезнее, чем экран ошибки.
@@ -88,6 +92,7 @@ const divisionInput = (form: FormData) => ({
   orderNo: num(form, "orderNo"),
   mmrFrom: num(form, "mmrFrom"),
   mmrTo: num(form, "mmrTo"),
+  teamLimit: num(form, "teamLimit"),
 });
 
 export async function addDivision(form: FormData): Promise<void> {
@@ -101,6 +106,8 @@ export async function saveDivision(form: FormData): Promise<void> {
   await updateDivision(Number(form.get("id")), divisionInput(form));
   revalidatePath(`/admin/tournaments/${text(form, "tournamentSlug")}`);
   revalidatePath("/roster/teams");
+  // Лимит дивизиона виден на карточке турнира и в форме заявки.
+  revalidatePath("/tournaments");
 }
 
 export async function removeDivision(form: FormData): Promise<void> {
@@ -139,4 +146,5 @@ export async function assignTeam(form: FormData): Promise<void> {
   });
   revalidatePath(`/admin/tournaments/${text(form, "tournamentSlug")}`);
   revalidatePath("/roster/teams");
+  revalidatePath("/tournaments");
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { tournamentBySlug } from "@/lib/tournaments";
+import { divisionSeats, overflowWarning, tournamentBySlug } from "@/lib/tournaments";
 import { applicationProblems, listApplications, parseAnswers, parseDraft, type Problem } from "@/lib/team-application";
 import { roleLabel } from "@/lib/roles";
 import { INVITE_LABEL, isInviteStatus, membersByApplication } from "@/lib/team-invites";
@@ -50,6 +50,9 @@ export default async function TeamRegistrationsPage({ params }: { params: Promis
   if (!tournament) notFound();
 
   const applications = await listApplications(tournament.id);
+  // Места дивизионов — чтобы апрув в заполненный дивизион спросил подтверждение теми же числами,
+  // что показывает витрина (проверка живёт в слое данных, src/lib/tournaments.ts).
+  const seats = await divisionSeats(tournament.id);
   // Ответы позванных — одним запросом на всю очередь, а не по строке на карточку. Считаем их до
   // замечаний: отказ игрока — одно из замечаний (`applicationProblems`).
   const members = await membersByApplication(applications.map((a) => a.id));
@@ -91,6 +94,10 @@ export default async function TeamRegistrationsPage({ params }: { params: Promis
               const answers = parseAnswers(a.payload);
               const status = STATUS[a.status] ?? { label: a.status, tone: "neutral" as const };
               const blocked = problems[i].some((p) => p.level === "block") || !a.divisionId;
+              const division = a.divisionId ? tournament.divisions.find((d) => d.id === a.divisionId) : null;
+              const seat = a.divisionId ? seats.get(a.divisionId) : null;
+              const overflow =
+                division && seat ? overflowWarning(division.short ?? division.name, seat) : null;
 
               return (
                 <li key={a.id}>
@@ -210,7 +217,12 @@ export default async function TeamRegistrationsPage({ params }: { params: Promis
                           </form>
                         </div>
 
-                        <ReviewForms id={a.id} tournamentSlug={tournament.slug} blocked={blocked} />
+                        <ReviewForms
+                          id={a.id}
+                          tournamentSlug={tournament.slug}
+                          blocked={blocked}
+                          overflow={overflow}
+                        />
                       </>
                     )}
 

@@ -4,9 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { teamTag } from "@/lib/profiles";
 import {
   divisionTeams,
+  listSeries,
+  overflowWarning,
   tournamentBySlug,
   tournamentUsage,
   TOURNAMENT_STATUS_LABELS,
+  type Seats,
   type TournamentStatus,
 } from "@/lib/tournaments";
 import { Button } from "@/components/pouf/Button";
@@ -14,6 +17,7 @@ import { FormInput, FormSelect, Label } from "@/components/pouf/Input";
 import { DataCell, DataRow, DataTable, RowActions } from "@/components/pouf/data-table";
 import { EmptyState } from "@/components/pouf/feedback";
 import { PillLink } from "@/components/pouf/tabs";
+import { Capacity } from "@/components/pouf/capacity";
 import { Chip, FORM_MAX_W } from "@/components/pouf/blocks";
 import { TournamentStatus as StatusPillOf } from "@/app/_components/tournament-status";
 import { denyUnlessPermission } from "../../../_components/permission-gate";
@@ -22,6 +26,7 @@ import { Panel } from "../../../_components/panel";
 import { Field } from "../_components/fields";
 import { DeleteTournament } from "../_components/delete-tournament";
 import { SaveForm } from "../_components/save-form";
+import { ConfirmOverflow } from "../_components/confirm-overflow";
 import { addDivision, assignTeam, autoDraw, changeStatus, removeDivision, removeTournament, saveDivision, saveDraw, saveTournament } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -51,15 +56,22 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
   const tournament = await tournamentBySlug(slug);
   if (!tournament) notFound();
 
-  const [rosters, teams, usage] = await Promise.all([
+  const [rosters, teams, usage, series] = await Promise.all([
     Promise.all(tournament.divisions.map((d) => divisionTeams(d.id))),
     prisma.team.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, tag: true } }),
     tournamentUsage(tournament.id),
+    listSeries(),
   ]);
-  // Команда может играть только в одном дивизионе турнира, поэтому в выпадающем списке «добавить»
-  // показываем лишь тех, кого в этом турнире ещё нет.
   const taken = new Set(rosters.flat().map((e) => e.teamId));
   const free = teams.filter((t) => !taken.has(t.id));
+  // Команды, уже стоящие в других дивизионах этого турнира: выбрать такую в списке «добавить» —
+  // это и есть перестановка (`setTeamDivision` сам снимает её с прежнего дивизиона). Отдельного
+  // контрола «перевести» не заводим: один список, один диалог подтверждения.
+  const placed = tournament.divisions.flatMap((d, j) =>
+    rosters[j].map((e) => ({ id: e.team.id, name: e.team.name, divisionId: d.id, from: d.short ?? d.name })),
+  );
+  /** Места дивизиона: факт из его участий, лимит — из поля. */
+  const seatsOf = (i: number): Seats => ({ taken: rosters[i].length, limit: tournament.divisions[i].teamLimit });
 
   return (
     <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
@@ -73,6 +85,7 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
           уровень навигации, что вкладки раздела в продукте (UI-GUIDELINES §2, L3). */}
       <nav className="mt-5 flex flex-wrap gap-2">
         <PillLink href={`/admin/roster/import?tournament=${tournament.slug}`}>Импорт составов</PillLink>
+        <PillLink href={`/admin/roster/crm-import?tournament=${tournament.slug}`}>Импорт игроков</PillLink>
         <PillLink href={`/admin/tournaments/${tournament.slug}/registrations`}>Заявки команд</PillLink>
         <PillLink href={`/tournaments/${tournament.slug}`}>Публичная страница</PillLink>
       </nav>
@@ -102,6 +115,14 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
             <input type="hidden" name="slug" value={tournament.slug} />
             <Field name="name" label="Название" value={tournament.name} required />
             <Field name="short" label="Короткое имя" value={tournament.short} placeholder="S3" />
+            <Field
+              name="series"
+              label="Серия"
+              value={tournament.series}
+              placeholder="LOST"
+              options={series}
+              hint="Свободное поле: раздел «Турниры» соберёт группу по этому значению. Пусто — «Прочие турниры»."
+            />
             <Field name="format" label="Формат" value={tournament.format} />
             <Field name="prize" label="Призовой фонд" value={tournament.prize} />
             <Field name="startAt" label="Старт" type="date" value={forInput(tournament.startAt)} />
@@ -124,6 +145,7 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
 
         {tournament.divisions.map((d, i) => {
           const entries = rosters[i];
+          const others = placed.filter((t) => t.divisionId !== d.id);
           return (
             <Panel
               key={d.id}
@@ -133,7 +155,7 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
                   {d.name}
                 </span>
               }
-              aside={<span className="font-pouf text-xs font-bold tabular-nums text-muted">команд: {entries.length}</span>}
+              aside={<Capacity taken={entries.length} limit={d.teamLimit} size="sm" meter={false} />}
               hint={`/tournaments/${tournament.slug}/${d.slug}`}
             >
               <form action={saveDivision} className="grid gap-4 sm:grid-cols-3">
@@ -144,7 +166,18 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
                 <Field name="short" label="Коротко" value={d.short} />
                 <Field name="label" label="Подпись раздела" value={d.label} placeholder="LOST D1" />
                 <Field name="orderNo" label="Порядок" type="number" value={d.orderNo} />
-                <div className="flex items-end">
+                <Field
+                  name="teamLimit"
+                  label="Лимит команд"
+                  type="number"
+                  inputMode="numeric"
+                  value={d.teamLimit}
+                  hint="пусто — без ограничения"
+                />
+                <div className="flex flex-col justify-end gap-2">
+                  {/* Счётчик рядом с полем: лимит 12 при уже записанных 13 оператор должен видеть
+                      до того, как нажмёт «Сохранить». */}
+                  <Capacity taken={entries.length} limit={d.teamLimit} size="sm" />
                   <Button type="submit" size="sm">Сохранить</Button>
                 </div>
               </form>
@@ -247,26 +280,47 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
                 </span>
               </form>
 
-              <form action={assignTeam} className="mt-3 flex flex-wrap items-end gap-3">
+              {/* Один список на два пути записи: свободная команда встаёт в дивизион, команда из
+                  соседнего дивизиона этим же действием переставляется (`setTeamDivision` снимает
+                  её с прежнего). Предупреждение о переполнении у них общее. */}
+              <form id={`assign-${d.id}`} action={assignTeam} className="mt-3 flex flex-wrap items-end gap-3">
                 <input type="hidden" name="divisionId" value={d.id} />
                 <input type="hidden" name="tournamentId" value={tournament.id} />
                 <input type="hidden" name="tournamentSlug" value={tournament.slug} />
                 <div className="min-w-[14rem] flex-1">
-                  <Label htmlFor={`add-${d.id}`}>Добавить команду</Label>
+                  <Label htmlFor={`add-${d.id}`}>Добавить или перевести команду</Label>
                   <FormSelect id={`add-${d.id}`} name="teamId" size="sm" defaultValue="" className="mt-1.5">
                     <option value="" disabled>
-                      {free.length ? "— выберите —" : "свободных команд нет"}
+                      {free.length + others.length ? "— выберите —" : "свободных команд нет"}
                     </option>
-                    {free.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
+                    {free.length > 0 && (
+                      <optgroup label="не в турнире">
+                        {free.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {others.length > 0 && (
+                      <optgroup label="из других дивизионов">
+                        {others.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.name} — из {t.from}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
                   </FormSelect>
                 </div>
-                <Button type="submit" size="sm" variant="quiet" disabled={free.length === 0}>
-                  Добавить
-                </Button>
+                <ConfirmOverflow
+                  formId={`assign-${d.id}`}
+                  warning={overflowWarning(d.short ?? d.name, seatsOf(i))}
+                  variant="quiet"
+                  disabled={free.length + others.length === 0}
+                >
+                  Записать
+                </ConfirmOverflow>
               </form>
 
               <form action={removeDivision} className="mt-4 flex flex-wrap items-center gap-2 border-t border-hairline pt-4">

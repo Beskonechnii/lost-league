@@ -80,13 +80,17 @@ export function Chip({
   children,
   accent = false,
   className = "",
+  title,
 }: {
   children: ReactNode;
   accent?: boolean;
   className?: string;
+  /** Полное значение подсказкой — чип не переносится, и длинный текст в нём обрезают. */
+  title?: string;
 }) {
   return (
     <span
+      title={title}
       className={`inline-flex w-fit shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-pill px-3 py-1 font-pouf text-[11px] font-bold ${
         accent ? "bg-accent-fill text-[var(--on-accent)] cushion-blob" : "bg-surface-2 text-ink-muted cushion-field"
       } ${className}`}

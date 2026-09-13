@@ -12,6 +12,7 @@ import { Tooltip } from "@/components/pouf/tooltip";
 import { Accordion, AccordionItem } from "@/components/pouf/accordion";
 import { WinrateMeter } from "@/components/pouf/winrate-meter";
 import { Button } from "@/components/pouf/Button";
+import { Capacity } from "@/components/pouf/capacity";
 
 /* Витрина атомов Кита: те же компоненты, что уезжают на экраны, живыми — навести мышью,
  * пройти табом, кликнуть. Витрина ПОКАЗЫВАЕТ соответствие коду; источник вида — канвас Кита,
@@ -73,6 +74,30 @@ export function KitShowcase() {
         title="Атомы в коде"
         aside="Состояния живые: наведите мышью, пройдите табом."
       />
+
+      <Atom name="Счётчик мест" sheet="Атомы">
+        <Case caption="Лимита нет">
+          <Capacity taken={8} />
+        </Case>
+        <Case caption="Свободно">
+          <div className="w-40">
+            <Capacity taken={8} limit={12} />
+          </div>
+        </Case>
+        <Case caption="Мест нет">
+          <div className="w-40">
+            <Capacity taken={12} limit={12} />
+          </div>
+        </Case>
+        <Case caption="Сверх лимита">
+          <div className="w-40">
+            <Capacity taken={13} limit={12} />
+          </div>
+        </Case>
+        <Case caption="Мелкий, без полоски">
+          <Capacity taken={8} limit={12} size="sm" meter={false} />
+        </Case>
+      </Atom>
 
       <Atom name="Radio" sheet="Radio">
         <Case caption="Группа">

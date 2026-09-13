@@ -6,6 +6,7 @@ import { Button } from "@/components/pouf/Button";
 import { FormInput, Label } from "@/components/pouf/Input";
 import { Alert } from "@/components/pouf/feedback";
 import { QueueDecision } from "@/components/pouf/queue-card";
+import { ConfirmOverflow } from "../../_components/confirm-overflow";
 
 // Решение по одной заявке команды: одобрить или вернуть с причиной. Две формы рядом, а не одна с
 // двумя кнопками — у возврата причина обязательна, и браузерная проверка `required` не должна
@@ -15,11 +16,14 @@ export function ReviewForms({
   id,
   tournamentSlug,
   blocked,
+  overflow,
 }: {
   id: number;
   tournamentSlug: string;
   /** Есть непроходимая проблема — одобрение закрыто: такие данные развалят ростер. */
   blocked: boolean;
+  /** Дивизион заявки заполнен — текст с числами; null — лимит записи не мешает. */
+  overflow: string | null;
 }) {
   const [okState, approveAction, approving] = useActionState<ReviewState, FormData>(approve, null);
   const [noState, rejectAction, rejecting] = useActionState<ReviewState, FormData>(reject, null);
@@ -28,12 +32,14 @@ export function ReviewForms({
   return (
     <div className="space-y-2">
       <QueueDecision>
-        <form action={approveAction} className="flex items-end gap-2">
+        {/* Апрув в заполненный дивизион спрашивает подтверждение — тот же диалог, что у ручного
+            добавления и перестановки команды (ConfirmOverflow). */}
+        <form id={`approve-${id}`} action={approveAction} className="flex items-end gap-2">
           <input type="hidden" name="id" value={id} />
           <input type="hidden" name="tournamentSlug" value={tournamentSlug} />
-          <Button type="submit" size="sm" disabled={busy || blocked}>
+          <ConfirmOverflow formId={`approve-${id}`} warning={overflow} disabled={busy || blocked}>
             {approving ? "Завожу…" : "Одобрить"}
-          </Button>
+          </ConfirmOverflow>
         </form>
 
         <form action={rejectAction} className="flex flex-1 items-end gap-2">

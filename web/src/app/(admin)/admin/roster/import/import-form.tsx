@@ -58,10 +58,13 @@ function WarnDetails({ summary, children }: { summary: ReactNode; children: Reac
 export function ImportForm({
   tournaments,
   defaultDivisionId,
+  from,
 }: {
   tournaments: TournamentOption[];
   /** Если пришли со страницы конкретного турнира — предвыбрать его первый дивизион, а не общий пул. */
   defaultDivisionId?: number | null;
+  /** Оттуда же — обратная дорога: записал составы и вернулся к турниру, а не искал его заново. */
+  from?: { slug: string; name: string } | null;
 }) {
   const [step, setStep] = useState(0);
   const [parsed, parseAction, parsing] = useActionState<ParseState, FormData>(parseUpload, null);
@@ -341,6 +344,14 @@ export function ImportForm({
                   <Link href="/roster" className="underline">
                     Открыть ростер
                   </Link>
+                  {from && (
+                    <>
+                      {" · "}
+                      <Link href={`/admin/tournaments/${from.slug}`} className="underline">
+                        Вернуться к турниру «{from.name}»
+                      </Link>
+                    </>
+                  )}
                 </Alert>
                 <ul className="space-y-1">
                   {saved.results.map((r) => (

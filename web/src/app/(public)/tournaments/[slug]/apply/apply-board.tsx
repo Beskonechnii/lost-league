@@ -51,7 +51,8 @@ export function ApplyBoard({
 }: {
   tournamentId: number;
   tournamentSlug: string;
-  divisions: { id: number; name: string }[];
+  /** Дивизионы с их местами: заполненный не выбирается, а все заполненные закрывают отправку. */
+  divisions: { id: number; name: string; taken: number; limit: number | null; full: boolean }[];
   pool: PoolEntry[];
   taken: TakenSpot[];
   /** Ссылка-приглашение в бота; null — бот не настроен, тогда просто объясняем словами. */
@@ -109,6 +110,10 @@ export function ApplyBoard({
       );
     });
   }, [pool, query, role]);
+
+  // Мест нет нигде — форму отправлять некуда. Считаем до кнопки: капитан должен узнать об отказе
+  // ДО отправки, а не из ответа сервера.
+  const allFull = divisions.length > 0 && divisions.every((d) => d.full);
 
   const coreCount = CORE_KEYS.filter((k) => slots[k]).length;
   const totalCount = Object.values(slots).filter(Boolean).length;
@@ -232,8 +237,8 @@ export function ApplyBoard({
                 <SelectContent>
                   <SelectItem value={ANY_DIVISION}>— на усмотрение организаторов —</SelectItem>
                   {divisions.map((d) => (
-                    <SelectItem key={d.id} value={String(d.id)}>
-                      {d.name}
+                    <SelectItem key={d.id} value={String(d.id)} disabled={d.full}>
+                      {d.full ? `${d.name} — мест нет (${d.taken} из ${d.limit})` : d.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -265,16 +270,25 @@ export function ApplyBoard({
           />
         </div>
 
+        {/* Выбор дивизиона рисуется только при двух и более — значит турнир с единственным
+            заполненным дивизионом обязан отработать именно здесь, алертом и закрытой кнопкой. */}
+        {allFull && (
+          <Alert tone="warn" block>
+            Мест в турнире не осталось: все дивизионы заполнены. Заявку сейчас принять нельзя —
+            следите за объявлениями лиги.
+          </Alert>
+        )}
+
         <div className="flex flex-wrap items-center gap-3">
           {/* Две кнопки на одну форму: intent решает, проверить состав или отправить. Проверка идёт
               по тем же данным, что уйдут в очередь, и не требует второго экрана. */}
-          <Button type="submit" name="intent" value="submit" disabled={pending || !ready}>
+          <Button type="submit" name="intent" value="submit" disabled={pending || !ready || allFull}>
             {pending ? "Отправляю…" : initial ? "Сохранить заявку" : "Отправить заявку"}
           </Button>
           <Button type="submit" name="intent" value="check" variant="quiet" disabled={pending || totalCount === 0}>
             Проверить состав
           </Button>
-          {!ready && (
+          {!ready && !allFull && (
             <span className="text-xs font-bold text-muted">
               {!name.trim()
                 ? "Укажите название команды"

@@ -9,6 +9,18 @@
 
 ---
 
+## 2026-09-14 — ТЗ 09: раздел «Турниры»
+
+Серия (`Tournament.series`) и лимит команд (`Division.teamLimit`) заведены аддитивной миграцией;
+раздел группирует турниры по серии, дивизион получил свою карточку со счётчиком, хронология стала
+живой страницей `/tournaments/archive` с разрезом `?series=`. Новый атом Кита `Capacity`, общая
+карточка `_components/tournament-card.tsx`, один диалог превышения лимита на три пути записи.
+**Файлы.** `prisma/schema.prisma` + миграция, `lib/{tournaments,plural}.ts`, `pouf/{capacity,blocks}.tsx`,
+`_components/tournament-card.tsx`, `(public)/tournaments/{page,loading,archive/*}`, `[slug]/apply/*`,
+`(admin)/admin/tournaments/*`, `admin/kit`, `BACKLOG.md`.
+**Дальше.** qa: приёмка 09. Служебные экраны и доска заявки в браузере не проверены — вход требует
+создания аккаунта и ввода пароля; артборды Кита («Счётчик мест», «Карточка турнира») — за `design`.
+
 ## 2026-09-13 — ТЗ 08: верхний бар вместо сайдбара
 
 Хром продукта стал один и горизонтальный: бар `(home)` переехал в `app-shell.tsx` и подключён во
@@ -84,13 +96,3 @@ notifications,account-nav,avatar-menu}`, `(home)/{page,banner,mini-profile}`, `p
 **Файлы.** `CLAUDE.md`, `MVP.md`, `BACKLOG.md`, `DECISIONS.md`, `WORKLOG.md`, `docs/**`,
 `.claude/agents/{pm,design,seo,qa}.md`, `.claude/agents/stage.md`, `.claude/skills/*/SKILL.md`.
 **Дальше.** Блокеры релиза лежат в `docs/tasks/` — начинать с `01-vps-i-baza.md`.
-
-## 2026-09-10 — Э22: осколки — вторая валюта лиги, вехи, грейды, витрина
-
-`ShardEntry` отдельной таблицей (подлежащее — аккаунт, не карточка игрока), начисляет одна
-идемпотентная `syncShards(accountId)` из пяти событий. Анти-абуз: гейт `status = active` плюс ключ
-`<веха>:<dota account_id>`, уникальный по таблице. Вехи 50/30/20/25, лестница из шести ступеней.
-Трат нет — решение Стаса, не недоделка. Витрина: главная и правый рельс профиля.
-**Файлы.** `lib/shards.ts`, `lib/shard-grades.ts`, `pouf/shards.tsx`, `(home)/shards.tsx`,
-`scripts/backfill-shards.ts`, миграция `20260910220000_shards`, `schema.prisma`, `lib/account.ts`.
-**Дальше.** Список трат осколков — отдельная задача; артборд «Осколки» в Ките не заведён.

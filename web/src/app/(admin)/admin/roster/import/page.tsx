@@ -44,6 +44,7 @@ export default async function RosterImportPage({
             divisions: t.divisions.map((d) => ({ id: d.id, name: d.short ?? d.name })),
           }))}
           defaultDivisionId={from?.divisions[0]?.id ?? null}
+          from={from ? { slug: from.slug, name: from.name } : null}
         />
       </div>
     </main>
