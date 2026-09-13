@@ -9,6 +9,16 @@
 
 ---
 
+## 2026-09-13 — ТЗ 08: верхний бар вместо сайдбара
+
+Хром продукта стал один и горизонтальный: бар `(home)` переехал в `app-shell.tsx` и подключён во
+всех трёх группах маршрутов, `app-sidebar.tsx` удалён вместе с «свёрнуто», рельсом и счётчиком
+онлайна. «LOST cup» → «Турниры» на `/tournaments`, служебное — одна пилюля «Админ» на хаб; поиск
+переехал в остров входа (лист ниже `xl`), `AdminHeader` сам ставит крошку «Админ».
+**Файлы.** `_components/{app-shell,app-nav,avatar-menu,league-search,hub-tiles,nav-model,chat-live}`,
+`(admin)/{_components/admin-header,error,admin/loading}`, три `layout.tsx`, `docs/UI-GUIDELINES.md`.
+**Дальше.** qa: приёмка 08. «Выйти» не проверен (пункт ниже), артборды Кита — за `design`.
+
 ## 2026-09-13 — Вкладки TP / Shards в блоке «Баллы»
 
 Таб из макета, который при разборе расхождений отложили в later: осколки на главной вернулись
@@ -84,22 +94,3 @@ notifications,account-nav,avatar-menu}`, `(home)/{page,banner,mini-profile}`, `p
 **Файлы.** `lib/shards.ts`, `lib/shard-grades.ts`, `pouf/shards.tsx`, `(home)/shards.tsx`,
 `scripts/backfill-shards.ts`, миграция `20260910220000_shards`, `schema.prisma`, `lib/account.ts`.
 **Дальше.** Список трат осколков — отдельная задача; артборд «Осколки» в Ките не заведён.
-
-## 2026-09-10 — Э21: главная — витрина без сайдбара, аватар-меню
-
-Главная уехала в группу `(home)` (на URL не влияет) — колонка снята ровно на `/`, хром витрины —
-единственная в продукте верхняя строка с аватар-меню. Пункты меню и сайдбара собирает общий
-`account-nav.ts`. Блоки: мини-профиль (четыре состояния воронки), турниры разрезами в query,
-баннер по данным, матчи, очки с `tpLeaderboard()`.
-**Файлы.** `(home)/{layout,page,mini-profile,tournaments-block,banner,points}.tsx`,
-`_components/{account-nav.ts,home-shell.tsx,avatar-menu.tsx}`, `app-shell.tsx`, `lib/tp.ts`.
-**Дальше.** Правило про аватар-меню записано в `docs/UI-GUIDELINES.md` §2 и §4.
-
-## 2026-09-10 — Э20: ранги — массовая сверка, дельта, медаль
-
-Отдельный экран `/admin/roster/ranks` вместо кнопки в импорте: ранг сверяют регулярно, состав —
-раз в сезон. Ключа не понадобилось, `/api/players/<id>` у OpenDota открыт. Два новых поля:
-`rankPrev` (значение до последней смены) и `rankAt` (когда подтверждали). Прогон горстями по десять,
-цикл на клиенте. Медаль — свой рисунок `pouf/rank.tsx`, арт Valve вендорить нельзя.
-**Файлы.** `lib/rank-refresh.ts`, `pouf/rank.tsx`, `admin/roster/ranks/*`, `lib/dota-rank.ts`,
-`lib/roster-data.ts`, миграция `20260910210000_player_rank_history`.

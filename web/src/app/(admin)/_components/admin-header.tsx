@@ -15,7 +15,13 @@ import { SectionHeader } from "@/components/pouf/blocks";
  * Крошки передаёт сам экран, а не выводит из адреса: у служебных страниц путь
  * не совпадает с URL (заявки команд лежат внутри турнира, а называются его
  * именем), и вывод по сегментам дал бы слаг вместо названия.
+ *
+ * Первую ступень — «Админ» → /admin — шапка подставляет сама (ТЗ 08): после
+ * удаления сайдбара хаб стал единственным списком инструментов, и дописывать
+ * возврат на него руками в двадцати файлах значит оставить половину без него.
  */
+
+const HUB: Crumb = { href: "/admin", label: "Админ" };
 
 export function AdminHeader({
   crumbs,
@@ -24,7 +30,8 @@ export function AdminHeader({
   aside,
   children,
 }: {
-  /** Путь без последней ступени: текущую страницу называет H1 (UI-GUIDELINES §3). */
+  /** Путь без последней ступени и без хаба: текущую страницу называет H1 (UI-GUIDELINES §3),
+   *  а «Админ» первой ступенью подставляется здесь. */
   crumbs?: Crumb[];
   eyebrow?: ReactNode;
   title: ReactNode;
@@ -35,7 +42,7 @@ export function AdminHeader({
 }) {
   return (
     <header className="font-pouf">
-      {crumbs && crumbs.length > 0 && <Breadcrumbs items={crumbs} className="mb-3" />}
+      <Breadcrumbs items={[HUB, ...(crumbs ?? [])]} className="mb-3" />
       <SectionHeader eyebrow={eyebrow} title={title} aside={aside} />
       {children && (
         // Мера абзаца — не во всю колонку: пояснение читают строкой, а не сканируют.

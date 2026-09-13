@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { Icon } from "@/components/pouf/Icon";
 import type { SearchHit } from "@/lib/search";
 
-// Поиск по лиге — поле в шапке сайдбара. До Э4b его в продукте не было вовсе: найти команду можно
-// было только глазами по ростеру, а игрока — открыв команду.
+// Поиск по лиге — поле в острове входа верхнего бара (до ТЗ 08 стояло в шапке сайдбара). Найти
+// команду иначе можно только глазами по ростеру, а игрока — открыв команду.
 //
 // Отвечает сразу переходами, а не страницей результатов: искомое — конкретная карточка, и лишний
 // экран между вводом и ней ничего не добавляет. Отсюда и раскладка: список под полем, клавиши
@@ -61,7 +61,7 @@ export function LeagueSearch({ onNavigate }: { onNavigate?: () => void }) {
     };
   }, [query, ready]);
 
-  // Клик мимо закрывает список: он висит поверх пунктов колонки и иначе перекрывал бы их.
+  // Клик мимо закрывает список: он висит поверх содержимого страницы и иначе перекрывал бы его.
   useEffect(() => {
     if (!open) return;
     const away = (e: MouseEvent) => {
@@ -82,7 +82,7 @@ export function LeagueSearch({ onNavigate }: { onNavigate?: () => void }) {
   const showList = open && query.length >= MIN_LENGTH;
 
   return (
-    <div ref={box} className="relative mx-0.5 mb-1 mt-0.5">
+    <div ref={box} className="relative">
       <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-subtle">
         <Icon name="search" size="sm" />
       </div>
@@ -123,7 +123,7 @@ export function LeagueSearch({ onNavigate }: { onNavigate?: () => void }) {
           id={listId}
           role="listbox"
           aria-label="Результаты поиска"
-          className="absolute left-0 right-0 top-[calc(100%+6px)] z-40 max-h-[min(60vh,420px)] overflow-y-auto rounded-blob bg-surface-1 p-1.5 cushion-card"
+          className="absolute left-0 right-0 top-[calc(100%+6px)] z-40 max-h-[min(60vh,420px)] min-w-[320px] overflow-y-auto rounded-blob bg-surface-1 p-1.5 cushion-card"
         >
           {hits.length === 0 ? (
             <p className="px-3 py-3 text-[13px] font-bold text-ink-subtle">{busy ? "Ищем…" : "Ничего не нашлось"}</p>

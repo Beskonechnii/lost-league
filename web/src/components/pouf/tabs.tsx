@@ -125,6 +125,7 @@ export function PillLink({
   count,
   title,
   className,
+  scroll,
   ref,
   children,
 }: {
@@ -136,6 +137,9 @@ export function PillLink({
   count?: number;
   title?: string;
   className?: string;
+  /** `false` — не прыгать наверх при переходе. Ряд вкладок стоит посреди страницы, и переход
+   *  на соседний разрез не должен уносить экран к шапке. */
+  scroll?: boolean;
   ref?: React.Ref<HTMLAnchorElement>;
   children: ReactNode;
 }) {
@@ -144,6 +148,7 @@ export function PillLink({
       ref={ref}
       href={href}
       title={title}
+      scroll={scroll}
       aria-current={active ? "page" : undefined}
       className={pillClasses({ active, size, variant, className })}
     >

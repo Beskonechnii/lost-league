@@ -7,29 +7,24 @@ import { buttonClasses } from "@/components/pouf/Button";
 import { logout } from "@/app/(public)/me/actions";
 import type { NavAccount, NavItem } from "./nav-model";
 
-// Аватар-меню — вход в аккаунт там, где нет колонки (витрина, `home-shell.tsx`).
+// Аватар-меню — единственный вход в аккаунт во всём продукте (бар, `app-shell.tsx`).
 //
-// Почему меню, а не второй профиль-блок: на главной сайдбара нет вовсе (решение 09.09, §E2
-// RELEASE-PLAN), и профильные функции — сообщения, настройки, выход — должны собраться в одной
-// точке справа сверху. Иначе через месяц до настроек будет три разных дороги.
+// Почему меню, а не профиль-блок в строке: профильные функции — сообщения, настройки, выход —
+// должны собраться в одной точке справа сверху. Иначе через месяц до настроек будет три дороги.
 //
-// Пункты приходят готовыми из `account-nav.ts` — тем же сборщиком, что кормит секцию «Кабинет»
-// сайдбара: вход в аккаунт один, и два его вида обязаны показывать одно и то же.
+// Пункты приходят готовыми из `account-nav.ts`; здесь же лежит единственная в продукте форма
+// выхода — после удаления колонки второй копии `logout` нет.
 
 const focus = "outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]";
 
 export function AvatarMenu({
   account,
   items,
-  /** Ссылка в админку — только тем, у кого есть хоть один инструмент: с главной сайдбар снят,
-   *  и без этого пункта оператору неоткуда попасть в свои разделы. */
-  tools = false,
   /** Подпись под ником. По макету витрины это «команда · позиция»; нет — остаётся роль. */
   subtitle,
 }: {
   account: NavAccount | null;
   items: NavItem[];
-  tools?: boolean;
   subtitle?: string;
 }) {
   // Гостю — не пустое меню, а сама дверь: одно нажатие вместо двух.
@@ -61,7 +56,7 @@ export function AvatarMenu({
       </RMenu.Trigger>
       <RMenu.Portal>
         <RMenu.Content className="pouf-menu" sideOffset={10} align="end" collisionPadding={12}>
-          {/* Шапка меню повторяет профиль-блок колонки: кто вошёл и кем он тут числится. */}
+          {/* Шапка меню: кто вошёл и кем он тут числится. */}
           <div className="flex items-center gap-3 px-3 py-2">
             <Avatar account={account} size={38} />
             <span className="min-w-0">
@@ -88,19 +83,16 @@ export function AvatarMenu({
             </RMenu.Item>
           ))}
 
-          {tools && (
-            <RMenu.Item asChild>
-              <Link href="/admin" className="pouf-menu__item">
-                <Icon name="lab" size="sm" />
-                Админ
-              </Link>
-            </RMenu.Item>
-          )}
+          {/* Пункта «Админ» здесь нет: служебное открывает пилюля в баре, а второй вход в то же
+              место — ровно то, что запрещает UI-GUIDELINES §2 (ТЗ 08, решение 13.09). */}
 
           <RMenu.Separator className="pouf-menu__sep" />
-          {/* Выход — server action формой, как в колонке: одна дверь наружу, один способ её открыть. */}
+          {/* Выход — server action формой. Форма в продукте одна: колонка со своей копией удалена.
+              `onSelect` глушится: иначе Radix закрывает меню прямо в обработчике клика и уносит
+              форму из DOM раньше, чем браузер успевает отправить её — кнопка молча ничего не делала.
+              Меню закроется само, когда `logout` уведёт на `/me`. */}
           <form action={logout}>
-            <RMenu.Item asChild>
+            <RMenu.Item asChild onSelect={(e) => e.preventDefault()}>
               <button type="submit" className="pouf-menu__item pouf-menu__item--down">
                 <Icon name="logout" size="sm" />
                 Выйти
@@ -113,7 +105,7 @@ export function AvatarMenu({
   );
 }
 
-/** Фото или монограмма — тот же аватар, что в колонке (app-sidebar.tsx). */
+/** Фото или монограмма. */
 function Avatar({ account, size }: { account: NavAccount; size: number }) {
   const style = { width: size, height: size, fontSize: Math.round(size / 2.9) };
   return account.photo ? (

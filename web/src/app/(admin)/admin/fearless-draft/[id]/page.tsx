@@ -46,7 +46,6 @@ export default async function FearlessSessionPage({ params }: { params: Promise<
       {/* Крошки, а не «← Все драфты»: где ты находишься, стрелка назад не говорит (§C3). */}
       <AdminHeader
         crumbs={[
-          { href: "/admin", label: "Служебная часть" },
           { href: "/admin/fearless-draft", label: "Fearless draft" },
         ]}
         eyebrow="Драфт героев"

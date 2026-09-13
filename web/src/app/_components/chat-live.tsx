@@ -6,7 +6,7 @@ import type { LiveEvent } from "@/lib/chat-events";
 
 // Клиентский конец живого канала: одно SSE-соединение на вкладку, из него и присутствие, и новые
 // сообщения. Провайдер стоит в хроме (app-shell), то есть открыт на любой странице, — поэтому
-// точка «в сети» у карточки игрока и счётчик в колонке работают везде, а не только в чате.
+// точка «в сети» у карточки игрока работает везде, а не только в чате.
 //
 // Гость соединение не открывает: канал закрыт для не-игроков, и EventSource без конца долбился бы
 // в 401. Ему достаётся снимок присутствия, снятый на сервере при рендере страницы, — цифра
@@ -107,19 +107,5 @@ export function OnlineDot({ playerId, className = "" }: { playerId: number; clas
       aria-label="В сети"
       className={`inline-block h-[9px] w-[9px] shrink-0 rounded-pill bg-[var(--up)] [box-shadow:0_0_0_2px_var(--surface)] ${className}`}
     />
-  );
-}
-
-/** Строка «N в сети» в колонке навигации. */
-export function OnlineCount() {
-  const { count } = useLive();
-  if (count === 0) return null;
-  return (
-    <div className="flex items-center gap-2 px-3.5 py-1.5 text-[12px] font-extrabold text-muted">
-      <span className="h-[9px] w-[9px] rounded-pill bg-[var(--up)]" aria-hidden />
-      <span>
-        {count} <span className="text-ink-subtle">в сети</span>
-      </span>
-    </div>
   );
 }

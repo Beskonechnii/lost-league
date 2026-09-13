@@ -75,7 +75,7 @@ export function MatchesBlock({
     <Slab
       title="Матчи"
       aside={CUTS.map((c) => (
-        <PillLink key={c} href={`/?m=${c}`} active={c === active} size="sm" count={groups[c].length}>
+        <PillLink key={c} href={`/?m=${c}`} active={c === active} size="sm" scroll={false}>
           {CUT_LABELS[c]}
         </PillLink>
       ))}

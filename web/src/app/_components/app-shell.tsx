@@ -1,109 +1,135 @@
 import "server-only";
-import { currentAccount, currentPermissions, pendingClaims, pendingRegistrations } from "@/lib/account";
-import { pendingProfileEditCount } from "@/lib/profile-edit";
-import { duplicatesCount } from "@/lib/duplicates";
+import Link from "next/link";
+import { currentPermissions } from "@/lib/account";
+import { messages } from "@/lib/chat";
 import { onlineCount, onlinePlayerIds } from "@/lib/presence";
-import { AppSidebar } from "./app-sidebar";
+import { roleShort } from "@/lib/roles";
+import { SITE_MAX_W } from "@/components/pouf/blocks";
 import { Footer } from "./footer";
 import { ChatLiveProvider } from "./chat-live";
-import { accountNav } from "./account-nav";
-import { QUEUE_TOOL, DUPLICATES_TOOL, toolGroupsFor } from "./tools";
-import type { NavItem, NavSection } from "./nav-model";
+import { currentAccountNav } from "./account-nav";
+import { AvatarMenu } from "./avatar-menu";
+import { BarSearch, NavRow, NavSheet, type NavLink } from "./app-nav";
+import { Notifications, type NotificationLine } from "./notifications";
 
-// Хром продукта: сайдбар слева, страница справа — один на обе группы маршрутов (DECISIONS, 02.09).
-// Здесь он собирается, потому что состав пунктов зависит от прав и от того, кто вошёл, а это
-// серверные вопросы; сама колонка (app-sidebar.tsx) уже чистый клиент.
+// Хром всего продукта: одна верхняя строка на `(home)`, `(public)` и `(admin)` (ТЗ 08, решение
+// 13.09). До этого хром был двух видов — строка на главной и левая колонка на всех остальных
+// маршрутах, и человек, ушедший с витрины в раздел, попадал в интерфейс другой формы: навигация
+// переезжала слева направо, бренд менял место, вход в аккаунт менял вид. Колонка удалена целиком,
+// а не оставлена рядом с баром: два бренд-блока и два входа в кабинет на экране запрещены.
+//
+// Служебные разделы в бар не переезжают: там один пункт «Админ», а двадцать инструментов живут
+// плитками на хабе `/admin`. Так бар остаётся коротким и одинаковым везде, а хаб растёт новыми
+// инструментами без переделки хрома.
+//
+// Строка разложена тремя ОСТРОВАМИ по макету `design/home/Menus.dc.html`: у бренда, у разделов и
+// у входа своя подушка с зазором между ними. Одна плита во всю ширину читалась как полка, на
+// которой всё лежит вперемешку; три острова разводят «кто я», «куда пойти» и «что с аккаунтом».
+//
+// Ниже `lg` островов нет: три подушки с зазорами в 358px не сходятся, поэтому ряд сам становится
+// одной подушкой (`.mbar` из `Mobile.dc.html`), а разделы уезжают под бургер (`app-nav.tsx`).
+
+const date = new Intl.DateTimeFormat("ru", { day: "2-digit", month: "2-digit" });
+const clock = new Intl.DateTimeFormat("ru", { hour: "2-digit", minute: "2-digit" });
+
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+
+/** Подпись времени строки уведомления: сегодня — часы, вчера — словом, раньше — дата. */
+function when(at: Date, now: Date): string {
+  const days = Math.round((startOfDay(now) - startOfDay(at)) / 86_400_000);
+  if (days === 0) return clock.format(at);
+  if (days === 1) return "вчера";
+  return date.format(at);
+}
 
 /**
- * Разделы лиги — то, что видит любой посетитель. Ровно два: это те же две вкладки, что стояли в
- * убранной верхней строке. Таблица, плей-офф, статистика, TP и ростер сезона сюда НЕ поднимаются:
- * они выбирают этап внутри турнира (уровень L3, строка `tournament-bar`), и вторая копия того же
- * выбора в глобальной колонке — ровно тот антипаттерн «один уровень — две модели» из §2 стандарта.
+ * Разделы витрины. «Турниры» ведут в сам раздел, а не в текущий турнир: раздел существует
+ * независимо от того, идёт ли турнир сейчас, и пустой ссылки в никуда больше не бывает.
+ * Короткий путь в конкретный турнир открывается с главной и из раздела (решение 13.09).
  */
-const LEAGUE: NavSection = {
-  title: "Лига",
-  items: [
-    {
-      href: "/tournaments",
-      label: "Турниры",
-      icon: "trophy",
-      hint: "Сезоны и кубки лиги: таблицы, сетка, составы",
-      match: ["/tournaments", "/standings", "/series", "/tp"],
-    },
-    { href: "/roster", label: "Ростер", icon: "users", hint: "Все команды лиги: фильтр по турниру и поиск" },
-  ],
-};
+const SECTIONS: NavLink[] = [
+  { href: "/", label: "Главная" },
+  { href: "/tournaments", label: "Турниры", accent: true, match: ["/standings", "/series", "/tp"] },
+  { href: "/roster", label: "Команды" },
+  { href: "/roster/players", label: "Игроки" },
+  { href: "/rules", label: "Правила" },
+];
 
-/** Главная — над всеми разделами и без подписи секции: это дверь на витрину, а не раздел.
- *  Внизу, в «Лиге», она терялась — до неё нужно долистать мимо кабинета и инструментов. */
-const HOME: NavSection = {
-  title: "",
-  items: [{ href: "/", label: "Главная", icon: "home", hint: "Витрина лиги" }],
+/** Служебный пункт. Ведёт на хаб и горит на всём служебном дереве, включая инструменты вне `/admin`. */
+const ADMIN: NavLink = {
+  href: "/admin",
+  label: "Админ",
+  icon: "lab",
+  match: ["/underbeer", "/match", "/studio"],
 };
-
-/** Низ колонки: то, что нужно редко, но всегда на одном месте. */
-const FOOTER: NavItem[] = [{ href: "/rules", label: "Правила лиги", icon: "book" }];
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
-  const account = await currentAccount();
-  const perms = await currentPermissions();
+  const [{ account: navAccount, cabinet, chat, system, spot }, perms] = await Promise.all([
+    currentAccountNav(),
+    currentPermissions(),
+  ]);
 
-  // Число новых в очереди считаем только тому, кто её и так видит — остальным запрос ни к чему.
-  const [queue, claims] = perms.includes("accounts.approve")
-    ? await Promise.all([pendingRegistrations(), pendingClaims()])
-    : [[], []];
-  // Правки профиля (в том числе MMR с сайта) лежат в той же очереди, но под своим правом —
-  // без него вкладки не видно, и в значок их считать нечего.
-  const edits = perms.includes("roster.edit") ? await pendingProfileEditCount() : 0;
-  const pending = queue.length + claims.length + edits;
-  // Похожие профили — своя очередь под тем же правом, что и правки: обе задачи решает тот, у кого
-  // есть roster.edit, второй счётчик не запрашиваем зря у остальных.
-  const duplicates = perms.includes("roster.edit") ? await duplicatesCount() : 0;
-  const badges: Record<string, number> = { [QUEUE_TOOL]: pending, [DUPLICATES_TOOL]: duplicates };
+  // Строки панели — последние сообщения той же беседы с лигой, что открыта на `/chat/system`.
+  // Непрочитанные всегда свежие: помечаем столько верхних, сколько насчитал колокольчик.
+  const lines: NotificationLine[] = [];
+  if (chat && system.conversationId) {
+    const now = new Date();
+    const tail = (await messages(system.conversationId, chat.accountId, { limit: 20 })).reverse().slice(0, 8);
+    for (const m of tail)
+      lines.push({ id: m.id, text: m.text, time: when(m.createdAt, now), unread: lines.length < system.unread });
+  }
 
-  // Инструменты операторской — из общего реестра, срезанного правами. Пункт без права не рисуется:
-  // это витрина, а не защита; сами роуты проверяют право у себя.
-  const tools: NavSection[] = toolGroupsFor(perms).map((g) => ({
-    title: g.title,
-    items: g.tools.map((t) => ({
-      href: t.href,
-      label: t.label,
-      icon: t.icon,
-      hint: t.desc,
-      soon: t.soon,
-      badge: badges[t.href],
-    })),
-  }));
+  // Пункт без права не рисуется: это витрина, а не защита — сами роуты проверяют право у себя.
+  const links: NavLink[] = perms.length > 0 ? [...SECTIONS, ADMIN] : SECTIONS;
 
-  // Кто вошёл и его кабинет — общий сборщик с витриной (`account-nav.ts`): вход в аккаунт один,
-  // и пункты в колонке обязаны совпадать с пунктами аватар-меню главной.
-  const { account: navAccount, cabinet, chat } = await accountNav(account);
-
-  // Порядок колонки: кабинет, витрины лиги, потом инструменты. «Лига» стоит выше «Модерации»,
-  // хотя очередь и открывают чаще: в модерации девять пунктов, и снизу от них «Турниры» с
-  // «Ростером» — две главные витрины продукта — уезжали под сгиб, до них приходилось листать.
-  // Секции, не названные в списке, идут следом в порядке реестра инструментов.
-  const sections: NavSection[] = [LEAGUE, ...tools];
-  if (cabinet.length > 0) sections.push({ title: "Кабинет", items: cabinet });
-
-  const ORDER = ["Кабинет", "Лига", "Модерация", "Showmatch"];
-  const rank = (title: string) => {
-    const i = ORDER.indexOf(title);
-    return i === -1 ? ORDER.length : i;
-  };
-  sections.sort((a, b) => rank(a.title) - rank(b.title));
-
-  // «Главная» — всегда первой, вне сортировки по частоте: она ни к одной секции не относится.
-  sections.unshift(HOME);
+  // Подпись под ником в меню — «команда · позиция» из макета.
+  const subtitle = spot
+    ? [spot.team.name, roleShort(spot.role)].filter(Boolean).join(" · ")
+    : undefined;
 
   return (
+    // Провайдер живого канала стоит в хроме, то есть открыт на любой странице: от него зависят
+    // и точка «в сети» у карточки игрока, и дорисовка сообщений в чате без перезагрузки.
     <ChatLiveProvider live={!!chat} initialPlayers={onlinePlayerIds()} initialCount={onlineCount()}>
-      <div className="flex flex-1">
-        <AppSidebar sections={sections} footer={FOOTER} account={navAccount} />
-        <div className="flex min-w-0 flex-1 flex-col">
-          {children}
-          <Footer />
-        </div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className={`mx-auto w-full ${SITE_MAX_W} px-4 pb-2 pt-5 font-pouf md:px-6`}>
+          {/* Ниже `lg` подушка одна на весь ряд, с `lg` она распадается на три острова. */}
+          <div className="flex items-center gap-3 max-lg:rounded-card max-lg:bg-surface max-lg:px-3 max-lg:py-2.5 max-lg:cushion-card">
+            <NavSheet links={links} />
+
+            <Link
+              href="/"
+              className="flex min-w-0 shrink items-center gap-2.5 rounded-card lg:bg-surface lg:px-4 lg:py-2.5 lg:cushion-card"
+              title="SPIRIT/CTRL — главная"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/assets/brand/mark.svg" alt="" aria-hidden className="h-8 w-auto" />
+              {/* На узком экране остаётся один знак: со словом в строку не влезают разделы, а без
+                  разделов на телефоне навигации у витрины не остаётся вовсе. */}
+              <span
+                role="img"
+                aria-label="SPIRIT/CTRL"
+                className="hidden h-[15px] w-[122px] shrink-0 bg-ink [mask:url(/assets/brand/wordmark.svg)_center/contain_no-repeat] sm:block"
+              />
+            </Link>
+
+            <NavRow links={links} />
+
+            <div className="ml-auto flex shrink-0 items-center gap-2.5 rounded-card lg:bg-surface lg:px-3 lg:py-2.5 lg:cushion-card">
+              {/* Поиск первым в острове: он самый широкий, а колокольчик и аватар обязаны стоять
+                  на краю, где их ищут глазами. */}
+              <BarSearch />
+              {/* Колокольчик есть только у того, кому лига может написать: у гостя и у аккаунта без
+                  карточки игрока служебного канала нет вовсе, и пустой значок им ни о чём. */}
+              {chat && (
+                <Notifications conversationId={system.conversationId} unread={system.unread} lines={lines} />
+              )}
+              <AvatarMenu account={navAccount} items={cabinet} subtitle={subtitle} />
+            </div>
+          </div>
+        </header>
+        {children}
+        <Footer />
       </div>
     </ChatLiveProvider>
   );

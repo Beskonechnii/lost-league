@@ -31,7 +31,11 @@ function TileGrid({ tiles, cols }: { tiles: HubTile[]; cols: 2 | 3 | 4 }) {
   return (
     <div className={`grid gap-4 ${COLS[cols]}`}>
       {tiles.map((t) => (
-          <Link key={t.href} href={t.href} className="group block">
+          <Link
+            key={t.href}
+            href={t.href}
+            className="group block rounded-card outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]"
+          >
             <Card motion="lift">
               <div className="flex items-start gap-3">
                 <div className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-accent-fill text-[var(--on-accent)] cushion-blob">

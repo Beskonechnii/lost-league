@@ -31,7 +31,6 @@ export default async function DraftPage({ params }: { params: Promise<{ id: stri
       {/* Крошки, а не «← Все драфты»: где ты находишься, стрелка назад не говорит (§C3). */}
       <AdminHeader
         crumbs={[
-          { href: "/admin", label: "Служебная часть" },
           { href: "/underbeer", label: "UNDERBEER 2.0" },
         ]}
         eyebrow="Шоу-драфт"
