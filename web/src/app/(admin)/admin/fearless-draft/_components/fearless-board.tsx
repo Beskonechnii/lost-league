@@ -14,7 +14,7 @@ import type { HeroRef, TeamRef } from "./types";
  * Э11b (§C4/§C5 RELEASE-PLAN): файл был на 433 строки и держал в себе весь инструмент разом —
  * настройку с монеткой, таймеры, расписание карты, пул героев и запись прошлых карт. Части
  * разъехались по соседям (`fearless-setup`, `fearless-run`, `sequence`, `hero-pool`,
- * `past-maps`, `types`) по той же границе, что на Э9 и Э11a: здесь остаётся то, что знает
+ * `map-track`, `types`) по той же границе, что на Э9 и Э11a: здесь остаётся то, что знает
  * про сессию целиком, там — то, что знает про ход карты.
  *
  * Пустой (или несовместимой версии) payload — это ещё не начатый драфт: показываем настройку.
@@ -120,14 +120,19 @@ export function FearlessBoard({
             />
           </ToolbarSearch>
           <StatusPill tone={state ? "warn" : "info"}>{state ? "Идёт драфт" : "Настройка"}</StatusPill>
-          <ToolbarCount>
-            {saving === "saving" ? "сохраняю…" : saving === "error" ? "ошибка сохранения" : "сохранено"}
-          </ToolbarCount>
+          {/* Сбой автосейва — заметной пилюлей, а не тихой подписью: экран живёт в прямом эфире,
+              и незамеченный обрыв сети там стоит дороже всего на странице. Сам автосейв и очередь
+              PATCH не менялись — меняется только то, как показано уже существующее состояние. */}
+          {saving === "error" ? (
+            <StatusPill tone="err">ошибка сохранения</StatusPill>
+          ) : (
+            <ToolbarCount>{saving === "saving" ? "сохраняю…" : "сохранено"}</ToolbarCount>
+          )}
         </Toolbar>
       )}
 
       {state ? (
-        <FearlessRun state={state} setState={apply} heroById={heroById} onReset={reset} />
+        <FearlessRun state={state} setState={apply} heroById={heroById} teams={teams} onReset={reset} />
       ) : (
         <FearlessSetup teams={teams} heroes={heroes} onStart={apply} />
       )}

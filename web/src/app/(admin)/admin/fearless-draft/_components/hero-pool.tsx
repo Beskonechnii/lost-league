@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { Eyebrow } from "@/components/pouf/text";
-import { isSelectable, type FearlessState } from "@/lib/fearless";
+import { POOL_PER_ATTR, isSelectable, type FearlessState } from "@/lib/fearless";
 import { Panel } from "../../../_components/panel";
 import { ATTR_LABEL, ATTR_ORDER, type HeroRef } from "./types";
 
@@ -49,8 +49,13 @@ export function HeroPool({
         {groups.map((g) => (
           <div key={g.attr}>
             <Eyebrow className="mb-1.5">{ATTR_LABEL[g.attr]}</Eyebrow>
-            {/* Плитка 50px — минимум, на котором портрет ещё узнаётся; на 375px в ряд встают пять. */}
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(50px,1fr))] gap-1.5">
+            {/* Плитка 50px — минимум, на котором портрет ещё узнаётся; на 375px в ряд встают пять.
+                От xl треков ровно столько, сколько героев в группе: auto-fill нарезал их по всей
+                ширине и оставлял в каждом ряду пять пустых. */}
+            <div
+              className="grid grid-cols-[repeat(auto-fill,minmax(50px,1fr))] gap-1.5 xl:grid-cols-[repeat(var(--pool-cols),minmax(0,1fr))]"
+              style={{ "--pool-cols": POOL_PER_ATTR } as React.CSSProperties}
+            >
               {g.heroes.map((h) => {
                 const selectable = !disabled && isSelectable(state, h.id);
                 const isLocked = locked.has(h.id);
@@ -62,7 +67,10 @@ export function HeroPool({
                     onClick={() => onPick(h.id)}
                     title={isLocked ? `${h.name} — уже взят в серии` : h.name}
                     aria-label={h.name}
-                    className={`relative overflow-hidden rounded-[10px] outline-none transition-[box-shadow,transform] ${
+                    // 16:9 — родная пропорция портрета (256×144). В `h-8` при треке 85px на 1440
+                    // кадр резался больше чем наполовину: места стало больше, а герой перестал
+                    // узнаваться. На 390 трек ~55px, и 16:9 даёт те же 31px, что были.
+                    className={`relative aspect-[16/9] overflow-hidden rounded-[10px] outline-none transition-[box-shadow,transform] ${
                       selectable
                         ? "cushion-row hover:-translate-y-0.5 hover:cushion-row-hover focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]"
                         : "cursor-not-allowed"
@@ -72,7 +80,7 @@ export function HeroPool({
                     <img
                       src={h.img}
                       alt=""
-                      className={`h-8 w-full object-cover transition ${selectable ? "" : "opacity-30 grayscale"}`}
+                      className={`h-full w-full object-cover transition ${selectable ? "" : "opacity-30 grayscale"}`}
                     />
                     {isLocked && (
                       <span className="absolute inset-0 grid place-items-center bg-surface-2/70 text-[8px] font-black uppercase text-err-ink">

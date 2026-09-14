@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/pouf/Button";
 import { Icon } from "@/components/pouf/Icon";
-import { Alert, StatusPill } from "@/components/pouf/feedback";
+import { Alert } from "@/components/pouf/feedback";
 import { Panel } from "../../../_components/panel";
 import {
   applyPick,
@@ -17,31 +17,47 @@ import {
   radiantOf,
   undo,
   type FearlessState,
+  type TeamIdx,
 } from "@/lib/fearless";
 import { HeroPool } from "./hero-pool";
-import { PastMaps } from "./past-maps";
-import { Sequence } from "./sequence";
-import { fmtTime, type HeroRef } from "./types";
+import { MapTrack } from "./map-track";
+import { TeamColumn } from "./sequence";
+import { fmtTime, type HeroRef, type TeamRef } from "./types";
 
 /**
- * Сам драфт: таймеры, чей ход, расписание карты, пул и запись прошлых карт.
+ * Сам драфт одним экраном: панель «Карта» (дорожка серии, часы, управление) и борд тремя
+ * колонками — сторона · пул · сторона.
  *
  * Отделён от оболочки (`fearless-board.tsx`) по той же границе, что серии на Э9 и шоу-драфт на
  * Э11a: там — состояние сессии и автосейв, здесь — ход карты и его таймеры. Таймеры сознательно
  * живут ТОЛЬКО здесь и не едут в payload: они идут в реальном времени у оператора, а сохранять
  * в базу четыре раза в секунду нечего.
+ *
+ * Три колонки включаются с `xl`, а не с `lg`: на 1024 полезных 976, минус две колонки по 256 и
+ * два зазора — центру осталось бы 464, то есть трек пула упал бы до ~45px при полу в 50px
+ * (`hero-pool.tsx`). Ниже `xl` — вертикальный стек, и пул в нём идёт РАНЬШЕ колонок: по нему
+ * нажимают каждый ход, и проматывать до него два десятка строк расписания пришлось бы двадцать
+ * раз за карту.
  */
 export function FearlessRun({
   state,
   setState,
   heroById,
+  teams,
   onReset,
 }: {
   state: FearlessState;
   setState: (s: FearlessState) => void;
   heroById: Map<number, HeroRef>;
+  /** Команды лиги — за лого и капитаном. */
+  teams: TeamRef[];
   onReset: () => void;
 }) {
+  // Движок хранит у команды только имя и цвет (`FearlessTeam`), id в payload не попадает —
+  // поэтому карточка команды ищется по имени. Не нашлась (команду переименовали после старта
+  // драфта) — колонка рисуется без лого и с подписью «капитан не назначен», экран цел.
+  const refByName = useMemo(() => new Map(teams.map((t) => [t.name, t])), [teams]);
+
   // Новая карта = свежий рандом-пул (9/атрибут), но БЕЗ уже взятых в серии героев.
   const rerollPool = (s: FearlessState): number[] => {
     const played = new Set<number>();
@@ -53,8 +69,16 @@ export function FearlessRun({
   const step = currentStep(state);
   const active = currentTeam(state);
   const locked = fearlessLocked(state);
-  const first = firstPickOf(state, state.current);
-  const light = radiantOf(state, state.current);
+
+  // Какую карту серии экран ПОКАЗЫВАЕТ. Локальное состояние просмотра: в payload не уходит,
+  // PATCH не шлёт и в адрес не пишется — экран за правом «tools» (ссылка ничего не воспроизведёт
+  // у того, у кого права нет), просмотр живёт секунды, а query-параметр на каждом клике насыпал
+  // бы историю браузера, и «назад» посреди эфира уводил бы оператора по прошлым картам.
+  const [viewing, setViewing] = useState(state.current);
+  const past = viewing !== state.current;
+  const shown = past ? viewing : state.current;
+  const left = firstPickOf(state, shown); // слева тот, кто ходит первым на показанной карте
+  const right = (1 - left) as TeamIdx;
 
   // Таймеры: банк доп-времени на команду; секундомер хода — в состоянии (ref в рендере читать нельзя).
   const current = state.current;
@@ -68,6 +92,7 @@ export function FearlessRun({
   const resetTurn = () => {
     setTurnStart(Date.now());
     setNow(Date.now());
+    setViewing(current); // любое действие хода возвращает экран на живую карту
   };
   // Тик, пока карта не задрафчена (setState внутри колбэка интервала — это допустимо)
   useEffect(() => {
@@ -101,21 +126,67 @@ export function FearlessRun({
     const advanced = nextGame(state);
     setState({ ...advanced, pool: rerollPool(advanced) }); // новый пул без сыгранных героев
     setReserve([state.reserveSec, state.reserveSec]);
-    resetTurn();
+    setTurnStart(Date.now());
+    setNow(Date.now());
+    setViewing(advanced.current);
   };
+
+  const column = (team: TeamIdx, side: "left" | "right") => (
+    <TeamColumn
+      state={state}
+      gameIdx={shown}
+      team={team}
+      teamRef={refByName.get(state.teams[team].name)}
+      heroById={heroById}
+      side={side}
+      past={past}
+    />
+  );
 
   return (
     <div className="space-y-4">
-      {/* Часы: банк слева, ход по центру, банк справа — раскладка эфирного табло */}
+      {/* Одна панель на всё про текущую карту: дорожка серии, часы и управление. Три отдельные
+          панели подряд — это ~200px до первых данных, ровно тот антипаттерн, что §9 уже вычистил
+          из ростера. Дорожка стоит НАД часами: она отвечает «что я вижу», часы — «сколько
+          осталось у живого хода», и контекст всегда выше того, что от него зависит. */}
       <Panel>
-        <div className="grid grid-cols-3 items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <MapTrack bestOf={state.bestOf} current={state.current} viewing={viewing} onView={setViewing} />
+          <span className="min-w-0 text-sm font-bold text-muted">
+            свет: <b className="text-ink">{state.teams[radiantOf(state, shown)].name}</b> · первый пик:{" "}
+            <b className="text-ink">{state.teams[left].name}</b>
+          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* В режиме просмотра управление выключено: эти кнопки относятся к живой карте,
+                а нажимались бы, глядя на чужую. */}
+            <Button variant="quiet" size="sm" onClick={doUndo} disabled={past || movesCount === 0}>
+              <Icon name="prev" size="sm" /> Отменить
+            </Button>
+            {canNextGame(state) && (
+              <Button size="sm" onClick={doNext} disabled={past}>
+                Следующая карта <Icon name="next" size="sm" />
+              </Button>
+            )}
+            <Button variant="quiet" tone="down" size="sm" onClick={onReset}>
+              Сбросить
+            </Button>
+          </div>
+        </div>
+
+        {/* Часы — тем же определением треков, что и борд: левый банк встаёт ровно над колонкой
+            своей команды, а показание хода — над пулом. Это эфирное табло, сторона читается
+            по вертикали, а не по подписи. */}
+        <div className="mt-3 grid grid-cols-3 items-center gap-3 xl:grid-cols-[16rem_minmax(0,1fr)_16rem] xl:gap-4">
           <ReserveTimer team={state.teams[0]} value={reserve[0] - (active === 0 ? overage : 0)} active={active === 0} />
           <div className="text-center">
             <div className={`text-3xl font-black tabular-nums ${mainLeft < 0 ? "text-err-ink" : "text-ink"}`}>
               {step ? fmtTime(mainLeft < 0 ? activeReserveLeft : mainLeft) : "0:00"}
             </div>
+            {/* Часы идут и в режиме просмотра: они про живой ход, гасить их посреди чужого хода
+                нельзя. Чтобы показание не отнесли к просматриваемой карте — номер в подписи. */}
             <div className="text-[11px] font-black uppercase tracking-[1px] text-muted">
               {step ? (mainLeft < 0 ? "доп-время" : "ход") : "карта задрафчена"}
+              {past && ` · карта ${state.current + 1}`}
             </div>
           </div>
           <ReserveTimer
@@ -127,68 +198,52 @@ export function FearlessRun({
         </div>
       </Panel>
 
-      {/* Шапка карты: какая карта, стороны, чей ход и управление */}
-      <Panel>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-muted">
-            <StatusPill>
-              Карта {state.current + 1} / {state.bestOf}
-            </StatusPill>
-            <span>
-              свет: <b className="text-ink">{state.teams[light].name}</b> · первый пик:{" "}
-              <b className="text-ink">{state.teams[first].name}</b>
-            </span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="quiet" size="sm" onClick={doUndo} disabled={movesCount === 0}>
-              <Icon name="prev" size="sm" /> Отменить
-            </Button>
-            {canNextGame(state) && (
-              <Button size="sm" onClick={doNext}>
-                Следующая карта <Icon name="next" size="sm" />
+      <div className="grid items-start gap-4 xl:grid-cols-[16rem_minmax(0,1fr)_16rem]">
+        {/* Порядок чтения хода: статусная строка → пул под ней → загоревшийся слот в колонке.
+            Поэтому строка живёт в центральной колонке над пулом, а не в панели «Карта»: цель
+            нажатия и подпись к нему обязаны быть в одном столбце. */}
+        <div className="space-y-4 max-xl:order-1 xl:order-2">
+          {past ? (
+            <>
+              <Alert tone="info" block>
+                Смотрим карту {viewing + 1}. Драфт идёт на карте {state.current + 1} — пул и ходы
+                показаны только у неё.
+              </Alert>
+              <Button variant="quiet" size="sm" onClick={() => setViewing(state.current)}>
+                Вернуться на карту {state.current + 1}
               </Button>
-            )}
-            <Button variant="quiet" tone="down" size="sm" onClick={onReset}>
-              Сбросить
-            </Button>
-          </div>
-        </div>
-
-        {/* Чей ход — на всю ширину под управлением: это главная строка экрана, её читают
-            каждые полминуты. Цвет команды сырым hex — тот же, что горит в трансляции (§C5). */}
-        <div className="mt-3">
-          {step && active !== null ? (
-            <div
-              className="flex flex-wrap items-center gap-2 rounded-card bg-surface px-4 py-3 font-pouf text-sm font-bold text-muted cushion-card"
-              style={{ outline: `2px solid ${state.teams[active].color}`, outlineOffset: 2 }}
-            >
-              <span className="h-2.5 w-2.5 shrink-0 rounded-pill" style={{ background: state.teams[active].color }} />
-              <span>
-                Ход команды <b className="text-ink">{state.teams[active].name}</b> —{" "}
-                {step.action === "ban" ? "банит" : "пикает"}. Нажмите на героя в пуле.
-              </span>
-            </div>
+            </>
           ) : (
-            <Alert tone="ok" block>
-              Карта задрафчена.{" "}
-              {canNextGame(state)
-                ? "Жмите «Следующая карта» — пул соберётся заново, без уже взятых героев."
-                : "Серия отдрафчена целиком."}
-            </Alert>
+            <>
+              {/* Цвет команды сырым hex — тот же, что горит в трансляции (§C5). */}
+              {step && active !== null ? (
+                <div
+                  className="flex flex-wrap items-center gap-2 rounded-card bg-surface px-4 py-3 font-pouf text-sm font-bold text-muted cushion-card"
+                  style={{ outline: `2px solid ${state.teams[active].color}`, outlineOffset: 2 }}
+                >
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-pill"
+                    style={{ background: state.teams[active].color }}
+                  />
+                  <span>
+                    Ход команды <b className="text-ink">{state.teams[active].name}</b> —{" "}
+                    {step.action === "ban" ? "банит" : "пикает"}. Нажмите на героя в пуле.
+                  </span>
+                </div>
+              ) : (
+                <Alert tone="ok" block>
+                  Карта задрафчена.{" "}
+                  {canNextGame(state)
+                    ? "Жмите «Следующая карта» — пул соберётся заново, без уже взятых героев."
+                    : "Серия отдрафчена целиком."}
+                </Alert>
+              )}
+              <HeroPool state={state} heroById={heroById} locked={locked} onPick={commit} disabled={!step} />
+            </>
           )}
         </div>
-      </Panel>
-
-      {/* На узком экране пул идёт первым: это то, по чему оператор нажимает каждый ход, и
-          проматывать до него два десятка строк расписания пришлось бы двадцать раз за карту. */}
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
-        <div className="space-y-4 lg:order-2">
-          <HeroPool state={state} heroById={heroById} locked={locked} onPick={commit} disabled={!step} />
-          <PastMaps state={state} heroById={heroById} />
-        </div>
-        <div className="lg:order-1">
-          <Sequence state={state} heroById={heroById} />
-        </div>
+        <div className="max-xl:order-2 xl:order-1">{column(left, "left")}</div>
+        <div className="order-3">{column(right, "right")}</div>
       </div>
     </div>
   );

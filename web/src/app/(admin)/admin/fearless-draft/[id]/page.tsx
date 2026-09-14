@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { listTeams } from "@/lib/roster-data";
+import { listTeamRosters } from "@/lib/roster-data";
 import { localHeroes } from "@/lib/dota-constants";
 import { heroImg } from "@/lib/assets";
 import { teamAccent } from "@/lib/profiles";
@@ -21,7 +21,7 @@ export default async function FearlessSessionPage({ params }: { params: Promise<
 
   const [session, teams] = await Promise.all([
     prisma.fearlessSession.findUnique({ where: { id: sessionId } }),
-    listTeams(),
+    listTeamRosters(), // ради капитана команды: состав нужен только за полем isCaptain
   ]);
   if (!session) notFound();
 
@@ -33,7 +33,17 @@ export default async function FearlessSessionPage({ params }: { params: Promise<
     initialState = null; // пустой или битый payload — начинаем с настройки
   }
 
-  const teamRefs: TeamRef[] = teams.map((t) => ({ id: t.id, name: t.name, color: teamAccent(t), logo: t.logo }));
+  const teamRefs: TeamRef[] = teams.map((t) => {
+    const cap = t.players.find((p) => p.isCaptain);
+    return {
+      id: t.id,
+      name: t.name,
+      color: teamAccent(t),
+      logo: t.logo,
+      // Капитан не отмечен — обычный случай, флаг проставляется руками в ростер-редакторе.
+      captain: cap ? { nickname: cap.nickname, photo: cap.photo, mmr: cap.mmr } : null,
+    };
+  });
   const heroes: HeroRef[] = localHeroes()
     .map((h) => {
       const slug = h.name.replace(/^npc_dota_hero_/, "");

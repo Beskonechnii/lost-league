@@ -6,7 +6,18 @@
  * пары строк.
  */
 
-export type TeamRef = { id: number; name: string; color: string; logo: string | null };
+/** Капитан команды как КАРТОЧКА для эфира, а не как участник с правом хода: движок драфта
+ *  о людях не знает вовсе, ход вносит оператор (см. ТЗ 15, «Чего движок не даёт»). */
+export type CaptainRef = { nickname: string; photo: string | null; mmr: number | null };
+
+export type TeamRef = {
+  id: number;
+  name: string;
+  color: string;
+  logo: string | null;
+  /** Необязательное: экрану настройки капитан не нужен, и он это поле просто не читает. */
+  captain?: CaptainRef | null;
+};
 
 export type HeroRef = {
   id: number;

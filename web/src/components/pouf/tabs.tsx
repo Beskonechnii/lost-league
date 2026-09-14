@@ -31,18 +31,24 @@ export function pillClasses({
   active = false,
   size = "sm",
   variant = "field",
+  disabled = false,
   className = "",
 }: {
   active?: boolean;
   size?: PillSize;
   variant?: "field" | "quiet";
+  /** Вариант, до которого ещё нельзя дойти (карта серии, которая не наступила).
+   *  Ни подушки, ни hover: выключенная пилюля не притворяется нажимаемой. */
+  disabled?: boolean;
   className?: string;
 } = {}): string {
   const box =
     size === "md"
       ? "px-4 py-[9px] text-[13px]"
       : "px-3.5 py-[7px] text-[13px]";
-  const skin = active
+  const skin = disabled
+    ? "text-ink-subtle cursor-not-allowed"
+    : active
     ? "bg-accent-fill text-[var(--on-accent)] cushion-control"
     : variant === "quiet"
       ? "text-ink-muted hover:bg-surface-1 hover:text-ink hover:cushion-field"
@@ -69,6 +75,7 @@ export function PillButton({
   active = false,
   size,
   variant,
+  disabled = false,
   onClick,
   className,
   children,
@@ -76,6 +83,9 @@ export function PillButton({
   active?: boolean;
   size?: PillSize;
   variant?: "field" | "quiet";
+  /** Вариант, который сейчас недостижим. Атрибутом, а не только видом: выключенная
+   *  пилюля обязана выпадать из таб-порядка, иначе с клавиатуры в неё всё равно попадают. */
+  disabled?: boolean;
   onClick: () => void;
   className?: string;
   children: ReactNode;
@@ -84,8 +94,9 @@ export function PillButton({
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-pressed={active}
-      className={pillClasses({ active, size, variant, className })}
+      className={pillClasses({ active, size, variant, disabled, className })}
     >
       {children}
     </button>
