@@ -201,7 +201,10 @@ export default async function WizardStep({
                 name: tournament.name,
                 divisions: tournament.divisions.map((d) => ({ id: d.id, name: d.name })),
               }]}
-              defaultDivisionId={tournament.divisions[0]?.id ?? null}
+              // Подставляем, только когда дивизион у турнира один: при двух и более выбирает
+              // оператор — правило одно на оба входа в форму (ТЗ 11).
+              defaultDivisionId={tournament.divisions.length === 1 ? tournament.divisions[0].id : null}
+              from={{ slug: tournament.slug, name: tournament.name }}
             />
           </>
         )}

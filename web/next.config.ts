@@ -20,6 +20,9 @@ const nextConfig: NextConfig = {
       // Конфигом, а не `redirect()` на странице: тот отдаёт 307, и каноническим остался бы сам
       // `/schedule` — то есть индексируемая пустышка. 308 передаёт вес цели и вычищает адрес.
       { source: "/schedule", destination: "/series?m=next", permanent: true },
+      // Импорт анкет (бывший «Импорт CRM») стал вторым механизмом экрана импорта, а не своим
+      // адресом (ТЗ 11). `?tournament=` из запроса Next переносит на цель сам.
+      { source: "/admin/roster/crm-import", destination: "/admin/roster/import?mode=players", permanent: true },
     ];
   },
 

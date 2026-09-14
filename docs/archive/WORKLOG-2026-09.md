@@ -7,6 +7,15 @@
 
 ---
 
+## 2026-09-12 — Главная по макету, подэтап A: шапка, колокольчик, верхний ряд
+
+Шапка витрины разложена тремя островами (Главная · LOST cup · Команды · Игроки · Правила), колокольчик
+стал витриной канала `/chat/system`: группа «Служебные», «прочитать все» через общий `markRead`, счётчик
+разведён с «Сообщениями» (вместе дают прежнюю сумму). Верхний ряд — герой из баннера по данным + карточка
+игрока 351px с MMR, местом в зачёте и новым атомом Кита `WinrateMeter`. **Файлы.** `_components/{home-shell,
+notifications,account-nav,avatar-menu}`, `(home)/{page,banner,mini-profile}`, `pouf/winrate-meter.tsx`,
+`lib/chat.ts`, `design/kit/parts/WinrateMeter.*`, `/admin/kit`. **Дальше.** qa: приёмка A, затем подэтап B.
+
 ## 2026-09-12 — Кит: Breadcrumbs, Pagination, Tooltip, Accordion
 
 Подэтап B того же ТЗ. Крошки переехали из `app/_components/` в Кит без правки вида, импорты

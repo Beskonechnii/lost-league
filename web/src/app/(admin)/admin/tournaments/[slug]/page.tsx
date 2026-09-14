@@ -84,8 +84,8 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
       {/* Соседние экраны турнира — ряд пилюль, а не строка ссылок со стрелками: это тот же
           уровень навигации, что вкладки раздела в продукте (UI-GUIDELINES §2, L3). */}
       <nav className="mt-5 flex flex-wrap gap-2">
-        <PillLink href={`/admin/roster/import?tournament=${tournament.slug}`}>Импорт составов</PillLink>
-        <PillLink href={`/admin/roster/crm-import?tournament=${tournament.slug}`}>Импорт игроков</PillLink>
+        <PillLink href={`/admin/roster/import?mode=teams&tournament=${tournament.slug}`}>Импорт составов</PillLink>
+        <PillLink href={`/admin/roster/import?mode=players&tournament=${tournament.slug}`}>Импорт анкет</PillLink>
         <PillLink href={`/admin/tournaments/${tournament.slug}/registrations`}>Заявки команд</PillLink>
         <PillLink href={`/tournaments/${tournament.slug}`}>Публичная страница</PillLink>
       </nav>

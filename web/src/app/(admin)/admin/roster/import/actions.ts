@@ -137,15 +137,22 @@ export type SaveState = { results?: TeamResult[]; error?: string } | null;
 
 /**
  * Записать разобранное прямо в ростер. Черновик приезжает из превью — тем же JSON, что показали
- * оператору. Назначение (`divisionId`) выбирается здесь, на записи, а не раньше: пусто — общий
+ * оператору. Назначение (`divisionId`) выбирается здесь, на записи, а не раньше: `none` — общий
  * пул без турнира, число — дивизион любого турнира (см. writeTeamToRoster).
+ *
+ * Пустая строка — это «оператор не выбрал», и она отвергается: до Э11 она значила «общий пул», и
+ * молчаливый предвыбор первого дивизиона мог записать таблицу D2 в D1 — то есть завести командам
+ * участие в чужом дивизионе, разбирать которое пришлось бы руками в базе.
  */
 export async function saveDrafts(_prev: SaveState, form: FormData): Promise<SaveState> {
   await requirePermission("tournaments.edit");
   await requirePermission("roster.edit"); // запись идёт в ростер, а не в очередь
   try {
     const divisionRaw = String(form.get("divisionId") ?? "");
-    const divisionId = divisionRaw ? Number(divisionRaw) : null;
+    if (!divisionRaw) {
+      return { error: "Выберите назначение: дивизион турнира или общий ростер без привязки" };
+    }
+    const divisionId = divisionRaw === "none" ? null : Number(divisionRaw);
 
     const teams = JSON.parse(String(form.get("teams") ?? "[]")) as TeamDraft[];
     const picked = new Set(form.getAll("pick").map(String));

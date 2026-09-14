@@ -6,8 +6,8 @@ import { parseCrmDelimited, parseCrmGrid, parseCrmJson } from "@/lib/crm-import"
 import { matchCrmRows, applyCrmChanges, type CrmMatch } from "@/lib/crm-match";
 import { readWorkbook } from "@/lib/xlsx";
 
-// Мастер импорта CRM: тот же трёхшаговый порядок, что у мастера составов
-// (admin/tournaments/[slug]/import) — источник → разбор → запись, разбор отделён от записи, чтобы
+// Механизм «Анкеты» экрана /admin/roster/import: тот же трёхшаговый порядок, что у «Составов»
+// рядом (./actions.ts) — источник → разбор → запись, разбор отделён от записи, чтобы
 // оператор увидел, что именно изменится, до того как это попадёт в профили. В отличие от составов —
 // это только ОБОГАЩЕНИЕ существующих игроков (телеграм, ДР, город, account_id): новых профилей не
 // заводит, поэтому право на запись — `roster.edit`, а не `tournaments.edit`.

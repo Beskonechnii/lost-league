@@ -1,15 +1,21 @@
 "use client";
 
-import { useActionState, useMemo, useState, type ReactNode } from "react";
-import { parseCrmUpload, saveCrmMatches, type ParseState, type SaveState } from "./actions";
+import { useActionState, useMemo, useState } from "react";
+import { parseCrmUpload, saveCrmMatches, type ParseState, type SaveState } from "./crm-actions";
 import { Button } from "@/components/pouf/Button";
 import { Checkbox } from "@/components/pouf/checkbox";
 import { FormInput, FormTextarea, Label } from "@/components/pouf/Input";
-import { Alert } from "@/components/pouf/feedback";
+import { Alert, EmptyState } from "@/components/pouf/feedback";
+import { SkeletonList } from "@/components/pouf/skeleton";
 import { DropZone } from "@/components/pouf/dropzone";
 import { Stepper } from "@/components/pouf/stepper";
 import { Panel } from "@/app/(admin)/_components/panel";
+import { WarnDetails } from "./warn-details";
 
+// Идентификаторы полей с префиксом `crm-`: обе формы экрана импорта смонтированы одновременно,
+// и голые `link`/`pasted` столкнулись бы с такими же у «Составов» — подпись <label for> ушла бы
+// в чужое поле.
+//
 // Мастер в два шага (короче составов — тут нет сетевого «подтянуть данные»): Источник → Разбор
 // (уже сведённый с базой — какие поля какому игроку допишутся) → выбор строк → Запись.
 
@@ -20,18 +26,6 @@ function fmt(value: string): string {
   const d = new Date(value);
   if (Number.isNaN(d.getTime()) || !/^\d{4}-\d{2}-\d{2}/.test(value)) return value;
   return new Intl.DateTimeFormat("ru", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(d);
-}
-
-function WarnDetails({ summary, children }: { summary: ReactNode; children: ReactNode }) {
-  return (
-    <details
-      className="rounded-chip px-(--s4) pb-[calc(var(--s3)+var(--lip)/2)] pt-[calc(var(--s3)-var(--lip)/2)] font-pouf cushion-alert"
-      style={{ backgroundImage: "var(--grad-warn)" }}
-    >
-      <summary className="cursor-pointer text-[13px] font-extrabold text-[var(--color-warn-ink)]">{summary}</summary>
-      <div className="mt-2 max-h-52 overflow-y-auto">{children}</div>
-    </details>
-  );
 }
 
 export function CrmImportForm() {
@@ -65,19 +59,19 @@ export function CrmImportForm() {
               hint="или нажмите, чтобы выбрать: .xlsx, .csv, .tsv, .json"
             />
             <div>
-              <Label htmlFor="link">…или ссылка на гугл-таблицу</Label>
-              <FormInput id="link" name="link" size="sm" placeholder="https://docs.google.com/spreadsheets/d/…" className="mt-1.5" />
+              <Label htmlFor="crm-link">…или ссылка на гугл-таблицу</Label>
+              <FormInput id="crm-link" name="link" size="sm" placeholder="https://docs.google.com/spreadsheets/d/…" className="mt-1.5" />
               <span className="mt-1.5 block font-pouf text-[11px] font-bold text-muted">
                 Доступ к таблице должен быть открыт по ссылке — скачиваем её экспортом в xlsx.
               </span>
             </div>
             <div>
-              <Label htmlFor="pasted">…или вставьте таблицу текстом</Label>
-              <FormTextarea id="pasted" name="pasted" rows={4} className="mt-1.5" placeholder="Ник;Телеграм;Дата рождения;Город" />
+              <Label htmlFor="crm-pasted">…или вставьте таблицу текстом</Label>
+              <FormTextarea id="crm-pasted" name="pasted" rows={4} className="mt-1.5" placeholder="Ник;Телеграм;Дата рождения;Город" />
             </div>
             <div>
-              <Label htmlFor="tab">Только вкладка с названием, содержащим</Label>
-              <FormInput id="tab" name="tab" size="sm" placeholder="игроки" className="mt-1.5" />
+              <Label htmlFor="crm-tab">Только вкладка с названием, содержащим</Label>
+              <FormInput id="crm-tab" name="tab" size="sm" placeholder="игроки" className="mt-1.5" />
               <span className="mt-1.5 block font-pouf text-[11px] font-bold text-muted">
                 Пусто — пробуем каждый лист книги, берём первый, где нашлась шапка с ником.
               </span>
@@ -105,7 +99,8 @@ export function CrmImportForm() {
           hint={parsed?.note ?? undefined}
         >
           <div className="space-y-4">
-            {parsing && <p className="font-pouf text-sm font-bold text-muted">Разбираю…</p>}
+            {/* Скелет на месте будущего превью: фраза «Разбираю…» формы экрана не рисует. */}
+            {parsing && <SkeletonList count={4} label="Разбираю выгрузку" />}
             {parsed?.error && <Alert tone="err" block>{parsed.error}</Alert>}
 
             {parsed && !parsed.error && (
@@ -115,19 +110,21 @@ export function CrmImportForm() {
                 </p>
 
                 {matches.length === 0 ? (
-                  <Alert tone="warn" block>Нечего записывать — либо всё уже стоит в базе, либо никто не опознан.</Alert>
+                  <EmptyState icon="users" title="Нечего записывать">
+                    Либо всё уже стоит в профилях, либо никого не опознали по нику.
+                  </EmptyState>
                 ) : (
                   <ul className="space-y-2">
                     {matches.map((m) => (
                       <li key={m.playerId} className="rounded-blob bg-surface-2 p-3 font-pouf cushion-field">
                         <div className="flex flex-wrap items-center gap-2">
                           <Checkbox
-                            id={`pick-${m.playerId}`}
+                            id={`crm-pick-${m.playerId}`}
                             checked={!skip[m.playerId]}
                             onCheckedChange={(v) => setSkip((s) => ({ ...s, [m.playerId]: v !== true }))}
                           />
                           <label
-                            htmlFor={`pick-${m.playerId}`}
+                            htmlFor={`crm-pick-${m.playerId}`}
                             className={`cursor-pointer text-sm font-black ${skip[m.playerId] ? "text-muted line-through" : "text-ink"}`}
                           >
                             {m.playerNickname}

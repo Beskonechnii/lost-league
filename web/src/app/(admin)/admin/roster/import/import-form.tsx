@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, type ReactNode } from "react";
+import { useActionState, useRef, useState } from "react";
 import Link from "next/link";
 import {
   enrichDrafts,
@@ -14,12 +14,14 @@ import { rankLabel } from "@/lib/dota-rank";
 import { roleLabel } from "@/lib/roles";
 import { Button } from "@/components/pouf/Button";
 import { Checkbox } from "@/components/pouf/checkbox";
-import { FormInput, FormSelect, FormTextarea, Label } from "@/components/pouf/Input";
-import { Alert } from "@/components/pouf/feedback";
+import { Field, FormInput, FormSelect, FormTextarea, Label } from "@/components/pouf/Input";
+import { Alert, EmptyState } from "@/components/pouf/feedback";
+import { SkeletonList } from "@/components/pouf/skeleton";
 import { DropZone } from "@/components/pouf/dropzone";
 import { Stepper } from "@/components/pouf/stepper";
 import { DataCell, DataRow, DataTable } from "@/components/pouf/data-table";
 import { Panel } from "@/app/(admin)/_components/panel";
+import { WarnDetails } from "./warn-details";
 
 // Мастер импорта: три пронумерованных шага, назад можно на любой. Разбор не знает про турнир —
 // назначение выбирается на последнем шаге, из ЛЮБОГО турнира сразу (решение 04.09.2026: раньше
@@ -36,24 +38,9 @@ export type TournamentOption = {
   divisions: { id: number; name: string }[];
 };
 
-/**
- * Свёрнутый список замечаний на предупреждающей коже. Не `Alert`: у алерта нет
- * содержимого, которое раскрывают, а тут под заголовком лежит список из
- * полусотни строк — развёрнутым он топит собой весь экран.
- */
-function WarnDetails({ summary, children }: { summary: ReactNode; children: ReactNode }) {
-  return (
-    <details
-      className="rounded-chip px-(--s4) pb-[calc(var(--s3)+var(--lip)/2)] pt-[calc(var(--s3)-var(--lip)/2)] font-pouf cushion-alert"
-      style={{ backgroundImage: "var(--grad-warn)" }}
-    >
-      <summary className="cursor-pointer text-[13px] font-extrabold text-[var(--color-warn-ink)]">
-        {summary}
-      </summary>
-      <div className="mt-2 max-h-52 overflow-y-auto">{children}</div>
-    </details>
-  );
-}
+/** Служебное значение «Назначения»: общий ростер вне турнира. Пустая строка занята другим
+ *  смыслом — «оператор ещё не выбрал», и форма на ней не отправляется (Э11). */
+const NO_TOURNAMENT = "none";
 
 export function ImportForm({
   tournaments,
@@ -61,12 +48,15 @@ export function ImportForm({
   from,
 }: {
   tournaments: TournamentOption[];
-  /** Если пришли со страницы конкретного турнира — предвыбрать его первый дивизион, а не общий пул. */
+  /** Дивизион турнира, из которого пришли, — подставляется ТОЛЬКО когда он у турнира один.
+   *  При двух и более выбирает оператор: цена тихой записи в чужой дивизион несимметрична. */
   defaultDivisionId?: number | null;
-  /** Оттуда же — обратная дорога: записал составы и вернулся к турниру, а не искал его заново. */
+  /** Турнир-контекст: его именем подписана подсказка под «Назначением». */
   from?: { slug: string; name: string } | null;
 }) {
   const [step, setStep] = useState(0);
+  const divisionRef = useRef<HTMLSelectElement>(null);
+  const [divisionErr, setDivisionErr] = useState(false);
   const [parsed, parseAction, parsing] = useActionState<ParseState, FormData>(parseUpload, null);
   const [enriched, enrichAction, enriching] = useActionState<EnrichState, FormData>(enrichDrafts, null);
   const [saved, saveAction, saving] = useActionState<SaveState, FormData>(saveDrafts, null);
@@ -88,6 +78,18 @@ export function ImportForm({
         link: p.dotabuffUrl ?? p.stratzUrl ?? p.steamUrl ?? null,
       })),
   );
+
+  // Подсказка под «Назначением» объясняет состояние поля ДО отказа: почему подставлено, почему
+  // пусто и почему угадывать не будем. Турнир-контекст ищем в списке — так же и в мастере
+  // создания турнира, где список состоит из него одного.
+  const ctx = from ? tournaments.find((t) => t.slug === from.slug) ?? null : null;
+  const divisionHint = tournaments.every((t) => t.divisions.length === 0)
+    ? "Ни в одном турнире пока нет дивизионов — доступен только общий ростер."
+    : ctx && ctx.divisions.length === 1
+      ? `Дивизион «${ctx.divisions[0].name}» у турнира «${ctx.name}» единственный — подставлен сам`
+      : ctx && ctx.divisions.length > 1
+        ? `У турнира «${ctx.name}» дивизионов несколько — выберите, в какой записать: угадывать не будем`
+        : "Дивизион любого турнира или общий ростер без привязки";
 
   return (
     <div className="space-y-4">
@@ -154,8 +156,15 @@ export function ImportForm({
           hint={parsed?.note ?? undefined}
         >
           <div className="space-y-4">
-            {parsing && <p className="font-pouf text-sm font-bold text-muted">Разбираю таблицу…</p>}
+            {/* Скелет рисует форму будущего превью — строка «Разбираю таблицу…» её не рисовала. */}
+            {parsing && <SkeletonList count={4} label="Разбираю таблицу" />}
             {parsed?.error && <Alert tone="err" block>{parsed.error}</Alert>}
+
+            {!parsing && parsed && !parsed.error && teams.length === 0 && (
+              <EmptyState icon="database" title="Ни одной команды не разобрано">
+                Проверьте, тот ли лист и есть ли шапка колонок.
+              </EmptyState>
+            )}
 
             {teams.length > 0 && (
               <>
@@ -299,32 +308,53 @@ export function ImportForm({
             ))}
 
             <div className="max-w-xs">
-              <Label htmlFor="divisionId">Назначение</Label>
-              <FormSelect
-                id="divisionId"
-                name="divisionId"
-                size="sm"
-                defaultValue={defaultDivisionId ?? ""}
-                className="mt-1.5"
+              <Field
+                label="Назначение"
+                hint={divisionHint}
+                error={
+                  divisionErr
+                    ? "Выберите назначение: дивизион турнира или общий ростер без привязки"
+                    : undefined
+                }
               >
-                {/* Пусто = общий пул, вне турнира — не «дивизион не выбран», а осознанное третье
-                    значение (writeTeamToRoster(divisionId=null) его и ждёт). */}
-                <option value="">Общий ростер — без турнира</option>
-                {tournaments.map((t) =>
-                  t.divisions.length > 0 ? (
-                    <optgroup key={t.slug} label={t.name}>
-                      {t.divisions.map((d) => (
-                        <option key={d.id} value={d.id}>{d.name}</option>
-                      ))}
-                    </optgroup>
-                  ) : null,
+                {(id, describedBy) => (
+                  <FormSelect
+                    ref={divisionRef}
+                    id={id}
+                    name="divisionId"
+                    size="sm"
+                    required
+                    invalid={divisionErr}
+                    aria-describedby={describedBy}
+                    defaultValue={defaultDivisionId ?? ""}
+                    onChange={() => setDivisionErr(false)}
+                    // `required` держит барьер и без JS. Но нативный пузырь мимо Light Clay и мимо
+                    // нашей формулировки — гасим его и показываем китовую пару invalid + error.
+                    onInvalid={(e) => {
+                      e.preventDefault();
+                      setDivisionErr(true);
+                      divisionRef.current?.scrollIntoView({ block: "center" });
+                      divisionRef.current?.focus();
+                    }}
+                  >
+                    {/* Три значения, а не два: «не выбрал» и «общий ростер» больше не одно и то же
+                        пусто — второе выбирают, а не получают молчанием. */}
+                    <option value="" disabled>
+                      — Выберите назначение —
+                    </option>
+                    <option value={NO_TOURNAMENT}>Общий ростер — без турнира</option>
+                    {tournaments.map((t) =>
+                      t.divisions.length > 0 ? (
+                        <optgroup key={t.slug} label={t.name}>
+                          {t.divisions.map((d) => (
+                            <option key={d.id} value={d.id}>{d.name}</option>
+                          ))}
+                        </optgroup>
+                      ) : null,
+                    )}
+                  </FormSelect>
                 )}
-              </FormSelect>
-              {tournaments.every((t) => t.divisions.length === 0) && (
-                <span className="mt-1.5 block font-pouf text-[11px] font-bold text-muted">
-                  Ни в одном турнире пока нет дивизионов — доступен только общий ростер.
-                </span>
-              )}
+              </Field>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -341,17 +371,10 @@ export function ImportForm({
               <div className="space-y-2">
                 <Alert tone="ok" block>
                   Записано команд: {saved.results.filter((r) => r.ok).length} из {saved.results.length}.{" "}
+                  {/* Возврата к турниру здесь больше нет — он в шапке экрана и виден до записи. */}
                   <Link href="/roster" className="underline">
                     Открыть ростер
                   </Link>
-                  {from && (
-                    <>
-                      {" · "}
-                      <Link href={`/admin/tournaments/${from.slug}`} className="underline">
-                        Вернуться к турниру «{from.name}»
-                      </Link>
-                    </>
-                  )}
                 </Alert>
                 <ul className="space-y-1">
                   {saved.results.map((r) => (

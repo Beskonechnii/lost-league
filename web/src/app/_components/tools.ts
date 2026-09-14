@@ -36,8 +36,7 @@ export const TOOL_GROUPS: ToolGroup[] = [
     title: "Модерация",
     tools: [
       { href: "/admin/tournaments", perm: "tournaments.edit", label: "Управление турнирами", icon: "trophy", desc: "Завести турнир, описать его, раздать дивизионы и составы." },
-      { href: "/admin/roster/import", perm: "tournaments.edit", label: "Импорт составов", icon: "database", desc: "Разобрать таблицу сезона в команды и игроков: файл, ссылка или текст — с превью и проверкой перед записью в дивизион или в общий ростер." },
-      { href: "/admin/roster/crm-import", perm: "roster.edit", label: "Импорт CRM", icon: "mail", desc: "Дозаполнить анкеты игроков из выгрузки CRM: телеграм, дата рождения, город, account_id — с превью перед записью." },
+      { href: "/admin/roster/import", perm: "roster.edit", label: "Импорт", icon: "database", desc: "Составы — разобрать таблицу сезона в команды, игроков и места состава. Анкеты — дозаполнить профили из выгрузки CRM: телеграм, дата рождения, город, account_id. Оба с превью перед записью." },
       { href: "/admin/moderation", perm: "accounts.approve", label: "Модерация", icon: "log", desc: "Анкеты новых игроков и привязки к профилю: одобрить с заведением профиля или вернуть с причиной." },
       { href: "/admin/staff", perm: "accounts.admins", label: "Команда лиги", icon: "shield", desc: "Владелец и админы: назначение роли и раздача прав по галочкам." },
       { href: "/admin/tp", perm: "tp.edit", label: "TP", icon: "star", desc: "Начисление сезонных очков MVP игрокам." },
