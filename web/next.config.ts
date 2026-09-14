@@ -16,6 +16,10 @@ const nextConfig: NextConfig = {
       { source: "/admin/roles", destination: "/admin/staff", permanent: true },
       { source: "/admin/registrations", destination: "/admin/moderation", permanent: true },
       { source: "/admin/claims", destination: "/admin/moderation?tab=links", permanent: true },
+      // «Расписание» — это лента встреч разрезом «Будущие», отдельного экрана у него нет (ТЗ 10).
+      // Конфигом, а не `redirect()` на странице: тот отдаёт 307, и каноническим остался бы сам
+      // `/schedule` — то есть индексируемая пустышка. 308 передаёт вес цели и вычищает адрес.
+      { source: "/schedule", destination: "/series?m=next", permanent: true },
     ];
   },
 

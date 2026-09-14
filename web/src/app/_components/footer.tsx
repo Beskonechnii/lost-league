@@ -18,6 +18,9 @@ const COLUMNS: { title: string; links: { href: string; label: string }[] }[] = [
     links: [
       { href: "/tournaments", label: "Текущий сезон" },
       { href: "/playoffs", label: "Плей-офф" },
+      // Одна строка, а не две: «Расписание» — та же лента другим разрезом (`/series?m=next`),
+      // и две ссылки на один экран в подвале читаются как два разных раздела.
+      { href: "/series", label: "Все встречи" },
       { href: "/tournaments/archive", label: "Прошлые сезоны" },
     ],
   },

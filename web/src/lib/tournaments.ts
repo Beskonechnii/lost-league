@@ -360,6 +360,21 @@ export const LOST_SERIES = "LOST";
 /** Подпись группы для турниров с пустым полем серии. */
 export const NO_SERIES_TITLE = "Прочие турниры";
 
+/**
+ * Имя из данных для бренд-поверхности — `title`, `description`, OG. Внутреннее имя лиги туда
+ * не попадает (решение 28.08.2026), а оператор пишет его и в `name`, и в `short`: боевой турнир
+ * заведён как «LOST Season 2» / «LOST S2». Поэтому чистим перед подстановкой, а не выбираем
+ * поле «почище» — следующий сезон заведут так же. Вычистили всё (турнир назван одним брендом) —
+ * значит подписывать нечем, и суффикс должен выпасть целиком, а не висеть пустым «·».
+ */
+export function stripBrand(label: string): string {
+  return label
+    .replace(new RegExp(`\\b${LOST_SERIES}\\b`, "gi"), "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/^[\s·—–-]+|[\s·—–-]+$/g, "")
+    .trim();
+}
+
 /** Ключ группировки: «LOST Cup» и «lost cup» — одна серия, а не две. */
 export const seriesKey = (v: string | null | undefined) => (v ?? "").trim().toLowerCase();
 

@@ -54,11 +54,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
 
   const short = new Map(divisions.map((d) => [d.id, d.short]));
 
-  // «Все матчи» ведут на адрес турнира: оттуда строка контекста даёт оба дивизиона и разрезы,
-  // а кросс-таблица одной группы — это уже глубина одного дивизиона. Отдельной страницы всех
-  // встреч лиги в продукте нет.
-  const allMatches = current ? `/tournaments/${current.slug}` : undefined;
-
   return (
     <main className={`mx-auto w-full ${SITE_MAX_W} flex-1 space-y-6 px-4 pb-8 pt-4 font-pouf md:px-6`}>
       {/* Верхний ряд макета: герой добирает остаток ширины, карточка игрока — ровно 351px.
@@ -76,12 +71,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
       {/* Нижний ряд макета: матчи в узкой колонке, баллы на остаток, высоты плит равны
           (`items-stretch` по умолчанию у грида). Пропорция 5:4 — те же 400 к 340 из макета. */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,4fr)]">
-        <MatchesBlock
-          series={series}
-          cut={isMatchCut(m) ? m : undefined}
-          divisionShort={short}
-          more={allMatches}
-        />
+        <MatchesBlock series={series} cut={isMatchCut(m) ? m : undefined} divisionShort={short} />
         <PointsBlock tournament={current} playerId={playerId} cut={isPointsCut(p) ? p : "tp"} />
       </div>
 

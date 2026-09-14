@@ -9,6 +9,20 @@
 
 ---
 
+## 2026-09-14 — Этап 10: лента всех встреч лиги
+
+`/series` — сквозная лента встреч: разрез `?m=`, турнир `?t=`, страницы `?page=` по 20 (в Ките завёлся
+ссылочный близнец `PaginationLinks`). `/schedule` → 308 на `?m=next`, в баре шестой пункт «Встречи»,
+пороги хрома уехали на ступень (бургер `<xl`, поиск `<2xl`). **Отступление от ТЗ:** скелет стоит
+`<Suspense>` внутри страницы, а не `loading.tsx` — файл-граница начинает стрим, и `notFound()` после
+неё отдавал 200 вместо 404 (доки Next, loading.js → Status Codes). **Файлы.** `(public)/series/*`,
+`pouf/{pagination,separator,series-card}`, `_components/{app-shell,app-nav,footer}`, `(home)/*`,
+`lib/series.ts`, `next.config.ts`, `docs/MAP.md`. **Приёмка.** Один fail — бренд в заголовке при
+`?t=`: формула ТЗ (`<базовый> · <имя турнира>`) спорила с критерием «нет LOST в title и OG», а
+оператор пишет бренд и в `name`, и в `short` («LOST S2»). Чинится не выбором поля, а вычисткой:
+`stripBrand()` в `lib/tournaments.ts`. После правки принято, fail'ов нет.
+**Дальше.** Очередь `MVP.md` §0: этап 11 — импорт одним экраном, ТЗ заводит `pm`.
+
 ## 2026-09-14 — Приёмка ТЗ 08 и 09
 
 `qa` прогнал оба: 08 — 19 pass, 09 — 11 pass, **fail нет ни одного**. Остальные пункты непроверяемы
@@ -95,11 +109,3 @@ matches-block,tournaments-block,points}`, `pouf/series-card.tsx`, `lib/tournamen
 игрока 351px с MMR, местом в зачёте и новым атомом Кита `WinrateMeter`. **Файлы.** `_components/{home-shell,
 notifications,account-nav,avatar-menu}`, `(home)/{page,banner,mini-profile}`, `pouf/winrate-meter.tsx`,
 `lib/chat.ts`, `design/kit/parts/WinrateMeter.*`, `/admin/kit`. **Дальше.** qa: приёмка A, затем подэтап B.
-
-## 2026-09-12 — Кит: Breadcrumbs, Pagination, Tooltip, Accordion
-
-Подэтап B того же ТЗ. Крошки переехали из `app/_components/` в Кит без правки вида, импорты
-переписаны у девяти потребителей (в ТЗ было названо пять). Заведены `Pagination` (окно номеров
-с разрывом, ряд переносится на узком), `Tooltip` (radix, инверсная плашка, токен `--sh-inverse`)
-и `Accordion`. **Файлы.** `pouf/{breadcrumbs,pagination,tooltip,accordion}.tsx`, `pouf/pouf.css`,
-витрина `/admin/kit`, девять страниц-потребителей. **Дальше.** qa: приёмка подэтапа B.

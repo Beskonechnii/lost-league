@@ -26,8 +26,11 @@ import { Notifications, type NotificationLine } from "./notifications";
 // у входа своя подушка с зазором между ними. Одна плита во всю ширину читалась как полка, на
 // которой всё лежит вперемешку; три острова разводят «кто я», «куда пойти» и «что с аккаунтом».
 //
-// Ниже `lg` островов нет: три подушки с зазорами в 358px не сходятся, поэтому ряд сам становится
+// Ниже `xl` островов нет: три подушки с зазорами в 358px не сходятся, поэтому ряд сам становится
 // одной подушкой (`.mbar` из `Mobile.dc.html`), а разделы уезжают под бургер (`app-nav.tsx`).
+// Порог именно `xl` (1280), а не `lg`: шести разделам с «Админом» нужно 1112px, а на 1024 доступно
+// 976 — ряд сдавливался уже на пяти пунктах (замер в ТЗ 10). Второго ряда хрома и промотки ряда
+// вбок не бывает (§2), поэтому лишнюю ширину взять неоткуда — разделы уходят листом раньше.
 
 const date = new Intl.DateTimeFormat("ru", { day: "2-digit", month: "2-digit" });
 const clock = new Intl.DateTimeFormat("ru", { hour: "2-digit", minute: "2-digit" });
@@ -49,7 +52,10 @@ function when(at: Date, now: Date): string {
  */
 const SECTIONS: NavLink[] = [
   { href: "/", label: "Главная" },
-  { href: "/tournaments", label: "Турниры", accent: true, match: ["/standings", "/series", "/tp"] },
+  // `/series` из «Турниров» ушёл: у ленты встреч теперь свой пункт, а активным в ряду может быть
+  // ровно один (UI-GUIDELINES §2) — иначе на `/series` горели бы два сразу.
+  { href: "/tournaments", label: "Турниры", accent: true, match: ["/standings", "/tp"] },
+  { href: "/series", label: "Встречи" },
   { href: "/roster", label: "Команды" },
   { href: "/roster/players", label: "Игроки" },
   { href: "/rules", label: "Правила" },
@@ -93,13 +99,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     <ChatLiveProvider live={!!chat} initialPlayers={onlinePlayerIds()} initialCount={onlineCount()}>
       <div className="flex min-w-0 flex-1 flex-col">
         <header className={`mx-auto w-full ${SITE_MAX_W} px-4 pb-2 pt-5 font-pouf md:px-6`}>
-          {/* Ниже `lg` подушка одна на весь ряд, с `lg` она распадается на три острова. */}
-          <div className="flex items-center gap-3 max-lg:rounded-card max-lg:bg-surface max-lg:px-3 max-lg:py-2.5 max-lg:cushion-card">
+          {/* Ниже `xl` подушка одна на весь ряд, с `xl` она распадается на три острова. */}
+          <div className="flex items-center gap-3 max-xl:rounded-card max-xl:bg-surface max-xl:px-3 max-xl:py-2.5 max-xl:cushion-card">
             <NavSheet links={links} />
 
             <Link
               href="/"
-              className="flex min-w-0 shrink items-center gap-2.5 rounded-card lg:bg-surface lg:px-4 lg:py-2.5 lg:cushion-card"
+              className="flex min-w-0 shrink items-center gap-2.5 rounded-card xl:bg-surface xl:px-4 xl:py-2.5 xl:cushion-card"
               title="SPIRIT/CTRL — главная"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -115,7 +121,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
             <NavRow links={links} />
 
-            <div className="ml-auto flex shrink-0 items-center gap-2.5 rounded-card lg:bg-surface lg:px-3 lg:py-2.5 lg:cushion-card">
+            <div className="ml-auto flex shrink-0 items-center gap-2.5 rounded-card xl:bg-surface xl:px-3 xl:py-2.5 xl:cushion-card">
               {/* Поиск первым в острове: он самый широкий, а колокольчик и аватар обязаны стоять
                   на краю, где их ищут глазами. */}
               <BarSearch />

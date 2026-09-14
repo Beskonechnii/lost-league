@@ -53,6 +53,8 @@ export const VALID_SCORES = ["2:0", "2:1", "1:2", "0:2"];
 
 export type SeriesFilter = {
   id?: number;
+  /** Ровно эти встречи — страница ленты берёт полные строки только для своих двадцати. */
+  ids?: number[];
   slug?: string;
   divisionId?: number;
   /** Все дивизионы турнира разом — архив режется по турнирам, а не по одному дивизиону. */
@@ -61,7 +63,54 @@ export type SeriesFilter = {
   group?: string;
   bracket?: Bracket;
   teamId?: number;
+  /** Все дивизионы турнира — сужение сквозной ленты `/series` до одного турнира. */
+  tournamentId?: number;
+  /**
+   * Витрина лиги: встречи нечерновых турниров плюс те, у кого дивизиона нет вовсе (они старше
+   * самих турниров и иначе исчезли бы из ленты «все встречи»). Черновик — рабочая заготовка
+   * организатора, на публике его нет, как и в хронологии турниров.
+   */
+  published?: boolean;
 };
+
+/** Условие выборки — одно на полные строки и на лёгкий срез, иначе два списка разъедутся. */
+const seriesWhere = (filter: SeriesFilter) => ({
+  id: filter.ids ? { in: filter.ids } : filter.id,
+  slug: filter.slug,
+  divisionId: filter.divisionIds ? { in: filter.divisionIds } : filter.divisionId,
+  stage: filter.stage,
+  group: filter.group,
+  bracket: filter.bracket,
+  ...(filter.teamId ? { OR: [{ homeId: filter.teamId }, { awayId: filter.teamId }] } : {}),
+  ...(filter.tournamentId ? { divisionRef: { tournamentId: filter.tournamentId } } : {}),
+  // Через AND, а не вторым `OR`: ключ `OR` в объекте один, и рядом с фильтром по команде
+  // второе такое условие молча затёрло бы первое.
+  ...(filter.published
+    ? { AND: [{ OR: [{ divisionRef: { tournament: { status: { not: "draft" } } } }, { divisionId: null }] }] }
+    : {}),
+});
+
+/** Встреча настолько, насколько её знает лента: по этим полям считаются разрез и номер страницы. */
+export type SeriesBrief = {
+  id: number;
+  divisionId: number | null;
+  playedAt: Date | null;
+  startAt: Date | null;
+  homeScore: number;
+  awayScore: number;
+};
+
+/**
+ * Лёгкий срез: ни команд, ни карт, ни лого с диска. Нужен там, где по всему списку считают
+ * разрез и число страниц, а показывают двадцать строк: полная выборка на сотню встреч — это
+ * две сотни обращений к диску за лого ради двадцати карточек.
+ */
+export const listSeriesBrief = (filter: SeriesFilter = {}): Promise<SeriesBrief[]> =>
+  prisma.series.findMany({
+    where: seriesWhere(filter),
+    select: { id: true, divisionId: true, playedAt: true, startAt: true, homeScore: true, awayScore: true },
+    orderBy: [{ playedAt: "desc" }, { id: "desc" }],
+  });
 
 /**
  * Серии по фильтру, свежие сверху. `playedAt` заполняется не всегда (групповую стадию заливали
@@ -69,15 +118,7 @@ export type SeriesFilter = {
  */
 export async function listSeries(filter: SeriesFilter = {}): Promise<SeriesRow[]> {
   const rows = await prisma.series.findMany({
-    where: {
-      id: filter.id,
-      slug: filter.slug,
-      divisionId: filter.divisionIds ? { in: filter.divisionIds } : filter.divisionId,
-      stage: filter.stage,
-      group: filter.group,
-      bracket: filter.bracket,
-      ...(filter.teamId ? { OR: [{ homeId: filter.teamId }, { awayId: filter.teamId }] } : {}),
-    },
+    where: seriesWhere(filter),
     include: {
       home: teamSelect,
       away: teamSelect,

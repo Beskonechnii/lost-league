@@ -14,15 +14,16 @@ import { Slab } from "./slab";
 // кинуть в чат (правило L4 стандарта), и блок остаётся серверным — без «use client» ради трёх
 // кнопок и без второго механизма состояния на странице.
 
-const CUTS = ["past", "today", "next"] as const;
+export const CUTS = ["past", "today", "next"] as const;
 export type MatchCut = (typeof CUTS)[number];
 export const isMatchCut = (v: string | undefined): v is MatchCut => (CUTS as readonly string[]).includes(v ?? "");
 
-const CUT_LABELS: Record<MatchCut, string> = { past: "Прошедшие", today: "Сегодня", next: "Будущие" };
+export const CUT_LABELS: Record<MatchCut, string> = { past: "Прошедшие", today: "Сегодня", next: "Будущие" };
 
 // Пустое состояние у каждого разреза своё: «сегодня игр нет» и «сезон ещё не начался» — разные
 // новости, и одна формулировка на три вкладки соврала бы в двух из трёх.
-const CUT_EMPTY: Record<MatchCut, { title: string; text: string }> = {
+// Экспортируется (а не копируется в ленту `/series`): два текста на одно состояние разъедутся.
+export const CUT_EMPTY: Record<MatchCut, { title: string; text: string }> = {
   past: { title: "Сыгранных встреч нет", text: "Результаты появятся здесь сразу после первого тура." },
   today: { title: "Сегодня игр нет", text: "Загляните в «Будущие» — там встречи, которым уже назначено время." },
   next: { title: "Назначенных встреч нет", text: "Время игр выставляет оператор; как только он это сделает, они встанут здесь." },
@@ -34,11 +35,12 @@ const time = new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digi
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 
 /** Три разреза афиши. Функцией, а не строками в теле блока: `Date.now()` в рендере запрещает
- *  правило `react-hooks/purity` — та же причина, по которой считается `billboard` на странице. */
-function split(series: SeriesRow[]) {
+ *  правило `react-hooks/purity` — та же причина, по которой считается `billboard` на странице.
+ *  Ею же режет ленту `/series`: правило разреза в продукте одно. */
+export function splitCuts<T extends { homeScore: number; awayScore: number; startAt: Date | null }>(series: T[]) {
   const now = Date.now();
   const today = startOfDay(new Date(now));
-  const played = (s: SeriesRow) => s.homeScore + s.awayScore > 0;
+  const played = (s: T) => s.homeScore + s.awayScore > 0;
   return {
     // `listSeries` отдаёт свежие сверху — сыгранным этого и надо.
     past: series.filter(played),
@@ -53,18 +55,15 @@ export function MatchesBlock({
   series,
   cut,
   divisionShort,
-  more,
   limit = 4,
 }: {
   series: SeriesRow[];
   cut?: MatchCut;
   /** Дивизион встречи подписью: витрине он важнее группы внутри него. */
   divisionShort: Map<number, string | null>;
-  /** Куда ведёт «все матчи». Турнира нет — ссылки нет. */
-  more?: string;
   limit?: number;
 }) {
-  const groups = split(series);
+  const groups = splitCuts(series);
   // Разрез по умолчанию — первый непустой, но ЯВНО выбранный не подменяем даже пустой:
   // показать другой список в ответ на нажатие — соврать про то, что нажали (как у турниров).
   const active = cut ?? CUTS.find((c) => groups[c].length > 0) ?? "past";
@@ -79,7 +78,10 @@ export function MatchesBlock({
           {CUT_LABELS[c]}
         </PillLink>
       ))}
-      more={more ? { href: more, label: "все матчи" } : undefined}
+      // «Все встречи» ведут в сквозную ленту лиги тем же разрезом, а не в текущий турнир: из
+      // турнира виден только он сам, и любой разрез матчей открывал одну и ту же страницу.
+      // Слово то же, что у раздела в баре: «матчи» — это карты (`/match/<id>`), а здесь встречи.
+      more={{ href: `/series?m=${active}`, label: "все встречи" }}
     >
       {rows.length === 0 ? (
         <EmptyState icon="calendar" title={empty.title}>

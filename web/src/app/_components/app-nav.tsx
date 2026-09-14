@@ -72,7 +72,7 @@ function useActiveHref(links: NavLink[]) {
 export function NavRow({ links }: { links: NavLink[] }) {
   const active = useActiveHref(links);
   return (
-    <nav className="hidden min-w-0 items-center gap-2 rounded-card bg-surface px-3 py-2.5 cushion-card lg:flex">
+    <nav className="hidden min-w-0 items-center gap-2 rounded-card bg-surface px-3 py-2.5 cushion-card xl:flex">
       {links.map((l) => (
         <Link
           key={l.href}
@@ -105,7 +105,7 @@ export function NavSheet({ links }: { links: NavLink[] }) {
           type="button"
           aria-label="Открыть разделы"
           title="Разделы"
-          className={`grid h-11 w-11 shrink-0 place-items-center rounded-control-sm bg-surface text-ink cushion-row lg:hidden ${focus}`}
+          className={`grid h-11 w-11 shrink-0 place-items-center rounded-control-sm bg-surface text-ink cushion-row xl:hidden ${focus}`}
         >
           <Icon name="menu" size="sm" />
         </button>
@@ -135,16 +135,19 @@ export function NavSheet({ links }: { links: NavLink[] }) {
 }
 
 /**
- * Поиск по лиге в острове входа. С `xl` — поле шириной 240px, ниже — кнопка 44×44, открывающая
+ * Поиск по лиге в острове входа. С `2xl` — поле шириной 240px, ниже — кнопка 44×44, открывающая
  * то же поле в листе: раньше пилюль сворачивается именно поиск (разделы — навигация, поиск —
  * ускоритель), а выпадающий список на телефоне перекрыл бы половину экрана.
+ *
+ * Порог сдвинут с `xl` на `2xl` (ТЗ 10): ряду из шести разделов с «Админом» и полем поиска нужно
+ * 1308px, а на 1280 доступно 1232 — поле разворачивается там, где оно помещается вместе с ними.
  */
 export function BarSearch() {
   const [open, setOpen] = React.useState(false);
 
   return (
     <>
-      <div className="hidden w-60 xl:block">
+      <div className="hidden w-60 2xl:block">
         <LeagueSearch />
       </div>
       <Sheet
@@ -157,7 +160,7 @@ export function BarSearch() {
             type="button"
             aria-label="Поиск по лиге"
             title="Поиск"
-            className={`grid h-11 w-11 shrink-0 place-items-center rounded-control-sm text-ink transition hover:bg-surface-2 xl:hidden ${focus}`}
+            className={`grid h-11 w-11 shrink-0 place-items-center rounded-control-sm text-ink transition hover:bg-surface-2 2xl:hidden ${focus}`}
           >
             <Icon name="search" size="sm" />
           </button>

@@ -301,7 +301,9 @@ export function SeriesCardStacked({
     <>
       <div className="flex h-10 items-center gap-2.5 border-b border-hairline px-2.5">
         <span className="min-w-0 flex-1 truncate text-xs font-extrabold text-muted">{cut}</span>
-        {when && <span className="shrink-0 text-[11.5px] font-extrabold tabular-nums text-ink-subtle">{when}</span>}
+        {/* Время — читаемый текст, а не декор: третья ступень (1.81:1) для него слишком тихая
+            (DECISIONS, 04.09), а в ленте из двадцати карточек время — первый ключ сканирования. */}
+        {when && <span className="shrink-0 text-[11.5px] font-extrabold tabular-nums text-muted">{when}</span>}
       </div>
       <StackedSide team={home} score={played ? homeScore : "—"} state={state(homeScore, awayScore)} />
       <StackedSide team={away} score={played ? awayScore : "—"} state={state(awayScore, homeScore)} />
