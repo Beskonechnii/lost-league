@@ -28,7 +28,7 @@ const CUTS = ["tp", "shards"] as const;
 export type PointsCut = (typeof CUTS)[number];
 export const isPointsCut = (v: string | undefined): v is PointsCut => (CUTS as readonly string[]).includes(v ?? "");
 
-const CUT_LABELS: Record<PointsCut, string> = { tp: "TP", shards: "Shards" };
+const CUT_LABELS: Record<PointsCut, string> = { tp: "TP", shards: "Spirit Shards" };
 
 const TOP = 10;
 /** Сколько строк видно на телефоне: в макете `Mobile.dc.html` топ укорочен до пяти. */
@@ -117,8 +117,8 @@ export async function PointsBlock({
     >
       {rows.length === 0 ? (
         cut === "shards" ? (
-          <EmptyState icon="star" title="Осколков ещё ни у кого нет">
-            Осколки дают за вехи в системе — модерацию, привязку Steam и телеграма, заполненную
+          <EmptyState icon="star" title="Spirit Shards ещё ни у кого нет">
+            Spirit Shards дают за вехи в системе — модерацию, привязку Steam и телеграма, заполненную
             анкету. Первый, кто их пройдёт, встанет здесь.
           </EmptyState>
         ) : (

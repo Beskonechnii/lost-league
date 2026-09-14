@@ -1,56 +1,37 @@
-import { IMMORTAL, rankDelta, rankLabel, rankParts } from "@/lib/dota-rank";
+import Image from "next/image";
 
-/* Медаль ранга Dota — артборд Кита из списка «чего не хватает» (`RELEASE-PLAN.md` §A).
+import { rankMedalUrls } from "@/lib/assets";
+import { rankDelta, rankLabel, rankParts } from "@/lib/dota-rank";
+
+/* Медаль ранга Dota — атом Кита.
  *
  * Ранг до Э20 жил в интерфейсе одной строкой текста («Властелин 5») в четырёх
  * местах сразу: факт-блок профиля, превью импорта, список заявок, витрина
  * ростера. Строку невозможно просканировать глазами — список из двадцати
- * игроков читается по слову, а не по картинке, — и она никак не показывает
- * движение, ради которого этап и делается.
+ * игроков читается по слову, а не по картинке.
  *
- * СВОЙ рисунок, а не иконки Valve. Медали Доты — их арт, вендорить его в
- * `public/assets` рядом с иконками героев нельзя: те приезжают из открытого
- * CDN констант и обновляются скриптом, а медали пришлось бы выдирать из
- * клиента игры. Поэтому знак собран из языка Кита: клеевая подушка тона
- * медали, светлое донце, римская цифра ступени и звёзды по нижней дуге —
- * ровно та композиция, по которой медаль узнают в игре, без чужой графики.
+ * Настоящие ассеты OpenDota, а не свой рисунок (решение 13.09, отменяет 10.09):
+ * медаль должна узнаваться тем же знаком, что в клиенте игры, а свой знак
+ * читался как «кружок с цифрой». Файлы лежат у нас в `public/uploads/ranks`,
+ * хотлинка на чужой CDN нет ни основным путём, ни запасным.
  *
- * Цифра, а не только цвет. Семь пастельных кружков различимы, пока стоят
- * рядом в ките; в таблице они идут по одному, и «это синий или бирюзовый?» —
- * не тот вопрос, на который оператор должен отвечать. Ступень написана
- * цифрой, WCAG 1.4.1 (цвет не единственный носитель смысла) выполняется без
- * подписи рядом.
+ * Композиция — два слоя в одном квадрате, без единого сдвига: подложка и
+ * накладка звёзд нарисованы источником на одном холсте 256×256 в одной системе
+ * координат. Поэтому звёзды не выходят за габарит конструктивно; задать им свой
+ * размер или выровнять по центру — сломать регистрацию.
  *
- * Без "use client": разметка чистая, её тянут и серверные страницы витрин.
+ * Подушки под медалью нет: круг обрезал бы крылья Божества и низ плашки
+ * Иммортала, а подушка Кита — знак «это наш объект», которым медаль Valve не
+ * является. Чужой арт показывается как есть, ровно как иконки героев.
+ *
+ * `next/image`, а не голый `<img>`: исходники 256px, а слот 22–44, и на витрине
+ * ростера это ~466 КБ PNG ради знаков по 22px. Оптимизатор отдаёт webp ближайшей
+ * ступени. В серверном компоненте работает — без "use client" атом остаётся,
+ * его тянут серверные страницы витрин.
  */
-
-/** Тон медали: подушка (тёмная сторона), донце и цифра на нём. */
-const TONES: Record<number, { disc: string; face: string; ink: string }> = {
-  1: { disc: "#a9a291", face: "#ded9cc", ink: "#4a463c" }, // Рекрут — серый камень
-  2: { disc: "#92c07f", face: "#d7ecc9", ink: "#2f5225" }, // Страж — зелень
-  3: { disc: "#9db6cd", face: "#dde8f1", ink: "#2f4759" }, // Рыцарь — сталь
-  4: { disc: "#86c1bd", face: "#d5ecea", ink: "#204a47" }, // Герой — бирюза
-  5: { disc: "#b294d8", face: "#e6dbf4", ink: "#432b60" }, // Легенда — пурпур
-  6: { disc: "#8aabdd", face: "#d9e5f7", ink: "#23406b" }, // Властелин — синь
-  7: { disc: "#9fd2e6", face: "#e2f3fa", ink: "#124a5c" }, // Божество — лёд
-  8: { disc: "#d9a94e", face: "#f6e6c2", ink: "#5e3f0c" }, // Иммортал — золото
-};
-
-const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII"];
 
 export type RankSize = "sm" | "md" | "lg";
 const PX: Record<RankSize, number> = { sm: 22, md: 30, lg: 44 };
-
-/** Пятиконечная звезда точками — рисуем сами: тащить сюда иконочный пакет ради 4px глифа незачем. */
-function starPoints(cx: number, cy: number, r: number): string {
-  const pts: string[] = [];
-  for (let i = 0; i < 10; i++) {
-    const rr = i % 2 === 0 ? r : r * 0.44;
-    const a = (Math.PI / 5) * i - Math.PI / 2;
-    pts.push(`${(cx + rr * Math.cos(a)).toFixed(2)},${(cy + rr * Math.sin(a)).toFixed(2)}`);
-  }
-  return pts.join(" ");
-}
 
 /**
  * Знак ранга. Ранга нет (пусто, 0, мусор) — не рисуем ничего: прочерк в сетке
@@ -59,53 +40,23 @@ function starPoints(cx: number, cy: number, r: number): string {
 export function RankMedal({ tier, size = "md" }: { tier: number | null | undefined; size?: RankSize }) {
   const parts = rankParts(tier);
   if (!parts) return null;
-  const tone = TONES[parts.medal] ?? TONES[1];
   const label = rankLabel(tier) ?? "";
   const px = PX[size];
-
-  // Звёзды по нижней дуге, как на медали в игре: центр внизу (90°), шаг 26° — при более тесном
-  // шаге пять звёзд Божества слипаются в сплошную гребёнку и перестают считываться поштучно.
-  const stars: string[] = [];
-  const step = 26;
-  for (let i = 0; i < parts.star; i++) {
-    const deg = 90 - ((parts.star - 1) / 2) * step + i * step;
-    const a = (deg * Math.PI) / 180;
-    stars.push(starPoints(22 + 16.5 * Math.cos(a), 22 + 16.5 * Math.sin(a), 2.8));
-  }
+  const src = rankMedalUrls(parts.medal, parts.star);
 
   return (
+    // Доступное имя одно и на обёртке: у слоёв внутри `alt=""`, иначе скринридер прочитает ранг
+    // дважды, а alt-текст сломанной картинки расползётся по строке. Файла нет — габарит всё равно
+    // держат width/height, раскладка не прыгает (Chrome при этом рисует свой значок 22px).
     <span
       role="img"
       aria-label={`Ранг: ${label}`}
       title={label}
-      // Тень нейтральная (`cushion-row`), а не мятная `cushion-blob`: подушка медали красится
-      // в тон ступени — золото, пурпур, сталь, — и зелёный внутренний рефлекс на них врёт.
-      className="inline-grid shrink-0 place-items-center rounded-pill cushion-row"
-      style={{ background: tone.disc, width: px, height: px }}
+      className="relative inline-block shrink-0"
+      style={{ width: px, height: px }}
     >
-      <svg viewBox="0 0 44 44" width={px} height={px} aria-hidden="true">
-        <circle cx="22" cy="22" r="13.2" fill={tone.face} />
-        {parts.medal === IMMORTAL ? (
-          // У Иммортала ступеней нет — вместо цифры ромб, как в игре у него нет и звёзд.
-          <polygon points="22,13 29,22 22,31 15,22" fill={tone.ink} />
-        ) : (
-          <text
-            x="22"
-            y="22"
-            textAnchor="middle"
-            dominantBaseline="central"
-            fill={tone.ink}
-            fontSize={parts.medal >= 6 ? 12 : 15}
-            fontWeight={900}
-            fontFamily="var(--font-pouf)"
-          >
-            {ROMAN[parts.medal - 1]}
-          </text>
-        )}
-        {stars.map((pts, i) => (
-          <polygon key={i} points={pts} fill={tone.face} stroke={tone.ink} strokeWidth="0.6" strokeLinejoin="round" />
-        ))}
-      </svg>
+      <Image src={src.icon} alt="" width={px} height={px} className="absolute inset-0" />
+      {src.star && <Image src={src.star} alt="" width={px} height={px} className="absolute inset-0" />}
     </span>
   );
 }

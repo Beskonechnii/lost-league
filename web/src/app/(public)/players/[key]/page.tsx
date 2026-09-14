@@ -482,24 +482,28 @@ export default async function PlayerPage({ params }: { params: Promise<{ key: st
                   Дельта — второй строкой внутри той же плитки, а не отдельной: «было Легенда 2» в
                   соседней ячейке двухколоночной сетки не помещается и обрезается многоточием. */}
               {rankLabel(player.rank) && (
-                <FactBox
-                  label="Ранг"
-                  small
-                  value={
-                    <span className="block">
-                      <span className="flex items-center gap-2">
-                        <RankMedal tier={player.rank} size="md" />
-                        <span className="min-w-0 truncate">{rankLabel(player.rank)}</span>
-                      </span>
-                      {rankDelta(player.rank, player.rankPrev) && (
-                        <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                          <RankTrend tier={player.rank} prev={player.rankPrev} />
-                          <span className="text-xs font-bold text-muted">было {rankLabel(player.rankPrev)}</span>
+                // На 390 плитка занимает обе колонки: в половине сетки строка значения — 114px,
+                // и подпись рядом с медалью обрезается («Божест…»). Медаль тут ни при чём.
+                <div className="col-span-2 sm:col-span-1">
+                  <FactBox
+                    label="Ранг"
+                    small
+                    value={
+                      <span className="block">
+                        <span className="flex items-center gap-2">
+                          <RankMedal tier={player.rank} size="md" />
+                          <span className="min-w-0 truncate">{rankLabel(player.rank)}</span>
                         </span>
-                      )}
-                    </span>
-                  }
-                />
+                        {rankDelta(player.rank, player.rankPrev) && (
+                          <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                            <RankTrend tier={player.rank} prev={player.rankPrev} />
+                            <span className="text-xs font-bold text-muted">было {rankLabel(player.rankPrev)}</span>
+                          </span>
+                        )}
+                      </span>
+                    }
+                  />
+                </div>
               )}
               {player.tp > 0 && (
                 <Link href={tournament ? `/tournaments/${tournament.slug}/tp` : "/tp"} className="block transition hover:-translate-y-0.5">
@@ -521,7 +525,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ key: st
               аккаунта нет вовсе, и «0 осколков» сказало бы про человека неправду. */}
           {shards.earned > 0 && (
             <Card>
-              <BlockLabel>Осколки</BlockLabel>
+              <BlockLabel>Spirit Shards</BlockLabel>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                 <ShardAmount amount={shards.earned} earned={shards.earned} size="md" />
                 <ShardGradeBadge earned={shards.earned} />

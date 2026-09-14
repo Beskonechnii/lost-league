@@ -20,7 +20,7 @@ export async function ShardsBlock({ accountId }: { accountId: number }) {
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Eyebrow>Осколки</Eyebrow>
+        <Eyebrow>Spirit Shards</Eyebrow>
         <ShardGradeBadge earned={earned} />
       </div>
 
@@ -65,7 +65,7 @@ export async function ShardsBlock({ accountId }: { accountId: number }) {
 
         {earned === 0 && (
           <p className="text-[13px] font-bold text-muted">
-            Осколки начисляются после того, как организатор одобрит заявку, — и дальше за то, что вы
+            Spirit Shards начисляются после того, как организатор одобрит заявку, — и дальше за то, что вы
             делаете в лиге. Потратить их пока некуда: это счёт участия, а не кошелёк.
           </p>
         )}
