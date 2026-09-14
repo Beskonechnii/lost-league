@@ -1,5 +1,6 @@
 "use client";
 
+import { startTransition } from "react";
 import Link from "next/link";
 import * as RMenu from "@radix-ui/react-dropdown-menu";
 import { Icon } from "@/components/pouf/Icon";
@@ -87,18 +88,17 @@ export function AvatarMenu({
               место — ровно то, что запрещает UI-GUIDELINES §2 (ТЗ 08, решение 13.09). */}
 
           <RMenu.Separator className="pouf-menu__sep" />
-          {/* Выход — server action формой. Форма в продукте одна: колонка со своей копией удалена.
-              `onSelect` глушится: иначе Radix закрывает меню прямо в обработчике клика и уносит
-              форму из DOM раньше, чем браузер успевает отправить её — кнопка молча ничего не делала.
-              Меню закроется само, когда `logout` уведёт на `/me`. */}
-          <form action={logout}>
-            <RMenu.Item asChild onSelect={(e) => e.preventDefault()}>
-              <button type="submit" className="pouf-menu__item pouf-menu__item--down">
-                <Icon name="logout" size="sm" />
-                Выйти
-              </button>
-            </RMenu.Item>
-          </form>
+          {/* Выход — server action прямо из пункта. Формой он работал только мышью: Enter на пункте
+              Radix обрабатывает сам и до нативного нажатия `submit` дело не доходило, а глушить
+              `onSelect` приходилось, иначе меню уносило форму из DOM раньше отправки. Через
+              `onSelect` оба пути — мышь и клавиатура — идут одной дорогой. */}
+          <RMenu.Item
+            className="pouf-menu__item pouf-menu__item--down"
+            onSelect={() => startTransition(() => void logout())}
+          >
+            <Icon name="logout" size="sm" />
+            Выйти
+          </RMenu.Item>
         </RMenu.Content>
       </RMenu.Portal>
     </RMenu.Root>

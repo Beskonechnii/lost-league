@@ -109,7 +109,7 @@ export async function PointsBlock({
     <Slab
       title="Баллы"
       aside={CUTS.map((c) => (
-        <PillLink key={c} href={c === "tp" ? "/" : `/?p=${c}`} active={c === cut} size="sm" count={counts[c]}>
+        <PillLink key={c} href={c === "tp" ? "/" : `/?p=${c}`} active={c === cut} size="sm" count={counts[c]} scroll={false}>
           {CUT_LABELS[c]}
         </PillLink>
       ))}
