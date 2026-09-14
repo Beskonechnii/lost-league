@@ -41,7 +41,10 @@ export default async function RosterImportPage({
   }
 
   const { mode, tournament: fromSlug } = await searchParams;
-  const wanted: Mode = mode === "players" ? "players" : "teams";
+  // Названный в адресе механизм и подразумеваемый — разные вещи. Голый адрес — обычный вход с хаба,
+  // и дефолт там по правам: иначе оператор без `tournaments.edit` встречал отказ, ничего не выбрав.
+  const asked: Mode | null = mode === "players" ? "players" : mode === "teams" ? "teams" : null;
+  const wanted: Mode = asked ?? (canTeams ? "teams" : "players");
   const allowed = wanted === "teams" ? canTeams : canPlayers;
   const active: Mode = allowed ? wanted : canTeams ? "teams" : "players";
 
@@ -93,6 +96,7 @@ export default async function RosterImportPage({
       {!allowed && (
         // Не отказ экрана: по этому адресу приходят ссылкой с карточки турнира, и вторая половина
         // работы человеку доступна. Говорим, какого права не хватило, и открываем то, что можем.
+        // Сюда попадает только тот, кто механизм назвал: без `?mode=` `wanted` уже выбран по правам.
         <Alert tone="warn" block className="mt-6">
           Механизм «{wanted === "teams" ? "Составы" : "Анкеты"}» открывает право «
           {permissionLabel(wanted === "teams" ? "tournaments.edit" : "roster.edit")}» — открыли «
