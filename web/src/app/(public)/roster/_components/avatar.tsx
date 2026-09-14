@@ -76,12 +76,17 @@ export function TeamLogo({
   className?: string;
 }) {
   return (
-    <div className={`grid shrink-0 place-items-center ${className}`} style={{ width: size, height: size }}>
+    <div
+      // `overflow-hidden`: у команды без лого фолбэк — текстовый тег, и на мелком размере
+      // (28px в шапке колонки драфта) «СЛОНИ» вылезало из бокса и наезжало на соседнее название.
+      className={`grid shrink-0 place-items-center overflow-hidden ${className}`}
+      style={{ width: size, height: size }}
+    >
       {team.logo ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={team.logo} alt={team.name} className="h-full w-full object-contain" />
       ) : (
-        <span className="text-xs font-semibold text-ink-subtle">{teamTag(team)}</span>
+        <span className="max-w-full truncate text-xs font-semibold text-ink-subtle">{teamTag(team)}</span>
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { Separator } from "@/components/pouf/separator";
 import { Eyebrow } from "@/components/pouf/text";
 import { POOL_PER_ATTR, isSelectable, type FearlessState } from "@/lib/fearless";
 import { Panel } from "../../../_components/panel";
@@ -42,6 +43,22 @@ export function HeroPool({
       heroes: (byAttr.get(attr) ?? []).sort((a, b) => a.name.localeCompare(b.name)),
     }));
   }, [state.pool, heroById]);
+
+  // Выбывшие из серии. Отвечают на вопрос каждого хода — «этого героя ещё можно взять?»:
+  // пул новой карты собирается уже БЕЗ взятых, поэтому в самой сетке их не видно вовсе, и
+  // подпись «в серии» на плитке между картами не появляется никогда.
+  // Состав берём из готового `locked` (второй раз не считаем), ходы сыгранных карт перебираем
+  // только за цветом команды, которая героя взяла. Сверяем ИМЕННО пики: героя могли забанить на
+  // одной карте и взять на другой — по одному `locked.has()` он попал бы в ряд дважды.
+  const gone = useMemo(() => {
+    const out: { hero: HeroRef; color: string }[] = [];
+    for (const g of state.games)
+      for (const m of g.moves) {
+        const hero = m.action === "pick" && locked.has(m.heroId) ? heroById.get(m.heroId) : undefined;
+        if (hero) out.push({ hero, color: state.teams[m.team].color });
+      }
+    return out;
+  }, [state.games, state.teams, locked, heroById]);
 
   return (
     <Panel title="Пул карты" hint={`${state.pool.length} героев · по 9 случайных на атрибут, на каждой карте новый`}>
@@ -94,6 +111,31 @@ export function HeroPool({
           </div>
         ))}
       </div>
+
+      {/* Подвалом пула, а не отдельной панелью: это негатив самого пула — «чего здесь нет и
+          больше не будет», и вопрос возникает ровно тогда, когда смотрят на пул. Без разбивки
+          по картам: разбивку даёт клик по пилюле сыгранной карты, дважды на экране не нужна.
+          На карте 1 выбывших нет — блока нет вовсе, ни счётчика «0», ни пустой лунки. */}
+      {gone.length > 0 && (
+        <>
+          <Separator />
+          <Eyebrow>Выбыло из серии · {gone.length}</Eyebrow>
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {gone.map(({ hero, color }) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={hero.id}
+                src={hero.img}
+                alt={hero.name}
+                title={`${hero.name} — выбыл из серии`}
+                className="h-6 w-[38px] rounded-[6px] object-cover"
+                // Рамка цветом команды, которая героя взяла — сырой hex команды (§C5).
+                style={{ boxShadow: `inset 0 0 0 2px ${color}` }}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </Panel>
   );
 }

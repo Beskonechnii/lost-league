@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { can } from "@/lib/account";
 import { prisma } from "@/lib/prisma";
 import { listTeamRosters } from "@/lib/roster-data";
 import { localHeroes } from "@/lib/dota-constants";
@@ -15,6 +16,12 @@ export const dynamic = "force-dynamic";
 // payload = стартуем с экрана настройки (initialState=null).
 
 export default async function FearlessSessionPage({ params }: { params: Promise<{ id: string }> }) {
+  // Право проверяется ЗДЕСЬ, до единого запроса, а не только в layout: Next рендерит сегменты
+  // параллельно, и страница успевала сходить в БД раньше, чем гейт layout'а её отменит — весь
+  // `initialState` драфта и карточки капитанов (ник, фото, MMR) уезжали во flight-payload экрана
+  // отказа. Плашку отказа рисует layout; странице достаточно не отдать данные.
+  if (!(await can("tools"))) return null;
+
   const { id } = await params;
   const sessionId = Number(id);
   if (!Number.isInteger(sessionId)) notFound();

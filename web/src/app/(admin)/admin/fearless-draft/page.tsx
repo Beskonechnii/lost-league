@@ -1,3 +1,4 @@
+import { can } from "@/lib/account";
 import { prisma } from "@/lib/prisma";
 import { AdminHeader } from "../../_components/admin-header";
 import { SessionList } from "../../_components/session-list";
@@ -10,6 +11,10 @@ export const dynamic = "force-dynamic";
 // один и тот же — `SessionList` в `(admin)/_components`.
 
 export default async function FearlessHome() {
+  // Тот же случай, что на `[id]`: гейт layout'а не успевает отменить параллельно отрисованную
+  // страницу, и названия сессий уезжают в payload экрана отказа. Плашку рисует layout.
+  if (!(await can("tools"))) return null;
+
   const sessions = await prisma.fearlessSession.findMany({ orderBy: { updatedAt: "desc" }, take: 50 });
 
   return (

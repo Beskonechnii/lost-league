@@ -39,6 +39,14 @@ import { fmtTime, type HeroRef, type TeamRef } from "./types";
  * нажимают каждый ход, и проматывать до него два десятка строк расписания пришлось бы двадцать
  * раз за карту.
  */
+
+/**
+ * Одно определение треков на оба ряда экрана — часы и борд. Банк доп-времени обязан стоять ровно
+ * над колонкой своей команды, и совпадение краёв должно быть конструктивным, а не подобранным
+ * отступами: поэтому ряд часов — ТРИ подушки в этих же треках, а не одна подушка на три ячейки.
+ * Ниже `xl` треков нет (борд — стек), и совпадать там нечему.
+ */
+const TRACKS = "xl:grid-cols-[16rem_minmax(0,1fr)_16rem]";
 export function FearlessRun({
   state,
   setState,
@@ -77,6 +85,10 @@ export function FearlessRun({
   const [viewing, setViewing] = useState(state.current);
   const past = viewing !== state.current;
   const shown = past ? viewing : state.current;
+  // Сторона на экране считается ОДИН раз, и всё, у чего сторона есть — колонка, банк часов,
+  // подпись «первый пик» — адресуется через `left`/`right`. Литералов `state.teams[0]`/`[1]`
+  // в разметке нет намеренно: первый пик чередуется по картам, и прибитый к индексу банк часов
+  // на чётной карте вставал над чужой колонкой.
   const left = firstPickOf(state, shown); // слева тот, кто ходит первым на показанной карте
   const right = (1 - left) as TeamIdx;
 
@@ -84,6 +96,8 @@ export function FearlessRun({
   const current = state.current;
   const movesCount = state.games[current]?.moves.length ?? 0;
   const hasStep = step !== null;
+  // Банк адресуется ИНДЕКСОМ КОМАНДЫ, а не стороной экрана: сторона на новой карте меняется, и
+  // переложи мы сам массив — команды обменялись бы накопленным доп-временем.
   const [reserve, setReserve] = useState<[number, number]>([state.reserveSec, state.reserveSec]);
   const [now, setNow] = useState(() => Date.now());
   const [turnStart, setTurnStart] = useState(() => Date.now());
@@ -172,12 +186,20 @@ export function FearlessRun({
             </Button>
           </div>
         </div>
+      </Panel>
 
-        {/* Часы — тем же определением треков, что и борд: левый банк встаёт ровно над колонкой
-            своей команды, а показание хода — над пулом. Это эфирное табло, сторона читается
-            по вертикали, а не по подписи. */}
-        <div className="mt-3 grid grid-cols-3 items-center gap-3 xl:grid-cols-[16rem_minmax(0,1fr)_16rem] xl:gap-4">
-          <ReserveTimer team={state.teams[0]} value={reserve[0] - (active === 0 ? overage : 0)} active={active === 0} />
+      {/* Ряд часов — три подушки в треках борда: банк стоит над колонкой СВОЕЙ стороны, показание
+          хода — над пулом. Эфирное табло, где сторона читается столбцом, а не по подписи.
+          Дорожка карт и управление стороны не имеют и остаются панелью «Карта» на всю ширину. */}
+      <div className={`grid grid-cols-3 items-stretch gap-3 xl:gap-4 ${TRACKS}`}>
+        <Panel>
+          <ReserveTimer
+            team={state.teams[left]}
+            value={reserve[left] - (active === left ? overage : 0)}
+            active={active === left}
+          />
+        </Panel>
+        <Panel>
           <div className="text-center">
             <div className={`text-3xl font-black tabular-nums ${mainLeft < 0 ? "text-err-ink" : "text-ink"}`}>
               {step ? fmtTime(mainLeft < 0 ? activeReserveLeft : mainLeft) : "0:00"}
@@ -189,16 +211,18 @@ export function FearlessRun({
               {past && ` · карта ${state.current + 1}`}
             </div>
           </div>
+        </Panel>
+        <Panel>
           <ReserveTimer
-            team={state.teams[1]}
-            value={reserve[1] - (active === 1 ? overage : 0)}
-            active={active === 1}
+            team={state.teams[right]}
+            value={reserve[right] - (active === right ? overage : 0)}
+            active={active === right}
             right
           />
-        </div>
-      </Panel>
+        </Panel>
+      </div>
 
-      <div className="grid items-start gap-4 xl:grid-cols-[16rem_minmax(0,1fr)_16rem]">
+      <div className={`grid items-start gap-4 ${TRACKS}`}>
         {/* Порядок чтения хода: статусная строка → пул под ней → загоревшийся слот в колонке.
             Поэтому строка живёт в центральной колонке над пулом, а не в панели «Карта»: цель
             нажатия и подпись к нему обязаны быть в одном столбце. */}
