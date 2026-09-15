@@ -105,7 +105,7 @@ export async function settleTurn(id: number, retry = 0): Promise<SettleResult> {
     changed = true;
   }
 
-  // Больше двадцати ходов на карте не бывает (SEQUENCE) — цикл заведомо конечен.
+  // Ходов на карте ровно столько, сколько шагов в SEQUENCE — цикл заведомо конечен.
   while (startedAt !== null) {
     const team = currentTeam(state);
     if (team === null) {
