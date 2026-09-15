@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { RosterMember, TeamWithRoster, PoolTournament } from "@/lib/roster-data";
+import type { Rating } from "@/lib/tp";
 import { countryCode, playerPath, teamAccent, teamTag } from "@/lib/profiles";
 import { roleLabel } from "@/lib/roles";
 import { Chip, Meter } from "@/components/pouf/blocks";
@@ -13,7 +14,12 @@ import { TeamManageBar } from "./team-manage-bar";
 
 // Карточка в общем пуле несёт метки турниров и (у оператора) бар управления — этих полей нет у
 // витрины турнира, поэтому они опциональны: тот же компонент рисует и список сезона, и пул.
-type PoolFields = { tournaments?: PoolTournament[]; archivedAt?: Date | string | null };
+type PoolFields = {
+  tournaments?: PoolTournament[];
+  archivedAt?: Date | string | null;
+  /** Рейтинг (TP за турнир) — только в пуле: `null` рисует прочерк, `undefined` убирает цифру вовсе. */
+  rating?: Rating | null;
+};
 
 // Карточка команды в списке: шапка с лого, разворачивается в состав. «Основа» и «Штаб» — вкладки,
 // потому что замены и тренер в общем списке съедали внимание, хотя смотрят обычно на пятёрку.
@@ -96,12 +102,15 @@ function TeamCard({
   defaultOpen,
   manage,
   onManaged,
+  leader = false,
 }: {
   team: TeamWithRoster & PoolFields;
   defaultOpen: boolean;
   /** Пул у оператора: показать бар управления (архив/возврат/снос). `archived` — в каком мы разрезе. */
   manage?: { archived: boolean };
   onManaged?: (teamId: number) => void;
+  /** Первое место в сетке: карточка занимает две колонки и растёт знаком и именем. */
+  leader?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const [tab, setTab] = useState<"main" | "staff">("main");
@@ -110,11 +119,27 @@ function TeamCard({
   const core = team.players.filter(isCore);
   const staff = team.players.filter((p) => !isCore(p));
   const shown = tab === "main" ? core : staff;
+  // Рейтинг показываем только там, где он передан (пул): витрине турнира цифра TP не нужна.
+  const rated = team.rating !== undefined;
+
+  // Строка под именем. В пуле главная цифра карточки — TP, поэтому MMR переезжает сюда: две крупные
+  // плитки рядом не оставляли имени команды места на узкой колонке сетки, а число игроков видно,
+  // как только состав развёрнут. Без рейтинга (витрина турнира) строка прежняя.
+  const meta = open
+    ? [teamTag(team), team.group]
+    : [
+        teamTag(team),
+        rated && team.mmrAverage !== null
+          ? `${team.mmrAverage.toLocaleString("ru")} MMR`
+          : `${team.playersCount} игрок(ов)`,
+      ];
 
   return (
     <div
       style={{ "--tc": accent } as React.CSSProperties}
-      className="group relative overflow-hidden rounded-card bg-surface font-pouf cushion-card transition-transform duration-200 hover:-translate-y-0.5"
+      className={`group relative overflow-hidden rounded-card bg-surface font-pouf cushion-card transition-transform duration-200 hover:-translate-y-0.5 ${
+        leader ? "sm:col-span-2" : ""
+      }`}
     >
       {/* рейка и верхнее свечение в цвет команды — карточки различимы с одного взгляда */}
       <div
@@ -129,9 +154,26 @@ function TeamCard({
       />
 
       <div className="relative flex items-center gap-3 p-4">
+        {/* Место в рейтинге — перед знаком: список читается сверху вниз номерами, как зачёт.
+            Прочерк у тех, кому за турнир ещё не начисляли (ТЗ 13). */}
+        {rated && (
+          <div
+            className={`shrink-0 text-center font-black tabular-nums ${
+              // Крупный номер и знак у лидера — только от sm: на 390 колонка одна, прибавка шла
+              // прямо из ширины имени, и карточка, которая существует ради показа лидера, обрезала
+              // как раз его имя. На телефоне лидера отличают акцентный номер и цифра TP.
+              leader ? "w-5 text-[13px] text-[var(--accent-ink)] sm:w-8 sm:text-2xl" : "w-5 text-[13px] text-muted"
+            }`}
+          >
+            {team.rating ? team.rating.place : "—"}
+          </div>
+        )}
+
         {/* плитка лого: всегда цветная подложка команды, внутри лого или тег */}
         <div
-          className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl text-xs font-bold text-white shadow-[0_8px_20px_-8px_var(--tc)]"
+          className={`grid shrink-0 place-items-center overflow-hidden rounded-xl text-xs font-bold text-white shadow-[0_8px_20px_-8px_var(--tc)] ${
+            leader ? "h-11 w-11 sm:h-16 sm:w-16" : "h-11 w-11"
+          }`}
           style={{ background: "linear-gradient(145deg, var(--tc), color-mix(in srgb, var(--tc) 45%, #000))" }}
         >
           {team.logo ? (
@@ -143,22 +185,33 @@ function TeamCard({
         </div>
 
         <Link href={`/roster/teams/${team.id}`} className="group/link min-w-0 flex-1">
-          <div className="truncate font-black tracking-[-0.2px] text-ink group-hover/link:text-[var(--accent-ink)]">
+          <div
+            className={`truncate font-black tracking-[-0.2px] text-ink group-hover/link:text-[var(--accent-ink)] ${
+              leader ? "sm:text-xl" : ""
+            }`}
+          >
             {team.name}
           </div>
           <div className="mt-0.5 flex items-center gap-1.5 truncate text-xs font-bold text-muted">
             <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: "var(--tc)" }} />
-            {(open ? [teamTag(team), team.group] : [teamTag(team), `${team.playersCount} игрок(ов)`])
-              .filter(Boolean)
-              .join(" · ")}
+            {meta.filter(Boolean).join(" · ")}
           </div>
         </Link>
 
-        {team.mmrAverage !== null && (
+        {rated ? (
           <div className="shrink-0 rounded-[14px] bg-accent-fill px-3 py-1.5 text-right text-[var(--on-accent)] cushion-control">
-            <div className="text-[9px] font-black uppercase tracking-[0.1em] text-[var(--on-accent-muted)]">ср. MMR</div>
-            <div className="text-base font-black tabular-nums">{team.mmrAverage.toLocaleString("ru")}</div>
+            <div className="text-[9px] font-black uppercase tracking-[0.1em] text-[var(--on-accent-muted)]">TP</div>
+            <div className={`font-black tabular-nums ${leader ? "text-base sm:text-2xl" : "text-base"}`}>
+              {team.rating ? team.rating.score.toLocaleString("ru") : "—"}
+            </div>
           </div>
+        ) : (
+          team.mmrAverage !== null && (
+            <div className="shrink-0 rounded-[14px] bg-accent-fill px-3 py-1.5 text-right text-[var(--on-accent)] cushion-control">
+              <div className="text-[9px] font-black uppercase tracking-[0.1em] text-[var(--on-accent-muted)]">ср. MMR</div>
+              <div className="text-base font-black tabular-nums">{team.mmrAverage.toLocaleString("ru")}</div>
+            </div>
+          )
         )}
 
         <button
@@ -218,11 +271,14 @@ export function TeamCards({
   teams,
   manage,
   onManaged,
+  leaderId = null,
 }: {
   teams: (TeamWithRoster & PoolFields)[];
   manage?: { archived: boolean };
   /** Пул: карточку убирают из вида сразу после успешного действия оператора (см. PoolExplorer). */
   onManaged?: (teamId: number) => void;
+  /** Команда, чью карточку рисуем крупной. Условия «когда лидер настоящий» решает PoolExplorer. */
+  leaderId?: number | null;
 }) {
   // Ключ по «свёрнутости всех» — самый дешёвый способ разом переоткрыть карточки:
   // меняем ключ, React пересоздаёт их с нужным начальным состоянием.
@@ -249,7 +305,14 @@ export function TeamCards({
 
       <div className="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {teams.map((t) => (
-          <TeamCard key={`${t.id}-${generation}`} team={t} defaultOpen={!collapsed} manage={manage} onManaged={onManaged} />
+          <TeamCard
+            key={`${t.id}-${generation}`}
+            team={t}
+            defaultOpen={!collapsed}
+            manage={manage}
+            onManaged={onManaged}
+            leader={t.id === leaderId}
+          />
         ))}
       </div>
     </div>

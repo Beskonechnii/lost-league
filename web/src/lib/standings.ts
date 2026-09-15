@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { seriesPoints } from "@/lib/qualification";
 import { teamTag } from "@/lib/profiles";
+import { TP_REASON } from "@/lib/tp";
 
 export type StandingRow = {
   teamId: number;
@@ -38,7 +39,9 @@ export async function getStandings(divisionId: number): Promise<StandingGroup[]>
     prisma.groupEntry.findMany({ where: { divisionId } }),
     prisma.series.findMany({ where: { divisionId } }),
     prisma.match.findMany({ where: { status: "finished", seriesId: null } }),
-    prisma.pointsEntry.findMany({ where: { subjectType: "team" } }),
+    // TP команды сюда не идут: это рейтинг лиги (`team-rating.ts`), а не очки дивизиона — иначе
+    // начисление «за 1 место D1» задним числом двигало бы саму таблицу, по которой это место дано.
+    prisma.pointsEntry.findMany({ where: { subjectType: "team", reason: { not: TP_REASON } } }),
   ]);
 
   const groups = new Map<string, StandingRow[]>();

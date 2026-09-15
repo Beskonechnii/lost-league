@@ -4,7 +4,8 @@ import { getTeamProfile, teamRosterHistory, rosterKey, type RosterMember, type T
 import { prisma } from "@/lib/prisma";
 import { getStandings } from "@/lib/standings";
 import { listSeries } from "@/lib/series";
-import { teamDivision } from "@/lib/tournaments";
+import { currentTournament, teamDivision } from "@/lib/tournaments";
+import { teamRating } from "@/lib/team-rating";
 import { playerPath, teamAccent, teamTag } from "@/lib/profiles";
 import { buttonClasses } from "@/components/pouf/Button";
 import { roleLabel } from "@/lib/roles";
@@ -40,7 +41,8 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
 
   // Таблицу берём по дивизиону команды в текущем турнире — тому же, что показывает его раздел.
   // Команда вне турнира (например, из прошлого сезона) таблицы не получает — это не ошибка.
-  const [team, standings, authed, history, series] = await Promise.all([
+  const current = await currentTournament();
+  const [team, standings, authed, history, series, rating] = await Promise.all([
     getTeamProfile(id, division?.id),
     division ? getStandings(division.id) : Promise.resolve([]),
     can("roster.edit"),
@@ -49,6 +51,9 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
     // Встречи текущего турнира. Вне турнира дивизиона нет — берём все встречи команды,
     // иначе у архивной команды блок встреч пропал бы вместе с её историей.
     listSeries(division ? { teamId: teamRow.id, divisionId: division.id } : { teamId: teamRow.id }),
+    // Рейтинг — за ТЕКУЩИЙ турнир, а не за дивизион команды: в пуле цифра та же, и разойтись они
+    // не должны (у команды, принятой в новый сезон, пока идёт прошлый, это разные турниры).
+    teamRating(current?.id ?? null).then((m) => m.get(teamRow.id) ?? null),
   ]);
   if (!team) notFound();
 
@@ -125,6 +130,11 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
             </p>
 
             <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
+              {/* Рейтинг лиги — те же цифра и место, что на карточке в пуле (`/roster`): один
+                  расчёт на обе витрины, `team-rating.ts`. Прочерк — начислений за турнир не было. */}
+              <HeroChip accent title="Рейтинг лиги: TP за текущий турнир">
+                {rating ? `${rating.score.toLocaleString("ru")} TP · ${rating.place}-й в рейтинге` : "TP —"}
+              </HeroChip>
               {division && <HeroChip accent>{division.label ?? division.name}</HeroChip>}
               {group && <HeroChip>Группа {group.group}</HeroChip>}
               {row?.place && <HeroChip>{row.place}-е место</HeroChip>}

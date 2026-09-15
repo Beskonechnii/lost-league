@@ -2,10 +2,37 @@
 // Пишет — только API-роуты (/api/studio/*), здесь только выборки.
 
 import { prisma } from "@/lib/prisma";
-import { getDivisions, tournamentRank } from "@/lib/tournaments";
+import { currentTournament, getDivisions, tournamentRank } from "@/lib/tournaments";
 import { playerAccountId } from "@/lib/profiles";
 import { rolePosition, roleOrder } from "@/lib/roles";
 import { withPlayerUploads, withTeamUploads } from "@/lib/uploads";
+import { rankTotals, tpByTournament, type Rating } from "@/lib/tp";
+import { teamRating, teamRatingByTournament } from "@/lib/team-rating";
+
+/**
+ * Порядок витрин пула: сперва ранжированные по убыванию очков, следом — все без рейтинга, по имени
+ * (ТЗ 13). Место считает сервер (`rankTotals`), клиент его не пересчитывает: поиск и фильтр там
+ * свои, и второй расчёт разъехался бы с этим списком.
+ */
+function byRating<T>(items: T[], ratingOf: (x: T) => Rating | null, nameOf: (x: T) => string): T[] {
+  return [...items].sort((a, b) => {
+    const ra = ratingOf(a);
+    const rb = ratingOf(b);
+    if (ra && rb) return rb.score - ra.score || nameOf(a).localeCompare(nameOf(b));
+    if (ra || rb) return ra ? -1 : 1;
+    return nameOf(a).localeCompare(nameOf(b));
+  });
+}
+
+/** Рейтинги по турнирам в вид карточки: слаг → ячейка, только те турниры, где субъект ранжирован. */
+function ratingsOf(id: number, byTournament: Map<string, Map<number, Rating>>): Record<string, Rating> {
+  const out: Record<string, Rating> = {};
+  for (const [slug, map] of byTournament) {
+    const cell = map.get(id);
+    if (cell) out[slug] = cell;
+  }
+  return out;
+}
 
 /**
  * MMR команды не хранится — считается по составу, как и standings. Берём только основу (позиции 1–5):
@@ -211,6 +238,10 @@ export type PoolTeam = TeamWithRoster & {
   archivedAt: Date | null;
   /** Все турниры, в дивизионах которых команда участвовала — метки и фильтр таба «Ростер». */
   tournaments: PoolTournament[];
+  /** Рейтинг за текущий турнир: очки и место. null — начислений не было, на карточке прочерк. */
+  rating: Rating | null;
+  /** Тот же рейтинг по турнирам (слаг → ячейка) — разрез «По турнирам» показывает цифру за свой. */
+  ratings: Record<string, Rating>;
 };
 
 /**
@@ -223,6 +254,9 @@ export type PoolTeam = TeamWithRoster & {
  * Историю турниров архив не трогает: их таблицы и матчи по-прежнему показывают команду.
  */
 export async function listPoolTeams({ archived = false }: { archived?: boolean } = {}): Promise<PoolTeam[]> {
+  // Рейтинг — за текущий турнир; карта по турнирам едет следом для разреза «По турнирам».
+  const current = await currentTournament();
+  const [rating, ratingByTournament] = await Promise.all([teamRating(current?.id ?? null), teamRatingByTournament()]);
   const teams = await prisma.team.findMany({
     where: { archivedAt: archived ? { not: null } : null },
     orderBy: [{ name: "asc" }],
@@ -272,9 +306,11 @@ export async function listPoolTeams({ archived = false }: { archived?: boolean }
         archivedAt: t.archivedAt,
         divisionIds: [...divTour.keys()],
         tournaments,
+        rating: rating.get(t.id) ?? null,
+        ratings: ratingsOf(t.id, ratingByTournament),
       };
     }),
-  );
+  ).then((rows) => byRating(rows, (t) => t.rating, (t) => t.name));
 }
 
 /**
@@ -313,6 +349,10 @@ export type PoolPlayer = {
   otherTeams: string[];
   /** Турниры, где игрок засветился составом — метки и фильтр таба «Игроки». */
   tournaments: PoolTournament[];
+  /** Рейтинг игрока — тот же сезонный зачёт TP, что в `/tournaments/<slug>/tp`. null — прочерк. */
+  rating: Rating | null;
+  /** Тот же зачёт по турнирам (слаг → ячейка) — для разреза «По турнирам». */
+  ratings: Record<string, Rating>;
 };
 
 /**
@@ -332,6 +372,18 @@ export async function listPoolPlayers(): Promise<PoolPlayer[]> {
       },
     },
   });
+
+  // Рейтинг игрока новый не заводим: это существующий сезонный зачёт TP (`tpByTournament`), тот же,
+  // что в `/tournaments/<slug>/tp`. Места считаются здесь, на сервере, — как и у команд.
+  const nicknames = new Map(players.map((p) => [p.id, p.nickname]));
+  const current = await currentTournament();
+  const seasons = await prisma.tournament.findMany({ where: { status: { not: "draft" } }, select: { id: true, slug: true } });
+  const [currentTotals, seasonTotals] = await Promise.all([
+    tpByTournament(current?.id ?? null),
+    Promise.all(seasons.map((t) => tpByTournament(t.id))),
+  ]);
+  const rating = rankTotals(currentTotals, (id) => nicknames.get(id));
+  const ratingByTournament = new Map(seasons.map((t, i) => [t.slug, rankTotals(seasonTotals[i], (id) => nicknames.get(id))]));
 
   return Promise.all(
     players.map(async (p) => {
@@ -373,9 +425,11 @@ export async function listPoolPlayers(): Promise<PoolPlayer[]> {
         main,
         otherTeams,
         tournaments,
+        rating: rating.get(p.id) ?? null,
+        ratings: ratingsOf(p.id, ratingByTournament),
       };
     }),
-  );
+  ).then((rows) => byRating(rows, (p) => p.rating, (p) => p.nickname));
 }
 
 /**

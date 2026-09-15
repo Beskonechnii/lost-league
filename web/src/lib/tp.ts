@@ -27,6 +27,31 @@ export async function tpByTournament(tournamentId?: number | null): Promise<Map<
   return totals;
 }
 
+/** Очки и место в зачёте — одна ячейка витрины (карточка игрока, карточка команды). */
+export type Rating = { score: number; place: number };
+
+/**
+ * Очки → места. Порядок: больше очков выше, при равенстве — по имени (`localeCompare`), иначе
+ * список прыгал бы между перерисовками. Равные очки дают ОДИНАКОВЫЙ номер места (1, 1, 3) —
+ * два лидера с одной цифрой не должны выглядеть как первый и второй.
+ *
+ * Общая для игроков и команд: реестр начислений один, различается только `subjectType`.
+ * Кого нет в `nameOf` (субъекта удалили, а начисления остались) — в зачёт не берём.
+ */
+export function rankTotals(totals: Map<number, number>, nameOf: (id: number) => string | undefined): Map<number, Rating> {
+  const ranked = [...totals.entries()]
+    .filter(([id]) => nameOf(id) !== undefined)
+    .sort((a, b) => b[1] - a[1] || nameOf(a[0])!.localeCompare(nameOf(b[0])!));
+
+  const places = new Map<number, Rating>();
+  ranked.forEach(([id, score], i) => {
+    // Место равных очков — первое из них: повтор цифры не должен двигать номер.
+    const place = i > 0 && ranked[i - 1][1] === score ? places.get(ranked[i - 1][0])!.place : i + 1;
+    places.set(id, { score, place });
+  });
+  return places;
+}
+
 /** Строка зачёта: место, игрок и его очки. */
 export type TpRow = {
   place: number;

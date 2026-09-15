@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { countryCode, playerPath } from "@/lib/profiles";
+import type { Rating } from "@/lib/tp";
 import { Chip } from "@/components/pouf/blocks";
 import { RankMedal, RankTrend } from "@/components/pouf/rank";
 import { OnlineDot } from "@/app/_components/chat-live";
@@ -26,6 +27,7 @@ export function PlayerMiniCard({
   subtitle,
   trailing,
   flagged = false,
+  rating,
 }: {
   id: number;
   /** Слаг для канонического адреса страницы игрока; без него ссылка пойдёт по id и получит редирект. */
@@ -48,6 +50,11 @@ export function PlayerMiniCard({
   trailing?: ReactNode;
   /** Тревожная обводка — операторская подсветка неполных данных. */
   flagged?: boolean;
+  /**
+   * Место и очки сезонного зачёта TP — только там, где карточка стоит списком рейтинга (пул).
+   * `null` рисует прочерк, `undefined` убирает цифру совсем: в составе команды она лишняя.
+   */
+  rating?: Rating | null;
 }) {
   const code = countryCode(country);
 
@@ -58,6 +65,13 @@ export function PlayerMiniCard({
         flagged ? "bg-warn/[0.10] [box-shadow:var(--pouf-field),inset_0_0_0_2px_var(--warn)]" : "bg-surface cushion-row hover:cushion-row-hover"
       }`}
     >
+      {/* Место в зачёте — перед портретом, как номер в таблице; прочерк у тех, кто ещё не набирал. */}
+      {rating !== undefined && (
+        <div className="w-5 shrink-0 text-center text-[13px] font-black tabular-nums text-muted">
+          {rating ? rating.place : "—"}
+        </div>
+      )}
+
       <PlayerAvatar photo={photo} nickname={nickname} color={accent} size={size} className="rounded-xl" />
 
       <div className="min-w-0 flex-1">
@@ -72,6 +86,12 @@ export function PlayerMiniCard({
         </div>
 
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+          {/* Цифра рейтинга — тем же словом «TP», что и в зачёте турнира: это он и есть. */}
+          {rating !== undefined && (
+            <span className="text-xs font-black tabular-nums text-[var(--accent-ink)]">
+              {rating ? `${rating.score.toLocaleString("ru")} TP` : "— TP"}
+            </span>
+          )}
           {role && <Chip>{role}</Chip>}
           {mmr ? <span className="text-xs font-bold tabular-nums text-muted">{mmr.toLocaleString("ru")} MMR</span> : null}
           {/* Медаль без подписи: в карточке шириной с колонку сетки на слово места нет, а знак

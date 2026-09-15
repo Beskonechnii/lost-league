@@ -69,6 +69,24 @@ export function PoolExplorer({
     setPage(1);
   };
 
+  // Крупная карточка лидера — только там, где «первый» это правда: первая страница, пустой поиск,
+  // разрез «Сквозной» и без фильтра турнира. Иначе крупнее была бы первая строка выдачи, а не лидер
+  // лиги. Нет начислений ни у кого — нет и лидера (ТЗ 13).
+  const leader = !grouped && !q.trim() && !tournament && shownPage === 1 && paged[0]?.rating ? paged[0].id : null;
+
+  // Разрез «По турнирам»: в секции стоит цифра за ЕЁ турнир, порядок — по ней же. Места посчитаны
+  // на сервере, здесь только выбор нужной ячейки.
+  const forTournament = (rows: PoolTeam[], slug: string | null) => {
+    if (!slug) return rows.map((t) => ({ ...t, rating: null }));
+    return rows
+      .map((t) => ({ ...t, rating: t.ratings[slug] ?? null }))
+      .sort((a, b) => {
+        if (a.rating && b.rating) return b.rating.score - a.rating.score || a.name.localeCompare(b.name);
+        if (a.rating || b.rating) return a.rating ? -1 : 1; // без рейтинга — в хвост секции
+        return a.name.localeCompare(b.name);
+      });
+  };
+
   return (
     <div className="space-y-4">
       {/* В разрезе по турнирам селект турнира лишний: секции и есть этот фильтр. */}
@@ -101,11 +119,13 @@ export function PoolExplorer({
           tournaments={tournaments}
           tournamentsOf={(t) => t.tournaments}
           emptyLabel="Вне турниров"
-          render={(rows) => <TeamCards teams={rows} manage={manage} onManaged={onManaged} />}
+          render={(rows, tr) => (
+            <TeamCards teams={forTournament(rows, tr?.slug ?? null)} manage={manage} onManaged={onManaged} />
+          )}
         />
       ) : (
         <>
-          <TeamCards teams={paged} manage={manage} onManaged={onManaged} />
+          <TeamCards teams={paged} manage={manage} onManaged={onManaged} leaderId={leader} />
           <Pager page={shownPage} pageCount={pageCount} onPage={setPage} />
         </>
       )}

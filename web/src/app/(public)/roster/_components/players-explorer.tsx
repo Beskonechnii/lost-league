@@ -61,6 +61,22 @@ export function PlayersExplorer({
     setPage(1);
   };
 
+  // Крупная карточка первого — только там, где «первый» это правда: первая страница, пустой поиск,
+  // разрез «Сквозной», без фильтра турнира. Пара к тому же правилу в PoolExplorer.
+  const leader = !grouped && !q.trim() && !tournament && shownPage === 1 && paged[0]?.rating ? paged[0].id : null;
+
+  // Разрез «По турнирам»: в секции цифра и порядок — за её турнир (места посчитаны на сервере).
+  const forTournament = (rows: PoolPlayer[], slug: string | null) => {
+    if (!slug) return rows.map((p) => ({ ...p, rating: null }));
+    return rows
+      .map((p) => ({ ...p, rating: p.ratings[slug] ?? null }))
+      .sort((a, b) => {
+        if (a.rating && b.rating) return b.rating.score - a.rating.score || a.nickname.localeCompare(b.nickname);
+        if (a.rating || b.rating) return a.rating ? -1 : 1; // без зачёта — в хвост секции
+        return a.nickname.localeCompare(b.nickname);
+      });
+  };
+
   return (
     <div className="space-y-4">
       <FilterBar
@@ -89,23 +105,23 @@ export function PlayersExplorer({
           tournaments={tournaments}
           tournamentsOf={(p) => p.tournaments}
           emptyLabel="Вне турниров"
-          render={cards}
+          render={(rows, tr) => cards(forTournament(rows, tr?.slug ?? null))}
         />
       ) : (
         <>
-          {cards(paged)}
+          {cards(paged, leader)}
           <Pager page={shownPage} pageCount={pageCount} onPage={setPage} />
         </>
       )}
     </div>
   );
 
-  function cards(rows: PoolPlayer[]) {
+  function cards(rows: PoolPlayer[], leaderId: number | null = null) {
     return (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {rows.map((p) => (
+            <div key={p.id} className={p.id === leaderId ? "sm:col-span-2" : ""}>
             <PlayerMiniCard
-              key={p.id}
               id={p.id}
               slug={p.slug}
               nickname={p.nickname}
@@ -117,8 +133,9 @@ export function PlayersExplorer({
               rankPrev={p.rankPrev}
               country={p.country}
               isCaptain={p.main?.isCaptain ?? false}
-              size={56}
+              size={p.id === leaderId ? 88 : 56}
               flagged={canFlag && !p.accountId}
+              rating={p.rating}
               subtitle={
                 <div className="mt-1 space-y-0.5">
                   <div className="truncate text-xs text-ink-subtle">{p.main?.team.name ?? "без команды"}</div>
@@ -131,6 +148,7 @@ export function PlayersExplorer({
                 </div>
               }
             />
+            </div>
           ))}
         </div>
     );

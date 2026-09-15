@@ -22,20 +22,22 @@ export function TournamentGroups<T>({
   /** Порядок секций — свежие турниры сверху. */
   tournaments: PoolTournament[];
   tournamentsOf: (item: T) => PoolTournament[];
-  render: (items: T[]) => ReactNode;
+  /** Второй аргумент — турнир секции (null у «вне турниров»): по нему берётся цифра рейтинга за неё. */
+  render: (items: T[], tournament: PoolTournament | null) => ReactNode;
   /** Подпись последней секции для тех, кто не играл нигде («Вне турниров»). */
   emptyLabel: string;
 }) {
-  const groups = tournaments
+  const groups: { key: string; title: string; items: T[]; tournament: PoolTournament | null }[] = tournaments
     .map((tr) => ({
       key: tr.slug,
       title: tr.name,
       items: items.filter((item) => tournamentsOf(item).some((x) => x.slug === tr.slug)),
+      tournament: tr,
     }))
     .filter((g) => g.items.length > 0);
 
   const orphans = items.filter((item) => tournamentsOf(item).length === 0);
-  if (orphans.length) groups.push({ key: "__none", title: emptyLabel, items: orphans });
+  if (orphans.length) groups.push({ key: "__none", title: emptyLabel, items: orphans, tournament: null });
 
   return (
     <div className="space-y-7">
@@ -45,7 +47,7 @@ export function TournamentGroups<T>({
             <span className="text-[15px] font-black tracking-[-0.2px] text-ink">{g.title}</span>
             <span className="text-xs font-bold tabular-nums text-muted">{g.items.length}</span>
           </h2>
-          {render(g.items)}
+          {render(g.items, g.tournament)}
         </section>
       ))}
     </div>
