@@ -5,7 +5,7 @@ import { playerPath } from "@/lib/profiles";
 import { currentAccount, effectiveRole, type Account } from "@/lib/account";
 import { resolveUpload } from "@/lib/uploads";
 import type { Role } from "@/lib/player-auth";
-import { chatIdentity, findConversation, unreadInConversation, unreadTotal } from "@/lib/chat";
+import { chatIdentity, liveIdentity, findConversation, unreadInConversation, unreadTotal } from "@/lib/chat";
 import { systemAccountId } from "@/lib/system-chat";
 import type { NavAccount, NavItem } from "./nav-model";
 
@@ -49,8 +49,11 @@ export type AccountNav = {
   raw: Account | null;
   /** Пункты кабинета: профиль, сообщения, настройки, команда. */
   cabinet: NavItem[];
-  /** Личка: есть только у игрока лиги — по ней решается и пункт «Сообщения», и живой канал. */
+  /** Личка: есть только у игрока лиги — по ней решается пункт «Сообщения». */
   chat: ReturnType<typeof chatIdentity>;
+  /** Живой канал шире лички: его открывает любой одобренный аккаунт, в том числе без профиля
+   *  в ростере — иначе админ комнаты не видел бы событий лобби (ТЗ 22б §8). */
+  live: boolean;
   /** Непрочитанное ЛИЧНЫХ бесед — без служебного канала: его считает колокольчик. */
   unread: number;
   system: NavSystemChat;
@@ -67,6 +70,7 @@ async function systemChat(meAccountId: number): Promise<NavSystemChat> {
 export async function accountNav(account: Account | null): Promise<AccountNav> {
   // Чат и присутствие: канал открывает только игрок лиги, а снимок «кто в сети» нужен и гостю.
   const chat = chatIdentity(account);
+  const live = liveIdentity(account) !== null;
   const [total, system] = chat
     ? await Promise.all([unreadTotal(chat.accountId), systemChat(chat.accountId)])
     : [0, { conversationId: null, unread: 0 } satisfies NavSystemChat];
@@ -74,7 +78,7 @@ export async function accountNav(account: Account | null): Promise<AccountNav> {
   // «Сообщения» — всё остальное. Иначе одно непрочитанное светится в двух местах сразу.
   const unread = Math.max(0, total - system.unread);
 
-  if (!account) return { account: null, raw: null, cabinet: [], chat, unread, system, spot: null };
+  if (!account) return { account: null, raw: null, cabinet: [], chat, live, unread, system, spot: null };
 
   const role = effectiveRole(account);
   const player = account.player;
@@ -134,6 +138,7 @@ export async function accountNav(account: Account | null): Promise<AccountNav> {
     },
     cabinet,
     chat,
+    live,
     unread,
     system,
     spot,

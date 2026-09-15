@@ -1,4 +1,4 @@
-import { currentChatMe } from "@/lib/chat";
+import { currentLiveMe } from "@/lib/chat";
 import { connect, type LiveEvent } from "@/lib/presence";
 import { bad } from "@/lib/api";
 
@@ -14,8 +14,10 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(req: Request) {
-  const me = await currentChatMe();
-  if (!me) return bad("Живой канал — для игроков лиги", 401);
+  // Канал шире лички: его держит ЛЮБОЙ одобренный аккаунт, в том числе админ комнаты без профиля
+  // в ростере (ТЗ 22б §8). Присутствие при этом не меняется — оно считается по playerId.
+  const me = await currentLiveMe();
+  if (!me) return bad("Живой канал — для аккаунтов лиги", 401);
 
   const encoder = new TextEncoder();
   let close = () => {};

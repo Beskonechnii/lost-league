@@ -6,7 +6,17 @@ import { teamAccent } from "./profiles";
 import { pushTo } from "./presence";
 import { tellPlayer } from "./system-chat";
 import { localHeroes } from "./dota-constants";
-import { buildPool, newFearless, tossCoin, FEARLESS_VERSION, type FearlessState, type TeamIdx } from "./fearless";
+import {
+  buildPool,
+  canNextGame,
+  currentTeam,
+  newFearless,
+  nextGame,
+  tossCoin,
+  type FearlessState,
+  type TeamIdx,
+} from "./fearless";
+import { commitPick, parseState, settleTurn } from "./lobby-turn";
 import {
   captainOf,
   sidePlayers,
@@ -83,13 +93,7 @@ export async function readRoom(id: number): Promise<LobbyRoom | null> {
     }),
   );
 
-  let state: FearlessState | null = null;
-  try {
-    const parsed = JSON.parse(row.payload) as FearlessState;
-    if (parsed?.version === FEARLESS_VERSION) state = parsed;
-  } catch {
-    state = null; // пусто до монетки — это норма, а не поломка
-  }
+  const state: FearlessState | null = parseState(row.payload);
 
   return {
     id: row.id,
@@ -112,6 +116,12 @@ export async function readRoom(id: number): Promise<LobbyRoom | null> {
           },
     members,
     state,
+    turn: {
+      startedAt: row.turnStartedAt?.getTime() ?? null,
+      now: Date.now(),
+      reserve: [row.reserveA, row.reserveB],
+      autoFrom: row.autoFrom,
+    },
   };
 }
 
@@ -129,6 +139,54 @@ async function broadcast(id: number): Promise<LobbyRoom | null> {
   if (!room) return null;
   for (const m of room.members) pushTo(m.accountId, { type: "lobby", room });
   return room;
+}
+
+// ── часы хода ─────────────────────────────────────────────────────────────────
+//
+// Истечение хода обязано наступить от ВРЕМЕНИ, а не от того, что кто-то смотрит на экран: обе
+// вкладки капитанов могут быть закрыты. Поэтому на срок хода взводится будильник в процессе, а
+// сам срок лежит в БД (Lobby.turnStartedAt) — перезапуск процесса будильники теряет, но не срок:
+// `armLobbyTimers()` поднимает их при старте (src/instrumentation.ts), а любое обращение к комнате
+// сначала досчитывает пропущенное. То есть даже без будильника драфт не встанет, он лишь
+// догоняет позже.
+//
+// Одна нода — вся картина (DEPLOY.md, как и presence.ts). Станет нод несколько — сюда встанет
+// общая очередь, а договор этого файла не поменяется.
+
+const g = globalThis as unknown as { lostLobbyTimers?: Map<number, NodeJS.Timeout> };
+const timers: Map<number, NodeJS.Timeout> = (g.lostLobbyTimers ??= new Map());
+
+function arm(id: number, deadline: number | null): void {
+  const prev = timers.get(id);
+  if (prev) clearTimeout(prev);
+  timers.delete(id);
+  if (deadline === null) return;
+  // +250 мс, чтобы будильник срабатывал строго ПОСЛЕ срока: сработав на миллисекунду раньше,
+  // он не увидел бы истечения и молча снял бы сам себя.
+  const t = setTimeout(() => {
+    timers.delete(id);
+    void touchLobby(id).catch(() => {});
+  }, Math.max(0, deadline - Date.now()) + 250);
+  t.unref?.(); // будильник не должен сам по себе держать процесс живым
+  timers.set(id, t);
+}
+
+/** Досчитать пропущенное время комнаты и перевзвести будильник. Ничего не рассылает. */
+async function settle(id: number): Promise<boolean> {
+  const { changed, deadline } = await settleTurn(id);
+  arm(id, deadline);
+  return changed;
+}
+
+/** То же плюс рассылка снимка: так комнату трогают чтение страницы, GET и сам будильник. */
+export async function touchLobby(id: number): Promise<void> {
+  if (await settle(id)) await broadcast(id);
+}
+
+/** Поднять будильники всех идущих драфтов при старте процесса (src/instrumentation.ts). */
+export async function armLobbyTimers(): Promise<void> {
+  const rows = await prisma.lobby.findMany({ where: { status: "draft" }, select: { id: true } });
+  for (const r of rows) await touchLobby(r.id);
 }
 
 export type LobbyInvite = { playerId: number; side: TeamIdx | null; role: LobbyRole };
@@ -214,7 +272,10 @@ export type Intent =
   | { kind: "resign" }
   | { kind: "unseat"; side: TeamIdx }
   | { kind: "ready"; value: boolean }
-  | { kind: "coin"; block: "side" | "order"; value: TeamIdx };
+  | { kind: "coin"; block: "side" | "order"; value: TeamIdx }
+  /** Ход капитана: «хочу этого героя», `at` — номер хода на карте в момент нажатия. */
+  | { kind: "pick"; heroId: number; at: number }
+  | { kind: "next" };
 
 export type IntentResult = { ok: true; room: LobbyRoom } | { ok: false; error: string };
 
@@ -223,6 +284,9 @@ export type IntentResult = { ok: true; room: LobbyRoom } | { ok: false; error: s
  * можно ли это нажать именно ему. Клиент шлёт «хочу», а не «стало так».
  */
 export async function applyIntent(id: number, viewer: LobbyViewer, intent: Intent): Promise<IntentResult> {
+  // Сначала часы, потом чтение: ход мог истечь, пока запрос летел, и решать «его ли ход» надо
+  // по состоянию ПОСЛЕ автохода, а не до него.
+  await settle(id);
   const room = await readRoom(id);
   if (!room) return { ok: false, error: "Лобби не найдено" };
   if (!mayEnter(room, viewer)) return { ok: false, error: "Лобби не найдено" };
@@ -293,6 +357,30 @@ export async function applyIntent(id: number, viewer: LobbyViewer, intent: Inten
       if (decided) return { ok: false, error: decided };
       break;
     }
+
+    case "pick": {
+      // Четыре проверки подряд, отказ по каждой — своей причиной. Право `tools` здесь ни при чём:
+      // админ лиги в чужой ход не ходит, ход вносит только капитан своей стороны (решение 3).
+      if (room.status !== "draft" || !room.state) return { ok: false, error: "Драфт ещё не начался" };
+      if (!me) return { ok: false, error: "Вас нет в этой комнате" };
+      if (!me.captain || me.side === null) return { ok: false, error: "Ход вносит капитан стороны" };
+      // Сторона лобби и индекс команды в драфте — одно и то же число: состояние собирается из
+      // `room.sides` в том же порядке (см. `decideCoin`).
+      if (currentTeam(room.state) !== me.side) return { ok: false, error: "Сейчас ход соперника" };
+      const picked = await commitPick(id, me.side, intent.heroId, intent.at);
+      if (!picked.ok) return { ok: false, error: picked.error };
+      break;
+    }
+
+    case "next": {
+      // Переход на карту — намерение АДМИНА комнаты, а не капитана: момент перехода определяется
+      // сыгранной картой, о которой лобби не знает. Капитану такой кнопки не даём.
+      if (!isRoomAdmin) return { ok: false, error: "Карту переводит админ комнаты" };
+      if (room.status !== "draft" || !room.state) return { ok: false, error: "Драфт ещё не начался" };
+      if (!canNextGame(room.state)) return { ok: false, error: "Карта ещё не задрафчена" };
+      await startNextGame(id, room);
+      break;
+    }
   }
 
   // Обе стороны собрались — бросаем монетку тут же: это событие комнаты, а не кнопка, которую
@@ -302,8 +390,40 @@ export async function applyIntent(id: number, viewer: LobbyViewer, intent: Inten
     await prisma.lobby.update({ where: { id }, data: { status: "coin", coinWinner: tossCoin() } });
   }
 
+  // Ещё раз часы: ход мог закрыть карту, а переход на следующую — открыть новый ход. Отметку
+  // начала хода и будильник заводит `settle`, а рассылку делает общий `broadcast` ниже.
+  await settle(id);
+
   const room2 = await broadcast(id);
   return room2 ? { ok: true, room: room2 } : { ok: false, error: "Лобби не найдено" };
+}
+
+/**
+ * Следующая карта серии: новый пул БЕЗ уже взятых героев, обнулённая отметка хода и полные банки
+ * обеим сторонам — то же, что делает `doNext` на админском борде, только на сервере.
+ */
+async function startNextGame(id: number, room: LobbyRoom): Promise<void> {
+  // Payload перечитываем строкой: условие гонки сравнивает БАЙТЫ, а пересобранный из объекта
+  // JSON совпадает с хранимым лишь по счастливой случайности.
+  const row = await prisma.lobby.findUnique({ where: { id }, select: { payload: true } });
+  const state = row ? parseState(row.payload) : null;
+  if (!row || !state || !canNextGame(state)) return;
+
+  const advanced = nextGame(state);
+  const played = new Set<number>();
+  for (const game of advanced.games) for (const m of game.moves) if (m.action === "pick") played.add(m.heroId);
+  const pool = buildPool(localHeroes().filter((h) => !played.has(h.id)).map((h) => ({ id: h.id, attr: h.primary_attr })));
+
+  await prisma.lobby.updateMany({
+    where: { id, payload: row.payload },
+    data: {
+      payload: JSON.stringify({ ...advanced, pool }),
+      turnStartedAt: null, // часы новой карты заведёт `settle` — он же взведёт будильник
+      reserveA: room.reserveSec,
+      reserveB: room.reserveSec,
+      autoFrom: null,
+    },
+  });
 }
 
 /**
@@ -318,7 +438,15 @@ async function decideCoin(room: LobbyRoom, viewer: LobbyViewer, intent: { block:
   if (!cap || cap.accountId !== viewer.accountId) return "Сейчас выбирает капитан другой стороны";
   if (!first && intent.block === coin.block) return "Этот блок уже разыгран";
 
-  const data: { coinBlock?: string; firstPick?: number; radiant?: number; status?: string; payload?: string } = {};
+  const data: {
+    coinBlock?: string;
+    firstPick?: number;
+    radiant?: number;
+    status?: string;
+    payload?: string;
+    reserveA?: number;
+    reserveB?: number;
+  } = {};
   if (first) data.coinBlock = intent.block;
   if (intent.block === "side") data.radiant = intent.value;
   else data.firstPick = intent.value;
@@ -336,6 +464,10 @@ async function decideCoin(room: LobbyRoom, viewer: LobbyViewer, intent: { block:
     );
     data.payload = JSON.stringify(state);
     data.status = "draft";
+    // Банки выдаются здесь, а не дефолтом колонки: сколько доп-времени у стороны — настройка
+    // встречи (`reserveSec`), и знает её лобби, а не схема.
+    data.reserveA = room.reserveSec;
+    data.reserveB = room.reserveSec;
   }
 
   await prisma.lobby.update({ where: { id: room.id }, data });

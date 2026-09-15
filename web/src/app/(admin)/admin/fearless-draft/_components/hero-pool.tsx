@@ -21,6 +21,7 @@ export function HeroPool({
   locked,
   onPick,
   disabled,
+  chosen = null,
   readOnly = false,
 }: {
   state: FearlessState;
@@ -29,6 +30,9 @@ export function HeroPool({
   locked: Set<number>;
   onPick: (id: number) => void;
   disabled: boolean;
+  /** Выбранный, но ещё не подтверждённый герой (комната, ТЗ 22б): «я выбрал» обязано отличаться
+   *  от «ход сделан» — иначе второе действие выглядит как повтор первого. */
+  chosen?: number | null;
   /** Пул только для чтения (лобби, ТЗ 22а): нажать нельзя, но и гасить нечего — в просмотре
    *  доступный герой обязан выглядеть доступным, иначе весь пул читается как «всё занято». */
   readOnly?: boolean;
@@ -84,6 +88,7 @@ export function HeroPool({
                 // разные факты, и в просмотре их нельзя рисовать одинаково.
                 const bright = readOnly ? available : selectable;
                 const isLocked = locked.has(h.id);
+                const isChosen = chosen === h.id;
                 return (
                   <button
                     key={h.id}
@@ -95,6 +100,7 @@ export function HeroPool({
                     // 16:9 — родная пропорция портрета (256×144). В `h-8` при треке 85px на 1440
                     // кадр резался больше чем наполовину: места стало больше, а герой перестал
                     // узнаваться. На 390 трек ~55px, и 16:9 даёт те же 31px, что были.
+                    style={isChosen ? { outline: "3px solid var(--accent-ink)", outlineOffset: 2 } : undefined}
                     className={`relative aspect-[16/9] overflow-hidden rounded-[10px] outline-none transition-[box-shadow,transform] ${
                       selectable
                         ? "cushion-row hover:-translate-y-0.5 hover:cushion-row-hover focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]"

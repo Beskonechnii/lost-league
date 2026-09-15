@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { heroImg } from "@/lib/assets";
 import { localHeroes } from "@/lib/dota-constants";
-import { currentViewer, mayEnter, readRoom } from "@/lib/lobby";
+import { currentViewer, mayEnter, readRoom, touchLobby } from "@/lib/lobby";
 import type { HeroRef } from "../../../(admin)/admin/fearless-draft/_components/types";
 import { LobbyView } from "../_components/room";
 
@@ -20,6 +20,9 @@ export default async function LobbyPage({ params }: { params: Promise<{ id: stri
   if (!Number.isInteger(id)) notFound();
 
   const viewer = await currentViewer();
+  // Часы досчитываются ДО чтения: страница, открытая после простоя, обязана показать уже
+  // сделанные автоходы, а не ход, истёкший час назад.
+  if (viewer) await touchLobby(id);
   const room = await readRoom(id);
   if (!room || !mayEnter(room, viewer)) notFound();
 

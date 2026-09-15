@@ -8,7 +8,7 @@ import { Alert, StatusPill } from "@/components/pouf/feedback";
 import { Card } from "@/components/pouf/surface";
 import { Eyebrow } from "@/components/pouf/text";
 import { useChatEvents, useLive } from "@/app/_components/chat-live";
-import type { TeamIdx } from "@/lib/fearless";
+import { canNextGame, currentTeam, type TeamIdx } from "@/lib/fearless";
 import {
   ROLE_LABEL,
   captainOf,
@@ -20,12 +20,12 @@ import {
   type LobbyRoom,
 } from "@/lib/lobby-room";
 import { PlayerAvatar, TeamLogo } from "../../roster/_components/avatar";
-import { FearlessRun } from "../../../(admin)/admin/fearless-draft/_components/fearless-run";
+import { FearlessRun, type LiveTurn } from "../../../(admin)/admin/fearless-draft/_components/fearless-run";
 import { fmtTime, type HeroRef, type TeamRef } from "../../../(admin)/admin/fearless-draft/_components/types";
 import { PHASE } from "./phase";
 
 /**
- * Комната встречи до первого хода (ТЗ 22а).
+ * Комната встречи: сбор, монетка и сам драфт руками капитанов (ТЗ 22а + 22б).
  *
  * Экран отвечает на три вопроса в этом порядке: в какой мы стадии, кто со мной в комнате, что
  * я могу нажать. Поэтому сверху стадия одной пилюлей, ниже две стороны борд-о-борд, а мои кнопки
@@ -35,11 +35,21 @@ import { PHASE } from "./phase";
  * тем более опроса не заводим — в 22б цена решения секунды хода, а вкладок в комнате десятки.
  * Клиент шлёт НАМЕРЕНИЕ и ждёт снимок в ответ, а не считает новое состояние сам.
  *
- * Борд драфта — принятая раскладка 15а, взятая как есть и в режиме просмотра: ходы вносит
- * оператор на своём экране, право хода капитану приезжает в 22б.
+ * Борд драфта — принятая раскладка 15а, взятая как есть: смотрят его все, а нажимать пул может
+ * только капитан стороны, чей сейчас ход. Часы и очередь считает сервер (`lib/lobby-turn.ts`),
+ * вкладка их показывает — поэтому перезагрузка страницы счётчик не обнуляет, а закрытая вкладка
+ * не останавливает время.
  */
 
-type Send = { intent: string; side?: TeamIdx; value?: unknown; block?: "side" | "order" };
+type Send = {
+  intent: string;
+  side?: TeamIdx;
+  value?: unknown;
+  block?: "side" | "order";
+  heroId?: number;
+  /** Номер хода на карте в момент нажатия: им сервер отличает повтор от нового хода. */
+  at?: number;
+};
 
 export function LobbyView({
   initial,
@@ -53,7 +63,11 @@ export function LobbyView({
   admin: boolean;
   heroes: HeroRef[];
 }) {
-  const [room, setRoom] = useState(initial);
+  // Снимок держим вместе с моментом его получения: часы хода считает сервер, и разницу между
+  // его часами и часами этой машины надо снять один раз на снимок — иначе экран с убежавшими
+  // системными часами показывал бы чужое время (а решает всё равно сервер).
+  const [{ room, recv }, setSnap] = useState(() => ({ room: initial, recv: Date.now() }));
+  const setRoom = useCallback((r: LobbyRoom) => setSnap({ room: r, recv: Date.now() }), []);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const { players: online } = useLive();
@@ -61,7 +75,7 @@ export function LobbyView({
   const refresh = useCallback(async () => {
     const res = await fetch(`/api/lobby/${initial.id}`);
     if (res.ok) setRoom((await res.json()) as LobbyRoom);
-  }, [initial.id]);
+  }, [initial.id, setRoom]);
 
   const send = useCallback(
     async (body: Send) => {
@@ -85,7 +99,7 @@ export function LobbyView({
         setBusy(null);
       }
     },
-    [initial.id],
+    [initial.id, setRoom],
   );
 
   // «Я зашёл» — факт комнаты, а не присутствия вкладки: приглашённый, не открывавший комнату,
@@ -101,7 +115,7 @@ export function LobbyView({
       .then((res) => (res.ok ? (res.json() as Promise<LobbyRoom>) : null))
       .then((data) => data && setRoom(data))
       .catch(() => {});
-  }, [initial.id]);
+  }, [initial.id, setRoom]);
 
   useChatEvents((event) => {
     if (event.type === "lobby" && event.room.id === initial.id) setRoom(event.room);
@@ -135,6 +149,30 @@ export function LobbyView({
     [room],
   );
 
+  const isRoomAdmin = admin || room.ownerAccountId === me;
+  // Ход вносит ТОЛЬКО капитан своей стороны и только в свою очередь (решение 3). Сторона лобби
+  // и индекс команды в драфте — одно число: состояние собрано из `room.sides` тем же порядком.
+  // Право нажатия здесь — про экран; настоящую проверку всё равно делает сервер.
+  const myTurn =
+    !!room.state && !!mine?.captain && mine.side !== null && currentTeam(room.state) === mine.side;
+  const moves = room.state ? (room.state.games[room.state.current]?.moves.length ?? 0) : 0;
+
+  const live: LiveTurn | undefined = room.state
+    ? {
+        clock: {
+          // Сдвигаем серверную отметку в часы этой вкладки: показание обязано совпадать с тем,
+          // по чему сервер считает истечение, а не с системными часами машины.
+          startedAt: room.turn.startedAt === null ? null : room.turn.startedAt - (room.turn.now - recv),
+          reserve: room.turn.reserve,
+        },
+        myTurn,
+        busy: busy === "pick",
+        onPick: (heroId) => send({ intent: "pick", heroId, at: moves }),
+        onNext: isRoomAdmin && canNextGame(room.state) ? () => send({ intent: "next" }) : null,
+        autoFrom: room.turn.autoFrom,
+      }
+    : undefined;
+
   return (
     <div className="space-y-6 font-pouf">
       <SectionHeader
@@ -157,7 +195,14 @@ export function LobbyView({
       )}
 
       {room.state && (
-        <FearlessRun state={room.state} setState={() => {}} heroById={heroById} teams={teamRefs} readOnly />
+        <FearlessRun
+          state={room.state}
+          setState={() => {}}
+          heroById={heroById}
+          teams={teamRefs}
+          readOnly
+          live={live}
+        />
       )}
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -167,7 +212,7 @@ export function LobbyView({
             room={room}
             side={side}
             mine={mine}
-            admin={admin || room.ownerAccountId === me}
+            admin={isRoomAdmin}
             online={online}
             busy={busy}
             onSend={send}

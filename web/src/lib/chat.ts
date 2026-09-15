@@ -37,6 +37,22 @@ export async function currentChatMe(): Promise<ChatMe | null> {
   return chatIdentity(await currentAccount());
 }
 
+/**
+ * Кто может держать ЖИВОЙ КАНАЛ — шире, чем кто может писать в личку: любой одобренный аккаунт,
+ * даже без профиля в ростере. Иначе админ комнаты, у которого профиля нет, не получал бы событий
+ * вовсе и видел бы ход соперника только после перезагрузки (замечание `qa` с приёмки 22а).
+ *
+ * Присутствие это не меняет: точки «в сети» считаются по `playerId`, и у такого аккаунта он null.
+ */
+export type LiveMe = { accountId: number; playerId: number | null };
+
+export const liveIdentity = (account: Account | null): LiveMe | null =>
+  account && isActiveAccount(account) ? { accountId: account.id, playerId: account.player?.id ?? null } : null;
+
+export async function currentLiveMe(): Promise<LiveMe | null> {
+  return liveIdentity(await currentAccount());
+}
+
 /** Ключ беседы: пара id аккаунтов по возрастанию. Один разговор на двоих, порядок не важен. */
 const pairKey = (a: number, b: number) => (a < b ? `${a}:${b}` : `${b}:${a}`);
 

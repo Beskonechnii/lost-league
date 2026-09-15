@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { bad, parseId } from "@/lib/api";
-import { applyIntent, currentViewer, mayEnter, readRoom, type Intent } from "@/lib/lobby";
+import { applyIntent, currentViewer, mayEnter, readRoom, touchLobby, type Intent } from "@/lib/lobby";
 import type { TeamIdx } from "@/lib/fearless";
 
 // Одна комната: снимок целиком (GET) и НАМЕРЕНИЕ участника (PATCH). Готового состояния сервер не
@@ -13,12 +13,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const id = parseId((await params).id);
   if (!id) return bad("id: ожидался числовой id");
   const viewer = await currentViewer();
+  // Часы досчитываются до чтения: пока вкладки были закрыты, время шло, и снимок обязан показать
+  // уже сделанные автоходы, а не «замороженный» ход месячной давности.
+  if (viewer) await touchLobby(id);
   const room = await readRoom(id);
   if (!room || !mayEnter(room, viewer)) return bad("Лобби не найдено", 404);
   return NextResponse.json(room);
 }
 
-type Body = { intent?: string; side?: number; value?: unknown; block?: string };
+type Body = { intent?: string; side?: number; value?: unknown; block?: string; heroId?: unknown; at?: unknown };
 
 const asSide = (raw: unknown): TeamIdx | null => (raw === 0 || raw === 1 ? (raw as TeamIdx) : null);
 
@@ -42,6 +45,16 @@ function toIntent(body: Body): Intent | null {
       if (value === null || (body.block !== "side" && body.block !== "order")) return null;
       return { kind: "coin", block: body.block, value };
     }
+    case "pick": {
+      // Ход — намерение: сервер получает «хочу этого героя» и номер хода, а состояние драфта
+      // считает и пишет сам. Готовый payload здесь не принимается никогда.
+      const heroId = parseId(body.heroId as number);
+      const at = Number(body.at);
+      if (heroId === null || !Number.isInteger(at) || at < 0) return null;
+      return { kind: "pick", heroId, at };
+    }
+    case "next":
+      return { kind: "next" };
     default:
       return null;
   }

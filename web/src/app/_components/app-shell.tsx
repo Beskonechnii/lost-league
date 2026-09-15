@@ -70,7 +70,7 @@ const ADMIN: NavLink = {
 };
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
-  const [{ account: navAccount, cabinet, chat, system, spot }, perms] = await Promise.all([
+  const [{ account: navAccount, cabinet, chat, live, system, spot }, perms] = await Promise.all([
     currentAccountNav(),
     currentPermissions(),
   ]);
@@ -96,7 +96,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   return (
     // Провайдер живого канала стоит в хроме, то есть открыт на любой странице: от него зависят
     // и точка «в сети» у карточки игрока, и дорисовка сообщений в чате без перезагрузки.
-    <ChatLiveProvider live={!!chat} initialPlayers={onlinePlayerIds()} initialCount={onlineCount()}>
+    <ChatLiveProvider live={live} initialPlayers={onlinePlayerIds()} initialCount={onlineCount()}>
       <div className="flex min-w-0 flex-1 flex-col">
         <header className={`mx-auto w-full ${SITE_MAX_W} px-4 pb-2 pt-5 font-pouf md:px-6`}>
           {/* Ниже `xl` подушка одна на весь ряд, с `xl` она распадается на три острова. */}

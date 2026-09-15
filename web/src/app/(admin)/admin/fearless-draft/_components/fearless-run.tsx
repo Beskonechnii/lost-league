@@ -47,6 +47,26 @@ import { fmtTime, type HeroRef, type TeamRef } from "./types";
  * Ниже `xl` треков нет (борд — стек), и совпадать там нечему.
  */
 const TRACKS = "xl:grid-cols-[16rem_minmax(0,1fr)_16rem]";
+
+/**
+ * Комната встречи (ТЗ 22б): борд тот же, но часы приходят с сервера, ход вносит капитан своей
+ * стороны, а карту переводит админ комнаты. На админском борде этого объекта нет вовсе — и там
+ * всё остаётся как было: локальные часы, отмена хода, приём состояния целиком.
+ */
+export type LiveTurn = {
+  /** Часы сервера, уже пересчитанные в часы этой вкладки. `startedAt = null` — ход не идёт. */
+  clock: { startedAt: number | null; reserve: [number, number] };
+  /** Сейчас мой ход: только тогда пул вообще кликается. */
+  myTurn: boolean;
+  busy: boolean;
+  /** Подтверждённый ход наружу — сервер сам решит, законен ли он, и сам применит. */
+  onPick: (heroId: number) => void;
+  /** Следующая карта — только у админа комнаты; капитану сюда приезжает null. */
+  onNext: (() => void) | null;
+  /** С какого хода карты пошли автоходы; null — последний ход сделан руками. */
+  autoFrom: number | null;
+};
+
 export function FearlessRun({
   state,
   setState,
@@ -54,6 +74,7 @@ export function FearlessRun({
   teams,
   onReset,
   readOnly = false,
+  live,
 }: {
   state: FearlessState;
   setState: (s: FearlessState) => void;
@@ -62,8 +83,9 @@ export function FearlessRun({
   teams: TeamRef[];
   onReset?: () => void;
   /** Только смотрим: ходов не вносим и картой не управляем. Так борд открыт участникам лобби
-   *  (ТЗ 22а) — право хода приезжает капитану в 22б, а до него ходы остаются за оператором. */
+   *  (ТЗ 22а); право хода приезжает капитану отдельно, через `live`. */
   readOnly?: boolean;
+  live?: LiveTurn;
 }) {
   // Движок хранит у команды только имя и цвет (`FearlessTeam`), id в payload не попадает —
   // поэтому карточка команды ищется по имени. Не нашлась (команду переименовали после старта
@@ -102,9 +124,18 @@ export function FearlessRun({
   const hasStep = step !== null;
   // Банк адресуется ИНДЕКСОМ КОМАНДЫ, а не стороной экрана: сторона на новой карте меняется, и
   // переложи мы сам массив — команды обменялись бы накопленным доп-временем.
-  const [reserve, setReserve] = useState<[number, number]>([state.reserveSec, state.reserveSec]);
+  const [localReserve, setReserve] = useState<[number, number]>([state.reserveSec, state.reserveSec]);
   const [now, setNow] = useState(() => Date.now());
-  const [turnStart, setTurnStart] = useState(() => Date.now());
+  const [localTurnStart, setTurnStart] = useState(() => Date.now());
+  // В комнате часы считает СЕРВЕР и присылает снимком: обе вкладки капитанов могут быть закрыты,
+  // а время всё равно обязано идти. Ниже по коду разницы нет — обе ветки дают те же два числа.
+  const reserve = live ? live.clock.reserve : localReserve;
+  const turnStart = live ? (live.clock.startedAt ?? now) : localTurnStart;
+
+  // «Выбрал, но не отправил» (решение 4: отмены нет, подтверждает второе действие). Номер хода
+  // лежит в самой отметке — поэтому сбрасывать выбор эффектом не нужно: приехал чужой ход,
+  // номер разошёлся, выбор погас сам.
+  const [chosen, setChosen] = useState<{ heroId: number; at: number } | null>(null);
 
   // Секундомер хода сбрасываем в обработчиках хода (не в эффекте — линтер запрещает setState в эффекте).
   const resetTurn = () => {
@@ -124,8 +155,19 @@ export function FearlessRun({
   const overage = Math.max(0, -mainLeft); // сколько уже съели из банка
   const activeReserveLeft = active !== null ? reserve[active] - overage : 0;
 
+  // Выбор героя в пуле. В комнате он ещё не ход: ход уходит вторым действием — подтверждением.
+  const pending = live?.myTurn && chosen?.at === movesCount ? chosen.heroId : null;
+
+  // Ходы, которые сервер сделал сам — время вышло. Живут на экране до следующего хода.
+  const autoMoves =
+    live && live.autoFrom !== null ? (state.games[current]?.moves ?? []).slice(live.autoFrom) : [];
+
   // Применить ход: списать переработку из банка активной команды и обнулить секундомер
   const commit = (heroId: number) => {
+    if (live) {
+      live.onPick(heroId); // в комнате ход считает сервер: вкладка состояние драфта не трогает
+      return;
+    }
     if (active !== null && overage > 0) {
       setReserve((r) => {
         const next = [...r] as [number, number];
@@ -136,6 +178,7 @@ export function FearlessRun({
     setState(applyPick(state, heroId));
     resetTurn();
   };
+  const choose = (heroId: number) => (live ? setChosen({ heroId, at: movesCount }) : commit(heroId));
   const doUndo = () => {
     setState(undo(state));
     resetTurn();
@@ -194,6 +237,13 @@ export function FearlessRun({
               )}
             </div>
           )}
+          {/* В комнате из управления есть ровно одна кнопка и ровно у одного человека — админа
+              комнаты: когда карта сыграна, знает он, а не лобби. Отмены и сброса нет ни у кого. */}
+          {live?.onNext && canNextGame(state) && (
+            <Button size="sm" onClick={live.onNext} disabled={past}>
+              Следующая карта <Icon name="next" size="sm" />
+            </Button>
+          )}
         </div>
       </Panel>
 
@@ -248,8 +298,48 @@ export function FearlessRun({
             </>
           ) : (
             <>
-              {/* Цвет команды сырым hex — тот же, что горит в трансляции (§C5). */}
-              {step && active !== null ? (
+              {/* «Время вышло — сходили за тебя». В состоянии драфта такой пометки нет (ходы, а
+                  не их история), поэтому она живёт снимком комнаты и держится ровно до
+                  следующего хода — дальше объяснять уже нечего. */}
+              {autoMoves.length > 0 && (
+                <Alert tone="warn" block>
+                  Время вышло — ход сделан автоматически:{" "}
+                  <b>
+                    {autoMoves
+                      .map((m) => `${heroById.get(m.heroId)?.name ?? "герой"} (${m.action === "ban" ? "бан" : "пик"})`)
+                      .join(", ")}
+                  </b>
+                  .
+                </Alert>
+              )}
+              {/* Подтверждение — второе действие, и отмены после него нет (решение 4). Стоит на
+                  месте статусной строки: цель нажатия и подпись к нему — один столбец. */}
+              {step && pending !== null && live ? (
+                <div
+                  className="flex flex-wrap items-center gap-2 rounded-card bg-surface px-4 py-3 font-pouf text-sm font-bold text-muted cushion-card"
+                  style={{ outline: `2px solid ${state.teams[active ?? 0].color}`, outlineOffset: 2 }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={heroById.get(pending)?.img}
+                    alt=""
+                    className="h-8 w-[57px] shrink-0 rounded-[8px] object-cover"
+                  />
+                  <span className="min-w-0">
+                    <b className="text-ink">{heroById.get(pending)?.name}</b> —{" "}
+                    {step.action === "ban" ? "забанить" : "взять"}? Отменить ход будет нельзя.
+                  </span>
+                  <span className="flex flex-wrap gap-2">
+                    <Button size="sm" loading={live.busy} onClick={() => live.onPick(pending)}>
+                      {step.action === "ban" ? "Забанить" : "Взять"}
+                    </Button>
+                    <Button size="sm" variant="quiet" disabled={live.busy} onClick={() => setChosen(null)}>
+                      Выбрать другого
+                    </Button>
+                  </span>
+                </div>
+              ) : /* Цвет команды сырым hex — тот же, что горит в трансляции (§C5). */
+              step && active !== null ? (
                 <div
                   className="flex flex-wrap items-center gap-2 rounded-card bg-surface px-4 py-3 font-pouf text-sm font-bold text-muted cushion-card"
                   style={{ outline: `2px solid ${state.teams[active].color}`, outlineOffset: 2 }}
@@ -258,21 +348,40 @@ export function FearlessRun({
                     className="h-2.5 w-2.5 shrink-0 rounded-pill"
                     style={{ background: state.teams[active].color }}
                   />
-                  <span>
-                    Ход команды <b className="text-ink">{state.teams[active].name}</b> —{" "}
-                    {step.action === "ban" ? "банит" : "пикает"}.
-                    {!readOnly && " Нажмите на героя в пуле."}
-                  </span>
+                  {live?.myTurn ? (
+                    <span>
+                      <b className="text-ink">Ваш ход</b> — {step.action === "ban" ? "забаньте" : "возьмите"} героя
+                      в пуле.
+                    </span>
+                  ) : (
+                    <span>
+                      Ход команды <b className="text-ink">{state.teams[active].name}</b> —{" "}
+                      {step.action === "ban" ? "банит" : "пикает"}.
+                      {!readOnly && " Нажмите на героя в пуле."}
+                    </span>
+                  )}
                 </div>
               ) : (
                 <Alert tone="ok" block>
                   Карта задрафчена.{" "}
-                  {canNextGame(state)
-                    ? "Жмите «Следующая карта» — пул соберётся заново, без уже взятых героев."
-                    : "Серия отдрафчена целиком."}
+                  {!canNextGame(state)
+                    ? "Серия отдрафчена целиком."
+                    : live && !live.onNext
+                      ? "Следующую карту откроет админ комнаты."
+                      : "Жмите «Следующая карта» — пул соберётся заново, без уже взятых героев."}
                 </Alert>
               )}
-              <HeroPool state={state} heroById={heroById} locked={locked} onPick={commit} disabled={!step} readOnly={readOnly} />
+              {/* Право нажатия снимается АДРЕСНО: в комнате пул кликается только у капитана
+                  стороны, чей сейчас ход. У соперника, тренера, ОБС и админа — просмотр. */}
+              <HeroPool
+                state={state}
+                heroById={heroById}
+                locked={locked}
+                onPick={choose}
+                disabled={!step}
+                readOnly={live ? !live.myTurn : readOnly}
+                chosen={pending}
+              />
             </>
           )}
         </div>
