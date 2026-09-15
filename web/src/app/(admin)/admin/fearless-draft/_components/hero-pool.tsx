@@ -21,6 +21,7 @@ export function HeroPool({
   locked,
   onPick,
   disabled,
+  readOnly = false,
 }: {
   state: FearlessState;
   heroById: Map<number, HeroRef>;
@@ -28,6 +29,9 @@ export function HeroPool({
   locked: Set<number>;
   onPick: (id: number) => void;
   disabled: boolean;
+  /** Пул только для чтения (лобби, ТЗ 22а): нажать нельзя, но и гасить нечего — в просмотре
+   *  доступный герой обязан выглядеть доступным, иначе весь пул читается как «всё занято». */
+  readOnly?: boolean;
 }) {
   const groups = useMemo(() => {
     const byAttr = new Map<HeroRef["attr"], HeroRef[]>();
@@ -74,7 +78,11 @@ export function HeroPool({
               style={{ "--pool-cols": POOL_PER_ATTR } as React.CSSProperties}
             >
               {g.heroes.map((h) => {
-                const selectable = !disabled && isSelectable(state, h.id);
+                const available = isSelectable(state, h.id);
+                const selectable = !readOnly && !disabled && available;
+                // Цветным остаётся то, что В ПРИНЦИПЕ можно взять: «нажать нельзя» и «герой выбыл» —
+                // разные факты, и в просмотре их нельзя рисовать одинаково.
+                const bright = readOnly ? available : selectable;
                 const isLocked = locked.has(h.id);
                 return (
                   <button
@@ -90,14 +98,16 @@ export function HeroPool({
                     className={`relative aspect-[16/9] overflow-hidden rounded-[10px] outline-none transition-[box-shadow,transform] ${
                       selectable
                         ? "cushion-row hover:-translate-y-0.5 hover:cushion-row-hover focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]"
-                        : "cursor-not-allowed"
+                        : readOnly
+                          ? "cursor-default"
+                          : "cursor-not-allowed"
                     }`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={h.img}
                       alt=""
-                      className={`h-full w-full object-cover transition ${selectable ? "" : "opacity-30 grayscale"}`}
+                      className={`h-full w-full object-cover transition ${bright ? "" : "opacity-30 grayscale"}`}
                     />
                     {isLocked && (
                       <span className="absolute inset-0 grid place-items-center bg-surface-2/70 text-[8px] font-black uppercase text-err-ink">

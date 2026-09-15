@@ -2,9 +2,16 @@
 // Отдельным файлом ровно поэтому: presence.ts помечен server-only, из клиента его не импортировать
 // даже типом, а типы должны быть одни на оба конца провода.
 
+import type { LobbyRoom } from "./lobby-room";
+
 /** Что человек видит вместо кнопок, когда выбор сделан или потерял смысл. */
 export type ActionState =
-  | { open: true; options: { key: string; label: string; tone: "accent" | "quiet" }[] }
+  | {
+      open: true;
+      /** `href` — кнопка НИКУДА не пишет, а ведёт на страницу (приглашение в лобби): вход в
+       *  комнату это переход, а не ответ, и записывать в сущность здесь нечего. */
+      options: { key: string; label: string; tone: "accent" | "quiet"; href?: string }[];
+    }
   | { open: false; note: string };
 
 /** Выбор в системном сообщении: реестр видов — `chat-actions.ts` (сервер), рисует его лента. */
@@ -23,6 +30,9 @@ export type ChatEventMessage = {
 
 export type LiveEvent =
   | { type: "presence"; players: number[]; count: number }
+  /** Комната встречи изменилась — снимок целиком (src/lib/lobby.ts). Один на всех участников:
+   *  «моё ли это» клиент считает сам по своему accountId. */
+  | { type: "lobby"; room: LobbyRoom }
   | { type: "message"; conversationId: number; peerPlayerId: number | null; message: ChatEventMessage }
   | { type: "read"; conversationId: number; at: string }
   | { type: "ping" };

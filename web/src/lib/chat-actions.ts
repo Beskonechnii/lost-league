@@ -77,8 +77,35 @@ const ROSTER_INVITE: Handler = {
   },
 };
 
+/**
+ * Приглашение в лобби встречи. Отвечать здесь нечего — кнопка ведёт в комнату, а не записывает
+ * выбор; поэтому у опции `href`, а `apply` не зовётся вовсе. Состояние, как и у приглашения в
+ * состав, читается из самой сущности: лобби удалили или встреча закончилась — кнопка гаснет сама.
+ */
+const LOBBY_INVITE: Handler = {
+  title: "Комната встречи",
+
+  state: async (payload, accountId) => {
+    const id = num(payload, "lobbyId");
+    const lobby = id
+      ? await prisma.lobby.findUnique({
+          where: { id },
+          select: { id: true, status: true, members: { where: { accountId }, select: { id: true } } },
+        })
+      : null;
+
+    if (!lobby) return { open: false, note: "Лобби больше нет." };
+    if (!lobby.members.length) return { open: false, note: "Вас нет в этой комнате." };
+    if (lobby.status === "done") return { open: false, note: "Встреча закончилась." };
+    return { open: true, options: [{ key: "open", label: "Войти в лобби", tone: "accent", href: `/lobby/${lobby.id}` }] };
+  },
+
+  apply: async () => "Эта кнопка просто открывает лобби",
+};
+
 const HANDLERS: Record<string, Handler> = {
   "roster-invite": ROSTER_INVITE,
+  "lobby-invite": LOBBY_INVITE,
 };
 
 export const isActionKind = (kind: string): boolean => kind in HANDLERS;

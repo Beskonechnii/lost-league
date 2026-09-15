@@ -32,6 +32,11 @@ export function needsAdmin(pathname: string, method: string): boolean {
   // проверяет сам роут (src/lib/chat.ts: аккаунт должен быть одобрен и привязан к профилю).
   if (pathname.startsWith("/api/chat/")) return false;
 
+  // То же исключение и по той же причине — лобби встречи: комнату заводит игрок лиги, а «готов»
+  // и «стать капитаном» нажимают участники, а не администраторы. Кого пускать в комнату, решает
+  // членство в ней (src/lib/lobby.ts), и решает это сам роут.
+  if (pathname === "/api/lobby" || pathname.startsWith("/api/lobby/")) return false;
+
   // Любая запись через API: POST/PATCH/PUT/DELETE. Чтение (GET) остаётся публичным.
   if (pathname.startsWith("/api/")) return method !== "GET" && method !== "HEAD";
 

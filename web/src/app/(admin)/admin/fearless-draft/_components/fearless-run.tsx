@@ -53,13 +53,17 @@ export function FearlessRun({
   heroById,
   teams,
   onReset,
+  readOnly = false,
 }: {
   state: FearlessState;
   setState: (s: FearlessState) => void;
   heroById: Map<number, HeroRef>;
   /** Команды лиги — за лого и капитаном. */
   teams: TeamRef[];
-  onReset: () => void;
+  onReset?: () => void;
+  /** Только смотрим: ходов не вносим и картой не управляем. Так борд открыт участникам лобби
+   *  (ТЗ 22а) — право хода приезжает капитану в 22б, а до него ходы остаются за оператором. */
+  readOnly?: boolean;
 }) {
   // Движок хранит у команды только имя и цвет (`FearlessTeam`), id в payload не попадает —
   // поэтому карточка команды ищется по имени. Не нашлась (команду переименовали после старта
@@ -170,21 +174,26 @@ export function FearlessRun({
             свет: <b className="text-ink">{state.teams[radiantOf(state, shown)].name}</b> · первый пик:{" "}
             <b className="text-ink">{state.teams[left].name}</b>
           </span>
-          <div className="flex flex-wrap items-center gap-2">
-            {/* В режиме просмотра управление выключено: эти кнопки относятся к живой карте,
-                а нажимались бы, глядя на чужую. */}
-            <Button variant="quiet" size="sm" onClick={doUndo} disabled={past || movesCount === 0}>
-              <Icon name="prev" size="sm" /> Отменить
-            </Button>
-            {canNextGame(state) && (
-              <Button size="sm" onClick={doNext} disabled={past}>
-                Следующая карта <Icon name="next" size="sm" />
+          {/* Управление картой — только у того, кто ведёт драфт. В режиме просмотра его нет
+              вовсе: отмена хода, переход на карту и сброс меняют чужой драфт. */}
+          {!readOnly && (
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Глядя на прошлую карту управление выключено: эти кнопки относятся к живой. */}
+              <Button variant="quiet" size="sm" onClick={doUndo} disabled={past || movesCount === 0}>
+                <Icon name="prev" size="sm" /> Отменить
               </Button>
-            )}
-            <Button variant="quiet" tone="down" size="sm" onClick={onReset}>
-              Сбросить
-            </Button>
-          </div>
+              {canNextGame(state) && (
+                <Button size="sm" onClick={doNext} disabled={past}>
+                  Следующая карта <Icon name="next" size="sm" />
+                </Button>
+              )}
+              {onReset && (
+                <Button variant="quiet" tone="down" size="sm" onClick={onReset}>
+                  Сбросить
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </Panel>
 
@@ -251,7 +260,8 @@ export function FearlessRun({
                   />
                   <span>
                     Ход команды <b className="text-ink">{state.teams[active].name}</b> —{" "}
-                    {step.action === "ban" ? "банит" : "пикает"}. Нажмите на героя в пуле.
+                    {step.action === "ban" ? "банит" : "пикает"}.
+                    {!readOnly && " Нажмите на героя в пуле."}
                   </span>
                 </div>
               ) : (
@@ -262,7 +272,7 @@ export function FearlessRun({
                     : "Серия отдрафчена целиком."}
                 </Alert>
               )}
-              <HeroPool state={state} heroById={heroById} locked={locked} onPick={commit} disabled={!step} />
+              <HeroPool state={state} heroById={heroById} locked={locked} onPick={commit} disabled={!step} readOnly={readOnly} />
             </>
           )}
         </div>

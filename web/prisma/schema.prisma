@@ -186,6 +186,8 @@ model Team {
   wards          Ward[]
   entries        TournamentEntry[] // в каких дивизионах каких турниров команда играла
   applications   TeamApplication[]
+  lobbiesA       Lobby[]       @relation("LobbySideA")
+  lobbiesB       Lobby[]       @relation("LobbySideB")
 }
 
 model Player {
@@ -235,6 +237,7 @@ model Player {
   edits   ProfileEditRequest[] // правки анкеты, присланные из бота и ждущие оператора
   proposals MatchRequest[] // предложения времени встречи, отправленные им как капитаном
   invites   TeamApplicationMember[] // заявки команд, в составе которых он значится
+  lobbies   LobbyMember[] // комнаты встреч, куда он приглашён
 }
 
 /// Аккаунт игрока: вход по Google. Отдельно от `Player` намеренно — профиль игрока есть у всех в
@@ -452,6 +455,7 @@ model Series {
   designs Design[]
   notices  SeriesNotice[]
   requests MatchRequest[]
+  lobbies  Lobby[]
 
   @@unique([division, stage, group, homeId, awayId])
   /// Один слот сетки — одна серия. У групповых slot=NULL, а NULL в sqlite-уникальности различны,
@@ -530,6 +534,79 @@ model FearlessSession {
   payload   String // JSON всего состояния (src/lib/fearless.ts → FearlessState)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/// Лобби встречи (ТЗ 22): закрытая комната, где две команды проводят серию сами — собираются,
+/// выбирают капитанов, бросают монетку и драфтят. В отличие от FearlessSession (рабочий стол
+/// оператора, всё состояние одной JSON-строкой) у лобби есть УЧАСТНИКИ, и они лежат строками:
+/// сервер по ним отвечает на «пускать ли в комнату» и (с 22б) «его ли это ход», а ответ внутри
+/// JSON-состояния драфта проверить на сервере дорого, а на клиенте нельзя.
+///
+/// `payload` остаётся тем же, чем был у FearlessSession, — состоянием драфта (src/lib/fearless.ts
+/// → FearlessState). Пусто до монетки: пока стороны не определены, драфтовать нечего.
+model Lobby {
+  id     Int    @id @default(autoincrement())
+  title  String
+  /// gather (собираемся) | coin (монетка брошена, стороны выбирают блоки) | draft | done
+  status String @default("gather")
+
+  /// Стороны — команды ростера: имя, цвет и лого берутся из карточки, а не копируются сюда.
+  sideA   Team @relation("LobbySideA", fields: [sideATeamId], references: [id], onDelete: Cascade)
+  sideATeamId Int
+  sideB   Team @relation("LobbySideB", fields: [sideBTeamId], references: [id], onDelete: Cascade)
+  sideBTeamId Int
+
+  /// Тайминги лобби — НАСТРОЙКА встречи, а не константа: к команде могут применяться пенальти.
+  /// Дефолты берутся из DEFAULT_MAIN_SEC / DEFAULT_RESERVE_SEC (src/lib/fearless.ts).
+  mainSec    Int
+  reserveSec Int
+  bestOf     Int @default(3)
+
+  /// Привязка к встрече турнира необязательна: лобби собирается и без турнира (решение 13).
+  series   Series? @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+  seriesId Int?
+
+  /// Кто завёл комнату — админ или игрок лиги. Нужен, чтобы он мог снимать капитана наравне с админом.
+  ownerAccountId Int
+
+  /// Итог монетки. `coinWinner` — сторона (0 = A, 1 = B), выигравшая бросок; `coinBlock` — блок,
+  /// который она выбрала («side» или «order»); второй блок достаётся сопернику. `firstPick`
+  /// и `radiant` — уже сложившийся результат в терминах движка (номер стороны).
+  coinWinner Int?
+  coinBlock  String? // side | order
+  firstPick  Int?
+  radiant    Int?
+
+  payload   String   @default("") // JSON состояния драфта; пусто = драфт ещё не начат
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members LobbyMember[]
+}
+
+/// Участник лобби: кто в комнате, за какой стороной и в какой роли. Адресуется АККАУНТОМ, а не
+/// игроком: пускает в комнату именно аккаунт, и у админа комнаты профиля в ростере может не быть.
+model LobbyMember {
+  id      Int   @id @default(autoincrement())
+  lobby   Lobby @relation(fields: [lobbyId], references: [id], onDelete: Cascade)
+  lobbyId Int
+
+  accountId Int
+  /// Профиль в ростере, если он есть: им подписан участник и по нему рисуется точка «в сети».
+  player   Player? @relation(fields: [playerId], references: [id], onDelete: SetNull)
+  playerId Int?
+
+  /// Сторона: 0 = A, 1 = B. null — вне сторон (админ комнаты, ОБС): он не игрок и готовность не блокирует.
+  side Int?
+  /// player | coach | caster | admin. Тренер и ОБС в счёт готовности стороны не идут.
+  role String @default("player")
+
+  captain Boolean @default(false)
+  ready   Boolean @default(false)
+  /// Когда человек впервые открыл комнату. null = приглашён, но не заходил.
+  joinedAt DateTime?
+
+  @@unique([lobbyId, accountId])
 }
 
 /// Стата игрока на карте — строки, из которых считаются все рейтинги турнира (src/lib/leaders.ts).

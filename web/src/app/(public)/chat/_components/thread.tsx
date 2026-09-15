@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Button, IconButton } from "@/components/pouf/Button";
+import Link from "next/link";
+import { Button, IconButton, buttonClasses } from "@/components/pouf/Button";
 import { Icon } from "@/components/pouf/Icon";
 import { MAX_TEXT } from "@/lib/chat-limits";
 import type { ChatAction } from "@/lib/chat-events";
@@ -220,19 +221,31 @@ function ActionBlock({ line, onDone }: { line: Line; onDone: (line: Line) => voi
     <div className="mt-2.5 border-t border-hairline pt-2.5">
       <p className="text-[13px] font-extrabold text-ink">{action.title}</p>
       <div className="mt-2 flex flex-wrap gap-2">
-        {action.options.map((o) => (
-          <Button
-            key={o.key}
-            type="button"
-            size="sm"
-            variant={o.tone === "accent" ? "solid" : "quiet"}
-            loading={busy === o.key}
-            disabled={busy !== null}
-            onClick={() => choose(o.key)}
-          >
-            {o.label}
-          </Button>
-        ))}
+        {action.options.map((o) =>
+          // Кнопка-ссылка (приглашение в лобби): она ведёт на страницу, а не записывает ответ,
+          // поэтому это <a> с видом кнопки, а не POST в /api/chat/action.
+          o.href ? (
+            <Link
+              key={o.key}
+              href={o.href}
+              className={buttonClasses({ size: "sm", variant: o.tone === "accent" ? "solid" : "quiet" })}
+            >
+              {o.label}
+            </Link>
+          ) : (
+            <Button
+              key={o.key}
+              type="button"
+              size="sm"
+              variant={o.tone === "accent" ? "solid" : "quiet"}
+              loading={busy === o.key}
+              disabled={busy !== null}
+              onClick={() => choose(o.key)}
+            >
+              {o.label}
+            </Button>
+          ),
+        )}
       </div>
       {error && <p className="mt-1.5 text-[13px] font-bold text-[var(--color-err-ink)]">{error}</p>}
     </div>
