@@ -71,6 +71,34 @@ export type LobbyTurn = {
   autoFrom: number | null;
 };
 
+/**
+ * Реплика в чате комнаты. Автор — аккаунт, а не ник: подпись берётся из того же списка участников,
+ * что рисует комнату (`members`), и второй раз ту же пару «ник + фото» по проводу не гоняем.
+ */
+export type LobbyLine = { id: number; accountId: number; text: string; createdAt: string };
+
+/**
+ * Что уезжает в ОБС-вид (ТЗ 22в §6): ТОЛЬКО картинка драфта. Состава комнаты, чата и кнопок здесь
+ * нет намеренно — адрес открывается по ключу без входа, и всё, что попадёт в этот тип, станет
+ * доступно каждому, кому ключ показали.
+ */
+export type LobbyBoard = {
+  title: string;
+  status: LobbyStatus;
+  sides: [LobbySide, LobbySide];
+  bestOf: number;
+  /** Капитаны сторон — карточкам колонок борда. null, пока сторона его не выбрала. */
+  captains: [LobbyCaptain | null, LobbyCaptain | null];
+  state: FearlessState | null;
+  turn: LobbyTurn;
+};
+
+export type LobbyCaptain = { nickname: string; photo: string | null };
+
+/** Участники вне сторон: админ комнаты и ОБС. Места в составе не занимают, готовность не блокируют,
+ *  но в комнате они есть — и до 22в не были видны ни в одном списке экрана. */
+export const roomOnly = (room: LobbyRoom): LobbyMemberView[] => room.members.filter((m) => m.side === null);
+
 /** Игроки стороны — те, кто в ней ходит. Тренер и ОБС стоят за той же стороной, но это не места
  *  в составе: зашедший за сторону тренер готовность не блокирует и в пятёрку не считается. */
 export const sidePlayers = (room: LobbyRoom, side: TeamIdx): LobbyMemberView[] =>

@@ -25,9 +25,19 @@ export default async function NewLobbyPage() {
       select: { id: true, division: true, home: { select: { name: true } }, away: { select: { name: true } } },
     }),
     // Позвать можно только того, кому есть куда прислать приглашение и чем войти (решение 12).
-    prisma.userAccount.findMany({ where: { status: "active", playerId: { not: null } }, select: { playerId: true } }),
+    prisma.userAccount.findMany({
+      where: { status: "active", playerId: { not: null } },
+      select: { playerId: true, player: { select: { nickname: true } } },
+    }),
   ]);
   const registered = new Set(accounts.map((a) => a.playerId!));
+
+  // Кого можно позвать ВНЕ составов двух команд — ОБС и вторым админом комнаты (ТЗ 22в §3).
+  // Это все игроки лиги с аккаунтом: комментатор в составе не стоит, и брать его из ростера
+  // сторон неоткуда.
+  const people = accounts
+    .map((a) => ({ id: a.playerId!, nickname: a.player?.nickname ?? `#${a.playerId}` }))
+    .sort((x, y) => x.nickname.localeCompare(y.nickname));
 
   const teams: LobbyTeam[] = rosters.map((t) => ({
     id: t.id,
@@ -42,6 +52,7 @@ export default async function NewLobbyPage() {
       <SectionHeader eyebrow="Лига · комната встречи" title="Собрать лобби" />
       <NewLobbyForm
         teams={teams}
+        people={people}
         series={series.map((s) => ({ id: s.id, label: `${s.home.name} — ${s.away.name} · ${s.division}` }))}
         defaults={{ mainSec: DEFAULT_MAIN_SEC, reserveSec: DEFAULT_RESERVE_SEC }}
       />

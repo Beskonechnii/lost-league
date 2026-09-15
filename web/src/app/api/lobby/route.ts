@@ -36,11 +36,14 @@ export async function POST(req: Request) {
   const b = parseId(body.sideBTeamId);
   if (!a || !b) return bad("Выберите обе стороны");
 
+  const ROLES: LobbyRole[] = ["player", "coach", "caster", "admin"];
   const invites: LobbyInvite[] = (body.invites ?? []).flatMap((i) => {
     const playerId = parseId(i.playerId);
     if (!playerId) return [];
+    // Сторона может быть пустой: так зовут вне составов — ОБС и админа комнаты (ТЗ 22в §3).
     const side = i.side === 0 || i.side === 1 ? (i.side as TeamIdx) : null;
-    return [{ playerId, side, role: (i.role as LobbyRole) ?? "player" }];
+    const role = ROLES.includes(i.role as LobbyRole) ? (i.role as LobbyRole) : "player";
+    return [{ playerId, side, role }];
   });
 
   const result = await createLobby({

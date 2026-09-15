@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/pouf/Button";
 import { Icon } from "@/components/pouf/Icon";
 import { SectionHeader } from "@/components/pouf/blocks";
 import { Alert, StatusPill } from "@/components/pouf/feedback";
+import { FormInput } from "@/components/pouf/Input";
 import { Card } from "@/components/pouf/surface";
 import { Eyebrow } from "@/components/pouf/text";
 import { useChatEvents, useLive } from "@/app/_components/chat-live";
@@ -13,15 +14,18 @@ import {
   ROLE_LABEL,
   captainOf,
   meIn,
+  roomOnly,
   sideBlocker,
   sidePlayers,
   sideReady,
+  type LobbyLine,
   type LobbyMemberView,
   type LobbyRoom,
 } from "@/lib/lobby-room";
 import { PlayerAvatar, TeamLogo } from "../../roster/_components/avatar";
 import { FearlessRun, type LiveTurn } from "../../../(admin)/admin/fearless-draft/_components/fearless-run";
 import { fmtTime, type HeroRef, type TeamRef } from "../../../(admin)/admin/fearless-draft/_components/types";
+import { LobbyChat } from "./chat";
 import { PHASE } from "./phase";
 
 /**
@@ -56,12 +60,19 @@ export function LobbyView({
   me,
   admin,
   heroes,
+  chat,
+  obsKey,
 }: {
   initial: LobbyRoom;
   me: number;
   /** Админ лиги (право `tools`) — админ комнаты, но не игрок: кнопок стороны у него нет. */
   admin: boolean;
   heroes: HeroRef[];
+  /** История чата комнаты: читается из БД при рендере, дальше лента живёт живым каналом. */
+  chat: LobbyLine[];
+  /** Ключ ОБС-вида — только админу комнаты и ОБС. В снимке комнаты его нет намеренно: снимок
+   *  один на всех участников, а ключ открывает борд без входа. */
+  obsKey: string | null;
 }) {
   // Снимок держим вместе с моментом его получения: часы хода считает сервер, и разницу между
   // его часами и часами этой машины надо снять один раз на снимок — иначе экран с убежавшими
@@ -219,7 +230,100 @@ export function LobbyView({
           />
         ))}
       </div>
+
+      {/* Чат и «кто в комнате» — один ряд под сторонами: разговор относится ко всей комнате, а не
+          к стороне. В один столбец (390) «В комнате» идёт ПЕРВЫМ: это короткая справка, а чат —
+          лента, в которой остаются, и держать её последней дешевле, чем листать сквозь неё. */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_19rem]">
+        {/* `min-w-0` обязателен: в один столбец (390) дорожка сетки задана `auto`, а у ячейки
+            `min-width: auto` — и одна ссылка без пробелов растягивала бы её вместе со всей
+            страницей. От `lg` ширину держит `minmax(0,1fr)`, там это уже не видно. */}
+        <div className="order-2 min-w-0 lg:order-1">
+          <LobbyChat lobbyId={room.id} me={me} members={room.members} initial={chat} />
+        </div>
+        <div className="order-1 min-w-0 space-y-4 lg:order-2">
+          <InRoom room={room} online={online} />
+          {obsKey && <ObsLink obsKey={obsKey} />}
+        </div>
+      </div>
     </div>
+  );
+}
+
+/**
+ * «В комнате» — участники ВНЕ сторон: админ комнаты и ОБС. До 22в их не было ни в одном списке
+ * экрана (`Side` рисует только членов со `side === 0|1`), то есть создатель комнаты был в ней
+ * невидим, а приглашённый ОБС был бы невидим так же.
+ *
+ * Отдельной карточкой, а не подвалом под сторонами: эти люди не принадлежат ни одной из них, и
+ * подвал стороны сообщал бы обратное. Готовность они не блокируют — счёта здесь нет вовсе.
+ */
+function InRoom({ room, online }: { room: LobbyRoom; online: Set<number> }) {
+  const people = roomOnly(room);
+  return (
+    <Card variant="tight">
+      <div className="font-pouf">
+        <Eyebrow>В комнате · {people.length}</Eyebrow>
+        <div className="mt-2 space-y-1">
+          {people.length === 0 ? (
+            <p className="text-[13px] font-bold text-muted">Вне сторон никого.</p>
+          ) : (
+            people.map((m) => <Line key={m.id} m={m} online={online} />)
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * Адрес ОБС-вида. Виден админу комнаты и участнику с ролью ОБС, у игрока стороны его нет: ключ
+ * открывает борд без входа, и раздавать его всей комнате незачем.
+ *
+ * Origin берём из адресной строки уже в браузере: сервер не знает, каким именем его открыли
+ * (домен, туннель, localhost), а вставлять в OBS нужно ровно тот адрес, который работает.
+ */
+function ObsLink({ obsKey }: { obsKey: string }) {
+  const field = useRef<HTMLInputElement>(null);
+  const [copied, setCopied] = useState(false);
+  const path = `/overlay/lobby/${obsKey}`;
+  // Абсолютный адрес дописываем прямо в поле, а не через состояние: сервер рисует тот же
+  // компонент и про `window` не знает, а значение поля — это ровно «внешняя система», которую
+  // эффекту и положено догонять.
+  useEffect(() => {
+    if (field.current) field.current.value = new URL(path, window.location.href).href;
+  }, [path]);
+
+  return (
+    <Card variant="tight">
+      <div className="font-pouf">
+        <Eyebrow>Эфир · источник OBS</Eyebrow>
+        <p className="mt-1 text-[11px] font-bold leading-[1.5] text-muted">
+          Браузерный источник в сцене OBS, 1920×1080. Открывается без входа — ссылку не публикуем.
+        </p>
+        <FormInput
+          ref={field}
+          className="mt-2"
+          size="sm"
+          mono
+          readOnly
+          defaultValue={path}
+          aria-label="Адрес ОБС-вида"
+          onFocus={(e) => e.currentTarget.select()}
+        />
+        <Button
+          className="mt-2"
+          size="sm"
+          variant="quiet"
+          onClick={() => {
+            const url = field.current?.value ?? path;
+            void navigator.clipboard?.writeText(url).then(() => setCopied(true));
+          }}
+        >
+          {copied ? "Скопировано" : "Скопировать ссылку"}
+        </Button>
+      </div>
+    </Card>
   );
 }
 

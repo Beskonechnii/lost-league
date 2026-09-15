@@ -4,6 +4,7 @@ import { currentAccount, isActiveAccount, type Account } from "./account";
 import { resolveUpload } from "./uploads";
 import { pushTo, type ChatEventMessage } from "./presence";
 import { MAX_TEXT } from "./chat-limits";
+import { floodBlock } from "./flood";
 import { actionOf } from "./chat-actions";
 import type { ChatAction } from "./chat-events";
 import { SYSTEM_NAME } from "./system-chat";
@@ -14,12 +15,6 @@ import { SYSTEM_NAME } from "./system-chat";
 // увидел то же самое из базы), а канал лишь избавляет от ожидания.
 
 export { MAX_TEXT } from "./chat-limits";
-
-const FLOOD_WINDOW_MS = 60_000;
-const FLOOD_LIMIT = 30; // сообщений в минуту с аккаунта: живому разговору хватает, скрипту — нет
-
-const g = globalThis as unknown as { lostChatFlood?: Map<number, number[]> };
-const flood: Map<number, number[]> = (g.lostChatFlood ??= new Map());
 
 /**
  * Кто я в чате. Писать и читать личку может только игрок лиги: аккаунт одобрен (`active`) и
@@ -273,14 +268,9 @@ export async function sendMessage(conversationId: number, me: ChatMe, raw: strin
   // Лига — канал, а не собеседник: отвечать ей некому, и «сообщение улетело в никуда» хуже отказа.
   if (peer.system) return { ok: false, error: `${peer.nickname} — служебный канал, писать сюда нельзя` };
 
-  const now = Date.now();
-  const recent = (flood.get(me.accountId) ?? []).filter((t) => now - t < FLOOD_WINDOW_MS);
-  if (recent.length >= FLOOD_LIMIT) {
-    flood.set(me.accountId, recent);
-    return { ok: false, error: "Слишком часто — подождите минуту" };
-  }
-  recent.push(now);
-  flood.set(me.accountId, recent);
+  // Счётчик флуда общий с чатом комнаты (flood.ts): лимит принадлежит человеку, а не переписке.
+  const flooded = floodBlock(me.accountId);
+  if (flooded) return { ok: false, error: flooded };
 
   const row = await prisma.chatMessage.create({
     data: { conversationId, senderId: me.accountId, text },

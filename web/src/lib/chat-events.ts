@@ -2,7 +2,7 @@
 // Отдельным файлом ровно поэтому: presence.ts помечен server-only, из клиента его не импортировать
 // даже типом, а типы должны быть одни на оба конца провода.
 
-import type { LobbyRoom } from "./lobby-room";
+import type { LobbyLine, LobbyRoom } from "./lobby-room";
 
 /** Что человек видит вместо кнопок, когда выбор сделан или потерял смысл. */
 export type ActionState =
@@ -33,6 +33,9 @@ export type LiveEvent =
   /** Комната встречи изменилась — снимок целиком (src/lib/lobby.ts). Один на всех участников:
    *  «моё ли это» клиент считает сам по своему accountId. */
   | { type: "lobby"; room: LobbyRoom }
+  /** Реплика в чате комнаты — тем же каналом, что и всё остальное живое (ТЗ 22в §2).
+   *  Второго механизма переписки не появляется: это событие, а не свой поток. */
+  | { type: "lobby-chat"; lobbyId: number; line: LobbyLine }
   | { type: "message"; conversationId: number; peerPlayerId: number | null; message: ChatEventMessage }
   | { type: "read"; conversationId: number; at: string }
   | { type: "ping" };

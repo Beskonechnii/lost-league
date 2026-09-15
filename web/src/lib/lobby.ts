@@ -1,4 +1,5 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { prisma } from "./prisma";
 import { can, currentAccount, isActiveAccount, type Account } from "./account";
 import { withPlayerUploads, withTeamUploads } from "./uploads";
@@ -21,6 +22,8 @@ import {
   captainOf,
   sidePlayers,
   sideReady,
+  type LobbyBoard,
+  type LobbyCaptain,
   type LobbyMemberView,
   type LobbyRole,
   type LobbyRoom,
@@ -121,6 +124,70 @@ export async function readRoom(id: number): Promise<LobbyRoom | null> {
       now: Date.now(),
       reserve: [row.reserveA, row.reserveB],
       autoFrom: row.autoFrom,
+    },
+  };
+}
+
+/**
+ * Ключ ОБС-вида: 128 бит из криптографического источника. Не id и не хеш чего-либо предсказуемого —
+ * по этому адресу борд отдаётся БЕЗ входа (у браузерного источника OBS нет куки), и единственное,
+ * что закрывает чужую встречу, — неугадываемость самой строки.
+ */
+const newObsKey = (): string => randomUUID().replace(/-/g, "") + randomUUID().replace(/-/g, "");
+
+/** Ключ ОБС-вида комнаты — только тому, кто им пользуется: админу комнаты и участнику с ролью ОБС.
+ *  Не в снимке `readRoom`: снимок один на всех и уходит всем участникам, а ключ — не всем. */
+export async function obsKeyOf(room: LobbyRoom, viewer: LobbyViewer): Promise<string | null> {
+  const me = room.members.find((m) => m.accountId === viewer.accountId) ?? null;
+  const maySee = viewer.admin || room.ownerAccountId === viewer.accountId || me?.role === "admin" || me?.role === "caster";
+  if (!maySee) return null;
+  const row = await prisma.lobby.findUnique({ where: { id: room.id }, select: { obsKey: true } });
+  return row?.obsKey ?? null;
+}
+
+/**
+ * Борд по ключу ОБС-вида. Отдельная функция, а не срез `readRoom`, ровно потому, что состав
+ * комнаты сюда попасть НЕ должен: по этому адресу нет входа, и всё, что вернёт эта функция,
+ * доступно каждому, кому показали ключ. Здесь — картинка драфта и ничего больше.
+ */
+export async function readBoard(key: string): Promise<{ id: number; board: LobbyBoard } | null> {
+  const row = await prisma.lobby.findUnique({
+    where: { obsKey: key },
+    include: {
+      sideA: true,
+      sideB: true,
+      members: { where: { captain: true }, include: { player: true } },
+    },
+  });
+  if (!row) return null;
+
+  const side = async (t: typeof row.sideA) => {
+    const withLogo = await withTeamUploads(t);
+    return { teamId: t.id, name: t.name, color: teamAccent(t), logo: withLogo.logo };
+  };
+
+  const captain = async (idx: TeamIdx): Promise<LobbyCaptain | null> => {
+    const m = row.members.find((x) => x.side === idx && x.role === "player");
+    if (!m?.player) return null;
+    const player = await withPlayerUploads(m.player);
+    return { nickname: player.nickname, photo: player.photo };
+  };
+
+  return {
+    id: row.id,
+    board: {
+      title: row.title,
+      status: row.status as LobbyStatus,
+      sides: [await side(row.sideA), await side(row.sideB)],
+      bestOf: row.bestOf,
+      captains: [await captain(0), await captain(1)],
+      state: parseState(row.payload),
+      turn: {
+        startedAt: row.turnStartedAt?.getTime() ?? null,
+        now: Date.now(),
+        reserve: [row.reserveA, row.reserveB],
+        autoFrom: row.autoFrom,
+      },
     },
   };
 }
@@ -241,6 +308,7 @@ export async function createLobby(input: CreateLobbyInput): Promise<CreateResult
   const lobby = await prisma.lobby.create({
     data: {
       title: input.title,
+      obsKey: newObsKey(),
       sideATeamId: input.sideATeamId,
       sideBTeamId: input.sideBTeamId,
       mainSec: input.mainSec,

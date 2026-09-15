@@ -7,7 +7,11 @@ import { guard } from "@/lib/api-guard";
 // Одна сессия fearless: чтение, автосейв payload по каждому ходу, удаление. Правила живут на клиенте
 // (src/lib/fearless.ts) — сюда прилетает готовое состояние; сервер проверяет версию и валидность.
 
+// Чтение за тем же правом, что и запись (ТЗ 22в §7): по этому адресу лежит состояние идущего
+// драфта целиком — баны, пики и пул, — и анониму его знать неоткуда и незачем.
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await guard("tools");
+  if (denied) return denied;
   const id = parseId((await params).id);
   if (!id) return bad("id: ожидался числовой id");
   const session = await prisma.fearlessSession.findUnique({ where: { id } });

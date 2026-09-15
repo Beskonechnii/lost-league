@@ -34,15 +34,23 @@ export type LobbyTeam = {
 
 const BEST_OF = [1, 2, 3, 5];
 const ROLES: LobbyRole[] = ["player", "coach", "caster"];
+/** Роли, которые НЕ занимают места в составе: ими зовут человека вне обеих команд (ТЗ 22в §3). */
+const GUEST_ROLES: LobbyRole[] = ["caster", "admin"];
 
 type Picked = { on: boolean; role: LobbyRole };
 
+/** Позванный вне составов: стороны у него нет, и она не подставляется — он не место в пятёрке. */
+type Guest = { playerId: number; role: LobbyRole };
+
 export function NewLobbyForm({
   teams,
+  people,
   series,
   defaults,
 }: {
   teams: LobbyTeam[];
+  /** Все игроки лиги с аккаунтом — из них зовут ОБС и второго админа комнаты. */
+  people: { id: number; nickname: string }[];
   series: { id: number; label: string }[];
   defaults: { mainSec: number; reserveSec: number };
 }) {
@@ -56,6 +64,7 @@ export function NewLobbyForm({
   const [seriesId, setSeriesId] = useState("");
   // Выбор приглашённых держим по id игрока: сторона выводится из того, в чьём составе он стоит.
   const [picked, setPicked] = useState<Record<number, Picked>>({});
+  const [guests, setGuests] = useState<Guest[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,12 +81,17 @@ export function NewLobbyForm({
     if (!a || !b) return;
     setBusy(true);
     setError(null);
-    const invites = [a, b].flatMap((team, i) =>
-      team.players.flatMap((p) => {
-        const row = picked[p.id];
-        return row?.on ? [{ playerId: p.id, side: i as TeamIdx, role: row.role }] : [];
-      }),
-    );
+    const invites = [
+      ...[a, b].flatMap((team, i) =>
+        team.players.flatMap((p) => {
+          const row = picked[p.id];
+          return row?.on ? [{ playerId: p.id, side: i as TeamIdx, role: row.role }] : [];
+        }),
+      ),
+      // Позванные вне составов идут БЕЗ стороны: сервер их так и запишет, и на готовность
+      // сторон они не влияют.
+      ...guests.map((g) => ({ playerId: g.playerId, side: null, role: g.role })),
+    ];
     try {
       const res = await fetch("/api/lobby", {
         method: "POST",
@@ -182,6 +196,8 @@ export function NewLobbyForm({
         )}
       </div>
 
+      <Guests people={people} teams={[a, b]} guests={guests} onChange={setGuests} />
+
       <div className="flex flex-wrap items-center gap-3">
         <Button tone="orange" disabled={!ready} loading={busy} onClick={submit}>
           Собрать лобби
@@ -190,6 +206,109 @@ export function NewLobbyForm({
         {error && <Alert tone="err">{error}</Alert>}
       </div>
     </div>
+  );
+}
+
+/**
+ * Позвать вне составов (ТЗ 22в §3). До 22в приглашённые брались ТОЛЬКО из составов двух команд, и
+ * каждому проставлялась сторона — то есть комментатора и второго админа комнаты позвать было
+ * нечем, хотя роли `caster` и `admin` в схеме есть с 22а.
+ *
+ * Отдельным блоком под составами, а не третьей колонкой рядом: эти люди не принадлежат ни одной
+ * стороне, а колонка рядом с составами читалась бы как «ещё одна команда».
+ */
+function Guests({
+  people,
+  teams,
+  guests,
+  onChange,
+}: {
+  people: { id: number; nickname: string }[];
+  /** Выбранные стороны: их состав из списка убираем — оттуда зовут галочкой выше. */
+  teams: (LobbyTeam | null)[];
+  guests: Guest[];
+  onChange: (next: Guest[]) => void;
+}) {
+  const [who, setWho] = useState("");
+  const [role, setRole] = useState<LobbyRole>("caster");
+
+  const inSides = new Set(teams.flatMap((t) => t?.players.map((p) => p.id) ?? []));
+  const taken = new Set(guests.map((g) => g.playerId));
+  const free = people.filter((p) => !inSides.has(p.id) && !taken.has(p.id));
+  const nameOf = (id: number) => people.find((p) => p.id === id)?.nickname ?? `#${id}`;
+
+  return (
+    <Card variant="tight">
+      <div className="font-pouf">
+        <Eyebrow>Вне составов</Eyebrow>
+        <p className="mt-1 text-xs font-bold leading-[1.5] text-muted">
+          ОБС и админ комнаты: стороны у них нет, готовность они не блокируют. Приглашение придёт
+          так же — сообщением от Spirit CTRL.
+        </p>
+
+        <div className="mt-3 flex flex-wrap items-end gap-2">
+          <FormSelect
+            size="sm"
+            className="min-w-[12rem] flex-1"
+            aria-label="Кого позвать"
+            value={who}
+            onChange={(e) => setWho(e.target.value)}
+          >
+            <option value="">Кого позвать…</option>
+            {free.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nickname}
+              </option>
+            ))}
+          </FormSelect>
+          <FormSelect
+            size="sm"
+            className="w-[10rem] shrink-0"
+            aria-label="Роль в комнате"
+            value={role}
+            onChange={(e) => setRole(e.target.value as LobbyRole)}
+          >
+            {GUEST_ROLES.map((r) => (
+              <option key={r} value={r}>
+                {ROLE_LABEL[r]}
+              </option>
+            ))}
+          </FormSelect>
+          <Button
+            size="sm"
+            variant="quiet"
+            disabled={!who}
+            onClick={() => {
+              onChange([...guests, { playerId: Number(who), role }]);
+              setWho("");
+            }}
+          >
+            Позвать
+          </Button>
+        </div>
+
+        {guests.length > 0 && (
+          <div className="mt-3 space-y-1">
+            {guests.map((g) => (
+              <div key={g.playerId} className="flex items-center gap-2.5 rounded-[12px] px-2 py-1.5">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-black text-ink">{nameOf(g.playerId)}</span>
+                  <span className="block truncate text-[11px] font-bold text-muted">{ROLE_LABEL[g.role]}</span>
+                </span>
+                <Button
+                  size="sm"
+                  variant="quiet"
+                  tone="down"
+                  onClick={() => onChange(guests.filter((x) => x.playerId !== g.playerId))}
+                >
+                  Убрать
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }
 

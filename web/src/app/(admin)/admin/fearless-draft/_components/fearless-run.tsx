@@ -74,6 +74,7 @@ export function FearlessRun({
   teams,
   onReset,
   readOnly = false,
+  pinCurrent = false,
   live,
 }: {
   state: FearlessState;
@@ -85,6 +86,10 @@ export function FearlessRun({
   /** Только смотрим: ходов не вносим и картой не управляем. Так борд открыт участникам лобби
    *  (ТЗ 22а); право хода приезжает капитану отдельно, через `live`. */
   readOnly?: boolean;
+  /** Борд всегда на текущей карте, ручного просмотра сыгранных нет (ОБС-вид, ТЗ 22в): нажать
+   *  «вернуться на карту N» в OBS-сцене некому, и застрявший на доигранной карте борд — это
+   *  сломанная трансляция. */
+  pinCurrent?: boolean;
   live?: LiveTurn;
 }) {
   // Движок хранит у команды только имя и цвет (`FearlessTeam`), id в payload не попадает —
@@ -109,8 +114,11 @@ export function FearlessRun({
   // у того, у кого права нет), просмотр живёт секунды, а query-параметр на каждом клике насыпал
   // бы историю браузера, и «назад» посреди эфира уводил бы оператора по прошлым картам.
   const [viewing, setViewing] = useState(state.current);
-  const past = viewing !== state.current;
-  const shown = past ? viewing : state.current;
+  // Показанная карта считается ОДИН раз: под `pinCurrent` выбор просмотра не участвует вовсе,
+  // поэтому и «смотрим прошлую» (`past`) под ним никогда не наступает — перевод серии на новую
+  // карту виден сразу, а не после нажатия, которого в эфире никто не сделает.
+  const shown = pinCurrent ? state.current : viewing;
+  const past = shown !== state.current;
   // Сторона на экране считается ОДИН раз, и всё, у чего сторона есть — колонка, банк часов,
   // подпись «первый пик» — адресуется через `left`/`right`. Литералов `state.teams[0]`/`[1]`
   // в разметке нет намеренно: первый пик чередуется по картам, и прибитый к индексу банк часов
@@ -212,7 +220,12 @@ export function FearlessRun({
           осталось у живого хода», и контекст всегда выше того, что от него зависит. */}
       <Panel>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <MapTrack bestOf={state.bestOf} current={state.current} viewing={viewing} onView={setViewing} />
+          <MapTrack
+            bestOf={state.bestOf}
+            current={state.current}
+            viewing={shown}
+            onView={pinCurrent ? () => {} : setViewing}
+          />
           <span className="min-w-0 text-sm font-bold text-muted">
             свет: <b className="text-ink">{state.teams[radiantOf(state, shown)].name}</b> · первый пик:{" "}
             <b className="text-ink">{state.teams[left].name}</b>
@@ -303,13 +316,15 @@ export function FearlessRun({
                   следующего хода — дальше объяснять уже нечего. */}
               {autoMoves.length > 0 && (
                 <Alert tone="warn" block>
-                  Время вышло — ход сделан автоматически:{" "}
+                  Время вышло — {autoMoves.length === 1 ? "ход сделан" : `ходов сделано ${autoMoves.length}`}{" "}
+                  автоматически:{" "}
                   <b>
                     {autoMoves
+                      .slice(-3)
                       .map((m) => `${heroById.get(m.heroId)?.name ?? "герой"} (${m.action === "ban" ? "бан" : "пик"})`)
                       .join(", ")}
                   </b>
-                  .
+                  {autoMoves.length > 3 && ` и ещё ${autoMoves.length - 3}`}.
                 </Alert>
               )}
               {/* Подтверждение — второе действие, и отмены после него нет (решение 4). Стоит на
