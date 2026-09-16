@@ -119,7 +119,10 @@ export function ImageFit({
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4 font-pouf" role="dialog" aria-modal>
       <div className="w-full max-w-[560px] rounded-card bg-surface p-5 cushion-card">
         <h2 className="text-[15px] font-black text-ink">Подгонка под слот</h2>
-        <p className="mt-1 text-xs font-bold text-muted">{norm.hint}. Тяните кадр мышью, масштаб — ползунком.</p>
+        <p className="mt-1 text-xs font-bold text-muted">
+          {norm.hint}. Тяните кадр мышью, масштаб — ползунком.
+          {norm.safe && " Внутри пунктира — то, что видно на узком экране: по краям кадр срежется."}
+        </p>
 
         {/* Рамка = итоговый файл один в один: что видно здесь, то и запишет canvas. */}
         <div
@@ -130,6 +133,16 @@ export function ImageFit({
           className="relative mt-4 w-full cursor-grab touch-none overflow-hidden rounded-control bg-bg [background-image:repeating-conic-gradient(var(--surface-2)_0_25%,transparent_0_50%)] [background-size:18px_18px] cushion-field active:cursor-grabbing"
           style={{ aspectRatio: ratioOf(norm) }}
         >
+          {/* Безопасная зона нормы: на узком окне полотно режется по бокам почти на треть, и
+              всё, что обязано быть видно на телефоне, должно лежать внутри пунктира. Рамка
+              поверх кадра, но мышь не ловит — иначе она мешала бы таскать картинку. */}
+          {norm.safe && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-[10px] border-2 border-dashed border-white/70 [box-shadow:0_0_0_1px_rgba(0,0,0,.25)]"
+              style={{ width: pct(norm.safe.width, norm.width), height: pct(norm.safe.height, norm.height) }}
+            />
+          )}
           {url && img && geo && (
             // eslint-disable-next-line @next/next/no-img-element
             <img

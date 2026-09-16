@@ -16,7 +16,8 @@ export type ImageSlot =
   | "team-photo"
   | "team-banner"
   | "player-photo"
-  | "player-banner";
+  | "player-banner"
+  | "home-banner";
 
 export type ImageNorm = {
   /** Размер итогового файла в пикселях — он же рамка подгонки. */
@@ -35,9 +36,25 @@ export type ImageNorm = {
   format: "png" | "webp";
   /** Поля вокруг рисунка для contain, доля от меньшей стороны: эмблема не должна упираться в край. */
   padding?: number;
+  /**
+   * Безопасная зона в пикселях нормы: что видно на САМОМ узком слоте, где эта картинка живёт.
+   * Норма одна, а полотно на странице меняет пропорции от окна к окну, и `object-cover` режет
+   * баннер 2,96:1 на телефоне почти на 38% ширины. Без рамки оператор узнаёт об этом с телефона
+   * после публикации, поэтому зона рисуется пунктиром прямо в окне подгонки.
+   */
+  safe?: { width: number; height: number };
+  /**
+   * Минимальная ширина ИСХОДНИКА. `ImageFit` считает посадку через `Math.max` и молча растянет
+   * файл меньше нормы — на широком полотне это видимое мыло. Лучше отказ в форме, чем испорченный
+   * первый экран.
+   */
+  minWidth?: number;
   /** Подсказка под полем — что это за картинка и в какой она форме. */
   hint: string;
 };
+
+/** Центр полотна 1600×540, который переживает срез на самом узком окне (390px): 62% ширины, 91% высоты. */
+const BANNER_SAFE = { width: 1000, height: 490 };
 
 export const IMAGE_NORMS: Record<ImageSlot, ImageNorm> = {
   // Эмблема живёт в квадратных слотах (таблица, сетка плей-офф, шапка команды) и не режется никогда.
@@ -46,10 +63,22 @@ export const IMAGE_NORMS: Record<ImageSlot, ImageNorm> = {
   "team-wordmark": { width: 1024, height: 384, fit: "contain", format: "png", padding: 0.04, hint: "Надпись для анонсов, 1024×384" },
   // Кадр в рамку VS-анонса (studio/templates/vs-announce.tsx, 620×560) — почти квадрат.
   "team-photo": { width: 900, height: 900, fit: "cover", format: "png", hint: "Кадр в рамку VS-анонса, квадрат 900×900" },
-  "team-banner": { width: 1600, height: 540, fit: "cover", format: "webp", hint: "Подложка шапки команды, 1600×540" },
+  "team-banner": { width: 1600, height: 540, fit: "cover", format: "webp", safe: BANNER_SAFE, hint: "Подложка шапки команды, 1600×540" },
   // Портрет-вырезка: квадрат и посадка к низу — так же его показывает PlayerAvatar.
   "player-photo": { width: 640, height: 640, fit: "cover", format: "png", hint: "Портрет, квадрат 640×640" },
-  "player-banner": { width: 1600, height: 540, fit: "cover", format: "webp", hint: "Подложка шапки профиля, 1600×540" },
+  "player-banner": { width: 1600, height: 540, fit: "cover", format: "webp", safe: BANNER_SAFE, hint: "Подложка шапки профиля, 1600×540" },
+  // Полотно героя главной. Цифры те же, что у баннеров команды и игрока, чтобы в продукте была
+  // ОДНА норма баннера, а не три. Разница только в требовании к исходнику: полотно главной — это
+  // LCP первого экрана и на 1440 получает 973 CSS-px, растянутый файл там сразу видно.
+  "home-banner": {
+    width: 1600,
+    height: 540,
+    fit: "cover",
+    format: "webp",
+    safe: BANNER_SAFE,
+    minWidth: 1200,
+    hint: "Полотно главной, 1600×540; всё важное — в центре. Текст на картинке не читают ни поиск, ни озвучка — важное пишите в заголовке и подписи",
+  },
 };
 
 /** MIME итогового файла — им же canvas.toBlob решает, чем кодировать. */

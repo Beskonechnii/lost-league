@@ -7,6 +7,7 @@ import { IMAGE_NORMS, ratioOf, type ImageSlot } from "@/lib/image-norms";
 import { ImageFit } from "./image-fit";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/pouf/select";
 import { Button } from "@/components/pouf/Button";
+import { Alert } from "@/components/pouf/feedback";
 import { Input, Textarea } from "@/components/pouf/Input";
 
 // Мелкие клиентские кирпичики студии: поля, загрузка картинок, кнопка сохранения.
@@ -105,9 +106,16 @@ export function ImageField(props: {
   onChange: (path: string | null) => void;
   /** Перекрытие подсказки; по умолчанию берётся из нормы слота. */
   hint?: string;
+  /**
+   * Марка превью. `tile` (по умолчанию) — миниатюра слева от кнопки выбора: годится для эмблемы
+   * и портрета. `wide` — во всю ширину колонки формы: по плитке 96×32 полотно 2,96:1 не принимают,
+   * кадр на ней просто не разглядеть.
+   */
+  preview?: "tile" | "wide";
 }) {
   const norm = IMAGE_NORMS[props.slot];
-  const kind: UploadKind = props.slot.startsWith("team") ? "teams" : "players";
+  const kind: UploadKind = props.slot.startsWith("team") ? "teams" : props.slot.startsWith("home") ? "home" : "players";
+  const wide = props.preview === "wide";
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Выбранный, но ещё не подогнанный файл — пока он здесь, открыто окно подгонки.
@@ -126,13 +134,31 @@ export function ImageField(props: {
     else props.onChange(json.path);
   }
 
+  /** Файл мельче нормы `ImageFit` молча растянет — отказываем до окна подгонки, а не после. */
+  function pick(file: File) {
+    setError(null);
+    if (!norm.minWidth) return setPicked(file);
+    const probe = new Image();
+    const blobUrl = URL.createObjectURL(file);
+    probe.onload = () => {
+      URL.revokeObjectURL(blobUrl);
+      if (probe.naturalWidth < norm.minWidth!) setError(`Нужна картинка шире ${norm.minWidth}px — эта ${probe.naturalWidth}px`);
+      else setPicked(file);
+    };
+    probe.onerror = () => {
+      URL.revokeObjectURL(blobUrl);
+      setError("Файл не читается как картинка");
+    };
+    probe.src = blobUrl;
+  }
+
   return (
     <div>
       <Label>{props.label}</Label>
-      <div className="flex items-center gap-3 font-pouf">
+      <div className={`gap-3 font-pouf ${wide ? "flex flex-col" : "flex items-center"}`}>
         {/* Превью в форме самого слота: оператор видит кадр ровно таким, каким он ляжет на страницу. */}
         <div
-          className="grid w-24 shrink-0 place-items-center overflow-hidden rounded-control bg-bg cushion-field"
+          className={`grid place-items-center overflow-hidden rounded-control bg-bg cushion-field ${wide ? "w-full" : "w-24 shrink-0"}`}
           style={{ aspectRatio: ratioOf(norm) }}
         >
           {props.value ? (
@@ -152,7 +178,7 @@ export function ImageField(props: {
               const f = e.target.files?.[0];
               // Значение сбрасываем: иначе повторный выбор того же файла не даст события change.
               e.target.value = "";
-              if (f) setPicked(f);
+              if (f) pick(f);
             }}
           />
           <p className="mt-1 text-xs font-bold text-muted">{props.hint ?? norm.hint}</p>
@@ -186,9 +212,10 @@ export function SaveButton({ url, data, label = "Сохранить" }: { url: s
   const router = useRouter();
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-3">
       <Button
         type="button"
         disabled={pending}
@@ -202,9 +229,11 @@ export function SaveButton({ url, data, label = "Сохранить" }: { url: s
             });
             if (!res.ok) {
               const j = (await res.json().catch(() => ({}))) as { error?: string };
+              setFailed(true);
               setMsg(j.error ?? "Ошибка сохранения");
               return;
             }
+            setFailed(false);
             setMsg("Сохранено");
             router.refresh();
           });
@@ -212,7 +241,13 @@ export function SaveButton({ url, data, label = "Сохранить" }: { url: s
       >
         {pending ? "…" : label}
       </Button>
-      {msg && <span className="text-sm text-ink-muted">{msg}</span>}
+      {/* Исход сохранения — тоном Кита, а не серой строкой: отказ сервера должен быть видно
+          сразу, иначе оператор уходит со страницы, считая, что правка легла. */}
+      {msg && (
+        <Alert tone={failed ? "err" : "ok"} className="min-w-0">
+          {msg}
+        </Alert>
+      )}
     </div>
   );
 }

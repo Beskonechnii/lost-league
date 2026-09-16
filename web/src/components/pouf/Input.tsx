@@ -17,14 +17,19 @@ interface FieldProps {
   children: (id: string, describedBy: string | undefined) => ReactNode
   hint?: string
   error?: string
+  /* Счётчик знаков под полем («12 / 48») вместо подсказки. Нужен там, где у поля есть
+   * `maxLength`: без счётчика ограничение читается как «поле вдруг перестало печатать».
+   * Длину поле не знает само — `Field` оборачивает и контролируемые, и неконтролируемые
+   * контролы, — поэтому её передаёт экран вместе с пределом. */
+  counter?: { len: number; max: number }
 }
 
 /** Wraps any control with a real <label for>, hint and error text, and wires
  * aria-describedby. Screens pass a render fn so the same wrapper serves Input,
  * Select and Switch without duplicating the a11y plumbing. */
-export function Field({ label, children, hint, error }: FieldProps) {
+export function Field({ label, children, hint, error, counter }: FieldProps) {
   const id = useId()
-  const describedBy = error ? `${id}-err` : hint ? `${id}-hint` : undefined
+  const describedBy = error ? `${id}-err` : hint || counter ? `${id}-hint` : undefined
   return (
     <div className="pouf-field flex flex-col gap-(--s2)">
       {/* Labels use ink so their compact uppercase treatment stays emphatic. */}
@@ -32,9 +37,18 @@ export function Field({ label, children, hint, error }: FieldProps) {
         {label}
       </label>
       {children(id, describedBy)}
-      {hint && !error && (
-        <span className="pouf-hint text-[13px] font-bold text-muted" id={`${id}-hint`}>
+      {(hint || counter) && !error && (
+        <span className="pouf-hint flex flex-wrap items-baseline gap-x-2 text-[13px] font-bold text-muted" id={`${id}-hint`}>
           {hint}
+          {counter && (
+            // Упёрлись в предел — счётчик перестаёт быть справкой и становится объяснением,
+            // почему поле не печатает: тот же ink, что у ошибки поля.
+            <span
+              className={`ml-auto shrink-0 tabular-nums${counter.len >= counter.max ? ' text-[var(--color-err-ink)]' : ''}`}
+            >
+              {counter.len} / {counter.max}
+            </span>
+          )}
         </span>
       )}
       {/* FIELD-level validation message: a compact one-liner under a control.

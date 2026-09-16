@@ -2,7 +2,9 @@
 // Слаг — стабильный ключ: по нему идёт импорт составов и подбор файлов лого/фото.
 // Картинки лежат локально в public/uploads (см. src/lib/assets.ts — та же стратегия для ассетов Dota).
 
-export type UploadKind = "teams" | "players";
+// "home" — картинки самой витрины (полотно баннера главной): не профиль, но живут в тех же
+// public/uploads и грузятся тем же роутом, поэтому и папка здесь, а не своим механизмом рядом.
+export type UploadKind = "teams" | "players" | "home";
 
 const TRANSLIT: Record<string, string> = {
   а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z", и: "i",
