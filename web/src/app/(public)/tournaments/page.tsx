@@ -85,7 +85,7 @@ export default async function TournamentsIndex() {
             </div>
 
             <div className="mt-(--s4)">
-              <Grid cols={2} gap={5}>
+              <Grid cols={3} gap={5}>
                 {items.slice(0, MAX_IN_GROUP).map((t) => (
                   <TournamentCard key={t.id} t={t} />
                 ))}

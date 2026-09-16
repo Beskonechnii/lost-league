@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getGroupStage, groupStageDone, groupStageProgress } from "@/lib/group-stage";
 import { divisionOfTournament } from "@/lib/tournaments";
 import { SectionHeader } from "@/components/pouf/blocks";
+import { EmptyState } from "@/components/pouf/feedback";
 import { GroupStage } from "../../../_components/group-stage";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,6 @@ export default async function GroupsPage({ params }: { params: Promise<{ slug: s
   const tables = await getGroupStage(division.id);
   const { decided, expected } = groupStageProgress(tables);
   const done = groupStageDone(tables);
-  const guessed = tables.reduce((n, t) => n + t.guessedCount, 0);
 
   return (
     <div className="space-y-6">
@@ -42,22 +42,14 @@ export default async function GroupsPage({ params }: { params: Promise<{ slug: s
       />
 
       {tables.length === 0 ? (
-        <div className="rounded-card bg-surface-1 p-8 text-center font-pouf text-sm font-bold text-muted cushion-field">
-          Групп ещё нет — жеребьёвка не проведена. Как только команды разложат по группам, здесь
-          появятся блоки групп и сетка личных встреч.
-        </div>
+        <EmptyState icon="trophy" title="Групп ещё нет">
+          Жеребьёвка не проведена. Как только команды разложат по группам, здесь появятся блоки
+          групп и сетка личных встреч.
+        </EmptyState>
       ) : (
-        <>
-          <GroupStage tables={tables} />
-          {/* Восстановленный расчётом счёт бледнее — и об этом надо сказать словами, а не оставить
-              догадываться, почему часть ячеек выцветшая. */}
-          {guessed > 0 && (
-            <p className="font-pouf text-xs font-bold text-muted">
-              Бледные ячейки — счёт восстановлен расчётом, а не прочитан из таблицы сезона
-              ({guessed} из {decided}). Такие встречи стоит сверить руками.
-            </p>
-          )}
-        </>
+        // Про бледные ячейки говорит легенда каждой кросс-сетки: «восстановлено расчётом» —
+        // свойство своей группы, и общей сноской под страницей оно стояло не у своих данных.
+        <GroupStage tables={tables} />
       )}
     </div>
   );

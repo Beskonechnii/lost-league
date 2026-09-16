@@ -11,9 +11,11 @@ export default function TournamentsLoading() {
       <div className="mt-(--s6)">
         <Skeleton variant="card" className="h-[260px]" />
       </div>
-      <div className="mt-(--s6) grid gap-5 min-[900px]:grid-cols-2">
-        {Array.from({ length: 4 }, (_, i) => (
-          <Skeleton key={i} variant="card" className="h-[220px]" />
+      {/* Скелет повторяет сетку раздела (`Grid cols={3}`) и высоту карточки: иначе на подстановке
+          данных экран прыгает — было две колонки по 220, стало три по 360. */}
+      <div className="mt-(--s6) grid gap-5 min-[900px]:grid-cols-2 min-[1280px]:grid-cols-3">
+        {Array.from({ length: 3 }, (_, i) => (
+          <Skeleton key={i} variant="card" className="h-[360px]" />
         ))}
       </div>
     </main>

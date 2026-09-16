@@ -52,11 +52,11 @@ const divisionTitle = (d: TournamentRow["divisions"][number]) => d.label ?? d.na
  * «каждый див своей карточкой»): прежний чип-ссылка не нёс ничего, кроме имени.
  *
  * Акцент дивизиона сюда не переносим: ряд разноцветных подушек читается как четыре статуса, а это
- * одна сущность в четырёх экземплярах. Сетка собрана классами карточки, а не `Grid` из Кита:
- * у `Grid` единственный порог 900px и меряет он окно, а не карточку, — внутри полуширинной
- * карточки он дал бы четыре колонки по ~130px (пункт в Кит, ТЗ 09 §7.3).
+ * одна сущность в четырёх экземплярах. Сетка — `Grid cols="fit"` из Кита: она меряет карточку, а
+ * не окно, поэтому число плиток в ряду зависит от того, где карточка стоит (лицо раздела или
+ * колонка серии), а не от ширины экрана.
  */
-function Divisions({ t, wide }: { t: TournamentRow; wide: boolean }) {
+function Divisions({ t }: { t: TournamentRow }) {
   if (t.divisions.length === 0) return <Text muted size="sm">Дивизионы ещё не заведены</Text>;
 
   if (t.divisions.length > MAX_DIVISION_CARDS) {
@@ -70,31 +70,24 @@ function Divisions({ t, wide }: { t: TournamentRow; wide: boolean }) {
   }
 
   return (
-    // Один дивизион — одна карточка во всю ширину ряда: вторая пустая ячейка читается как «тут
-    // что-то не загрузилось».
-    <ul
-      className={
-        t.divisions.length === 1 ? "grid gap-2" : `grid grid-cols-2 gap-2 ${wide ? "md:grid-cols-4" : ""}`
-      }
-    >
+    <Grid cols="fit" gap={2}>
       {t.divisions.map((d) => (
-        <li key={d.id}>
-          <Link
-            href={`/tournaments/${t.slug}/${d.slug}`}
-            className="block min-h-[44px] rounded-card focus-visible:outline-none focus-visible:[box-shadow:var(--sh-focus)]"
-          >
-            <Card variant="tight">
-              <div className="truncate font-pouf font-black text-ink" title={divisionTitle(d)}>
-                {divisionTitle(d)}
-              </div>
-              <div className="mt-1">
-                <Capacity taken={d._count.entries} limit={d.teamLimit} size="sm" />
-              </div>
-            </Card>
-          </Link>
-        </li>
+        <Link
+          key={d.id}
+          href={`/tournaments/${t.slug}/${d.slug}`}
+          className="block min-h-[44px] rounded-card focus-visible:outline-none focus-visible:[box-shadow:var(--sh-focus)]"
+        >
+          <Card variant="tight">
+            <div className="truncate font-pouf font-black text-ink" title={divisionTitle(d)}>
+              {divisionTitle(d)}
+            </div>
+            <div className="mt-1">
+              <Capacity taken={d._count.entries} limit={d.teamLimit} size="sm" />
+            </div>
+          </Card>
+        </Link>
       ))}
-    </ul>
+    </Grid>
   );
 }
 
@@ -155,7 +148,9 @@ export function TournamentCard({ t, face = false }: { t: TournamentRow; face?: b
       </div>
 
       {facts.length > 0 && (
-        <p className="mt-1.5">
+        // Строка фактов — ровно одна строка: на 450px «даты · формат» переносятся на две и
+        // карточка вырастает на высоту, которой в ряду серии нет. Полный текст — подсказкой.
+        <p className="mt-1.5 truncate" title={facts.join(" · ")}>
           <Text muted size="sm">{facts.join(" · ")}</Text>
         </p>
       )}
@@ -175,7 +170,7 @@ export function TournamentCard({ t, face = false }: { t: TournamentRow; face?: b
               </div>
             )}
             <div className="mt-4">
-              <Divisions t={t} wide />
+              <Divisions t={t} />
             </div>
           </div>
 
@@ -188,22 +183,25 @@ export function TournamentCard({ t, face = false }: { t: TournamentRow; face?: b
     );
   }
 
+  // Карточка ряда серии тянется на высоту ряда (сетка растягивает ячейки), а кнопки прижаты к её
+  // низу через `mt-auto`: иначе у соседей по ряду ряды кнопок стоят на разной высоте и ряд читается
+  // как три разных блока. Описания здесь нет по той же причине, что и в лице: оно съедает высоту,
+  // а полный текст живёт на вкладке «О турнире».
   return (
     <Card motion="lift">
-      {head}
-      {hasSeats && (
+      <div className="flex h-full flex-col">
+        {head}
+        {hasSeats && (
+          <div className="mt-4">
+            <Capacity taken={seats.taken} limit={seats.limit} />
+          </div>
+        )}
         <div className="mt-4">
-          <Capacity taken={seats.taken} limit={seats.limit} />
+          <Divisions t={t} />
         </div>
-      )}
-      <div className="mt-4">
-        <Divisions t={t} wide={false} />
-      </div>
-      {t.description && (
-        <p className="mt-3 line-clamp-2 text-sm font-bold leading-[1.55] text-muted">{t.description}</p>
-      )}
-      <div className="mt-4">
-        <Actions t={t} block={false} />
+        <div className="mt-auto pt-4">
+          <Actions t={t} block={false} />
+        </div>
       </div>
     </Card>
   );

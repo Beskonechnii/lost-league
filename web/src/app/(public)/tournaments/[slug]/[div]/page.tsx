@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { getGroupStage, groupStageDone, groupStageProgress } from "@/lib/group-stage";
 import { divisionOfTournament } from "@/lib/tournaments";
 import { can } from "@/lib/account";
-import { SectionHeader } from "@/components/pouf/blocks";
+import { SectionHeader, TABLE_MAX_W } from "@/components/pouf/blocks";
+import { Alert, EmptyState } from "@/components/pouf/feedback";
 import { Heading } from "@/components/pouf/text";
 import { StandingsTable } from "./_components/standings-table";
 
@@ -30,7 +31,9 @@ export default async function StandingsPage({ params }: { params: Promise<{ slug
   const done = groupStageDone(tables);
 
   return (
-    <div className="space-y-6">
+    // Мера таблицы данных накрывает всю страницу — шапку, таблицы групп и нижние ссылки, — а не
+    // <main>: <main> задаёт колонку всего турнира, а плей-офф и кросс-сетке групп она нужна широкой.
+    <div className={`${TABLE_MAX_W} space-y-6`}>
       <SectionHeader
         eyebrow={division.tournament.name}
         title={division.label ?? division.name}
@@ -48,13 +51,18 @@ export default async function StandingsPage({ params }: { params: Promise<{ slug
       {tables.length === 0 ? (
         // Пустое состояние объясняет, что происходит, а не показывает пустоту. Команда заливки —
         // только оператору: посетителю она ничего не говорит, а страница из-за неё выглядела сломанной.
-        <div className="rounded-card bg-surface-1 p-8 text-center font-pouf text-sm font-bold text-muted cushion-field">
-          Групп ещё нет — жеребьёвка не проведена. Как только команды разложат по группам, здесь
-          появится таблица дивизиона.
+        <div className="space-y-3">
+          <EmptyState icon="trophy" title="Групп ещё нет">
+            Жеребьёвка не проведена. Как только команды разложат по группам, здесь появится таблица
+            дивизиона.
+          </EmptyState>
           {authed && (
-            <span className="mt-2 block text-xs text-muted">
-              Залить: <code>npx tsx scripts/import-group-stage.ts --sheet &lt;id&gt; --div {division.slug.replace("d", "")}</code>
-            </span>
+            <Alert tone="info" block>
+              <span className="min-w-0 break-all font-mono text-[12px]">
+                npx tsx scripts/import-group-stage.ts --sheet &lt;id&gt; --div{" "}
+                {division.slug.replace("d", "")}
+              </span>
+            </Alert>
           )}
         </div>
       ) : (

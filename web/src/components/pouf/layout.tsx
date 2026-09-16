@@ -76,13 +76,25 @@ export function Spacer() {
 }
 
 /* Column counts are variants, not a --cols override, so a screen never needs an
- * inline style to lay out. Every variant collapses to one column under 900px. */
+ * inline style to lay out. Every variant collapses to one column under 900px.
+ *
+ * Три и четыре колонки встают не сразу: между 900 и 1280 они дали бы карточки по
+ * 280px — витрина превращается в список иконок. Поэтому у них промежуточная
+ * ступень в две колонки, а полный набор — от 1280 (ТЗ 24, DESIGN §4).
+ *
+ * `fit` — единственная сетка Кита, которая меряет КОНТЕЙНЕР, а не окно: ею
+ * собираются вложенные наборы подушек (плитки дивизионов внутри карточки
+ * турнира), где число колонок зависит от ширины карточки, а не экрана.
+ * Верхняя мера подушки в наборе — 280px, а не 1fr: единственная плитка в узкой
+ * карточке растягивалась на всю её ширину и читалась пустой плитой (ТЗ 24,
+ * DESIGN §1 и §6). Остаток ряда остаётся пустым — это набор, а не колонки. */
 const grid = cva('pouf-grid grid', {
   variants: {
     cols: {
       2: 'grid-cols-2 max-[900px]:grid-cols-1',
-      3: 'grid-cols-3 max-[900px]:grid-cols-1',
-      4: 'grid-cols-4 max-[900px]:grid-cols-1',
+      3: 'grid-cols-3 max-[1279px]:grid-cols-2 max-[900px]:grid-cols-1',
+      4: 'grid-cols-4 max-[1279px]:grid-cols-2 max-[900px]:grid-cols-1',
+      fit: '[grid-template-columns:repeat(auto-fill,minmax(168px,280px))]',
       sidebar:
         '[grid-template-columns:minmax(0,2fr)_minmax(0,1fr)] max-[900px]:[grid-template-columns:minmax(0,1fr)]',
     },
@@ -93,7 +105,7 @@ const grid = cva('pouf-grid grid', {
 
 interface GridProps {
   children: ReactNode
-  cols?: 2 | 3 | 4 | 'sidebar'
+  cols?: 2 | 3 | 4 | 'fit' | 'sidebar'
   gap?: Gap
 }
 
