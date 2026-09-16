@@ -58,7 +58,7 @@ let handle: string | null = null;
  * молча разъедется с токеном, а ссылка на чужого бота выглядит рабочей. Бота нет или Telegram не
  * ответил — возвращаем null, и экран объясняет то же самое словами.
  */
-export async function botStartLink(payload: string): Promise<string | null> {
+export async function botStartLink(payload?: string): Promise<string | null> {
   if (!handle) {
     if (!botConfigured()) return null;
     try {
@@ -67,7 +67,10 @@ export async function botStartLink(payload: string): Promise<string | null> {
       return null; // сеть моргнула — не кешируем, следующий заход попробует снова
     }
   }
-  return handle ? `https://t.me/${handle}?start=${encodeURIComponent(payload)}` : null;
+  if (!handle) return null;
+  // Без нагрузки — просто «открыть бота»: так забывший пароль пишет организатору, не имея входа
+  // на сайт (ТЗ 02). `?start=` с пустым значением сюда не годится — это уже другой адрес.
+  return payload ? `https://t.me/${handle}?start=${encodeURIComponent(payload)}` : `https://t.me/${handle}`;
 }
 
 // ── входящее: long polling ───────────────────────────────────────────────────

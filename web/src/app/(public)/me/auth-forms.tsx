@@ -17,8 +17,9 @@ import { PillButton, PillTrack } from "@/components/pouf/tabs";
 // поверх формы, поля стопкой, широкая кнопка снизу. До Э8 переключатель был свой (`bg-accent`
 // с белым текстом — цвет из тёмной темы), а ошибка — своя розовая плашка мимо алертов Кита.
 //
-// «Забыли пароль» здесь нет намеренно: писем в проекте больше нет (docs/archive/ACCOUNTS-PLAN.md §2.4),
-// поэтому восстановление — вход через Google той же почтой либо новый аккаунт.
+// «Забыли пароль?» — ссылкой под формой входа (ТЗ 02). Писем лига по-прежнему не шлёт: ссылка на
+// смену уходит в привязанный телеграм, а у кого его нет — её выдаёт организатор из админки.
+// Сам экран живёт на `/login/reset`, рядом со входом по коду из бота.
 
 type Mode = "login" | "register";
 
@@ -106,7 +107,17 @@ function LoginForm() {
       <Field label="Пароль">
         <PasswordField name="password" autoComplete="current-password" required />
       </Field>
-      <RememberMe />
+      {/* «Запомнить меня» и «Забыли пароль?» — одной строкой: оба про вход, и вторая обязана быть
+          видна ровно там, где пароль не подошёл, а не в подвале страницы. */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <RememberMe />
+        <Link
+          href="/login/reset"
+          className="text-[13px] font-bold text-muted underline-offset-4 hover:text-ink hover:underline"
+        >
+          Забыли пароль?
+        </Link>
+      </div>
       <Button type="submit" loading={pending} size="lg" block>
         {pending ? "Вхожу…" : "Войти"}
       </Button>

@@ -80,6 +80,16 @@ const outbound = createLimiter({ prefix: "out", windowMs: 60_000, limit: 10 });
 const loginAttempts = createLimiter({ prefix: "login", windowMs: 15 * 60_000, limit: 10 });
 
 /**
+ * Запросы сброса пароля — 5 за 15 минут на пару «почта + IP» (ТЗ 02).
+ *
+ * Потолок ниже, чем у входа: забывший пароль жмёт кнопку раз, ну два, а вот дёргать форму пачкой
+ * выгодно только тому, кто заваливает чужой телеграм сообщениями от бота. Ключ парный по той же
+ * причине, что у входа: по одной почте — и чужой аккаунт запирается снаружи, по одному IP — и
+ * общий выход в интернет отрубает всех разом.
+ */
+const resetRequests = createLimiter({ prefix: "reset", windowMs: 15 * 60_000, limit: 5 });
+
+/**
  * IP клиента из заголовков. За обратным прокси (в проде — Caddy, см. DEPLOY.md) настоящий адрес
  * приходит заголовком; берём первый хоп. Заголовок подделывается кем угодно, поэтому годится он
  * ровно для лимита, а не для доступа: подменивший его получит другое окно, но не чужие права.
@@ -110,4 +120,10 @@ export function takeLoginAttempt(email: string, ip: string): RateVerdict {
 /** Вход удался — окно сбрасываем: считать надо неудачи, а не активность живого человека. */
 export function clearLoginAttempts(email: string, ip: string): void {
   loginAttempts.reset(`${email}|${ip}`);
+}
+
+/** Занять запрос сброса пароля. Как и на входе — ДО того, как узнали, есть ли такой аккаунт:
+ *  иначе по расходу лимита читалось бы, какая почта в лиге заведена. */
+export function takeResetRequest(email: string, ip: string): RateVerdict {
+  return resetRequests.take(`${email}|${ip}`);
 }

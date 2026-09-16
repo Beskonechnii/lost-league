@@ -1,7 +1,9 @@
 // Только сервер: куки-слой пользовательской сессии поверх крипты из player-auth.ts. Здесь живёт
 // `next/headers`, поэтому этот модуль в proxy.ts не тянут (там только чистый player-auth.ts).
 
+import { cache } from "react";
 import { cookies } from "next/headers";
+import { prisma } from "./prisma";
 import { SESSION_COOKIE, TTL_MS, issueSession, readSession, type Role, type Session } from "./player-auth";
 
 const cookieOpts = {
@@ -24,7 +26,29 @@ export async function clearSessionCookie(): Promise<void> {
 
 /** Сессия текущего запроса (id + роль из куки), либо null. */
 export async function currentSession(): Promise<Session | null> {
-  return readSession((await cookies()).get(SESSION_COOKIE)?.value) ?? (await devSession());
+  const signed = readSession((await cookies()).get(SESSION_COOKIE)?.value);
+  if (!signed) return devSession();
+  return (await sessionRevoked(signed)) ? null : signed;
+}
+
+/**
+ * Отозвана ли сессия сменой пароля (ТЗ 02). Кука подписана и живёт 30 дней — сама по себе она
+ * переживает и смену пароля, и сброс через оператора: угнавший её остался бы внутри аккаунта,
+ * который человек «вернул себе». Поэтому смена пароля поднимает `UserAccount.sessionsFrom`,
+ * и всё, что выдано раньше, перестаёт действовать.
+ *
+ * Цена — один крошечный запрос по первичному ключу на запрос со входом. Осознанно: тот же размен,
+ * что у прав в `account.ts` («лишний запрос дешевле дырки в доступе»). `cache()` схлопывает его
+ * до одного на рендер — `currentSession` за запрос зовут несколько раз.
+ */
+const sessionsFrom = cache(async (accountId: number): Promise<number> => {
+  const acc = await prisma.userAccount.findUnique({ where: { id: accountId }, select: { sessionsFrom: true } });
+  return acc?.sessionsFrom?.getTime() ?? 0;
+});
+
+async function sessionRevoked(session: Session): Promise<boolean> {
+  const from = await sessionsFrom(session.id);
+  return from > 0 && session.iat < from;
 }
 
 /** id вошедшего аккаунта, либо null. */
@@ -49,10 +73,12 @@ async function devSession(): Promise<Session | null> {
   if (!email) return null;
   if (devSessionCache === undefined) {
     // account.ts сам тянет этот модуль — импорт динамический, чтобы цикл разрешался в рантайме.
-    const [{ prisma }, { effectiveRole }] = await Promise.all([import("./prisma"), import("./account")]);
+    const { effectiveRole } = await import("./account");
     const acc = await prisma.userAccount.findFirst({ where: { email }, select: { id: true, email: true, role: true } });
     if (!acc) console.warn(`DEV_LOGIN_EMAIL=${email}: аккаунта с такой почтой в базе нет`);
-    devSessionCache = acc ? { id: acc.id, role: effectiveRole(acc) } : null;
+    // `iat: Date.now()` — автовход выдаётся сейчас, а значит переживает любой прошлый сброс:
+    // иначе смена пароля на локальной машине выбивала бы разработчика навсегда.
+    devSessionCache = acc ? { id: acc.id, role: effectiveRole(acc), iat: Date.now() } : null;
   }
   return devSessionCache;
 }

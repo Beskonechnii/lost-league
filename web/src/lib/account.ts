@@ -655,7 +655,16 @@ export async function changePassword(
     nickname: account.player?.nickname,
   });
   if (pp) return pp;
-  await prisma.userAccount.update({ where: { id: accountId }, data: { passwordHash: hashPassword(next) } });
+  // Смена пароля гасит все прежние сессии аккаунта (ТЗ 02): подписанная кука живёт 30 дней и сама
+  // по себе смену пароля переживает — то есть чужое устройство, ради которого пароль и меняют,
+  // осталось бы внутри. Своё устройство тут же получает новую куку: выгонять того, кто только что
+  // ввёл старый пароль и придумал новый, не за что. Новая кука — сессионная: «запомнить меня»
+  // прочитать из уже выданной нельзя, а тихо продлевать её на 30 дней — не то, о чём просили.
+  await prisma.userAccount.update({
+    where: { id: accountId },
+    data: { passwordHash: hashPassword(next), sessionsFrom: new Date() },
+  });
+  await establishSession(accountId);
   return null;
 }
 

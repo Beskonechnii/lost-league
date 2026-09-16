@@ -37,6 +37,14 @@ const nextConfig: NextConfig = {
           { key: "Content-Security-Policy", value: `frame-ancestors ${frameAncestors};` },
         ],
       },
+      {
+        // Ссылка сброса пароля несёт одноразовый токен прямо в адресе (ТЗ 02). Нажми человек на
+        // такой странице любую внешнюю ссылку — адрес с токеном уехал бы в `Referer` чужому сайту.
+        // Политику ставим заголовком, а не тегом: она действует на весь документ и на все его
+        // запросы, включая те, что делает не наша разметка.
+        source: "/login/reset/:path*",
+        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+      },
     ];
   },
 };

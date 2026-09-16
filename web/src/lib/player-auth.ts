@@ -14,7 +14,10 @@ export const TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 дней, как у адм
 
 export type Role = "owner" | "admin" | "player";
 const ROLES: Role[] = ["owner", "admin", "player"];
-export type Session = { id: number; role: Role };
+/** `iat` — когда сессия выдана. По нему отсекаются куки, выданные до смены пароля (`sessionsFrom`
+ *  у аккаунта, проверка — в player-session.ts: здесь БД нет). У кук старого формата (без `iat`)
+ *  это 0 — то есть «выдана раньше любого сброса». */
+export type Session = { id: number; role: Role; iat: number };
 
 // Секрет подписи. Отдельный от пароля админки: это разные роли, общий ключ смешал бы их сроки и
 // «разлогины». Берём AUTH_SECRET, а когда его нет — GOOGLE_CLIENT_SECRET (он и так секрет, и есть
@@ -30,9 +33,10 @@ function sameSig(a: string, b: string): boolean {
   return timingSafeEqual(ha, hb);
 }
 
-/** Значение куки: `<id>.<role>.<exp>.<подпись>`. Подпись покрывает id, роль и срок. */
+/** Значение куки: `<id>.<role>.<exp>.<iat>.<подпись>`. Подпись покрывает id, роль, срок и выдачу. */
 export function issueSession(accountId: number, role: Role): string {
-  const body = `${accountId}.${role}.${Date.now() + TTL_MS}`;
+  const now = Date.now();
+  const body = `${accountId}.${role}.${now + TTL_MS}.${now}`;
   return `${body}.${sign(body)}`;
 }
 
@@ -41,15 +45,18 @@ export function readSession(token: string | undefined): Session | null {
   if (!secret() || !token) return null;
   const cut = token.lastIndexOf(".");
   if (cut < 0) return null;
-  const body = token.slice(0, cut); // `<id>.<role>.<exp>`
+  const body = token.slice(0, cut); // `<id>.<role>.<exp>[.<iat>]`
   const sig = token.slice(cut + 1);
-  const [rawId, rawRole, rawExp] = body.split(".");
+  const [rawId, rawRole, rawExp, rawIat] = body.split(".");
   const id = Number(rawId);
   const exp = Number(rawExp);
   if (!Number.isFinite(id) || !Number.isFinite(exp) || exp < Date.now()) return null;
   if (!ROLES.includes(rawRole as Role)) return null;
   if (!sameSig(sig, sign(body))) return null;
-  return { id, role: rawRole as Role };
+  // Куки, выданные до ТЗ 02, короче на одно поле. Ломать их незачем — они просто считаются
+  // выданными «в начале времён»: любой сброс пароля их обнулит, а до сброса они в силе.
+  const iat = Number(rawIat);
+  return { id, role: rawRole as Role, iat: Number.isFinite(iat) ? iat : 0 };
 }
 
 /** Роль даёт доступ к служебной части. Зовётся из proxy — только крипта, без БД. */

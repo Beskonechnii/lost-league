@@ -10,8 +10,10 @@ import { FORM_MAX_W } from "@/components/pouf/blocks";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 import { AdminHeader } from "../../_components/admin-header";
 import { Panel } from "../../_components/panel";
-import { makeAdmin, removeAdmin, removeAccount, savePermissions } from "./actions";
+import { RESET_TTL_MIN } from "@/lib/password-reset";
+import { makeAdmin, removeAdmin, removeAccount, savePermissions, issueReset } from "./actions";
 import { DeleteAccount } from "./_components/delete-account";
+import { ResetPassword } from "./_components/reset-password";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Команда лиги" };
@@ -41,6 +43,19 @@ function whoLabel(account: StaffAccount): string {
   return account.email ?? (account.tgUsername ? `@${account.tgUsername}` : `#${account.id}`);
 }
 
+/**
+ * След прошлого сброса пароля одной строкой: когда и кто инициировал (ТЗ 02). Пусто — сбросов не
+ * было. Видно там же, где выдаётся новая ссылка: оператору важно знать, что аккаунт уже сбрасывали
+ * — второй запрос за неделю это не «человек забывчивый», а повод спросить, кто именно просит.
+ */
+function lastResetLabel(a: StaffAccount, byId: Map<number, StaffAccount>): string | null {
+  if (!a.passwordResetAt) return null;
+  const when = a.passwordResetAt.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+  if (a.passwordResetById == null) return `${when}, по своему запросу из телеграма`;
+  const operator = byId.get(a.passwordResetById);
+  return `${when}, ссылку выдал ${operator ? whoLabel(operator) : `#${a.passwordResetById}`}`;
+}
+
 function Who({ account, me }: { account: StaffAccount; me: number | null }) {
   return (
     <div className="min-w-0 flex-1 font-pouf">
@@ -67,7 +82,17 @@ function grantedLabels(granted: Set<string>): string {
 
 /** Карточка админа: кто это, набор прав и кнопка снятия роли. Свой аккаунт показываем только для
  *  чтения — иначе админ снял бы себе роль и запер сам себя, а «выдать себе всё» стало бы одним кликом. */
-function AdminCard({ account, me, isOwner }: { account: StaffAccount; me: number | null; isOwner: boolean }) {
+function AdminCard({
+  account,
+  me,
+  isOwner,
+  lastReset,
+}: {
+  account: StaffAccount;
+  me: number | null;
+  isOwner: boolean;
+  lastReset: string | null;
+}) {
   const self = account.id === me;
   const granted = new Set<string>(account.perms);
 
@@ -83,6 +108,14 @@ function AdminCard({ account, me, isOwner }: { account: StaffAccount; me: number
                 <input type="hidden" name="accountId" value={account.id} />
                 <Button type="submit" size="sm" variant="quiet">Снять админа</Button>
               </form>
+              <ResetPassword
+                id={account.id}
+                who={whoLabel(account)}
+                hasTelegram={!!account.tgId}
+                lastReset={lastReset}
+                ttlMin={RESET_TTL_MIN}
+                action={issueReset}
+              />
               {isOwner && <DeleteAccount id={account.id} who={whoLabel(account)} action={removeAccount} />}
             </RowActions>
           )}
@@ -164,6 +197,9 @@ export default async function StaffPage() {
   const others = accounts.filter((a) => a.effectiveRole === "player");
   const ownerList = ownerEmails();
   const isOwner = me != null && effectiveRole(me) === "owner";
+  // Кто выдавал прошлые сбросы — по id из `passwordResetById`. Список аккаунтов уже на руках,
+  // второго запроса в базу ради подписи не нужно.
+  const byId = new Map(accounts.map((a) => [a.id, a]));
 
   return (
     <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
@@ -216,7 +252,7 @@ export default async function StaffPage() {
         ) : (
           <ul className="space-y-4">
             {admins.map((a) => (
-              <AdminCard key={a.id} account={a} me={me?.id ?? null} isOwner={isOwner} />
+              <AdminCard key={a.id} account={a} me={me?.id ?? null} isOwner={isOwner} lastReset={lastResetLabel(a, byId)} />
             ))}
           </ul>
         )}
@@ -260,6 +296,14 @@ export default async function StaffPage() {
                         <input type="hidden" name="accountId" value={a.id} />
                         <Button type="submit" size="xs">Сделать админом</Button>
                       </form>
+                      <ResetPassword
+                        id={a.id}
+                        who={whoLabel(a)}
+                        hasTelegram={!!a.tgId}
+                        lastReset={lastResetLabel(a, byId)}
+                        ttlMin={RESET_TTL_MIN}
+                        action={issueReset}
+                      />
                       {isOwner && <DeleteAccount id={a.id} who={whoLabel(a)} action={removeAccount} />}
                     </RowActions>
                   )}
