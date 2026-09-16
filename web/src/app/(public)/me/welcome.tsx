@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { accountApplication, type Account } from "@/lib/account";
-import { openForRegistration } from "@/lib/tournaments";
+import { openForRegistrationAll } from "@/lib/tournaments";
 import { roleLabel } from "@/lib/roles";
 import { Alert, StatusPill } from "@/components/pouf/feedback";
 import { ApplicationSummary } from "@/app/_components/application-summary";
@@ -110,8 +110,10 @@ export async function Welcome({ account }: { account: Account }) {
   const app = accountApplication(account);
   const claimed = account.claim;
   const sent = account.submittedAt ? dateTime.format(account.submittedAt) : null;
-  // Куда звать заявляться командой: приём идёт не у «текущего» турнира, а у следующего.
-  const tournament = await openForRegistration();
+  // Куда звать заявляться командой: приём идёт не у «текущего» турнира, а у следующего — и
+  // открытых наборов может быть несколько. Тогда зовём на сборный `/apply`, где человек выбирает
+  // сам: назвать один из двух и увести в него — потерять второй (ТЗ 23).
+  const open = await openForRegistrationAll();
 
   const nickname = claimed?.nickname ?? app?.nickname ?? account.name ?? "Новый игрок";
   const fullName =
@@ -150,11 +152,19 @@ export async function Welcome({ account }: { account: Account }) {
         <NextStep
           title="Заявить команду в турнир"
           hint={
-            tournament
-              ? `Приём заявок в «${tournament.name}» открыт — состав подаёт капитан.`
-              : "Приём заявок сейчас закрыт — сроки ближайшего турнира на его странице."
+            open.length === 0
+              ? "Приём заявок сейчас закрыт — сроки ближайшего турнира на его странице."
+              : open.length === 1
+                ? `Приём заявок в «${open[0].name}» открыт — состав подаёт капитан.`
+                : "Приём открыт не в одном турнире — выберите свой, состав подаёт капитан."
           }
-          href={tournament ? `/tournaments/${tournament.slug}/apply` : "/tournaments"}
+          href={
+            open.length === 0
+              ? "/tournaments"
+              : open.length === 1
+                ? `/tournaments/${open[0].slug}/apply`
+                : "/apply"
+          }
         />
         <NextStep
           title="Настроить вход"

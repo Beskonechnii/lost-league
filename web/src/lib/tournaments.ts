@@ -247,16 +247,25 @@ export const registrationOpen = (t: { status: string; regCloseAt: Date | null })
   t.status === "registration" && (!t.regCloseAt || t.regCloseAt.getTime() > Date.now());
 
 /**
- * Турнир, в который прямо сейчас можно заявиться, — самый ранний с открытым приёмом. Это НЕ
- * «текущий»: тот обычно уже играется, а заявки принимает следующий. Нужен и сборному `/apply`,
- * и кабинету новичка («что можно уже сейчас»), поэтому живёт здесь, а не копией в каждом.
+ * Все турниры, в которые прямо сейчас можно заявиться, от самого раннего. Открытых наборов в лиге
+ * бывает несколько (два сезона рядом), и «какие открыты» — один список на весь продукт: витрина
+ * главной, сборный `/apply` и кабинет новичка спрашивают его, а не копируют правило приёма себе.
  */
-export async function openForRegistration() {
+export async function openForRegistrationAll() {
   const open = await prisma.tournament.findMany({
     where: { status: "registration" },
     orderBy: [{ startAt: "asc" }, { id: "asc" }],
   });
-  return open.find(registrationOpen) ?? null;
+  return open.filter(registrationOpen);
+}
+
+/**
+ * Один турнир на случаи, где выбора быть не может (баннер главной), — самый ранний с открытым
+ * приёмом. Это НЕ «текущий»: тот обычно уже играется, а заявки принимает следующий. Выражен через
+ * общий список, чтобы правило приёма не разошлось со списком.
+ */
+export async function openForRegistration() {
+  return (await openForRegistrationAll())[0] ?? null;
 }
 
 /**
