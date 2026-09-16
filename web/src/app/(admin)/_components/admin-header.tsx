@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import { Breadcrumbs, type Crumb } from "@/components/pouf/breadcrumbs";
+import type { Crumb } from "@/components/pouf/breadcrumbs";
 import { SectionHeader } from "@/components/pouf/blocks";
+import { AdminCrumbs } from "./admin-crumbs";
 
 /* Шапка служебного экрана: крошки → eyebrow → H1 → одна поясняющая фраза.
  *
@@ -19,9 +20,8 @@ import { SectionHeader } from "@/components/pouf/blocks";
  * Первую ступень — «Админ» → /admin — шапка подставляет сама (ТЗ 08): после
  * удаления сайдбара хаб стал единственным списком инструментов, и дописывать
  * возврат на него руками в двадцати файлах значит оставить половину без него.
+ * С ТЗ 27 тем же порядком подставляется и ступень группы — см. `AdminCrumbs`.
  */
-
-const HUB: Crumb = { href: "/admin", label: "Админ" };
 
 export function AdminHeader({
   crumbs,
@@ -30,8 +30,8 @@ export function AdminHeader({
   aside,
   children,
 }: {
-  /** Путь без последней ступени и без хаба: текущую страницу называет H1 (UI-GUIDELINES §3),
-   *  а «Админ» первой ступенью подставляется здесь. */
+  /** Путь без последней ступени, без хаба и без группы: текущую страницу называет H1
+   *  (UI-GUIDELINES §3), а «Админ» и группу подставляет `AdminCrumbs`. */
   crumbs?: Crumb[];
   eyebrow?: ReactNode;
   title: ReactNode;
@@ -42,7 +42,7 @@ export function AdminHeader({
 }) {
   return (
     <header className="font-pouf">
-      <Breadcrumbs items={[HUB, ...(crumbs ?? [])]} className="mb-3" />
+      <AdminCrumbs crumbs={crumbs} />
       <SectionHeader eyebrow={eyebrow} title={title} aside={aside} />
       {children && (
         // Мера абзаца — не во всю колонку: пояснение читают строкой, а не сканируют.

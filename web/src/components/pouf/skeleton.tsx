@@ -11,12 +11,22 @@ export function Skeleton({
   variant = "row",
   className = "",
   style,
+  h,
 }: {
   variant?: Variant;
   className?: string;
   style?: React.CSSProperties;
+  /** Высота в px поверх высоты варианта. `card` жёстко 132px, а плиток выше этого в проекте
+   *  хватает: без пропа скелет короче содержимого, и экран прыгает при каждом открытии. */
+  h?: number;
 }) {
-  return <div aria-hidden className={`pouf-skeleton pouf-skeleton--${variant} ${className}`} style={style} />;
+  return (
+    <div
+      aria-hidden
+      className={`pouf-skeleton pouf-skeleton--${variant} ${className}`}
+      style={h ? { ...style, height: h } : style}
+    />
+  );
 }
 
 /**
@@ -30,17 +40,26 @@ export function SkeletonList({
   variant = "row",
   className = "",
   label = "Загружаем данные",
+  h,
 }: {
   count?: number;
   variant?: Variant;
   className?: string;
   label?: string;
+  /** Высота одной заглушки в px — см. `Skeleton`. */
+  h?: number;
 }) {
   return (
     <div role="status" aria-label={label} className={className}>
       {Array.from({ length: count }, (_, i) => (
         // Затухание к концу списка: нижние строки ещё дальше от появления, чем верхние.
-        <Skeleton key={i} variant={variant} style={{ opacity: 1 - i * (0.6 / count) }} className="mb-2 last:mb-0" />
+        <Skeleton
+          key={i}
+          variant={variant}
+          h={h}
+          style={{ opacity: 1 - i * (0.6 / count) }}
+          className="mb-2 last:mb-0"
+        />
       ))}
     </div>
   );
