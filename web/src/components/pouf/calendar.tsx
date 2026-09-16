@@ -40,12 +40,16 @@ export function Calendar({
   value,
   onPick,
   years,
+  openAt,
   className = "",
 }: {
   value: CalendarDate | null;
   onPick: (y: number, m: number, d: number) => void;
   /** Список лет в дропдауне. По умолчанию — текущий год ±10. */
   years?: number[];
+  /** Какой месяц показать, когда значения нет. Для даты турнира это нынешний месяц, для
+   *  даты рождения — середина списка лет (умолчание ниже). */
+  openAt?: { y: number; m: number };
   className?: string;
 }) {
   const thisYear = new Date().getFullYear();
@@ -56,7 +60,7 @@ export function Calendar({
 
   // Что показывает сетка. Пусто — открываемся на середине списка лет: для даты рождения это
   // куда ближе к цели, чем текущий год.
-  const start = value ?? { y: list[Math.floor(list.length / 2)], m: 1 };
+  const start = value ?? openAt ?? { y: list[Math.floor(list.length / 2)], m: 1 };
   const [view, setView] = React.useState({ y: start.y, m: start.m });
 
   const shift = (by: number) => setView((v) => shiftMonth(v.y, v.m, by));

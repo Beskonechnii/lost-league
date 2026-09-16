@@ -185,12 +185,16 @@ const clean = (v: string | null | undefined) => {
   return s === "" ? null : s;
 };
 
-/** Дата из формы (`YYYY-MM-DD` или ISO). Мусор трактуем как «не задано», а не как 1970 год. */
+/** Дата из формы (`21.04.1998`, `YYYY-MM-DD` или ISO). Мусор трактуем как «не задано», а не как 1970 год. */
 const date = (v: string | null | undefined) => {
   if (v === undefined) return undefined;
   const s = (v ?? "").trim();
   if (!s) return null;
-  const d = new Date(s);
+  // Календарь Кита отдаёт «21.04.1998» — такую строку `new Date()` не разбирает совсем.
+  const dotted = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(s);
+  const d = dotted
+    ? new Date(`${dotted[3]}-${dotted[2].padStart(2, "0")}-${dotted[1].padStart(2, "0")}`)
+    : new Date(s);
   return Number.isNaN(d.getTime()) ? null : d;
 };
 

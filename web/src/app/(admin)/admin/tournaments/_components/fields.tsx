@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { FormInput, FormSelect, FormTextarea, Label } from "@/components/pouf/Input";
+import { DateField } from "@/components/pouf/date-field";
 
 // Общие куски форм админки турниров: подпись + поле. Формы здесь простые (server actions, без
 // клиентского состояния), поэтому вместо компонента-обёртки на каждый случай — одно поле на все.
@@ -44,11 +45,28 @@ export function Field({
     placeholder,
     defaultValue: value ?? undefined,
   };
+  const now = new Date();
+
   return (
     <div className={span === 3 ? "sm:col-span-3" : span === 2 ? "sm:col-span-2" : undefined}>
       <Label htmlFor={`f-${name}`}>{label}</Label>
       <div className="mt-1.5">
-        {children ? (
+        {/* Даты — календарём Кита, а не нативным `<input type="date">`: иначе посреди подушек
+            всплывает серо-синий календарь браузера. Разворот здесь, а не по месту вызова, — тогда
+            мастер и карточка турнира одинаковы по построению, а не по договорённости. */}
+        {type === "date" ? (
+          <DateField
+            name={name}
+            id={common.id}
+            required={required}
+            size="sm"
+            defaultValue={value == null ? "" : String(value)}
+            // Турнир живёт в ближайших годах, а не с 1950-го, как дата рождения, и пустое поле
+            // открывается на нынешнем месяце — «Старт» ставят рядом с сегодня, а не через два года.
+            years={[now.getFullYear() - 1, now.getFullYear() + 5]}
+            openAt={{ y: now.getFullYear(), m: now.getMonth() + 1 }}
+          />
+        ) : children ? (
           <FormSelect {...common} size="sm">
             {children}
           </FormSelect>

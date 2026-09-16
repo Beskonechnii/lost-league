@@ -43,7 +43,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 // Ссылки «← Все турниры» здесь больше нет: путь называют крошки над заголовком, а соседние
 // инструменты турнира — ряд пилюль под ним (UI-GUIDELINES §3 и §9, долг закрыт на Э9).
 
-/** Дата для <input type="date">: браузер понимает только YYYY-MM-DD. */
+/** Дата в поле: календарь Кита понимает ISO и показывает её как «21.04.1998». */
 const forInput = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
 
 const STATUSES = Object.keys(TOURNAMENT_STATUS_LABELS) as TournamentStatus[];

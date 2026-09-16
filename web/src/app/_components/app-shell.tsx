@@ -54,7 +54,7 @@ const SECTIONS: NavLink[] = [
   { href: "/", label: "Главная" },
   // `/series` из «Турниров» ушёл: у ленты встреч теперь свой пункт, а активным в ряду может быть
   // ровно один (UI-GUIDELINES §2) — иначе на `/series` горели бы два сразу.
-  { href: "/tournaments", label: "Турниры", accent: true, match: ["/standings", "/tp"] },
+  { href: "/tournaments", label: "Турниры", match: ["/standings", "/tp"] },
   { href: "/series", label: "Встречи" },
   { href: "/roster", label: "Команды" },
   { href: "/roster/players", label: "Игроки" },
