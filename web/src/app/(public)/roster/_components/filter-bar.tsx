@@ -1,11 +1,21 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { FormInput } from "@/components/pouf/Input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/pouf/select";
+import { Toolbar, ToolbarCount, ToolbarFilter, ToolbarSearch } from "@/components/pouf/toolbar";
 
-// Панель фильтров пула: поиск + разрез по турниру + счётчик найденного. Одна на обе витрины
-// (команды и игроки) — до Э8 каждая держала свою копию строки с сырой строкой классов поля,
+// Полоса над данными пула: разрезы + поиск + фильтр по турниру + счётчик найденного. Одна на обе
+// витрины (команды и игроки) — до Э8 каждая держала свою копию строки с сырой строкой классов поля,
 // и это были два разных поля поиска на соседних вкладках одного раздела.
+//
+// Раскладку держит китовый `Toolbar`: здесь была его копия по классам, собранная тогда, когда атом
+// в Ките уже был. Осталась только начинка — поиск живёт в состоянии клиента, поэтому полоса
+// продукта не может быть тем же файлом, что полоса админки.
+//
+// Разрезы («Сквозной / По турнирам», у оператора ещё «В пуле / Архив») приходят готовым узлом
+// с серверной страницы: они ссылки, а не состояние клиента, и своей строкой над полосой стояли бы
+// вторым рядом управления за один выбор (UI-GUIDELINES §9).
 //
 // Селект — китовый (radix + подушка поля), а не нативный: нативный список в Light Clay остаётся
 // системным серым, и строка «поиск + фильтр» разъезжалась на два разных элемента управления.
@@ -14,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 const ALL = "all";
 
 export function FilterBar({
+  cuts,
   query,
   onQuery,
   placeholder,
@@ -24,6 +35,8 @@ export function FilterBar({
   count,
   hideTournament = false,
 }: {
+  /** Разрезы витрины, отрисованные на сервере: первой группой полосы, слева. */
+  cuts?: ReactNode;
   query: string;
   onQuery: (v: string) => void;
   placeholder: string;
@@ -38,10 +51,11 @@ export function FilterBar({
   hideTournament?: boolean;
 }) {
   return (
-    // Ширину держат обёртки, а не сами контролы: у поля и триггера селекта в Ките зашит `w-full`
-    // (в форме они всегда во всю колонку), и `flex-1` на них же схлопывался бы в отдельную строку.
-    <div className="flex flex-wrap items-center gap-3">
-      <div className="min-w-[12rem] flex-1">
+    <Toolbar>
+      {/* Раскладка группы — здесь, а не на странице: со страницы приходят сами пилюли, чтобы
+          обе витрины не держали по своей копии классов ряда. */}
+      {cuts && <div className="flex flex-wrap items-center gap-2">{cuts}</div>}
+      <ToolbarSearch>
         <FormInput
           type="search"
           size="sm"
@@ -50,25 +64,25 @@ export function FilterBar({
           placeholder={placeholder}
           aria-label={label}
         />
-      </div>
+      </ToolbarSearch>
       {!hideTournament && (
-      <div className="w-[11rem] shrink-0">
-        <Select value={tournament || ALL} onValueChange={(v) => onTournament(v === ALL ? "" : v)}>
-          <SelectTrigger size="sm" aria-label="Фильтр по турниру">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Все турниры</SelectItem>
-            {options.map((o) => (
-              <SelectItem key={o.slug} value={o.slug}>
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+        <ToolbarFilter>
+          <Select value={tournament || ALL} onValueChange={(v) => onTournament(v === ALL ? "" : v)}>
+            <SelectTrigger size="sm" aria-label="Фильтр по турниру">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Все турниры</SelectItem>
+              {options.map((o) => (
+                <SelectItem key={o.slug} value={o.slug}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </ToolbarFilter>
       )}
-      <span className="shrink-0 font-pouf text-sm font-bold tabular-nums text-muted">{count}</span>
-    </div>
+      <ToolbarCount>{count}</ToolbarCount>
+    </Toolbar>
   );
 }

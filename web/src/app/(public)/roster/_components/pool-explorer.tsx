@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import type { PoolTeam, PoolTournament } from "@/lib/roster-data";
 import { EmptyState } from "@/components/pouf/feedback";
 import { FilterBar } from "./filter-bar";
@@ -19,6 +19,7 @@ export function PoolExplorer({
   manage,
   grouped = false,
   tournaments = [],
+  cuts,
 }: {
   teams: PoolTeam[];
   manage?: { archived: boolean };
@@ -26,6 +27,8 @@ export function PoolExplorer({
   grouped?: boolean;
   /** Порядок секций — только для разреза по турнирам. */
   tournaments?: PoolTournament[];
+  /** Разрезы витрины со страницы (серверные ссылки) — первой группой полосы фильтров. */
+  cuts?: ReactNode;
 }) {
   const [q, setQ] = useState("");
   const [tournament, setTournament] = useState(""); // slug турнира или "" — все
@@ -91,6 +94,7 @@ export function PoolExplorer({
     <div className="space-y-4">
       {/* В разрезе по турнирам селект турнира лишний: секции и есть этот фильтр. */}
       <FilterBar
+        cuts={cuts}
         query={q}
         onQuery={onQuery}
         placeholder="Поиск команды…"
@@ -106,7 +110,7 @@ export function PoolExplorer({
         teams.length === 0 ? (
           <EmptyState
             icon="users"
-            title={manage?.archived ? "Архив пуст" : "В пуле пока нет команд"}
+            title={manage?.archived ? "Архив пуст" : "Команд пока нет"}
           >
             Команда попадает в пул, когда её заводит оператор или принимает заявку капитана.
           </EmptyState>

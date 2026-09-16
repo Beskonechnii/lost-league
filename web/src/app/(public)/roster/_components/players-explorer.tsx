@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import type { PoolPlayer, PoolTournament } from "@/lib/roster-data";
 import { teamAccent } from "@/lib/profiles";
 import { roleLabel } from "@/lib/roles";
@@ -21,12 +21,15 @@ export function PlayersExplorer({
   canFlag,
   grouped = false,
   tournaments = [],
+  cuts,
 }: {
   players: PoolPlayer[];
   canFlag: boolean;
   /** Разрез «по турнирам»: секция на турнир вместо одного списка (см. GroupSwitch). */
   grouped?: boolean;
   tournaments?: PoolTournament[];
+  /** Разрезы витрины со страницы (серверные ссылки) — первой группой полосы фильтров. */
+  cuts?: ReactNode;
 }) {
   const [q, setQ] = useState("");
   const [tournament, setTournament] = useState("");
@@ -80,6 +83,7 @@ export function PlayersExplorer({
   return (
     <div className="space-y-4">
       <FilterBar
+        cuts={cuts}
         query={q}
         onQuery={onQuery}
         placeholder="Поиск игрока…"
@@ -93,7 +97,7 @@ export function PlayersExplorer({
 
       {filtered.length === 0 ? (
         players.length === 0 ? (
-          <EmptyState icon="user" title="В пуле пока нет игроков">
+          <EmptyState icon="user" title="Игроков пока нет">
             Игрок появляется здесь, когда его заводит оператор или одобряет анкету новичка.
           </EmptyState>
         ) : (
