@@ -1,3 +1,4 @@
+import { cache } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -27,10 +28,24 @@ const clock = (sec: number | null) => (sec ? `${Math.floor(sec / 60)}:${String(s
 
 const dateFmt = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
+/** Одна выборка на запрос: её делят `generateMetadata` и сама страница (ТЗ 03). */
+const seriesDetail = cache(getSeriesDetail);
+
+/**
+ * Ссылку на встречу бросают в чат сразу после игры — в превью должно быть видно, кто с кем и чем
+ * кончилось, а не одно «встреча». Счёт в описании, а не в заголовке: заголовок переживает пересчёт
+ * карт, а описание турнирного контекста без счёта не объясняет, зачем открывать.
+ */
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  const s = await getSeriesDetail((await params).slug);
-  if (!s) return { title: "Встреча не найдена" };
-  return { title: `${s.home.name} — ${s.away.name}`, description: `${s.division}, ${stageLabel(s.stage)}` };
+  const s = await seriesDetail((await params).slug);
+  if (!s) return { title: "Встреча не найдена", robots: { index: false, follow: false } };
+
+  const score = `${s.homeScore}:${s.awayScore}`;
+  return {
+    title: `${s.home.name} — ${s.away.name}`,
+    description: `${s.home.name} — ${s.away.name} ${score} в лиге SPIRIT/CTRL: ${s.division}, ${stageLabel(s.stage)}. Составы и статистика по каждой карте.`,
+    alternates: { canonical: `/series/${s.slug}` },
+  };
 }
 
 /** Подпись разреза: «Группа A» либо «Верхняя сетка · Полуфинал». */
@@ -135,7 +150,7 @@ export default async function SeriesPage({ params }: { params: Promise<{ slug: s
   // так что ссылка ломалась бы на каждом переносе данных. Числовой id тоже принимаем — на случай
   // ссылок, отданных до появления слагов.
   const { slug } = await params;
-  const s = await getSeriesDetail(slug);
+  const s = await seriesDetail(slug);
   if (!s) notFound();
 
   // Раздел дивизиона живёт внутри турнира, поэтому ссылку строим по самому дивизиону встречи.

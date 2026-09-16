@@ -9,6 +9,26 @@
 
 ---
 
+## 2026-09-16 — ТЗ 03: базовое SEO публичной части
+
+`metadataBase` из `siteUrl()` (BASE_URL → туннель → localhost, домен в код не зашит), шаблон
+`%s — SPIRIT/CTRL`, OG и дефолтная карточка `app/opengraph-image.tsx` (1200×630, знак и начертание
+Кита на бумаге). `robots.ts` и `sitemap.ts` — force-dynamic, 353 адреса, служебного нет. Живые
+метаданные у игрока, команды, турнира, дивизиона и встречи; выборка общая с страницей через
+`cache()`. `noindex` — layout'ами `me`, `login`, `chat`, `(bare)`. Битый слаг отдавал 200: стрим
+начинала `loading.tsx` над карточкой — списки уехали в группы `(index)`/`(pool)`, скелет профиля
+игрока снят (строка в BACKLOG). `/contact` наполнена, `/about`, `/partners`, `/media-kit`,
+`/privacy` и `_components/coming-soon.tsx` удалены.
+**Файлы.** `app/{layout.tsx,robots.ts,sitemap.ts,opengraph-image.tsx}`, `(public)/{contact,me,login,chat}/`,
+`(public)/{players/[key],roster/teams/[id],roster/(pool),tournaments/(index),tournaments/[slug]/**,series/[slug]}`,
+`(home)/layout.tsx`, `(bare)/layout.tsx`, `lib/tournaments.ts`, `.env.example`, `docs/MAP.md`, `BACKLOG.md`.
+**Проверено.** tsc/lint/build чисто (прежний warning в `pouf/media.tsx`). На прод-сборке: битый слаг
+игрока, команды, турнира, дивизиона и встречи — 404; списки и `/contact` — 200; `/me` и `/admin` —
+noindex; sitemap без служебных адресов; `/contact` снят на 1440 и 390. Данных не трогал.
+**Дальше.** qa: приёмка 03. Канон домена (www, http→https) — за ТЗ 01, боевого адреса ещё нет.
+
+---
+
 ## 2026-09-16 — ТЗ 28: уведомления оператору строками в колокольчике
 
 Событие очереди приходит строкой в панель колокольчика тем, у кого есть право этой очереди:
@@ -199,17 +219,3 @@ player-card,tournament-groups}`, `(public)/roster/teams/[id]/page.tsx`.
 сыгранных карт в эфире нет, перевод серии виден сразу. Колонка чата получила `min-w-0` — в один столбец
 дорожка сетки `auto`, и ссылка без пробелов растягивала страницу до 15490px.
 **Дальше.** qa: повторная приёмка 22в. DESIGN-раздела в ТЗ не было — раскладку решал `stage`.
-
-## 2026-09-15 — ТЗ 22б: драфт руками капитанов
-
-Ход в комнате стал намерением `pick` (герой + номер хода), сервер сам зовёт `applyPick`; готовый
-payload в лобби не принимается. Время переехало на сервер: `Lobby.turnStartedAt/reserveA/reserveB`,
-срок хода в БД, будильник в процессе (`instrumentation.ts` поднимает их после перезапуска), автоход
-— случайный из `isSelectable`, простой догоняется пачкой; гонку режет `updateMany` с payload в
-условии. Живой канал открыт любому одобренному аккаунту (админ без профиля), присутствие не изменилось.
-**Файлы.** `prisma/schema.prisma` + миграция `20260915095256_lobby_turn_clock`, `lib/lobby-turn.ts` (новый),
-`lib/{lobby,lobby-room,chat}.ts`, `src/instrumentation.ts`, `api/lobby/[id]/route.ts`, `api/chat/stream/route.ts`,
-`(public)/lobby/**`, `_components/{account-nav,app-shell}`, `fearless-draft/_components/{fearless-run,hero-pool}.tsx`.
-**Дальше.** qa: приёмка 22б. Раздела DESIGN в ТЗ не было — раскладку решал `stage`, см. отчёт.
-Подсистемы лобби (22а+22б) до сих пор нет в `docs/MAP.md` и `ARCHITECTURE.md`.
-

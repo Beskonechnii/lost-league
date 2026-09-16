@@ -1,4 +1,6 @@
+import { cache } from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { getPlayerProfile } from "@/lib/roster-data";
 import { getPlayerHeroes } from "@/lib/player-stats";
@@ -26,6 +28,9 @@ import { OnlineDot } from "@/app/_components/chat-live";
 import { PlayerAvatar, TeamLogo } from "../../roster/_components/avatar";
 
 export const dynamic = "force-dynamic";
+
+/** Одна выборка на запрос: её делят `generateMetadata` и сама страница (ТЗ 03). */
+const playerProfile = cache(getPlayerProfile);
 
 /**
  * Страница собрана по канону «Профиль игрока» (макет из скилла `kit`): hero с баннером и
@@ -92,12 +97,39 @@ function TournamentCard({ row, accent }: { row: PlayerTournamentRow; accent: str
   );
 }
 
+/**
+ * Профиль — главная индексируемая единица лиги: на него дают ссылку в чат и кладут в закладки
+ * (DECISIONS, 04.09.2026). Заголовок — ник, описание — команда, позиция и ранг: то, по чему
+ * человека ищут, и то, что видно в превью ссылки.
+ *
+ * Выборка та же, что у страницы: `cache()` держит её на время одного запроса, поэтому метаданные
+ * не стоят второго похода в базу за теми же данными.
+ */
+export async function generateMetadata({ params }: { params: Promise<{ key: string }> }): Promise<Metadata> {
+  const player = await playerProfile((await params).key);
+  if (!player) return { title: "Игрок не найден", robots: { index: false, follow: false } };
+
+  const spot = player.spots[0] ?? null;
+  // Ранг берём из профиля, а не считаем: `rankLabel` читает то же поле, что рисует медаль в шапке.
+  const facts = [
+    spot ? `${spot.team.name}` : "вне состава",
+    spot ? roleLabel(spot.role) : null,
+    rankLabel(player.rank),
+  ].filter(Boolean);
+
+  return {
+    title: player.nickname,
+    description: `${player.nickname} в лиге SPIRIT/CTRL: ${facts.join(", ")}. Матчи, герои и статистика по сезонам.`,
+    alternates: { canonical: playerPath(player) },
+  };
+}
+
 export default async function PlayerPage({ params }: { params: Promise<{ key: string }> }) {
   const { key } = await params;
   // Ключ адреса — слаг: он у игрока один, ставится навсегда и не меняется вместе с ником. Числовой
   // id тоже принимаем (старые ссылки, письма бота, закладки), но уводим на канонический адрес —
   // чтобы у страницы был ровно один URL, а не два одинаково рабочих.
-  const player = await getPlayerProfile(key);
+  const player = await playerProfile(key);
   if (!player) notFound();
   if (key !== player.slug) redirect(playerPath(player));
   const pid = player.id;

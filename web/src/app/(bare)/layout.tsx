@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
+
 // «Голая» группа маршрутов: без навигации и обёрток. Нужна для оверлеев, которые встраивают
 // снаружи (OBS-сцена шоу-драфта). Публичная — пароль на неё не вешаем (см. needsAdmin): у OBS
 // админской куки нет, а показывается только результат драфта, не операторские кнопки.
+
+// Оверлей — кадр для трансляции, а не страница: ни заголовка, ни текста в нём нет, и попасть
+// в выдачу он может только мусором.
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default function BareLayout({ children }: { children: React.ReactNode }) {
   return (

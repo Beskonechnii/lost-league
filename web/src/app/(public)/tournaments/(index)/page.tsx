@@ -7,6 +7,12 @@ import { Heading, Text } from "@/components/pouf/text";
 import { EmptyState } from "@/components/pouf/feedback";
 import { TournamentCard } from "@/app/_components/tournament-card";
 
+// Группа `(index)` на URL не влияет — раздел остаётся `/tournaments`. Она нужна только затем, чтобы
+// скелет ожидания (`loading.tsx`) накрывал сам список турниров и НЕ накрывал `[slug]` под ним.
+// Причина в стриминге: `loading.tsx` открывает Suspense-границу, ответ начинает течь до того, как
+// страница досчиталась, а после первого байта статус уже не сменить — и `notFound()` на битом слаге
+// турнира отдавал 200 вместо 404 (ТЗ 03, `next/dist/docs` → file-conventions/loading, «Status Codes»).
+
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Турниры" };
 

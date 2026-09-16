@@ -1,17 +1,15 @@
-import type { Metadata } from "next";
 import { AppShell } from "../_components/app-shell";
 
 // Публичная часть — то, что видит посетитель: разбор матча, таблица дивизиона, витрина ростера.
 // Группа `(public)` на URL не влияет, она нужна ровно за тем, чтобы у продукта были свои
 // метаданные, не общие со служебной частью.
 //
+// Своих метаданных у группы больше нет: заголовок, описание и шаблон `%s — SPIRIT/CTRL` пришли
+// в корневой layout (ТЗ 03) — там же `metadataBase` и OG, и дублировать их тут значит завести
+// второе место, где правится имя лиги. Служебная группа `(admin)` свои по-прежнему переопределяет.
+//
 // Хром общий на все три группы маршрутов — верхний бар `_components/app-shell.tsx` (ТЗ 08,
 // решение 13.09). Левой колонки больше нет.
-
-export const metadata: Metadata = {
-  title: { default: "SPIRIT/CTRL", template: "%s — SPIRIT/CTRL" },
-  description: "Разбор матчей Dota 2, таблица и составы лиги SPIRIT/CTRL",
-};
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return <AppShell>{children}</AppShell>;

@@ -1,15 +1,41 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { divisionTeams, registrationOpen, tournamentBySlug } from "@/lib/tournaments";
+import {
+  divisionTeams,
+  registrationOpen,
+  tournamentBySlug,
+  TOURNAMENT_STATUS_LABELS,
+  type TournamentStatus as TournamentStatusKey,
+} from "@/lib/tournaments";
 import { READ_MAX_W, SectionHeader, StatTile } from "@/components/pouf/blocks";
 import { Heading } from "@/components/pouf/text";
 import { TournamentStatus } from "@/app/_components/tournament-status";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
-  const t = await tournamentBySlug((await params).slug);
-  return { title: t ? `${t.name} — о турнире` : "Турнир" };
+/**
+ * «О турнире» — единственная страница сезона, которую читают целиком, и единственная, у которой
+ * есть свой текст: формат, сроки, призовой. Она же и ссылка на турнир, которую бросают в чат.
+ * Описание собираем из фактов турнира, а не из слогана лиги: их и ищут.
+ */
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const t = await tournamentBySlug(slug);
+  if (!t || t.status === "draft") return { title: "Турнир не найден", robots: { index: false, follow: false } };
+
+  const facts = [
+    (TOURNAMENT_STATUS_LABELS[t.status as TournamentStatusKey] ?? "").toLowerCase() || null,
+    t.divisions.map((d) => d.label ?? d.name).join(" и ") || null,
+    t.format,
+    t.prize ? `призовой ${t.prize}` : null,
+  ].filter(Boolean);
+
+  return {
+    title: `${t.name} — о турнире`,
+    description: `${t.name} — турнир лиги SPIRIT/CTRL: ${facts.join(", ")}. Регламент, сроки, участники.`,
+    alternates: { canonical: `/tournaments/${t.slug}/about` },
+  };
 }
 
 // Обзор турнира: статус, сроки, формат, призовой, дивизионы и регламент. Отдельной вкладкой, а не

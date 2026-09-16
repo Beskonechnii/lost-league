@@ -86,14 +86,19 @@ export async function divisionByName(name: string | null | undefined): Promise<D
 export const divisionWithTournament = (id: number) =>
   prisma.division.findUnique({ where: { id }, include: { tournament: true } });
 
-/** Дивизион турнира по паре слагов из URL: /tournaments/<турнир>/<дивизион>. */
-export async function divisionOfTournament(tournamentSlug: string, divisionSlug: string) {
-  const row = await prisma.division.findFirst({
+/**
+ * Дивизион турнира по паре слагов из URL: /tournaments/<турнир>/<дивизион>.
+ *
+ * `cache()` — потому что за один запрос его зовут трижды: layout дивизиона (ради цвета и 404),
+ * `generateMetadata` (заголовок с именем турнира) и сама страница. Без него это три одинаковых
+ * похода в базу на каждое открытие таблицы.
+ */
+export const divisionOfTournament = cache(async (tournamentSlug: string, divisionSlug: string) =>
+  prisma.division.findFirst({
     where: { slug: divisionSlug, tournament: { slug: tournamentSlug } },
     include: { tournament: true },
-  });
-  return row;
-}
+  }),
+);
 
 /** Ранг «актуальности» турнира: свежее — меньше (running > registration > finished, при равенстве
  *  статуса — поздний старт). Одно правило для `teamDivision` и пула команд (roster-data.ts). */
@@ -145,11 +150,14 @@ export const listTournaments = () =>
     },
   });
 
-export const tournamentBySlug = (slug: string) =>
+// `cache()` по той же причине, что у `divisionOfTournament`: layout турнира, метаданные страницы
+// и сама страница спрашивают один и тот же турнир в одном запросе.
+export const tournamentBySlug = cache((slug: string) =>
   prisma.tournament.findUnique({
     where: { slug },
     include: { divisions: { orderBy: [{ orderNo: "asc" }, { id: "asc" }] } },
-  });
+  }),
+);
 
 export type TournamentInput = {
   name: string;

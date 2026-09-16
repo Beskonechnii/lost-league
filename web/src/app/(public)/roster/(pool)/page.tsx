@@ -6,8 +6,12 @@ import { SectionHeader } from "@/components/pouf/blocks";
 import { Alert } from "@/components/pouf/feedback";
 import { Separator } from "@/components/pouf/separator";
 import { PillLink } from "@/components/pouf/tabs";
-import { PoolExplorer } from "./_components/pool-explorer";
-import { GroupSwitch } from "./_components/pool-switch";
+import { PoolExplorer } from "../_components/pool-explorer";
+import { GroupSwitch } from "../_components/pool-switch";
+
+// Группа `(pool)` на URL не влияет — раздел остаётся `/roster`. Она нужна ровно за тем же, что и
+// `(index)` у турниров: скелет ожидания накрывает список команд и не накрывает карточку
+// `/roster/teams/<id>` под ним, иначе битый id команды отдавал бы 200 вместо 404 (ТЗ 03).
 
 export const dynamic = "force-dynamic";
 

@@ -7,6 +7,21 @@
 
 ---
 
+## 2026-09-15 — ТЗ 22б: драфт руками капитанов
+
+Ход в комнате стал намерением `pick` (герой + номер хода), сервер сам зовёт `applyPick`; готовый
+payload в лобби не принимается. Время переехало на сервер: `Lobby.turnStartedAt/reserveA/reserveB`,
+срок хода в БД, будильник в процессе (`instrumentation.ts` поднимает их после перезапуска), автоход
+— случайный из `isSelectable`, простой догоняется пачкой; гонку режет `updateMany` с payload в
+условии. Живой канал открыт любому одобренному аккаунту (админ без профиля), присутствие не изменилось.
+**Файлы.** `prisma/schema.prisma` + миграция `20260915095256_lobby_turn_clock`, `lib/lobby-turn.ts` (новый),
+`lib/{lobby,lobby-room,chat}.ts`, `src/instrumentation.ts`, `api/lobby/[id]/route.ts`, `api/chat/stream/route.ts`,
+`(public)/lobby/**`, `_components/{account-nav,app-shell}`, `fearless-draft/_components/{fearless-run,hero-pool}.tsx`.
+**Дальше.** qa: приёмка 22б. Раздела DESIGN в ТЗ не было — раскладку решал `stage`, см. отчёт.
+Подсистемы лобби (22а+22б) до сих пор нет в `docs/MAP.md` и `ARCHITECTURE.md`.
+
+---
+
 ## 2026-09-15 — ТЗ 22а: лобби встречи до первого хода
 
 Комната встречи: модели `Lobby`/`LobbyMember` (участники, стороны, роли — строками, не в payload),

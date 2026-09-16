@@ -1,4 +1,6 @@
+import { cache } from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTeamProfile, teamRosterHistory, rosterKey, type RosterMember, type TeamSeasonRoster } from "@/lib/roster-data";
 import { prisma } from "@/lib/prisma";
@@ -30,14 +32,41 @@ export const dynamic = "force-dynamic";
  * (если он есть) стал верхним слоем той же светлой подушки.
  */
 
+/**
+ * Шапка команды — имя и участие. Отдельной маленькой выборкой, а не `getTeamProfile`: метаданным
+ * состав не нужен, а страница всё равно начинается с этого же запроса. `cache()` держит обе на
+ * время запроса, так что походов в базу столько же, сколько было (ТЗ 03).
+ */
+const teamHead = cache((key: string) =>
+  prisma.team.findUnique({ where: rosterKey(key), select: { id: true, name: true, archivedAt: true } }),
+);
+const divisionOfTeam = cache(teamDivision);
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const team = await teamHead(id);
+  if (!team) return { title: "Команда не найдена", robots: { index: false, follow: false } };
+
+  const division = await divisionOfTeam(team.id);
+  const where = division ? `${division.label ?? division.name}, ${division.tournament.name}` : "вне текущего турнира";
+  return {
+    title: team.name,
+    description: `${team.name} в лиге SPIRIT/CTRL: состав, результаты встреч и место в таблице — ${where}.`,
+    alternates: { canonical: `/roster/teams/${team.id}` },
+    // Архив — второе из двух удалений: для посетителя такой команды в лиге уже нет, и в выдаче
+    // ей не место. Страница остаётся рабочей для оператора и для старых ссылок.
+    robots: team.archivedAt ? { index: false, follow: true } : undefined,
+  };
+}
+
 export default async function TeamPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   // id или слаг — см. rosterKey: на слаге страница раньше падала с 500. Дивизион ищем по её
   // собственному участию раньше состава: getTeamProfile фильтрует ростер именно по нему, иначе
   // команда, только что принятая в новый турнир, оставалась бы без состава на своей же странице.
-  const teamRow = await prisma.team.findUnique({ where: rosterKey(id), select: { id: true } });
+  const teamRow = await teamHead(id);
   if (!teamRow) notFound();
-  const division = await teamDivision(teamRow.id);
+  const division = await divisionOfTeam(teamRow.id);
 
   // Таблицу берём по дивизиону команды в текущем турнире — тому же, что показывает его раздел.
   // Команда вне турнира (например, из прошлого сезона) таблицы не получает — это не ошибка.

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getGroupStage, groupStageDone, groupStageProgress } from "@/lib/group-stage";
 import { divisionOfTournament } from "@/lib/tournaments";
@@ -17,6 +18,27 @@ export const dynamic = "force-dynamic";
 // Сетка личных встреч («все со всеми») уехала на соседнюю вкладку «Группы»: на одном экране
 // узкая таблица и широкая кросс-сетка делили ширину пополам, и обе теряли колонки. Теперь у
 // таблицы вся колонка страницы, а у кросс-сетки — своя.
+
+/**
+ * Корень дивизиона — это таблица, так его и называем: «LOST D1 — таблица». Имя турнира в заголовок
+ * не тянем, его добавит шаблон лиги, а «LOST D1 — LOST Season 2 — SPIRIT/CTRL» в превью обрезается
+ * раньше, чем станет понятно, о чём страница. Турнир вместо этого идёт в описание.
+ *
+ * Выборка общая с layout'ом дивизиона и с самой страницей: `divisionOfTournament` закеширована
+ * на запрос (lib/tournaments.ts), второго похода в базу метаданные не заводят.
+ */
+export async function generateMetadata({ params }: { params: Promise<{ slug: string; div: string }> }): Promise<Metadata> {
+  const { slug, div } = await params;
+  const division = await divisionOfTournament(slug, div);
+  if (!division) return { title: "Дивизион не найден", robots: { index: false, follow: false } };
+
+  const name = division.label ?? division.name;
+  return {
+    title: `${name} — таблица`,
+    description: `Турнирная таблица ${name} — ${division.tournament.name}: место, игры, разница карт и очки команд.`,
+    alternates: { canonical: `/tournaments/${slug}/${div}` },
+  };
+}
 
 export default async function StandingsPage({ params }: { params: Promise<{ slug: string; div: string }> }) {
   const { slug, div } = await params;

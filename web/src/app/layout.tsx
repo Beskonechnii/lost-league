@@ -6,6 +6,7 @@ import "@fontsource-variable/nunito";
 import { Toaster } from "@/components/pouf/toaster";
 import { readTheme } from "@/lib/theme-store";
 import { themeToStyle } from "@/lib/theme";
+import { siteUrl } from "@/lib/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,13 +18,29 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  // Наружу лига называется SPIRIT/CTRL (решение 28.08.2026 в DECISIONS.md); «LOST» остаётся
-  // внутренним именем — репозиторий, пути, токены. В заголовке вкладки внутреннего имени
-  // быть не должно: посетитель видел то «SPIRIT/CTRL», то «LOST», то «League of Spirit».
-  title: "SPIRIT/CTRL",
-  description: "Стата матчей, таблица лиги и студия графики SPIRIT/CTRL",
-};
+/**
+ * Метаданные всего сайта. `generateMetadata`, а не константа: `metadataBase` берётся из адреса
+ * сайта в рантайме (`BASE_URL` → живой туннель → localhost, см. `lib/site.ts`), а константа
+ * застыла бы на том значении, что было в момент сборки — и превью на туннеле вели бы на localhost.
+ *
+ * Наружу лига называется SPIRIT/CTRL (решение 28.08.2026 в DECISIONS.md); «LOST» остаётся
+ * внутренним именем — репозиторий, пути, токены. В заголовке вкладки внутреннего имени быть не
+ * должно: посетитель видел то «SPIRIT/CTRL», то «LOST», то «League of Spirit».
+ *
+ * Шаблон `%s — SPIRIT/CTRL` держим здесь, а не в каждой группе маршрутов: имя лиги должно попадать
+ * в видимую часть заголовка вкладки и превью, а группа может забыть его добавить. `og:image` сюда
+ * не пишем — его даёт файл-конвенция `opengraph-image.tsx` рядом, одна картинка на весь сайт.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    metadataBase: new URL(siteUrl()),
+    title: { default: "SPIRIT/CTRL", template: "%s — SPIRIT/CTRL" },
+    description: "Любительская лига по Dota 2: сезонные турниры, дивизионы, разбор матчей и рейтинг игроков.",
+    applicationName: "SPIRIT/CTRL",
+    openGraph: { type: "website", siteName: "SPIRIT/CTRL", locale: "ru_RU" },
+    twitter: { card: "summary_large_image" },
+  };
+}
 
 export default async function RootLayout({
   children,
