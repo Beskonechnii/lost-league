@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { currentAccount, updateOwnProfile, type OwnProfileInput } from "@/lib/account";
 import { anyProfileLinkProblem, profileLinkKind } from "@/lib/application";
 import { checkValue, currentValue, submitProfileEdit, type EditField } from "@/lib/profile-edit";
+import { noticeProfileEdit } from "@/lib/queue-notify";
 
 // Правка своей анкеты. Аккаунт берём из сессии, а не из формы — действовать от чужого имени нельзя.
 //
@@ -76,6 +77,10 @@ export async function saveProfile(_state: SaveState, form: FormData): Promise<Sa
     // а состояние, о котором форма и так говорит. Молча пропускаем — остальные поля сохранены.
     if (!claim) sent.push(item.label);
   }
+
+  // Одна строка оператору на одно сохранение формы: три поля разом — это одно событие, а не три
+  // уведомления подряд.
+  if (sent.length) await noticeProfileEdit(player.nickname, sent, account.id);
 
   revalidatePath("/me/profile");
   revalidatePath("/me");

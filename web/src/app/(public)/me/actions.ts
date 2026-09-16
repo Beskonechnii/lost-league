@@ -11,6 +11,7 @@ import {
   submitClaimWithApplication,
   storeApplicationDraft,
 } from "@/lib/account";
+import { noticeNewProfile, noticeProfileClaim } from "@/lib/queue-notify";
 import type { ApplicationInput } from "@/lib/application";
 
 // Действия кабинета игрока. Все требуют вошедшего аккаунта — id берём из сессии, а не из формы,
@@ -70,6 +71,9 @@ export async function sendApplication(_state: ApplyState, form: FormData): Promi
 
   const error = await submitApplication(id, input, form.get("policy") != null);
   if (error) return { error, values: input };
+  // Уведомление оператору — своим шагом после записи: анкета уже в очереди, и ронять её из-за
+  // несостоявшегося сообщения нельзя (`queue-notify.ts` молчит сам, но порядок важен).
+  await noticeNewProfile(input.nickname.trim(), id);
   revalidatePath("/me");
   return null;
 }
@@ -124,6 +128,7 @@ export async function sendClaimWithApplication(_state: ApplyState, form: FormDat
   const input = readApplicationInput(form);
   const error = await submitClaimWithApplication(id, playerId, input, form.get("policy") != null);
   if (error) return { error, values: input };
+  await noticeProfileClaim(playerId, id);
   revalidatePath("/me");
   return null;
 }

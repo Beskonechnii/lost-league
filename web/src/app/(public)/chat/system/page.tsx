@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { currentChatMe, findConversation, listConversations, messages } from "@/lib/chat";
+import { currentLiveMe, findConversation, listConversations, messages } from "@/lib/chat";
 import { SYSTEM_NAME, systemAccountId } from "@/lib/system-chat";
 import { Icon } from "@/components/pouf/Icon";
 import { Breadcrumbs } from "@/components/pouf/breadcrumbs";
@@ -18,7 +18,10 @@ export const metadata = { title: "Spirit CTRL" };
 // прочее из реестра `chat-actions.ts`. Ответ уходит прямо из ленты.
 
 export default async function SystemChatPage() {
-  const me = await currentChatMe();
+  // Витрина колокольчика, а колокольчик есть у любого одобренного аккаунта — в том числе у
+  // оператора без карточки игрока, которому приходят строки очередей (ТЗ 28). Личка при этом
+  // остаётся игрокам: `/chat` и `/chat/<id>` по-прежнему на `currentChatMe`.
+  const me = await currentLiveMe();
   if (!me) return <ChatGate />;
 
   const systemId = await systemAccountId();

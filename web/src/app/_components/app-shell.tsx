@@ -2,6 +2,7 @@ import "server-only";
 import Link from "next/link";
 import { currentPermissions } from "@/lib/account";
 import { messages } from "@/lib/chat";
+import { queueNotice } from "@/lib/queue-notify";
 import { onlineCount, onlinePlayerIds } from "@/lib/presence";
 import { roleShort } from "@/lib/roles";
 import { SITE_MAX_W } from "@/components/pouf/blocks";
@@ -70,7 +71,7 @@ const ADMIN: NavLink = {
 };
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
-  const [{ account: navAccount, cabinet, chat, live, system, spot }, perms] = await Promise.all([
+  const [{ account: navAccount, raw, cabinet, live, system, spot }, perms] = await Promise.all([
     currentAccountNav(),
     currentPermissions(),
   ]);
@@ -78,11 +79,23 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   // Строки панели — последние сообщения той же беседы с лигой, что открыта на `/chat/system`.
   // Непрочитанные всегда свежие: помечаем столько верхних, сколько насчитал колокольчик.
   const lines: NotificationLine[] = [];
-  if (chat && system.conversationId) {
+  if (raw && live && system.conversationId) {
     const now = new Date();
-    const tail = (await messages(system.conversationId, chat.accountId, { limit: 20 })).reverse().slice(0, 8);
-    for (const m of tail)
-      lines.push({ id: m.id, text: m.text, time: when(m.createdAt, now), unread: lines.length < system.unread });
+    const tail = (await messages(system.conversationId, raw.id, { limit: 20 })).reverse().slice(0, 8);
+    for (const m of tail) {
+      // Вид строки решает `kind` сообщения: у операторской строки он есть (реестр очередей),
+      // у решения лиги игроку — нет, и она остаётся ненажимаемой, как была.
+      const notice = queueNotice(m.kind);
+      lines.push({
+        id: m.id,
+        text: m.text,
+        time: when(m.createdAt, now),
+        unread: lines.length < system.unread,
+        icon: notice?.icon ?? "shield",
+        tone: notice ? "warn" : "mint",
+        href: notice?.href,
+      });
+    }
   }
 
   // Пункт без права не рисуется: это витрина, а не защита — сами роуты проверяют право у себя.
@@ -125,10 +138,16 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
               {/* Поиск первым в острове: он самый широкий, а колокольчик и аватар обязаны стоять
                   на краю, где их ищут глазами. */}
               <BarSearch />
-              {/* Колокольчик есть только у того, кому лига может написать: у гостя и у аккаунта без
-                  карточки игрока служебного канала нет вовсе, и пустой значок им ни о чём. */}
-              {chat && (
-                <Notifications conversationId={system.conversationId} unread={system.unread} lines={lines} />
+              {/* Колокольчик есть у того, кому лига может написать, — у любого одобренного
+                  аккаунта, в том числе у оператора без карточки игрока (ему как раз и приходят
+                  строки очередей). У гостя служебного канала нет вовсе. */}
+              {live && (
+                <Notifications
+                  conversationId={system.conversationId}
+                  unread={system.unread}
+                  lines={lines}
+                  operator={perms.includes("accounts.approve") || perms.includes("roster.edit")}
+                />
               )}
               <AvatarMenu account={navAccount} items={cabinet} subtitle={subtitle} />
             </div>

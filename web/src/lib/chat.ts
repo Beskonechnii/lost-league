@@ -222,6 +222,9 @@ export type ChatLine = {
   text: string;
   createdAt: Date;
   mine: boolean;
+  /** Вид системного сообщения. Кнопки берёт из него `chat-actions.ts`, а панель колокольчика —
+   *  значок и адрес строки (`queue-notify.ts`): у операторской строки kind есть, у обычной нет. */
+  kind?: string | null;
   /** Выбор, если сообщение системное: кнопки либо уже сделанный ответ (`chat-actions.ts`). */
   action?: ChatAction | null;
 };
@@ -249,6 +252,7 @@ export async function messages(
       text: r.text,
       createdAt: r.createdAt,
       mine: r.senderId === meAccountId,
+      kind: r.kind,
       // Состояние выбора читается из сущности при каждом рендере: в сообщении его нет (см.
       // chat-actions.ts), поэтому «принял» видно и тогда, когда ответили из бота или со страницы.
       action: await actionOf(r.kind, r.payload, meAccountId),

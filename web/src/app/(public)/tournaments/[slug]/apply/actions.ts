@@ -10,6 +10,7 @@ import {
 } from "@/lib/team-application";
 import { notifyRosterInvites } from "@/lib/tg-notify";
 import { tellAccount, tellPlayer } from "@/lib/system-chat";
+import { noticeTeamApplication } from "@/lib/queue-notify";
 import { splitTeamName, type PlayerDraft, type TeamDraft } from "@/lib/roster-import";
 import { prisma } from "@/lib/prisma";
 import { isRole } from "@/lib/roles";
@@ -143,6 +144,9 @@ export async function submitApplication(_prev: ApplyState, form: FormData): Prom
           ? `Позвали в состав: ${invited.length}. Ответы придут сюда же.`
           : "Все, кого вы вписали, уже были в этой заявке — заново их не звал."),
     );
+
+    // И строка оператору: заявка встала в очередь `/admin/moderation?tab=teams`.
+    await noticeTeamApplication(draft.name, tournament?.name ?? "турнир лиги", me.id);
     revalidatePath(`/tournaments/${String(form.get("tournamentSlug") ?? "")}/apply`);
     return {
       problems,

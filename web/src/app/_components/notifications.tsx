@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Popover as PopoverPrimitive } from "radix-ui";
 import { toast } from "sonner";
-import { IconButton } from "@/components/pouf/Button";
-import { Icon } from "@/components/pouf/Icon";
+import { Button, IconButton } from "@/components/pouf/Button";
+import { Icon, type IconName } from "@/components/pouf/Icon";
 import { EmptyState } from "@/components/pouf/feedback";
+import { NotificationRow } from "@/components/pouf/notification";
+import type { Tone } from "@/components/pouf/tone";
 
 // Колокольчик витрины — ВИТРИНА СЛУЖЕБНОГО КАНАЛА `/chat/system`, а не второй список сообщений
 // (решение 04.09.2026). Строки здесь — те же `ChatMessage` беседы с лигой, что открыты на странице
@@ -23,16 +25,29 @@ export type NotificationLine = {
   /** Время уже подписью: считает сервер, чтобы клиент не расходился с ним на гидрации. */
   time: string;
   unread: boolean;
+  /** Вид события: значок и тон блоба. Решение лиги игроку — `shield`/`mint`, очередь — свой знак
+   *  и `warn` (реестр `lib/queue-notify.ts`, вид считает сервер в `app-shell.tsx`). */
+  icon: IconName;
+  tone: Tone;
+  /** Экран, где работу разбирают. Есть только у операторских строк — они и нажимаются. */
+  href?: string;
 };
+
+/** Больше трёх знаков бейдж не держит: четвёртый вылезает за край острова входа. */
+const badge = (n: number) => (n > 99 ? "99+" : String(n));
 
 export function Notifications({
   conversationId,
   unread,
   lines,
+  operator,
 }: {
   conversationId: number | null;
   unread: number;
   lines: NotificationLine[];
+  /** Есть ли у аккаунта хоть одна очередь: от этого зависит фраза пустого состояния. Строки
+   *  режутся не здесь — право проверяется там, где шлётся (`queue-notify.ts`). */
+  operator: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -67,7 +82,7 @@ export function Notifications({
           <Icon name="alerts" size="md" />
           {unread > 0 && (
             <span className="absolute -right-0.5 -top-0.5 grid h-[19px] min-w-[19px] place-items-center rounded-pill bg-surface px-[5px] text-[10px] font-black tabular-nums text-[var(--color-err-ink)] cushion-row">
-              {unread}
+              {badge(unread)}
             </span>
           )}
         </button>
@@ -88,15 +103,12 @@ export function Notifications({
                 {unread > 0 ? `Непрочитанных: ${unread}` : "Всё прочитано"}
               </div>
             </div>
+            {/* Тач-цель 44: прежние 85×18 нажимались мимо. Высота шапки от этого не растёт —
+                её держит крестик 44×44 рядом. */}
             {unread > 0 && (
-              <button
-                type="button"
-                onClick={readAll}
-                disabled={busy}
-                className="shrink-0 text-[12px] font-extrabold text-muted transition hover:text-ink disabled:opacity-50"
-              >
+              <Button size="sm" variant="quiet" onClick={readAll} disabled={busy} className="shrink-0 !min-h-11">
                 прочитать все
-              </button>
+              </Button>
             )}
             {/* На 390 панель занимает почти весь экран, и «ткнуть мимо» остаётся полоской 12px:
                 явный выход обязателен. */}
@@ -114,8 +126,11 @@ export function Notifications({
 
           {lines.length === 0 ? (
             <div className="p-2">
+              {/* Оператору прежняя фраза врала: лига — это он. */}
               <EmptyState icon="alerts" title="Пока тихо">
-                Лига пишет сюда о заявках, назначенных встречах и решениях оператора.
+                {operator
+                  ? "Заявки, анкеты и правки профиля придут сюда. Разбирают их в Ведении лиги."
+                  : "Лига пишет сюда о заявках, назначенных встречах и решениях оператора."}
               </EmptyState>
             </div>
           ) : (
@@ -126,22 +141,18 @@ export function Notifications({
               {/* Длинный список прокручивается внутри панели, а не растягивает её на весь экран. */}
               <div className="max-h-[min(60vh,420px)] space-y-0.5 overflow-y-auto">
                 {lines.map((l) => (
-                  <div
+                  <NotificationRow
                     key={l.id}
-                    className={`flex gap-3 rounded-blob px-3.5 py-3 ${l.unread ? "bg-surface-2 cushion-field" : ""}`}
-                  >
-                    <span className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-chip bg-accent-fill text-[var(--on-accent)] cushion-blob">
-                      <Icon name="shield" size="sm" />
-                    </span>
-                    {/* У служебного сообщения есть только текст и время — заголовка нет, поэтому
-                        строка одноуровневая: текст в три строки, дальше многоточие. */}
-                    <p className="min-w-0 flex-1 line-clamp-3 text-[12.5px] font-bold leading-[1.45] text-ink">
-                      {l.text}
-                    </p>
-                    <span className="shrink-0 whitespace-nowrap text-[11px] font-extrabold text-ink-subtle">
-                      {l.time}
-                    </span>
-                  </div>
+                    icon={l.icon}
+                    tone={l.tone}
+                    text={l.text}
+                    time={l.time}
+                    unread={l.unread}
+                    href={l.href}
+                    // Уходя по строке, панель закрываем: иначе она осталась бы висеть над экраном,
+                    // на который сама же и привела.
+                    onClick={() => setOpen(false)}
+                  />
                 ))}
               </div>
             </>

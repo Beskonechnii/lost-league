@@ -9,7 +9,7 @@ interface BlobProps {
    *  not a requirement. */
   icon: IconLike
   tone?: Tone
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'xs' | 'sm' | 'md' | 'lg'
   /** Decorative by default — a blob beside a visible label is noise to a
    *  screen reader. Pass a label only when the icon is the sole meaning. */
   label?: string
@@ -29,6 +29,10 @@ const blob = cva(
   {
     variants: {
       size: {
+        /* 34px — размер значка в строке списка, где 44 у `sm` съедают текст (панель уведомлений
+         * на 390: колонка текста 235px). Радиус chip, а не 14px: на такой стороне 14 читается
+         * почти кругом. */
+        xs: 'w-[34px] h-[34px] rounded-chip text-[16px]',
         sm: 'w-11 h-11 rounded-[14px] text-[20px]',
         md: 'w-[60px] h-[60px] rounded-[18px] text-[26px]',
         lg: 'w-20 h-20 rounded-blob text-[36px]',
@@ -47,7 +51,7 @@ export function Blob({ icon, tone = 'purple', size = 'lg', label }: BlobProps) {
       aria-label={label}
       aria-hidden={label ? undefined : true}
     >
-      {renderIcon(icon, size === 'sm' ? 'sm' : size === 'md' ? 'md' : 'lg')}
+      {renderIcon(icon, size === 'lg' ? 'lg' : size === 'md' ? 'md' : 'sm')}
     </span>
   )
 }

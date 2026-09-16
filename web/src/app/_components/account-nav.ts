@@ -68,11 +68,16 @@ async function systemChat(meAccountId: number): Promise<NavSystemChat> {
 }
 
 export async function accountNav(account: Account | null): Promise<AccountNav> {
-  // Чат и присутствие: канал открывает только игрок лиги, а снимок «кто в сети» нужен и гостю.
+  // Чат и присутствие: личку открывает только игрок лиги, а снимок «кто в сети» нужен и гостю.
   const chat = chatIdentity(account);
-  const live = liveIdentity(account) !== null;
-  const [total, system] = chat
-    ? await Promise.all([unreadTotal(chat.accountId), systemChat(chat.accountId)])
+  // Служебный канал считаем по `liveIdentity`, а не по `chatIdentity`: писать в него лига может
+  // ЛЮБОМУ одобренному аккаунту (`tellAccount`), в том числе оператору без карточки игрока — и
+  // именно ему приходят строки очередей. По `chatIdentity` колокольчика у него не было вовсе,
+  // и прислать уведомление было некуда (ТЗ 28 DESIGN §4).
+  const me = liveIdentity(account);
+  const live = me !== null;
+  const [total, system] = me
+    ? await Promise.all([unreadTotal(me.accountId), systemChat(me.accountId)])
     : [0, { conversationId: null, unread: 0 } satisfies NavSystemChat];
   // Два счётчика не пересекаются и вместе дают прежнюю сумму: колокольчик — служебное,
   // «Сообщения» — всё остальное. Иначе одно непрочитанное светится в двух местах сразу.
