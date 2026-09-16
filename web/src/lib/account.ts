@@ -503,6 +503,9 @@ export async function rejectRegistration(accountId: number, reason: string): Pro
 /** Все аккаунты для панели: профиль/заявка, эффективная роль и её права. */
 export async function listAccounts() {
   const rows = await prisma.userAccount.findMany({
+    // Служебный аккаунт лиги («Spirit CTRL», system-chat.ts) — не человек: раздавать ему роли
+    // и права не в чем, а строкой в списке он выглядел бы игроком, которого никто не заводил.
+    where: { system: false },
     include: { player: true, claim: true },
     orderBy: { createdAt: "asc" },
   });

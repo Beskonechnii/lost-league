@@ -29,12 +29,16 @@ export function SeriesBrief({
   s,
   teamId,
   cut,
+  report = false,
 }: {
   s: SeriesRow;
   /** Страница команды: карты в подвале считаются её глазами, ссылка на себя не ставится. */
   teamId?: number;
   /** Своя подпись разреза — витрине важнее дивизион, чем группа внутри него. */
   cut?: string;
+  /** Вести ли номер карты в отчёт. `/match/<id>` открывает право `tools`: у того, у кого его нет,
+   *  ссылка кончается редиректом в кабинет, поэтому по умолчанию её нет. */
+  report?: boolean;
 }) {
   const played = s.homeScore + s.awayScore > 0;
   const winner = s.homeScore > s.awayScore ? "home" : s.awayScore > s.homeScore ? "away" : null;
@@ -45,7 +49,7 @@ export function SeriesBrief({
     result: g.winnerTeamId == null ? null : g.winnerTeamId === eyes ? ("w" as const) : ("l" as const),
     // Номер карты ведёт прямо в её отчёт — но только если карта разобрана: без матча OpenDota
     // страницы /match/<id> не существует.
-    href: g.openDotaMatchId ? `/match/${g.openDotaMatchId}` : undefined,
+    href: report && g.openDotaMatchId ? `/match/${g.openDotaMatchId}` : undefined,
   }));
   const side = (t: SeriesRow["home"]) => ({
     name: t.name,

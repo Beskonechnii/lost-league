@@ -60,10 +60,9 @@ export type AccountNav = {
   spot: NavSpot | null;
 };
 
-/** Беседа игрока с лигой и её непрочитанное. Нет служебного аккаунта — канала ещё нет. */
+/** Беседа игрока с лигой и её непрочитанное. Беседы ещё не было — колокольчик пустой. */
 async function systemChat(meAccountId: number): Promise<NavSystemChat> {
-  const systemId = await systemAccountId();
-  const conversationId = systemId ? await findConversation(meAccountId, systemId) : null;
+  const conversationId = await findConversation(meAccountId, await systemAccountId());
   return { conversationId, unread: conversationId ? await unreadInConversation(conversationId, meAccountId) : 0 };
 }
 

@@ -8,6 +8,7 @@ import { Chip } from "@/components/pouf/blocks";
 import { Breadcrumbs } from "@/components/pouf/breadcrumbs";
 import { READ_MAX_W } from "@/components/pouf/blocks";
 import { MapPills, ScoreWell, SeriesCard } from "@/components/pouf/series-card";
+import { can } from "@/lib/account";
 import { divisionWithTournament } from "@/lib/tournaments";
 import { getSeriesDetail, type GamePlayer, type SeriesDetail, type SeriesGameDetail } from "@/lib/series";
 import { playoffLabel, stageLabel } from "@/lib/stages";
@@ -108,7 +109,19 @@ function GameTeam({ team, game, firstPickTeamId }: { team: Team; game: SeriesGam
   );
 }
 
-function GameCard({ game, home, away }: { game: SeriesGameDetail; home: Team; away: Team }) {
+function GameCard({
+  game,
+  home,
+  away,
+  report,
+}: {
+  game: SeriesGameDetail;
+  home: Team;
+  away: Team;
+  /** Показывать ли ссылку в отчёт карты. `/match/<id>` открывает право `tools`, и у гостя она
+   *  кончается не отчётом, а редиректом в кабинет — такую ссылку лучше не показывать вовсе. */
+  report: boolean;
+}) {
   const homeRadiant = game.radiantTeamId === home.id;
   // Счёт по убийствам хранится по сторонам, а показываем по командам — разворачиваем.
   const homeKills = homeRadiant ? game.radiantScore : game.direScore;
@@ -122,7 +135,7 @@ function GameCard({ game, home, away }: { game: SeriesGameDetail; home: Team; aw
     <section className="overflow-hidden rounded-card bg-surface font-pouf cushion-card">
       <div className="flex flex-wrap items-center gap-3 border-b border-hairline bg-surface-2 px-4 py-2.5">
         <span className="text-sm font-black text-ink">Карта {game.gameNumber ?? "?"}</span>
-        {game.openDotaMatchId && (
+        {report && game.openDotaMatchId && (
           <Link href={`/match/${game.openDotaMatchId}`} className="text-xs font-black text-[var(--accent-ink)] hover:underline">
             отчёт {game.openDotaMatchId}
           </Link>
@@ -153,6 +166,9 @@ export default async function SeriesPage({ params }: { params: Promise<{ slug: s
   const s = await seriesDetail(slug);
   if (!s) notFound();
 
+  // Отчёт карты лежит в служебной части (`/match/<id>`, право `tools`): ссылку на него видит
+  // только тот, кто может её открыть.
+  const report = await can("tools");
   // Раздел дивизиона живёт внутри турнира, поэтому ссылку строим по самому дивизиону встречи.
   const division = s.divisionId ? await divisionWithTournament(s.divisionId) : null;
   const divHref = division ? `/tournaments/${division.tournament.slug}/${division.slug}` : "/tournaments";
@@ -210,7 +226,7 @@ export default async function SeriesPage({ params }: { params: Promise<{ slug: s
         )}
 
         {s.games.map((g) => (
-          <GameCard key={g.matchId} game={g} home={s.home} away={s.away} />
+          <GameCard key={g.matchId} game={g} home={s.home} away={s.away} report={report} />
         ))}
       </div>
     </main>

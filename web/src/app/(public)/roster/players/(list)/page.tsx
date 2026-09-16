@@ -2,15 +2,15 @@ import type { Metadata } from "next";
 import { listPoolPlayers, poolTournaments } from "@/lib/roster-data";
 import { can } from "@/lib/account";
 import { SectionHeader } from "@/components/pouf/blocks";
-import { GroupSwitch } from "../_components/pool-switch";
-import { PlayersExplorer } from "../_components/players-explorer";
+import { GroupSwitch } from "../../_components/pool-switch";
+import { PlayersExplorer } from "../../_components/players-explorer";
 
 export const dynamic = "force-dynamic";
 
 type Props = { searchParams: Promise<{ by?: string }> };
 
 /**
- * Пара к метаданным команд (`../page.tsx`), отличается тремя строками. Голое «Игроки» закреплено
+ * Пара к метаданным команд (`../../(pool)/page.tsx`), отличается тремя строками. Голое «Игроки» закреплено
  * за сквозной витриной лиги; витрины внутри турнира получат в титул имя турнира (ТЗ 03).
  * Личного в описании нет: публичны ник, команда, позиция и ранг, операторская подсветка
  * «нет account_id» — факт о наших данных, а не об игроке, и в метаданные не попадает никогда.

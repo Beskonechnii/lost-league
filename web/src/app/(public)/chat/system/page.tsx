@@ -24,8 +24,7 @@ export default async function SystemChatPage() {
   const me = await currentLiveMe();
   if (!me) return <ChatGate />;
 
-  const systemId = await systemAccountId();
-  const conversationId = systemId ? await findConversation(me.accountId, systemId) : null;
+  const conversationId = await findConversation(me.accountId, await systemAccountId());
 
   const [rows, lines] = await Promise.all([
     listConversations(me.accountId),

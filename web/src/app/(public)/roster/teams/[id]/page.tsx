@@ -71,10 +71,11 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
   // Таблицу берём по дивизиону команды в текущем турнире — тому же, что показывает его раздел.
   // Команда вне турнира (например, из прошлого сезона) таблицы не получает — это не ошибка.
   const current = await currentTournament();
-  const [team, standings, authed, history, series, rating] = await Promise.all([
+  const [team, standings, authed, report, history, series, rating] = await Promise.all([
     getTeamProfile(id, division?.id),
     division ? getStandings(division.id) : Promise.resolve([]),
     can("roster.edit"),
+    can("tools"), // номер карты ведёт в отчёт только у того, кому этот отчёт вообще откроется
     // Состав сезонный, поэтому у команды, прожившей не один турнир, есть прошлые составы.
     teamRosterHistory(teamRow.id, division?.id),
     // Встречи текущего турнира. Вне турнира дивизиона нет — берём все встречи команды,
@@ -237,7 +238,7 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
         ) : (
           <div className="grid gap-3 xl:grid-cols-2">
             {series.map((s) => (
-              <SeriesBrief key={s.id} s={s} teamId={team.id} />
+              <SeriesBrief key={s.id} s={s} teamId={team.id} report={report} />
             ))}
           </div>
         )}

@@ -133,8 +133,9 @@ export default async function PlayerPage({ params }: { params: Promise<{ key: st
   if (!player) notFound();
   if (key !== player.slug) redirect(playerPath(player));
   const pid = player.id;
-  const [authed, heroes, record, league, divisions, tournament, me, peerAccount] = await Promise.all([
+  const [authed, report, heroes, record, league, divisions, tournament, me, peerAccount] = await Promise.all([
     can("roster.edit"), // кнопка «Править» — ровно то право, что откроет саму страницу правки
+    can("tools"), // отчёт карты живёт в служебной части: гостю ссылка на него даёт редирект, а не отчёт
     getPlayerHeroes(pid),
     getPlayerRecord(pid),
     getPlayerLeague(pid),
@@ -347,7 +348,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ key: st
                 {league.games.slice(0, 6).map((g) => (
                   <Link
                     key={g.matchId}
-                    href={g.openDotaMatchId ? `/match/${g.openDotaMatchId}` : `/series/${g.seriesSlug}`}
+                    href={report && g.openDotaMatchId ? `/match/${g.openDotaMatchId}` : `/series/${g.seriesSlug}`}
                     className="block transition hover:-translate-y-0.5"
                   >
                     <DataRow

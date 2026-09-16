@@ -24,26 +24,30 @@ import type { ChatEventMessage } from "./chat-events";
 /** Имя, под которым лига говорит с игроком. Одно на все системные сообщения. */
 export const SYSTEM_NAME = "Spirit CTRL";
 
+/** Почта служебного аккаунта. Войти по ней нельзя — ни пароля, ни google, ни steam у него нет;
+ *  она нужна как ключ уникальности, чтобы аккаунт завёлся ровно один раз, сколько бы запросов ни
+ *  пришло разом. */
+const SYSTEM_EMAIL = "system@spirit-ctrl.local";
+
 /**
- * Служебный аккаунт. Ищем по флагу; не помечен ни один — берём аккаунт владельца лиги (`owner`),
- * а из нескольких — самый ранний: это тот самый «админ, который уже заведён», и заводить рядом
- * второй пустой аккаунт незачем. Совсем никого — `null`: значит, лига ещё не настроена, и системные
- * сообщения просто не уходят (телеграм и страницы работают как работали).
+ * Служебный аккаунт. Ищем по флагу; не помечен ни один — заводим свой, а НЕ отмечаем чей-то живой.
+ *
+ * Раньше флаг вешался на аккаунт владельца лиги («второй пустой аккаунт незачем») — и это стоило
+ * трёх поломок разом: владельцу переписывалось имя на «Spirit CTRL»; написать ему было нельзя
+ * (`peerOf` выдавал его собеседникам как канал, `sendMessage` отказывал); уведомления очереди до
+ * него не доходили вовсе — лига не пишет сама себе. Лига не человек, аккаунт у неё свой.
  */
-export async function systemAccountId(): Promise<number | null> {
+export async function systemAccountId(): Promise<number> {
   const marked = await prisma.userAccount.findFirst({ where: { system: true }, select: { id: true } });
   if (marked) return marked.id;
 
-  const owner = await prisma.userAccount.findFirst({
-    where: { role: { in: ["owner", "admin"] } },
-    orderBy: [{ role: "asc" }, { id: "asc" }], // admin < owner по алфавиту, поэтому сортировка вторична
+  const row = await prisma.userAccount.upsert({
+    where: { email: SYSTEM_EMAIL },
+    update: { system: true },
+    create: { email: SYSTEM_EMAIL, name: SYSTEM_NAME, system: true, status: "active" },
     select: { id: true },
   });
-  if (!owner) return null;
-
-  // Пометку ставим один раз и сразу: дальше аккаунт находится по флагу, даже если ролей прибавится.
-  await prisma.userAccount.update({ where: { id: owner.id }, data: { system: true, name: SYSTEM_NAME } });
-  return owner.id;
+  return row.id;
 }
 
 const pairKey = (a: number, b: number) => (a < b ? `${a}:${b}` : `${b}:${a}`);
@@ -86,7 +90,9 @@ export async function tellPlayer(
 export async function tellAccount(accountId: number, text: string, action?: SystemAction): Promise<void> {
   try {
     const systemId = await systemAccountId();
-    if (!systemId || systemId === accountId) return;
+    // Сама себе лига не пишет: беседа с самим собой не собирается (участник в ней один — см.
+    // `@@unique` у ConversationMember), да и читать её было бы некому.
+    if (systemId === accountId) return;
 
     const conversationId = await systemConversation(systemId, accountId);
     const row = await prisma.chatMessage.create({
