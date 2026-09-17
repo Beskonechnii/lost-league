@@ -69,18 +69,20 @@ export default async function TournamentsIndex() {
       )}
 
       {groups.map((g) => {
-        // Счётчик считает ВСЕ турниры серии, включая вынесенный в лицо: он про серию, а не про то,
-        // сколько карточек поместилось ниже.
         const items = g.items.filter((t) => t.id !== head?.id);
         if (items.length === 0) return null;
+        // Счётчик считает ровно те карточки, что человек видит в группе: турнир-«лицо» показан
+        // выше, хвост за MAX_IN_GROUP открывается ссылкой «вся серия». Раньше здесь стояло число
+        // всей серии — подпись «3 турнира» над двумя карточками.
+        const shown = items.slice(0, MAX_IN_GROUP);
         return (
           <section key={g.key} className="mt-(--s6)">
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <Heading level={2}>{g.title}</Heading>
-                <Text muted size="sm">{withPlural(g.items.length, "турнир", "турнира", "турниров")}</Text>
+                <Text muted size="sm">{withPlural(shown.length, "турнир", "турнира", "турниров")}</Text>
               </div>
-              {g.items.length > MAX_IN_GROUP && (
+              {items.length > MAX_IN_GROUP && (
                 <Link
                   href={`/tournaments/archive?series=${encodeURIComponent(g.key)}`}
                   className="font-pouf text-sm font-bold text-muted hover:text-ink"
@@ -92,7 +94,7 @@ export default async function TournamentsIndex() {
 
             <div className="mt-(--s4)">
               <Grid cols={3} gap={5}>
-                {items.slice(0, MAX_IN_GROUP).map((t) => (
+                {shown.map((t) => (
                   <TournamentCard key={t.id} t={t} />
                 ))}
               </Grid>

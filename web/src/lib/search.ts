@@ -18,7 +18,7 @@ export type SearchHit = {
   kind: SearchKind;
   /** Что показать крупно — название команды, ник игрока, имя турнира. */
   title: string;
-  /** Вторая строка: тег команды, настоящее имя игрока, статус турнира. Может отсутствовать. */
+  /** Вторая строка: тег команды, статус турнира. У игрока её нет — см. выборку ниже. */
   subtitle: string | null;
   href: string;
   /** Лого/фото, если есть: узнают по картинке быстрее, чем по строке. */
@@ -58,7 +58,9 @@ export async function searchLeague(query: string, limit = 8): Promise<SearchHit[
       where: { archivedAt: null },
       select: { id: true, slug: true, name: true, tag: true, logo: true },
     }),
-    prisma.player.findMany({ select: { id: true, slug: true, nickname: true, realName: true, photo: true } }),
+    // Настоящее имя из выборки исключено намеренно (DECISIONS 18.09.2026): поиск открыт гостю,
+    // поэтому имени нет ни в ответе, ни в ранжировании — иначе по нему можно перебрать лигу.
+    prisma.player.findMany({ select: { id: true, slug: true, nickname: true, photo: true } }),
     // Черновики турниров публично не существуют — так же, как на /tournaments.
     prisma.tournament.findMany({
       where: { status: { not: "draft" } },
@@ -86,14 +88,14 @@ export async function searchLeague(query: string, limit = 8): Promise<SearchHit[
   }
 
   for (const p of players) {
-    const rank = best(score(p.nickname, q), score(p.realName, q), score(p.slug, q));
+    const rank = best(score(p.nickname, q), score(p.slug, q));
     if (rank)
       found.push({
         rank,
         hit: {
           kind: "player",
           title: p.nickname,
-          subtitle: p.realName,
+          subtitle: null,
           href: playerPath(p),
           slug: p.slug,
           stored: p.photo,

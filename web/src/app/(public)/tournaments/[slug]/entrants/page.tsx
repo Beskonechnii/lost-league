@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getDivisions, tournamentBySlug } from "@/lib/tournaments";
+import { getDivisions, tournamentBySlug, TOURNAMENT_STATUS_LABELS, type TournamentStatus } from "@/lib/tournaments";
 import { listTeamRosters } from "@/lib/roster-data";
 import { SectionHeader } from "@/components/pouf/blocks";
 import { EmptyState } from "@/components/pouf/feedback";
@@ -34,6 +34,7 @@ export default async function EntrantsPage({
     return id === undefined ? [] : all.filter((t) => t.divisionIds.includes(id));
   };
   const teams = div ? byDiv(div) : all;
+  const status = (TOURNAMENT_STATUS_LABELS[tournament.status as TournamentStatus] ?? "").toLowerCase() || "турнир";
   const counts = Object.fromEntries([
     ...divisions.map((d) => [d.slug, byDiv(d.slug).length] as const),
     ["all", all.length] as const,
@@ -41,8 +42,10 @@ export default async function EntrantsPage({
 
   return (
     <div className="space-y-6 font-pouf">
+      {/* Статус берём у турнира, а не пишем «приём заявок» константой: у идущего турнира заявки
+          давно закрыты, и подпись спорила с экраном. */}
       <SectionHeader
-        eyebrow={`${tournament.name} · приём заявок`}
+        eyebrow={`${tournament.name} · ${status}`}
         title="Заявленные команды"
         aside={`${teams.length} команд`}
       />

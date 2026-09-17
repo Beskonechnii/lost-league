@@ -12,10 +12,14 @@ export const dynamic = "force-dynamic";
 
 export default async function OverlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [session, pool] = await Promise.all([
+  const [session, full] = await Promise.all([
     prisma.draftSession.findUnique({ where: { id: Number(id) } }),
     draftPool(),
   ]);
+  // Оверлей открыт без входа (OBS ходит сюда без куки), поэтому настоящее имя снимаем до рендера:
+  // иначе оно уезжает и в эфир, и в payload страницы (DECISIONS 18.09.2026). В админском драфте
+  // тот же пул остаётся с именем — там по нему ищут человека.
+  const pool = full.map((p) => ({ ...p, realName: null }));
   if (!session) notFound();
 
   let state: DraftState;

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { divisionOfTournament } from "@/lib/tournaments";
 import { getLeaders, METRICS, type Subject } from "@/lib/leaders";
@@ -11,6 +12,24 @@ export const dynamic = "force-dynamic";
 
 // Рейтинги турнира: одни и те же суммы, разрезанные стадией и группой. Фильтры живут в query,
 // поэтому любой разрез — это ссылка, которую можно кинуть в чат (как и у постгейма).
+
+/**
+ * Имя страницы — как у соседних вкладок дивизиона («… — таблица», «… — плей-офф»), иначе вкладка и
+ * превью ссылки показывали только бренд из шаблона лиги. Канон — адрес без query: разрезы стадией
+ * и группой это одна и та же страница, и в индекс должна попасть она, а не её фильтры.
+ */
+export async function generateMetadata({ params }: { params: Promise<{ slug: string; div: string }> }): Promise<Metadata> {
+  const { slug, div } = await params;
+  const division = await divisionOfTournament(slug, div);
+  if (!division) return { title: "Дивизион не найден", robots: { index: false, follow: false } };
+
+  const name = division.label ?? division.name;
+  return {
+    title: `${name} — статистика`,
+    description: `Рейтинги игроков и команд ${name} — ${division.tournament.name}: убийства, урон, участие. Разрезы по стадии и группе.`,
+    alternates: { canonical: `/tournaments/${slug}/${division.slug}/stats` },
+  };
+}
 
 type Query = { stage?: string; group?: string; bracket?: string; kind?: string };
 

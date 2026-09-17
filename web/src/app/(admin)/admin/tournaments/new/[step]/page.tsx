@@ -331,9 +331,18 @@ export default async function WizardStep({
 
             <Panel title="Куда дальше">
               <nav className="flex flex-wrap gap-3 font-pouf text-sm font-bold">
-                <Link href={`/tournaments/${tournament.slug}`} className="text-[var(--accent-ink)] hover:underline">
-                  Публичная страница турнира
-                </Link>
+                {/* Черновика на публике нет (см. /tournaments), поэтому ссылка туда отдавала 404
+                    ровно тем, кто только что завёл турнир. Пока статус черновой — ведём на
+                    карточку, где его и переключают; после переключения ссылка становится живой. */}
+                {tournament.status === "draft" ? (
+                  <Link href={`/admin/tournaments/${tournament.slug}`} className="text-[var(--accent-ink)] hover:underline">
+                    Переключить статус на карточке
+                  </Link>
+                ) : (
+                  <Link href={`/tournaments/${tournament.slug}`} className="text-[var(--accent-ink)] hover:underline">
+                    Публичная страница турнира
+                  </Link>
+                )}
                 <Link href={`/admin/series/${tournament.slug}`} className="text-[var(--accent-ink)] hover:underline">
                   Архив серий турнира
                 </Link>

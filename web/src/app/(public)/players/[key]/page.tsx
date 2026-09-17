@@ -221,7 +221,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ key: st
               {/* Точка «в сети» у ника: сразу видно, ждать ли ответа сейчас или к вечеру. */}
               <OnlineDot playerId={pid} className="h-3 w-3" />
             </div>
-            {player.realName && <p className="mt-2 text-base font-bold text-ink-muted">{player.realName}</p>}
+            {/* Настоящего имени здесь нет и не будет: страница публичная, а ФИО собирается для
+                лиги, а не для витрины (DECISIONS 18.09.2026). Оператор видит его в админке. */}
             <div className="mt-4 flex flex-wrap items-center gap-2">
               {main?.isCaptain && (
                 <Chip accent>

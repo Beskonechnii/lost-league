@@ -93,7 +93,6 @@ export function OverlayLive({
                         )}
                         {team.locked.includes(p.id) && <span title="Закреплён">🔒</span>}
                       </div>
-                      {p.realName && <div className="truncate text-xs text-white/55">{p.realName}</div>}
                     </div>
                     <div className="shrink-0 text-right">
                       <div className="text-sm font-medium">{p.mmr ? p.mmr.toLocaleString("ru-RU") : "—"}</div>
