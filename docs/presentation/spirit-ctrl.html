@@ -1,0 +1,687 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SPIRIT/CTRL — платформа лиги</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap">
+<style>
+  :root{
+    --clay:#E7E3D8;
+    --paper:#F8F4EC;
+    --paper-2:#ECE7DD;
+    --edge:#D8D1C3;
+    --edge-strong:#C4BCAB;
+    --ink:#2E2D29;
+    --muted:#6B6760;
+    --faint:#9A9488;
+    --accent:#3500F5;
+    --accent-soft:#EDE9FF;
+    --teal:#0B6C70;
+    --teal-soft:#DCF0F0;
+    --shadow:0 1px 0 rgba(46,45,41,.05);
+    --rail:1px solid var(--edge);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --clay:#17171A;
+      --paper:#1F1F23;
+      --paper-2:#26262B;
+      --edge:#33333A;
+      --edge-strong:#45454E;
+      --ink:#EDEAE2;
+      --muted:#A6A093;
+      --faint:#77726A;
+      --accent:#A79BFF;
+      --accent-soft:#272446;
+      --teal:#41D9DE;
+      --teal-soft:#123033;
+      --shadow:0 1px 0 rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"]{
+    --clay:#17171A;
+    --paper:#1F1F23;
+    --paper-2:#26262B;
+    --edge:#33333A;
+    --edge-strong:#45454E;
+    --ink:#EDEAE2;
+    --muted:#A6A093;
+    --faint:#77726A;
+    --accent:#A79BFF;
+    --accent-soft:#272446;
+    --teal:#41D9DE;
+    --teal-soft:#123033;
+    --shadow:0 1px 0 rgba(0,0,0,.3);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--clay);
+    color:var(--ink);
+    font-family:"Newsreader",Georgia,"Times New Roman",serif;
+    font-size:18px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,h4{font-family:"Archivo",Helvetica,Arial,sans-serif;text-wrap:balance;margin:0;line-height:1.08}
+  p{margin:0}
+  a{color:inherit}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+  .cols{display:grid;grid-template-columns:186px minmax(0,1fr);gap:56px;align-items:start}
+  @media (max-width:1020px){.cols{grid-template-columns:1fr;gap:0}}
+
+  /* ── шапка ───────────────────────────────────────────── */
+  .top{border-bottom:var(--rail);background:var(--paper)}
+  .top-in{display:flex;flex-wrap:wrap;gap:16px 28px;align-items:baseline;padding:18px 0}
+  .brand{font-family:"Archivo";font-weight:800;font-size:20px;letter-spacing:-.02em}
+  .brand span{color:var(--accent)}
+  .top-meta{margin-left:auto;display:flex;gap:22px;flex-wrap:wrap;
+    font-family:"IBM Plex Mono";font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+
+  /* ── герой ───────────────────────────────────────────── */
+  .hero{padding:72px 0 56px;border-bottom:var(--rail)}
+  .eyebrow{font-family:"IBM Plex Mono";font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:22px}
+  .hero h1{font-size:clamp(40px,6.2vw,74px);font-weight:800;letter-spacing:-.033em;max-width:17ch}
+  .hero-lead{margin-top:26px;font-size:21px;max-width:60ch;color:var(--muted)}
+  .hero-lead b{color:var(--ink);font-weight:500}
+  .hero-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,1fr);gap:48px;align-items:start}
+  @media (max-width:900px){.hero-grid{grid-template-columns:1fr;gap:40px}}
+
+  .status{background:var(--paper);border:1px solid var(--edge);border-radius:2px;padding:22px 24px;box-shadow:var(--shadow)}
+  .status h3{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600;font-family:"IBM Plex Mono"}
+  .blockers{list-style:none;margin:18px 0 0;padding:0;display:flex;flex-direction:column;gap:12px}
+  .blockers li{display:grid;grid-template-columns:22px 1fr;gap:12px;align-items:baseline;font-size:16.5px}
+  .tick{font-family:"IBM Plex Mono";font-size:13px;color:var(--teal)}
+  .tick.open{color:var(--accent)}
+  .blockers li.open{color:var(--ink)}
+  .blockers li{color:var(--muted)}
+  .blockers b{font-weight:500;color:var(--ink)}
+
+  /* ── цифры ───────────────────────────────────────────── */
+  .figures{background:var(--paper-2);border-bottom:var(--rail)}
+  .figures-in{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--edge)}
+  @media (max-width:900px){.figures-in{grid-template-columns:repeat(2,1fr)}}
+  .fig{background:var(--paper-2);padding:26px 20px}
+  .fig .n{font-family:"IBM Plex Mono";font-weight:500;font-size:clamp(26px,3.4vw,38px);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .fig .k{font-size:14.5px;color:var(--muted);margin-top:6px}
+  .figures-note{padding:14px 0 18px;font-family:"IBM Plex Mono";font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint)}
+
+  /* ── навигация-рельс ─────────────────────────────────── */
+  .rail{position:sticky;top:26px;padding-top:64px}
+  @media (max-width:1020px){.rail{display:none}}
+  .rail ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+  .rail a{display:block;text-decoration:none;font-family:"IBM Plex Mono";font-size:12px;letter-spacing:.04em;
+    color:var(--muted);border-left:2px solid var(--edge);padding:3px 0 3px 12px}
+  .rail a:hover,.rail a:focus-visible{color:var(--accent);border-left-color:var(--accent)}
+
+  /* ── секции ──────────────────────────────────────────── */
+  section{padding:64px 0;border-bottom:var(--rail)}
+  section:last-of-type{border-bottom:0}
+  .sec-head{margin-bottom:34px}
+  .sec-head h2{font-size:clamp(26px,3.1vw,34px);font-weight:700;letter-spacing:-.022em}
+  .sec-head p{margin-top:12px;color:var(--muted);max-width:66ch;font-size:17.5px}
+  .kicker{font-family:"IBM Plex Mono";font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:14px}
+
+  .grid{display:grid;gap:1px;background:var(--edge);border:1px solid var(--edge)}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  @media (max-width:860px){.g2,.g3{grid-template-columns:1fr}}
+  .cell{background:var(--paper);padding:24px 24px 26px}
+  .cell h3{font-size:17px;font-weight:700;letter-spacing:-.01em}
+  .cell p{margin-top:9px;color:var(--muted);font-size:16.5px}
+  .cell ul{margin:11px 0 0;padding-left:18px;color:var(--muted);font-size:16.5px}
+  .cell li{margin-top:5px}
+  .cell .term{color:var(--ink);font-weight:500}
+
+  /* ── путь игрока: настоящая последовательность ───────── */
+  .flow{display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--edge);border:1px solid var(--edge)}
+  @media (max-width:980px){.flow{grid-template-columns:repeat(3,1fr)}}
+  @media (max-width:620px){.flow{grid-template-columns:repeat(2,1fr)}}
+  .step{background:var(--paper);padding:20px 18px 22px}
+  .step .i{font-family:"IBM Plex Mono";font-size:11.5px;color:var(--accent);letter-spacing:.08em}
+  .step h4{margin-top:10px;font-size:15.5px;font-weight:700}
+  .step p{margin-top:7px;font-size:15px;color:var(--muted);line-height:1.5}
+
+  /* ── регламент драфта ────────────────────────────────── */
+  .board{background:var(--paper);border:1px solid var(--edge);padding:24px;margin-top:8px}
+  .board-h{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:baseline;margin-bottom:18px}
+  .board-h h3{font-size:16px;font-weight:700}
+  .legend{margin-left:auto;display:flex;gap:16px;font-family:"IBM Plex Mono";font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .sw{display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:-1px}
+  .sw.a{background:var(--accent)}
+  .sw.b{background:var(--teal)}
+  .sw.ban{background:transparent;border:1px solid var(--edge-strong)}
+  .strip{display:grid;grid-template-columns:repeat(16,1fr);gap:4px}
+  @media (max-width:760px){.strip{grid-template-columns:repeat(8,1fr);gap:5px}}
+  .slot{aspect-ratio:3/4;border:1px solid var(--edge-strong);display:flex;flex-direction:column;justify-content:space-between;padding:5px 4px;
+    font-family:"IBM Plex Mono";font-size:10px;color:var(--muted)}
+  .slot .s{font-size:9.5px;color:var(--faint)}
+  .slot .t{font-weight:600}
+  .slot.pick-a{background:var(--accent);border-color:var(--accent);color:#fff}
+  .slot.pick-a .s{color:rgba(255,255,255,.72)}
+  .slot.pick-b{background:var(--teal);border-color:var(--teal);color:var(--paper)}
+  .slot.pick-b .s{color:var(--paper);opacity:.72}
+  .slot.ban-a{border-color:var(--accent);color:var(--accent)}
+  .slot.ban-a .s{color:var(--accent);opacity:.6}
+  .slot.ban-b{border-color:var(--teal);color:var(--teal)}
+  .slot.ban-b .s{color:var(--teal);opacity:.6}
+  .board-note{margin-top:16px;font-size:16px;color:var(--muted);max-width:70ch}
+  .board-note b{color:var(--ink);font-weight:500}
+
+  /* ── таблицы админки ─────────────────────────────────── */
+  .tbl-scroll{overflow-x:auto;border:1px solid var(--edge);background:var(--paper)}
+  table{border-collapse:collapse;width:100%;min-width:560px}
+  th,td{text-align:left;padding:13px 18px;border-bottom:1px solid var(--edge);vertical-align:top;font-size:16.5px}
+  th{font-family:"IBM Plex Mono";font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--paper-2)}
+  tr:last-child td{border-bottom:0}
+  td b{font-weight:500}
+  td.tools{color:var(--muted)}
+
+  .perms{display:flex;flex-wrap:wrap;gap:7px;margin-top:22px}
+  .perm{font-family:"IBM Plex Mono";font-size:12px;padding:5px 10px;border:1px solid var(--edge-strong);color:var(--muted)}
+
+  /* ── дорожная карта ──────────────────────────────────── */
+  .road{display:grid;gap:1px;background:var(--edge);border:1px solid var(--edge)}
+  .road-row{background:var(--paper);display:grid;grid-template-columns:140px minmax(0,1fr);gap:20px;padding:18px 22px}
+  @media (max-width:700px){.road-row{grid-template-columns:1fr;gap:8px}}
+  .chip{justify-self:start;font-family:"IBM Plex Mono";font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:4px 9px;white-space:nowrap}
+  .chip.block{background:var(--accent);color:#fff}
+  .chip.work{background:var(--accent-soft);color:var(--accent);border:1px solid var(--accent)}
+  .chip.wait{border:1px solid var(--edge-strong);color:var(--muted)}
+  .road-row b{font-weight:500}
+  .road-row .why{color:var(--muted);display:block;margin-top:4px;font-size:16px}
+
+  .later{columns:2;column-gap:44px;margin-top:10px}
+  @media (max-width:760px){.later{columns:1}}
+  .later div{break-inside:avoid;padding:13px 0;border-bottom:1px solid var(--edge)}
+  .later b{font-weight:500;display:block}
+  .later span{color:var(--muted);font-size:16px}
+
+  .pill-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+  .pill{font-family:"IBM Plex Mono";font-size:12px;letter-spacing:.05em;padding:7px 12px;background:var(--paper);border:1px solid var(--edge)}
+  .pill b{color:var(--accent);font-weight:600}
+
+  footer{padding:40px 0 64px;color:var(--faint);font-family:"IBM Plex Mono";font-size:12px;letter-spacing:.06em}
+  footer b{color:var(--muted);font-weight:500}
+
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<style>
+  /* Автономная копия: обёртку и сброс артефакт добавляет сам, здесь их надо дать руками. */
+  html{color-scheme:light dark}
+  body{margin:0}
+  img{max-width:100%}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-in">
+    <div class="brand">SPIRIT<span>/</span>CTRL</div>
+    <div class="top-meta">
+      <span>Платформа лиги Dota 2</span>
+      <span>Сезон не открыт</span>
+      <span>17.09.2026</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow">Что построено</div>
+        <h1>Лига целиком в одном приложении</h1>
+        <p class="hero-lead">Публичный сайт сезона, кабинет игрока, приём заявок, проведение матча
+          с драфтом, статистика из Dota&nbsp;2 и служебная часть, которой лига ведётся изнутри.
+          <b>Не витрина поверх гугл-таблицы</b>: данные живут в своей базе, статистика приезжает
+          из OpenDota и Steam, графика для трансляций собирается тут же.</p>
+      </div>
+      <div class="status">
+        <h3>Готовность к сезону</h3>
+        <ul class="blockers">
+          <li><span class="tick">✓</span><span><b>Сброс пароля</b> — сделан, принят</span></li>
+          <li><span class="tick">✓</span><span><b>Поисковая выдача и превью</b> — сделаны, приняты</span></li>
+          <li><span class="tick">✓</span><span><b>Приёмочный чек-лист</b> — написан, прогнан</span></li>
+          <li class="open"><span class="tick open">→</span><span><b>Боевой сервер и домен</b> — единственный открытый блокер</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="figures">
+  <div class="wrap">
+    <div class="figures-in">
+      <div class="fig"><div class="n">49</div><div class="k">команд</div></div>
+      <div class="fig"><div class="n">192</div><div class="k">игрока с профилем</div></div>
+      <div class="fig"><div class="n">212</div><div class="k">матча со статистикой</div></div>
+      <div class="fig"><div class="n">2 029</div><div class="k">записей по игрокам</div></div>
+      <div class="fig"><div class="n">22 733</div><div class="k">точки вардов на карте</div></div>
+    </div>
+    <div class="figures-note">Живые данные сезона, не демонстрационные · 101 встреча · 3 турнира · 4 дивизиона · 353 публичных адреса</div>
+  </div>
+</div>
+
+<div class="wrap cols">
+  <nav class="rail" aria-label="Разделы">
+    <ol>
+      <li><a href="#public">Публичная часть</a></li>
+      <li><a href="#player">Путь игрока</a></li>
+      <li><a href="#match">День матча</a></li>
+      <li><a href="#bot">Телеграм-бот</a></li>
+      <li><a href="#admin">Ведение лиги</a></li>
+      <li><a href="#data">Данные лиги</a></li>
+      <li><a href="#platform">Платформа</a></li>
+      <li><a href="#road">Дорожная карта</a></li>
+      <li><a href="#process">Процесс</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="public">
+      <div class="sec-head">
+        <div class="kicker">Раздел 1</div>
+        <h2>Что видит зритель</h2>
+        <p>Публичная часть открыта всем и не требует входа. Она же — витрина лиги для тех,
+          кто пришёл по ссылке из телеграма.</p>
+      </div>
+      <div class="grid g3">
+        <div class="cell">
+          <h3>Главная</h3>
+          <p>Показывает <span class="term">все</span> турниры каждого статуса, секции листаются.
+            Первый экран редактируется оператором: картинка, заголовок, кнопка. Баннер не задан —
+            работает герой по данным: идёт приём — зовёт заявиться.</p>
+        </div>
+        <div class="cell">
+          <h3>Турниры</h3>
+          <ul>
+            <li>группировка по сериям и хронология</li>
+            <li>дивизионы карточками с лимитом мест</li>
+            <li>таблица: очки, разница, зоны выхода</li>
+            <li>групповая стадия с кросс-таблицей</li>
+            <li>плей-офф на верхнюю и нижнюю</li>
+          </ul>
+        </div>
+        <div class="cell">
+          <h3>Ростер лиги</h3>
+          <p>Команды и Игроки — два раздела, у каждого разрезы «сквозной / по турнирам» и поиск
+            по всей лиге. Страница команды: состав по местам — <span class="term">кор, мид,
+            саппорт</span> — штаб и история встреч.</p>
+        </div>
+        <div class="cell">
+          <h3>Профиль игрока</h3>
+          <p>Медаль ранга настоящими знаками Dota&nbsp;2, позиция, MMR, город, возраст, сезонные
+            очки, Spirit Shards, история команд и матчей. Главная единица ссылки: её кидают
+            в чат и кладут в закладки.</p>
+        </div>
+        <div class="cell">
+          <h3>Архив встреч</h3>
+          <p>Лента всех встреч лиги с разрезами, страница встречи с картами и составами,
+            постгейм-отчёт по каждому матчу — с выгрузкой картинкой для соцсетей.</p>
+        </div>
+        <div class="cell">
+          <h3>Статистика турнира</h3>
+          <p>Топы по метрикам в разрезе дивизиона и стадии, карта расстановки вардов команды
+            по всему архиву.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="player">
+      <div class="sec-head">
+        <div class="kicker">Раздел 2</div>
+        <h2>Путь игрока — от ссылки до состава</h2>
+        <p>Шесть шагов, каждый доведён до конца. Черновик анкеты пишется на сервер: ушёл
+          и вернулся — ответы на месте.</p>
+      </div>
+      <div class="flow">
+        <div class="step"><div class="i">Шаг 1</div><h4>Вход</h4><p>Почта с паролем, Google или одноразовый код из бота.</p></div>
+        <div class="step"><div class="i">Шаг 2</div><h4>Анкета</h4><p>Три шага, черновик на сервере, позиция и контакты.</p></div>
+        <div class="step"><div class="i">Шаг 3</div><h4>Привязки</h4><p>Steam подтягивает профиль, телеграм — одной кнопкой.</p></div>
+        <div class="step"><div class="i">Шаг 4</div><h4>Модерация</h4><p>Одобрить с заведением профиля или вернуть с причиной.</p></div>
+        <div class="step"><div class="i">Шаг 5</div><h4>Заявка команды</h4><p>Капитан собирает состав в боте, игроки подтверждают согласие.</p></div>
+        <div class="step"><div class="i">Шаг 6</div><h4>В сезоне</h4><p>Одобрение заводит команду, игроков и состав разом.</p></div>
+      </div>
+      <div class="pill-row">
+        <div class="pill">Забыл пароль → ссылка на <b>30 минут</b> в телеграм</div>
+        <div class="pill">Смена пароля гасит <b>все</b> прежние сессии</div>
+        <div class="pill">Личные сообщения и служебный канал лиги</div>
+      </div>
+    </section>
+
+    <section id="match">
+      <div class="sec-head">
+        <div class="kicker">Раздел 3</div>
+        <h2>День матча</h2>
+        <p>Комната на встречу, драфт руками капитанов и отдельный вид для трансляции.
+          Всё, что считает время и право хода, считается на сервере.</p>
+      </div>
+
+      <div class="board">
+        <div class="board-h">
+          <h3>Регламент карты — 16 ходов</h3>
+          <div class="legend">
+            <span><i class="sw a"></i>сторона A</span>
+            <span><i class="sw b"></i>сторона B</span>
+            <span><i class="sw ban"></i>бан</span>
+          </div>
+        </div>
+        <div class="strip">
+          <div class="slot ban-a"><span class="s">1</span><span class="t">БАН</span></div>
+          <div class="slot ban-b"><span class="s">2</span><span class="t">БАН</span></div>
+          <div class="slot ban-a"><span class="s">3</span><span class="t">БАН</span></div>
+          <div class="slot ban-b"><span class="s">4</span><span class="t">БАН</span></div>
+          <div class="slot ban-a"><span class="s">5</span><span class="t">БАН</span></div>
+          <div class="slot ban-b"><span class="s">6</span><span class="t">БАН</span></div>
+          <div class="slot pick-a"><span class="s">7</span><span class="t">ПИК</span></div>
+          <div class="slot pick-b"><span class="s">8</span><span class="t">ПИК</span></div>
+          <div class="slot pick-b"><span class="s">9</span><span class="t">ПИК</span></div>
+          <div class="slot pick-a"><span class="s">10</span><span class="t">ПИК</span></div>
+          <div class="slot pick-a"><span class="s">11</span><span class="t">ПИК</span></div>
+          <div class="slot pick-b"><span class="s">12</span><span class="t">ПИК</span></div>
+          <div class="slot pick-b"><span class="s">13</span><span class="t">ПИК</span></div>
+          <div class="slot pick-a"><span class="s">14</span><span class="t">ПИК</span></div>
+          <div class="slot pick-a"><span class="s">15</span><span class="t">ПИК</span></div>
+          <div class="slot pick-b"><span class="s">16</span><span class="t">ПИК</span></div>
+        </div>
+        <p class="board-note">Три бана на сторону одной стадией, дальше пики змейкой.
+          <b>30 секунд на ход</b> и <b>90 секунд банка</b> на команду за весь драфт; таймеры живут
+          на сервере и переживают перезагрузку страницы. Не успел — автобан или автопик,
+          даже если вкладки закрыты у обоих капитанов.</p>
+      </div>
+
+      <div class="grid g3" style="margin-top:32px">
+        <div class="cell">
+          <h3>Лобби встречи</h3>
+          <p>Приглашение служебным сообщением, стороны, выбор капитана самими игроками,
+            готовность, монетка и чат комнаты.</p>
+        </div>
+        <div class="cell">
+          <h3>Fearless-пул</h3>
+          <p>Герои не повторяются по серии: взятое на первой карте выбывает на второй.
+            Пул переносится между картами автоматически.</p>
+        </div>
+        <div class="cell">
+          <h3>Вид для эфира</h3>
+          <p>Борд целиком по ключу-ссылке, без входа — источнику OBS не нужны куки.
+            По ключу нельзя войти в комнату, только смотреть.</p>
+        </div>
+        <div class="cell">
+          <h3>UNDERBEER 2.0</h3>
+          <p>Шоу-драфт: капитаны по очереди разбирают ростер, с отдельным оверлеем для трансляции.</p>
+        </div>
+        <div class="cell">
+          <h3>Single draft</h3>
+          <p>Случайный герой по каждой характеристике — быстрый формат для шоу-матчей.</p>
+        </div>
+        <div class="cell">
+          <h3>Разбор матча</h3>
+          <p>Постгейм по ID матча из Dota&nbsp;2: показатели, карта, выгрузка картинкой.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="bot">
+      <div class="sec-head">
+        <div class="kicker">Раздел 4</div>
+        <h2>Телеграм-бот, который правится без программиста</h2>
+        <p>Бот ведёт капитана по заявке, привязывает профиль, пускает на сайт по коду, шлёт
+          напоминания и собирает анкеты.</p>
+      </div>
+      <div class="grid g2">
+        <div class="cell">
+          <h3>Разговор — это граф, а не код</h3>
+          <p>Реплики, кнопки и переходы правятся на холсте в админке: масштаб, панорама,
+            перетаскивание узлов. Рядом — тайминги напоминаний и встроенный гайд оператора.
+            Поменять текст вопроса — минута, а не релиз.</p>
+        </div>
+        <div class="cell">
+          <h3>Что он делает сегодня</h3>
+          <ul>
+            <li>квиз заявки команды и сбор состава</li>
+            <li>привязка профиля к аккаунту сайта</li>
+            <li>вход на сайт одноразовым кодом</li>
+            <li>доставка ссылки сброса пароля</li>
+            <li>выгрузка инфографики матча в канал</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="admin">
+      <div class="sec-head">
+        <div class="kicker">Раздел 5</div>
+        <h2>Ведение лиги</h2>
+        <p>Служебная часть — четыре группы инструментов. Права режут и витрину, и адрес:
+          чужая страница объясняет, какого права не хватает, а не показывает пустой экран.</p>
+      </div>
+      <div class="tbl-scroll">
+        <table>
+          <thead>
+            <tr><th>Группа</th><th>Инструменты</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Ведение лиги</b></td>
+              <td class="tools">турниры и мастер заведения · импорт составов и анкет с превью ·
+                модерация · команда лиги и права · начисление TP · телеграм-бот · дубли профилей ·
+                сверка рангов · анкеты</td>
+            </tr>
+            <tr>
+              <td><b>Showmatch</b></td>
+              <td class="tools">UNDERBEER 2.0 · single draft · fearless draft · формат 1х1 (в разработке)</td>
+            </tr>
+            <tr>
+              <td><b>Аналитика</b></td>
+              <td class="tools">разбор матча · карта вардов · показатели сезона</td>
+            </tr>
+            <tr>
+              <td><b>Инструменты</b></td>
+              <td class="tools">архив серий · студия графики · тема оформления · баннер главной</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid g3" style="margin-top:32px">
+        <div class="cell">
+          <h3>Импорт одним экраном</h3>
+          <p>Составы разбираются из таблицы сезона, анкеты дозаполняются из выгрузки CRM.
+            Оба механизма показывают превью до записи.</p>
+        </div>
+        <div class="cell">
+          <h3>Дубли профилей</h3>
+          <p>Похожие профили одного человека сводятся: объединить, переименовать или развести.
+            Считаются сами, оператор только решает.</p>
+        </div>
+        <div class="cell">
+          <h3>Уведомления оператору</h3>
+          <p>Анкета, привязка, заявка команды и правка профиля приходят строкой в колокольчик
+            тем, у кого есть право этой очереди, и ведут на нужную вкладку.</p>
+        </div>
+      </div>
+
+      <div class="perms" aria-label="Права доступа">
+        <span class="perm">приём регистраций</span>
+        <span class="perm">назначение админов</span>
+        <span class="perm">правка ростера</span>
+        <span class="perm">удаление профилей</span>
+        <span class="perm">турниры</span>
+        <span class="perm">архив серий</span>
+        <span class="perm">начисление TP</span>
+        <span class="perm">анкеты</span>
+        <span class="perm">студия</span>
+        <span class="perm">UNDERBEER</span>
+        <span class="perm">тема</span>
+        <span class="perm">баннер</span>
+        <span class="perm">разбор матчей</span>
+      </div>
+    </section>
+
+    <section id="data">
+      <div class="sec-head">
+        <div class="kicker">Раздел 6</div>
+        <h2>Данные лиги и графика</h2>
+        <p>Статистика не вводится руками — она приезжает и раскладывается по разрезам.</p>
+      </div>
+      <div class="grid g2">
+        <div class="cell">
+          <h3>OpenDota и Steam</h3>
+          <p>Матчи, показатели игроков, ранги и варды тянутся из OpenDota; Steam — запасной
+            источник матча и связка аккаунтов. Медали рангов лежат в репозитории своими
+            файлами: чужой сервер в рантайме не дёргается.</p>
+        </div>
+        <div class="cell">
+          <h3>Две валюты сезона</h3>
+          <p><span class="term">TP</span> — сезонный зачёт MVP, начисляет оператор, есть
+            и командный рейтинг. <span class="term">Spirit Shards</span> — за участие в жизни
+            лиги, со ступенями и лестницей прогресса.</p>
+        </div>
+        <div class="cell">
+          <h3>Студия графики</h3>
+          <p>Афиша матча и объявление состава собираются по данным ростера в редакторе шаблонов,
+            а не рисуются заново под каждую встречу. Есть и генерация картинок.</p>
+        </div>
+        <div class="cell">
+          <h3>Нормирование картинок</h3>
+          <p>У каждого слота — лого, фото, баннер — своя норма и окно подгонки с безопасной
+            зоной: видно, что обрежется на телефоне, до того как это увидят люди.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="platform">
+      <div class="sec-head">
+        <div class="kicker">Раздел 7</div>
+        <h2>Под капотом</h2>
+        <p>Одно приложение, один деплой: Next.js&nbsp;16 и SQLite, ставится на любой сервер
+          с постоянным диском.</p>
+      </div>
+      <div class="grid g2">
+        <div class="cell">
+          <h3>Своя дизайн-система</h3>
+          <p>«Кит элементов» — компоненты живут в одной библиотеке, витрина открывается прямо
+            в админке. Новый раздел собирается из готового, а не верстается с нуля.
+            Адаптив проверяется на 390, 1280 и 1440 на каждом этапе.</p>
+        </div>
+        <div class="cell">
+          <h3>Находимость</h3>
+          <p>У каждой публичной страницы свои метаданные из живых данных, карта сайта на
+            353 адреса, превью для телеграма. Личное и служебное закрыто от индексации —
+            это и находимость, и приватность сразу.</p>
+        </div>
+        <div class="cell">
+          <h3>Безопасность</h3>
+          <p>Пароли scrypt с солью на каждый, лимиты попыток входа, сессии с отзывом,
+            служебные разделы закрыты и правами, и прокси. Чужой профиль не правится подменой
+            поля в форме — адресат берётся из сессии.</p>
+        </div>
+        <div class="cell">
+          <h3>Встраивание</h3>
+          <p>Приложение умеет жить внутри чужого лендинга через iframe с контролем того,
+            какие домены имеют на это право.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="road">
+      <div class="sec-head">
+        <div class="kicker">Раздел 8</div>
+        <h2>В разработке</h2>
+        <p>Один блокер, остальное — развитие.</p>
+      </div>
+      <div class="road">
+        <div class="road-row">
+          <span class="chip block">блокер</span>
+          <div><b>Боевой сервер, домен и HTTPS</b>
+            <span class="why">Приложению нужен живой Node и постоянный диск. Площадка не выбрана —
+              это последнее, что отделяет сезон от открытия.</span></div>
+        </div>
+        <div class="road-row">
+          <span class="chip block">решение</span>
+          <div><b>Кто главный по базе</b>
+            <span class="why">В базе уже аккаунты, анкеты и личные сообщения живых людей.
+              После публикации боевая база разойдётся с репозиторием в первый же день —
+              ответ нужен письменно и заранее.</span></div>
+        </div>
+        <div class="road-row">
+          <span class="chip work">в работе</span>
+          <div><b>Бот на вебхуке вместо постоянного опроса</b>
+            <span class="why">Делается сразу после появления домена: без адреса вебхуку некуда приходить.</span></div>
+        </div>
+        <div class="road-row">
+          <span class="chip wait">ждёт вводных</span>
+          <div><b>Знаки TP и Spirit Shards</b>
+            <span class="why">Медали рангов уже настоящие; для двух валют нужны референсы знаков.</span></div>
+        </div>
+        <div class="road-row">
+          <span class="chip wait">развилка</span>
+          <div><b>Сообщение игроку, у которого ещё нет аккаунта</b>
+            <span class="why">Два пути с разной ценой: «спящий» аккаунт или отдельная очередь писем.
+              Выбор влияет на вход — самое чувствительное место продукта.</span></div>
+        </div>
+        <div class="road-row">
+          <span class="chip wait">в очереди</span>
+          <div><b>Свободные агенты в ростере</b>
+            <span class="why">Новый разрез витрины: кто ищет команду к началу сезона.</span></div>
+        </div>
+      </div>
+
+      <div class="sec-head" style="margin-top:52px">
+        <h2>Отложено сознательно</h2>
+        <p>Не «не успели», а решено делать после открытия сезона — с причиной у каждого пункта.</p>
+      </div>
+      <div class="later">
+        <div><b>Тёмная эфирная тема</b><span>Релиз идёт на светлом Ките целиком; тема — блок переопределений, а не переверстка.</span></div>
+        <div><b>Английская версия</b><span>Переводить имеет смысл устоявшийся интерфейс, иначе каждый этап удваивается.</span></div>
+        <div><b>Генерируемые превью под матч</b><span>Требует серверного рендера; на старте хватает одной карточки лиги.</span></div>
+        <div><b>Формат 1х1</b><span>Правила формата ещё пишутся — угадывать их за автора смысла нет.</span></div>
+        <div><b>Помощник по статистике</b><span>Нет вопроса, на который он отвечает лучше готовых разрезов.</span></div>
+        <div><b>Реестр баллов с интерфейсом</b><span>Места и касты правятся в базе руками; на один сезон терпимо.</span></div>
+      </div>
+    </section>
+
+    <section id="process">
+      <div class="sec-head">
+        <div class="kicker">Раздел 9</div>
+        <h2>Как это поддерживается</h2>
+        <p>Не только код: у проекта заведён процесс, который переживает смену исполнителя.</p>
+      </div>
+      <div class="grid g2">
+        <div class="cell">
+          <h3>Техзадание на каждый этап</h3>
+          <p>Один файл: цель, границы, требования к вёрстке и находимости, критерии приёмки.
+            Отчёт о работе идёт в журнал, а не в задание — задание остаётся тем, о чём договорились.</p>
+        </div>
+        <div class="cell">
+          <h3>Приёмка по чек-листу</h3>
+          <p>Перед каждой выкладкой прогоняется весь продукт ролями: гость, новичок, капитан,
+            оператор, права. Последний прогон — <span class="term">33 пункта приняты, 2 отклонены</span>,
+            оба отклонённых закрыты в тот же день.</p>
+        </div>
+        <div class="cell">
+          <h3>Журнал решений</h3>
+          <p>Почему сделано именно так — с датами. Отменённые решения не стираются, а помечаются:
+            видно, что передумали и когда.</p>
+        </div>
+        <div class="cell">
+          <h3>Карта проекта</h3>
+          <p>Где что лежит и кто за что отвечает — чтобы новый человек искал файл минуту,
+            а не день.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      SPIRIT/CTRL · состояние на <b>17 сентября 2026</b> · данные сняты с живой базы лиги
+    </footer>
+  </main>
+</div>
+</body>
+</html>
