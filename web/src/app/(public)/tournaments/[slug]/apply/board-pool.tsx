@@ -47,7 +47,7 @@ export function Pool({
       <FormInput
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Поиск по нику, имени или команде"
+        placeholder="Поиск по нику или команде"
       />
 
       {/* Позиции — пилюлями, а не выпадающим списком: их шесть, и выбор в один клик тут важнее

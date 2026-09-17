@@ -103,11 +103,8 @@ export function ApplyBoard({
     return pool.filter((p) => {
       if (role && p.role !== role) return false;
       if (!needle) return true;
-      return (
-        p.nickname.toLowerCase().includes(needle) ||
-        (p.realName ?? "").toLowerCase().includes(needle) ||
-        (p.teamName ?? "").toLowerCase().includes(needle)
-      );
+      // Ищем по нику и команде: настоящего имени в пуле нет (см. pool.ts)
+      return p.nickname.toLowerCase().includes(needle) || (p.teamName ?? "").toLowerCase().includes(needle);
     });
   }, [pool, query, role]);
 

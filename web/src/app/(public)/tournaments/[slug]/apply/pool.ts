@@ -14,11 +14,14 @@ import { placeByRole } from "./slots";
 // Пул — игроки лиги с `account_id` (в поле или выведенным из ссылки на профиль): без него человека
 // не опознать в архиве матчей, и в составе от него нет толку. Человека вне пула добавить нельзя —
 // он сначала регистрируется в боте и появляется здесь (BOT-PLAN.md, Э5).
+//
+// В карточку идёт только то, что и так на витрине `/roster/players`: ник, команда, роль, MMR.
+// Настоящего имени здесь нет намеренно — форму открывает любой вошедший, даже до модерации анкеты
+// (решение 23.08.2026), и весь пул уезжает ему в разметку: с ФИО это была бы адресная книга лиги.
 
 export type PoolEntry = {
   id: number;
   nickname: string;
-  realName: string | null;
   photo: string | null;
   mmr: number | null;
   /** Акцент ростерной команды — под аватарку-заглушку. */
@@ -34,7 +37,6 @@ export type PoolEntry = {
 export type ReadyTeamPlayer = {
   id: number;
   nickname: string;
-  realName: string | null;
   photo: string | null;
   role: string | null;
   mmr: number | null;
@@ -85,7 +87,7 @@ export async function captainReadyTeams(playerId: number, pool: PoolEntry[]): Pr
     where: { id: { in: [...pick.keys()] }, archivedAt: null },
     include: {
       roster: {
-        include: { player: { select: { id: true, slug: true, nickname: true, realName: true, photo: true, mmr: true } } },
+        include: { player: { select: { id: true, slug: true, nickname: true, photo: true, mmr: true } } },
       },
     },
   });
@@ -106,7 +108,6 @@ export async function captainReadyTeams(playerId: number, pool: PoolEntry[]): Pr
           return {
             id: s.player.id,
             nickname: s.player.nickname,
-            realName: s.player.realName,
             photo: withPhoto.photo,
             role: s.role,
             mmr: s.player.mmr,
@@ -155,7 +156,6 @@ export async function applyPool(): Promise<PoolEntry[]> {
       {
         id: p.id,
         nickname: p.nickname,
-        realName: p.realName,
         photo: p.photo,
         mmr: p.mmr,
         color: team ? teamAccent(team) : teamAccent({ slug: p.slug, name: p.nickname }),

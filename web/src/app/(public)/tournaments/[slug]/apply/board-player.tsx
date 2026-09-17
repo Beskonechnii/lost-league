@@ -34,7 +34,7 @@ export function PlayerLine({
         />
       }
       nickname={player.nickname}
-      sub={[player.realName, player.teamName, roleShort(player.role)].filter(Boolean).join(" · ") || "без команды"}
+      sub={[player.teamName, roleShort(player.role)].filter(Boolean).join(" · ") || "без команды"}
       value={player.mmr ? player.mmr.toLocaleString("ru-RU") : null}
       note={note}
       dense={dense}

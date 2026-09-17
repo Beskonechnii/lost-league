@@ -47,7 +47,7 @@ export function ReadyTeamCard({ team, onPick }: { team: ReadyTeam; onPick: () =>
                 )}
               </div>
               <div className="truncate text-[11px] font-bold text-muted">
-                {[roleShort(p.role), p.realName].filter(Boolean).join(" · ") || "—"}
+                {roleShort(p.role) || "—"}
               </div>
             </div>
             {p.inPool ? (
