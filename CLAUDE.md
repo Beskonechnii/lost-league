@@ -81,7 +81,7 @@
 
 ```
 /                       CLAUDE.md · MVP.md · BACKLOG.md · DECISIONS.md · WORKLOG.md
-├── docs/               MAP · ARCHITECTURE · UI-GUIDELINES · DEPLOY
+├── docs/               MAP · ARCHITECTURE · UI-GUIDELINES · DEPLOY · SMOKE · MANUAL-TASKS
 │   ├── tasks/          ТЗ, одно ТЗ = один файл (+ _TEMPLATE.md)
 │   ├── brand/          DOCS · BRENDBOOK · COMPETITORS
 │   └── archive/        закрытые планы и старые журналы
@@ -168,7 +168,10 @@ cd web && npm run dev
 | `docs/ARCHITECTURE.md` | как устроено: модель данных, синк, реестр баллов, студия, драфт, ростер, турниры |
 | **`docs/UI-GUIDELINES.md`** | стандарт навигации и раскладки, чек-лист нового раздела |
 | **`docs/SMOKE.md`** | прогон перед выкладкой: сценарии по всему продукту. Гоняет `qa` |
-| `docs/DEPLOY.md` | выкладка на сервер |
+| `docs/DEPLOY.md` | выкладка на сервер: как устроено (образ, тома, прокси) |
+| **`docs/DEPLOY-MANUAL.md`** | развернуть руками, по шагам: от пустого VPS до `https://`; §8 — то же локально, что делает `serve` |
+| **`docs/MANUAL-TASKS.md`** | что осталось **руками**: ключи, референсы, данные, развилки. Ведёт то, что кодом не закрыть |
+| `docs/TEST-DRIVE.md` | что появилось 03–17.09 и как прогнать флоу глазами (не приёмка — приёмка в `SMOKE.md`) |
 | **гайд по флоу бота** | не файл, а страница `/admin/bot/flow/guide` — читается в момент работы |
 | `docs/brand/` | `DOCS.md`, `BRENDBOOK.md`, `COMPETITORS.md` |
 | `docs/archive/` | закрытые планы (RELEASE, TOURNAMENTS, BOT, BOT-FLOW, NAV, ACCOUNTS) и старые журналы |
