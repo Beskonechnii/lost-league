@@ -32,7 +32,10 @@ function ColorRow({
   onChange: (v: string) => void;
 }) {
   return (
-    <label className="flex items-center gap-3 py-2">
+    // flex-wrap + подпись с минимумом в 8rem: на узком экране поле hex (176px) уезжает на вторую
+    // строку, а не режется. Без минимума перенос не случился бы вовсе — подпись на `flex-1` сжимается
+    // до нуля и строка «влезает» в любую ширину, оставляя от названия цвета столбик из букв.
+    <label className="flex flex-wrap items-center gap-3 py-2">
       <span
         className="size-9 shrink-0 rounded-lg border border-hairline-strong"
         style={{ background: value }}
@@ -45,7 +48,7 @@ function ColorRow({
         className="size-9 shrink-0 cursor-pointer rounded-lg border border-hairline bg-transparent"
         aria-label={`${label} — пипетка`}
       />
-      <span className="min-w-0 flex-1">
+      <span className="min-w-[8rem] flex-1">
         <span className="block text-sm font-medium text-ink">{label}</span>
         {hint && <span className="block text-xs text-ink-subtle">{hint}</span>}
       </span>
@@ -108,8 +111,8 @@ function Preview({ theme }: { theme: Theme }) {
           </div>
         </div>
 
-        {/* Подушка Кита: карточка, бейджи-тоны, кнопка. Тени и радиусы приезжают из pouf.css
-            и панелью не правятся — она управляет только цветом. */}
+        {/* Подушка Кита: карточка, бейджи-тоны, кнопка. Из панели здесь приезжают только поверхность
+            и текст — мятный акцент, тени и радиусы заданы в pouf.css и правятся там же. */}
         <div className="rounded-card bg-surface p-4 font-pouf cushion-card">
           <div className="text-sm font-black">Поверхность pouf — карточка студии</div>
           <div className="mt-1 text-sm font-bold text-muted">Приглушённый текст pouf под ней.</div>
@@ -120,8 +123,9 @@ function Preview({ theme }: { theme: Theme }) {
             <Badge tone="info">инфо</Badge>
             <Badge tone="orange">внимание</Badge>
           </div>
-          <div className="mt-3">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <PoufButton size="sm">Кнопка pouf</PoufButton>
+            <span className="text-[11px] font-bold text-muted">мятный акцент Кита — панель его не меняет</span>
           </div>
         </div>
       </div>
@@ -187,16 +191,32 @@ export function ThemeAdmin({ initial }: { initial: Theme }) {
         </PoufButton>
       </div>
 
-      <Text size="sm" muted>
-        Цвета применяются ко всему сайту сразу после «Сохранить». Значения хранятся в data/theme.json
-        (коммитится и едет между устройствами). Дивизион D2 перекрашивает акцент в свой цвет.
-      </Text>
+      <div className="space-y-2">
+        <Text size="sm" muted>
+          Цвета применяются ко всему сайту сразу после «Сохранить». Значения хранятся в
+          data/theme.json (коммитится и едет между устройствами). Дивизион D2 перекрашивает акцент в
+          свой цвет.
+        </Text>
+        {/* Граница панели названа прямо: кнопки, вкладки, бейджи и акцентные ссылки продукта залиты
+            мятным акцентом Кита (--accent-fill в pouf.css), а не бренд-акцентом отсюда. Без этой
+            строки оператор красит «Бренд-акцент», не видит изменений и считает панель сломанной.
+            `Text` — инлайновый span, поэтому два абзаца разводит обёртка, а не они сами. */}
+        <div>
+          <Text size="sm" muted>
+            Панель правит ровно то, что видно в превью. Мятный акцент Кита — заливка кнопок, вкладок
+            и бейджей, цвет акцентных ссылок — отсюда не меняется: он часть Кита элементов и живёт в
+            его файле (components/pouf/pouf.css).
+          </Text>
+        </div>
+      </div>
 
       {error && <div className="text-sm font-bold text-[var(--down)]">{error}</div>}
 
       {/* Слева — редактор по группам, справа — живое превью черновика (обновляется без сохранения). */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="space-y-6">
+        {/* min-w-0: у грид-элемента `min-width: auto`, и на телефоне (одна колонка) он разворачивался
+            по min-content строк редактора — страница ехала вбок на 44px. */}
+        <div className="min-w-0 space-y-6">
           {GROUPS.map((group) => (
             <section key={group} className="rounded-xl border border-hairline bg-surface-1 p-4">
               <div className="eyebrow mb-1 text-ink-subtle">{group}</div>

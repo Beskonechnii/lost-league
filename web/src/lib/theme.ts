@@ -64,9 +64,12 @@ export type ThemeField = {
 
 /** Полный список управляемых полей. Добавить цвет = строка сюда + ключ в ThemeKey/DEFAULT_THEME. */
 export const FIELDS: ThemeField[] = [
-  { key: "accent", label: "Бренд-акцент (D1)", hint: "Кнопки, ссылки, активные вкладки", group: "Акцент", cssVar: "--accent" },
-  { key: "accentBright", label: "Акцент — текстовый", hint: "Ссылки и ховеры: тёмный оттенок акцента, читаемый на бумаге", group: "Акцент", cssVar: "--accent-bright" },
-  { key: "accentContrast", label: "Текст на акценте", hint: "Цвет надписи внутри залитой кнопки", group: "Акцент", cssVar: "--accent-contrast" },
+  // Подписи акцента намеренно узкие. Кнопки, вкладки, бейджи и акцентные ссылки продукта сидят не на
+  // `--accent`, а на мятном `--accent-fill`/`--accent-ink` Кита (pouf.css) — панель их не трогает.
+  // Обещать здесь «кнопки и ссылки» значит врать: оператор красит и не видит изменений.
+  { key: "accent", label: "Бренд-акцент (D1)", hint: "Служебная часть: активные чипы студии, рамка фокуса в полях", group: "Акцент", cssVar: "--accent" },
+  { key: "accentBright", label: "Акцент — текстовый", hint: "Акцентные ссылки служебной части (разбор анкеты, флоу бота)", group: "Акцент", cssVar: "--accent-bright" },
+  { key: "accentContrast", label: "Текст на акценте", hint: "Цвет надписи внутри залитой кнопки бренд-акцента", group: "Акцент", cssVar: "--accent-contrast" },
   { key: "d2", label: "Акцент D2", hint: "Дивизион 2 перекрашивает акцент в него", group: "Акцент", cssVar: "--lost-d2" },
   { key: "d2Bright", label: "Акцент D2 — текстовый", hint: "То же для дивизиона 2", group: "Акцент", cssVar: "--lost-d2-bright" },
   { key: "d2Contrast", label: "Текст на акценте D2", group: "Акцент", cssVar: "--lost-d2-contrast" },
