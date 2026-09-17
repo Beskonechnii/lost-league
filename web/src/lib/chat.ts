@@ -33,16 +33,22 @@ export async function currentChatMe(): Promise<ChatMe | null> {
 }
 
 /**
- * Кто может держать ЖИВОЙ КАНАЛ — шире, чем кто может писать в личку: любой одобренный аккаунт,
- * даже без профиля в ростере. Иначе админ комнаты, у которого профиля нет, не получал бы событий
- * вовсе и видел бы ход соперника только после перезагрузки (замечание `qa` с приёмки 22а).
+ * Кто может держать ЖИВОЙ КАНАЛ и читать служебную беседу с лигой — шире, чем кто может писать
+ * в личку: любой вошедший аккаунт, даже без профиля в ростере и даже ещё не одобренный.
  *
- * Присутствие это не меняет: точки «в сети» считаются по `playerId`, и у такого аккаунта он null.
+ * Причина в том, кому лига пишет. `tellAccount` адресуется аккаунту, а не игроку: оператору без
+ * карточки в ростере (ТЗ 28), заявителю — «заявка отправлена» и «заявка одобрена» — ещё до
+ * решения по его собственной заявке, человеку с возвращённой анкетой. Беседа заведена, адресат
+ * в ней состоит; закрывать её от него значит терять письма лиги ровно там, где они важнее всего.
+ *
+ * Личка этим не расширяется: писать друг другу по-прежнему может только `chatIdentity` — игрок
+ * лиги. Присутствие тоже не меняется: точки «в сети» считаются по `playerId`, а у такого
+ * аккаунта он null.
  */
 export type LiveMe = { accountId: number; playerId: number | null };
 
 export const liveIdentity = (account: Account | null): LiveMe | null =>
-  account && isActiveAccount(account) ? { accountId: account.id, playerId: account.player?.id ?? null } : null;
+  account ? { accountId: account.id, playerId: account.player?.id ?? null } : null;
 
 export async function currentLiveMe(): Promise<LiveMe | null> {
   return liveIdentity(await currentAccount());
@@ -181,6 +187,15 @@ export async function listConversations(meAccountId: number): Promise<Conversati
     });
   }
   return rows;
+}
+
+/**
+ * Что человеку показывать списком слева: игроку лиги — все его беседы, остальным — только канал
+ * лиги. Так заявитель видит письмо о своей команде, но чужой лички ему это не открывает.
+ */
+export async function visibleConversations(account: Account | null, meAccountId: number): Promise<ConversationRow[]> {
+  const rows = await listConversations(meAccountId);
+  return chatIdentity(account) ? rows : rows.filter((r) => r.peer.system);
 }
 
 function unreadIn(conversationId: number, meAccountId: number, lastReadAt: Date | null): Promise<number> {

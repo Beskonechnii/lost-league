@@ -9,10 +9,10 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   // `currentLiveMe`, а не `currentChatMe`: отметку о прочтении ставит и оператор без карточки
-  // игрока — служебный канал открыт любому одобренному аккаунту (`chat.ts`, ТЗ 28). Чужую беседу
+  // игрока, и заявитель — служебный канал открыт любому вошедшему (`chat.ts`). Чужую беседу
   // это не откроет: `markRead` молчит, если человек в ней не участник.
   const me = await currentLiveMe();
-  if (!me) return bad("Чат — для участников лиги", 401);
+  if (!me) return bad("Чат — для вошедших", 401);
 
   const body = (await req.json().catch(() => null)) as { conversationId?: number } | null;
   const conversationId = parseId(body?.conversationId ?? null);

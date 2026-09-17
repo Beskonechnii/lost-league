@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { currentLiveMe, findConversation, listConversations, messages } from "@/lib/chat";
+import { currentAccount } from "@/lib/account";
+import { liveIdentity, findConversation, visibleConversations, messages } from "@/lib/chat";
 import { SYSTEM_NAME, systemAccountId } from "@/lib/system-chat";
 import { Icon } from "@/components/pouf/Icon";
 import { Breadcrumbs } from "@/components/pouf/breadcrumbs";
@@ -18,16 +19,18 @@ export const metadata = { title: "Spirit CTRL" };
 // прочее из реестра `chat-actions.ts`. Ответ уходит прямо из ленты.
 
 export default async function SystemChatPage() {
-  // Витрина колокольчика, а колокольчик есть у любого одобренного аккаунта — в том числе у
-  // оператора без карточки игрока, которому приходят строки очередей (ТЗ 28). Личка при этом
-  // остаётся игрокам: `/chat` и `/chat/<id>` по-прежнему на `currentChatMe`.
-  const me = await currentLiveMe();
+  // Витрина колокольчика, а он есть у любого вошедшего аккаунта: лига пишет и оператору без
+  // карточки игрока (ТЗ 28), и заявителю до решения по его заявке. Личка при этом остаётся
+  // игрокам — `/chat/<id>` по-прежнему на `currentChatMe`, а список слева режет
+  // `visibleConversations`.
+  const account = await currentAccount();
+  const me = liveIdentity(account);
   if (!me) return <ChatGate />;
 
   const conversationId = await findConversation(me.accountId, await systemAccountId());
 
   const [rows, lines] = await Promise.all([
-    listConversations(me.accountId),
+    visibleConversations(account, me.accountId),
     conversationId ? messages(conversationId, me.accountId) : Promise.resolve([]),
   ]);
 
