@@ -47,11 +47,27 @@ export type DateFieldProps = {
   years?: [from: number, to: number];
   /** Компактная подушка (42px) — для плотных админских сеток, где соседи тоже `size="sm"`. */
   size?: "md" | "sm";
+  /** Отвергнутое поле: вдавленная обводка отказа, как у всех полей Кита. Без неё дата
+   *  оставалась единственным обязательным полем анкеты, у которого есть плашка, но нет обводки. */
+  invalid?: boolean;
+  /** id плашки с ошибкой (или подсказки) — его отдаёт `Field`. */
+  describedBy?: string;
   /** Какой месяц открывать у пустого поля (см. `Calendar`). */
   openAt?: { y: number; m: number };
 };
 
-export function DateField({ name, defaultValue = "", required, id, disabled, years, size = "md", openAt }: DateFieldProps) {
+export function DateField({
+  name,
+  defaultValue = "",
+  required,
+  id,
+  disabled,
+  years,
+  size = "md",
+  openAt,
+  invalid,
+  describedBy,
+}: DateFieldProps) {
   const [text, setText] = React.useState(() => {
     const parsed = parse(defaultValue);
     return parsed ? format(parsed.y, parsed.m, parsed.d) : defaultValue;
@@ -84,7 +100,9 @@ export function DateField({ name, defaultValue = "", required, id, disabled, yea
           // молча выключается целиком.
           pattern="\d{1,2}[.\/\-]\d{1,2}[.\/\-]\d{4}"
           title="Дата в виде 21.04.1998"
-          className={`${inputClasses({ size })} pr-12`}
+          aria-invalid={invalid || undefined}
+          aria-describedby={describedBy}
+          className={`${inputClasses({ size, invalid })} pr-12`}
         />
         <PopoverPrimitive.Trigger asChild>
           <button

@@ -3,10 +3,11 @@
 import { useActionState, useId, useState } from "react";
 import Link from "next/link";
 import { register, login, type AuthState } from "./actions";
+import type { AuthField } from "@/lib/account";
 import { Button } from "@/components/pouf/Button";
 import { Checkbox } from "@/components/pouf/checkbox";
 import { Alert } from "@/components/pouf/feedback";
-import { FormInput, Label, PasswordField } from "@/components/pouf/Input";
+import { Field, FormInput, PasswordField } from "@/components/pouf/Input";
 import { PASSWORD_MIN } from "@/lib/password-rules";
 import { PillButton, PillTrack } from "@/components/pouf/tabs";
 
@@ -78,34 +79,40 @@ function RememberMe() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-2">
-      <Label>{label}</Label>
-      {children}
-    </div>
-  );
-}
-
 function LoginForm() {
   const [state, action, pending] = useActionState<AuthState, FormData>(login, null);
   return (
-    <form action={action} className="space-y-4">
+    // noValidate: нативный пузырёк — второй язык ошибок поверх плашки Кита (ТЗ 30).
+    <form action={action} noValidate className="space-y-4">
+      {/* Слот сообщения один и он СВЕРХУ, над полями, к которым относится. Отказ входа адреса
+          не имеет («неверная почта или пароль» — намеренно не говорит, что из двух), поэтому
+          живёт только здесь. */}
+      {state?.error && (
+        <Alert tone="err" block>
+          {state.error}
+        </Alert>
+      )}
       {/* Почта возвращается из состояния: после отказа React сбрасывает неуправляемые поля
           к defaultValue, и без этого «неверный пароль» стирал заодно правильно набранный адрес.
           Пароль возвращать нечем и незачем — его набирают заново. */}
-      <Field label="Почта">
-        <FormInput
-          name="email"
-          type="email"
-          autoComplete="email"
-          defaultValue={state?.values?.email ?? ""}
-          placeholder="you@gmail.com"
-          required
-        />
+      <Field label="Почта" required>
+        {(id, describedBy) => (
+          <FormInput
+            id={id}
+            name="email"
+            type="email"
+            autoComplete="email"
+            aria-describedby={describedBy}
+            defaultValue={state?.values?.email ?? ""}
+            placeholder="you@gmail.com"
+            required
+          />
+        )}
       </Field>
-      <Field label="Пароль">
-        <PasswordField name="password" autoComplete="current-password" required />
+      <Field label="Пароль" required>
+        {(id, describedBy) => (
+          <PasswordField id={id} name="password" autoComplete="current-password" aria-describedby={describedBy} required />
+        )}
       </Field>
       {/* «Запомнить меня» и «Забыли пароль?» — одной строкой: оба про вход, и вторая обязана быть
           видна ровно там, где пароль не подошёл, а не в подвале страницы. */}
@@ -121,44 +128,96 @@ function LoginForm() {
       <Button type="submit" loading={pending} size="lg" block>
         {pending ? "Вхожу…" : "Войти"}
       </Button>
-      {state?.error && (
-        <Alert tone="err" block>
-          {state.error}
-        </Alert>
-      )}
     </form>
   );
 }
 
+/**
+ * Регистрация.
+ *
+ * Все три поля УПРАВЛЯЕМЫЕ — в этом весь смысл правки (ТЗ 30): после отказа сервера React
+ * возвращает неуправляемое поле к defaultValue, и «пароль слишком короткий» стирал оба пароля,
+ * заставляя набирать их заново вместо того, чтобы дописать пару знаков. На сервер пароли
+ * по-прежнему уходят только с отправкой формы и обратно не возвращаются.
+ */
 function RegisterForm() {
   const [state, action, pending] = useActionState<AuthState, FormData>(register, null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  // Плашка гаснет на первом вводе в отвергнутое поле; сводка сверху держится до следующей отправки.
+  // Помним сам ответ, а не флаг: следующий отказ — новый объект, и плашка зажигается сама.
+  const [dismissed, setDismissed] = useState<AuthState>(null);
+  const plate = (field: AuthField) =>
+    state && dismissed !== state && state.field === field ? state.error : undefined;
+  const touch = (field: AuthField) => {
+    if (state?.field === field) setDismissed(state);
+  };
+
   return (
-    <form action={action} className="space-y-4">
-      {/* Как и на входе: отказ сервера («почта занята», «пароль слишком простой») больше
-          не стирает адрес — только поля паролей, которые всё равно набирают заново. */}
-      <Field label="Почта">
-        <FormInput
-          name="email"
-          type="email"
-          autoComplete="email"
-          defaultValue={state?.values?.email ?? ""}
-          placeholder="you@gmail.com"
-          required
-        />
+    <form action={action} noValidate className="space-y-4">
+      {state?.error && (
+        <Alert tone="err" block>
+          {/* Отказ с адресом поля уже стоит плашкой под ним — сводке остаётся сказать, что не приняли. */}
+          {state.field ? "Не приняли — поправьте отмеченное поле" : state.error}
+        </Alert>
+      )}
+      <Field label="Почта" required error={plate("email")}>
+        {(id, describedBy) => (
+          <FormInput
+            id={id}
+            name="email"
+            type="email"
+            autoComplete="email"
+            aria-describedby={describedBy}
+            invalid={!!plate("email")}
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              touch("email");
+            }}
+            placeholder="you@gmail.com"
+            required
+          />
+        )}
       </Field>
-      <Field label="Пароль">
-        {/* Почту в контекст шкалы не отдаём: она в соседнем поле и здесь её ещё нет —
-            совпадение пароля с почтой ловит сервер при отправке. */}
-        <PasswordField
-          name="password"
-          autoComplete="new-password"
-          placeholder={`Минимум ${PASSWORD_MIN} символов`}
-          strength
-          required
-        />
+      <Field label="Пароль" required error={plate("password")}>
+        {(id, describedBy) => (
+          /* Почту в контекст шкалы не отдаём: она в соседнем поле и здесь её ещё нет —
+             совпадение пароля с почтой ловит сервер при отправке. */
+          <PasswordField
+            id={id}
+            name="password"
+            autoComplete="new-password"
+            aria-describedby={describedBy}
+            invalid={!!plate("password")}
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              touch("password");
+            }}
+            placeholder={`Минимум ${PASSWORD_MIN} символов`}
+            strength
+            required
+          />
+        )}
       </Field>
-      <Field label="Повторите пароль">
-        <PasswordField name="confirm" autoComplete="new-password" required />
+      <Field label="Повторите пароль" required error={plate("confirm")}>
+        {(id, describedBy) => (
+          <PasswordField
+            id={id}
+            name="confirm"
+            autoComplete="new-password"
+            aria-describedby={describedBy}
+            invalid={!!plate("confirm")}
+            value={confirm}
+            onChange={(e) => {
+              setConfirm(e.target.value);
+              touch("confirm");
+            }}
+            required
+          />
+        )}
       </Field>
       <Button type="submit" loading={pending} size="lg" block>
         {pending ? "Создаю…" : "Зарегистрироваться"}
@@ -170,11 +229,6 @@ function RegisterForm() {
         </Link>
         .
       </p>
-      {state?.error && (
-        <Alert tone="err" block>
-          {state.error}
-        </Alert>
-      )}
     </form>
   );
 }

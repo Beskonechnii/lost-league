@@ -44,19 +44,20 @@ function isBlocked(lower: string): boolean {
   return base.length >= PERSONAL_MIN && BLOCKED.has(base);
 }
 
-/** Пересекается ли пароль с личными данными: одно содержит другое, регистр не важен. */
-function repeatsPersonal(lower: string, ctx: PasswordContext | undefined): boolean {
-  const parts = [
+/** Что из личного повторяет пароль («почту», «ник») либо null. Одно содержит другое, регистр не важен. */
+function repeatsPersonal(lower: string, ctx: PasswordContext | undefined): string | null {
+  const parts: [string, string | undefined][] = [
     // Из почты берём только локальную часть: домен (`gmail.com`) есть у половины лиги
     // и запрещать его внутри пароля не за что.
-    ctx?.email?.split("@")[0],
-    ctx?.nickname,
+    ["почту", ctx?.email?.split("@")[0]],
+    ["ник", ctx?.nickname],
   ];
-  return parts.some((raw) => {
+  for (const [label, raw] of parts) {
     const part = raw?.trim().toLowerCase();
-    if (!part || part.length < PERSONAL_MIN) return false;
-    return lower.includes(part) || part.includes(lower);
-  });
+    if (!part || part.length < PERSONAL_MIN) continue;
+    if (lower.includes(part) || part.includes(lower)) return label;
+  }
+  return null;
 }
 
 /**
@@ -67,12 +68,15 @@ function repeatsPersonal(lower: string, ctx: PasswordContext | undefined): boole
  * снаружи. Перехешировать или гнать всех на смену — отдельная задача, не эта.
  */
 export function passwordProblem(password: string, ctx?: PasswordContext): string | null {
-  if (password.length < PASSWORD_MIN) return `Пароль должен быть не короче ${PASSWORD_MIN} символов`;
+  if (!password) return "Придумайте пароль";
+  // Обе цифры в тексте: без набранной длины «минимум 10» не говорит, сколько ещё дописать.
+  if (password.length < PASSWORD_MIN) return `Минимум ${PASSWORD_MIN} символов — сейчас ${password.length}`;
   if (password.length > PASSWORD_MAX) return "Слишком длинный пароль";
 
   const lower = password.toLowerCase();
-  if (isBlocked(lower)) return "Такой пароль слишком часто встречается — придумайте другой";
-  if (repeatsPersonal(lower, ctx)) return "Пароль не должен повторять почту или ник";
+  if (isBlocked(lower)) return "Такой пароль слишком частый — придумайте другой";
+  const personal = repeatsPersonal(lower, ctx);
+  if (personal) return `Пароль не должен повторять ${personal}`;
 
   return null;
 }

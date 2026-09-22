@@ -10,9 +10,10 @@ import {
   submitApplication,
   submitClaimWithApplication,
   storeApplicationDraft,
+  type AuthField,
 } from "@/lib/account";
 import { noticeNewProfile, noticeProfileClaim } from "@/lib/queue-notify";
-import type { ApplicationInput } from "@/lib/application";
+import type { ApplicationField, ApplicationInput } from "@/lib/application";
 
 // Действия кабинета игрока. Все требуют вошедшего аккаунта — id берём из сессии, а не из формы,
 // чтобы нельзя было действовать от чужого имени.
@@ -26,12 +27,14 @@ export async function logout(): Promise<void> {
 // ── вход/регистрация по email + паролю ─────────────────────────────────────────
 
 /**
- * Состояние форм входа. Кроме ошибки возвращаем введённое — после submit React сбрасывает
- * неуправляемые поля к defaultValue, и отказ сервера («почта занята», «пароль слишком простой»)
- * стирал заодно и правильно набранную почту (Э15). Пароли сюда не кладём НИКОГДА: их набирают
- * заново — они и так под звёздочками, и гонять их лишний раз через сеть незачем.
+ * Состояние форм входа. Кроме ошибки возвращаем адрес поля (`field`) — форма кладёт текст в
+ * плашку именно этого поля, а сводка сверху говорит, что форма не принята. Отказ без адреса
+ * («неверная почта или пароль») живёт только сводкой.
+ *
+ * Пароли сюда не кладём НИКОГДА: набранное держит сама форма (поля управляемые, ТЗ 30), и гонять
+ * пароль лишний раз через сеть незачем. Почта остаётся ради форм, где поле неуправляемое.
  */
-export type AuthState = { error?: string; values?: { email: string } } | null;
+export type AuthState = { error?: string; field?: AuthField; values?: { email: string } } | null;
 
 /** Регистрация: заводим аккаунт и сразу пускаем в кабинет. Писем нет — подтверждать нечего, а до
  *  апрува аккаунт всё равно в воронке (draft) и в лиге ничего не значит. */
@@ -39,9 +42,10 @@ export async function register(_state: AuthState, form: FormData): Promise<AuthS
   const email = String(form.get("email") ?? "");
   const password = String(form.get("password") ?? "");
   const confirm = String(form.get("confirm") ?? "");
-  if (password !== confirm) return { error: "Пароли не совпадают", values: { email } };
+  // Расходится именно «повторите пароль» — плашка у него, а не общей сводкой.
+  if (password !== confirm) return { error: "Пароли не совпадают", field: "confirm", values: { email } };
   const res = await registerWithPassword(email, password);
-  if (!res.ok) return { error: res.error, values: { email } };
+  if (!res.ok) return { error: res.error, field: res.field, values: { email } };
   await establishSession(res.accountId, form.get("remember") != null);
   redirect("/me");
 }
@@ -60,7 +64,7 @@ export async function login(_state: AuthState, form: FormData): Promise<AuthStat
 
 // Состояние форм заявки. Кроме ошибки возвращаем и введённые значения: после submit React сбрасывает
 // неуправляемые поля к defaultValue, и без этого длинная анкета очищалась бы на каждой опечатке.
-export type ApplyState = { error?: string; values?: ApplicationInput } | null;
+export type ApplyState = { error?: string; field?: ApplicationField; values?: ApplicationInput } | null;
 
 /** Отправка анкеты нового игрока. Все проверки — в submitApplication: форму можно и обойти. */
 export async function sendApplication(_state: ApplyState, form: FormData): Promise<ApplyState> {
@@ -69,8 +73,8 @@ export async function sendApplication(_state: ApplyState, form: FormData): Promi
 
   const input: ApplicationInput = readApplicationInput(form);
 
-  const error = await submitApplication(id, input, form.get("policy") != null);
-  if (error) return { error, values: input };
+  const refusal = await submitApplication(id, input, form.get("policy") != null);
+  if (refusal) return { ...refusal, values: input };
   // Уведомление оператору — своим шагом после записи: анкета уже в очереди, и ронять её из-за
   // несостоявшегося сообщения нельзя (`queue-notify.ts` молчит сам, но порядок важен).
   await noticeNewProfile(input.nickname.trim(), id);
@@ -123,11 +127,11 @@ export async function sendClaimWithApplication(_state: ApplyState, form: FormDat
   const id = await currentAccountId();
   if (id == null) return { error: "Сессия истекла — войдите снова" };
   const playerId = Number(form.get("playerId"));
-  if (!Number.isFinite(playerId) || playerId <= 0) return { error: "Выберите себя из списка ниже" };
+  if (!Number.isFinite(playerId) || playerId <= 0) return { error: "Выберите себя из списка ниже", field: "nickname" };
 
   const input = readApplicationInput(form);
-  const error = await submitClaimWithApplication(id, playerId, input, form.get("policy") != null);
-  if (error) return { error, values: input };
+  const refusal = await submitClaimWithApplication(id, playerId, input, form.get("policy") != null);
+  if (refusal) return { ...refusal, values: input };
   await noticeProfileClaim(playerId, id);
   revalidatePath("/me");
   return null;

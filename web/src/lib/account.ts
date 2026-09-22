@@ -14,6 +14,7 @@ import { formatPermissions, hasPermission, permissionsOf, type PermissionKey } f
 import { syncShards } from "./shards";
 import {
   normalizeApplication,
+  POLICY_PROBLEM,
   formatApplication,
   parseApplication,
   formatDraft,
@@ -22,6 +23,7 @@ import {
   applicationAccountId,
   type Application,
   type ApplicationDraft,
+  type ApplicationField,
   type ApplicationInput,
 } from "./application";
 
@@ -268,18 +270,20 @@ export async function storeApplicationDraft(accountId: number, draft: Applicatio
   });
 }
 
-const POLICY_REQUIRED = "Примите правила лиги — без согласия заявку не отправить";
+/** Отказ анкете. `field` — адрес претензии: форма кладёт текст в плашку этого поля и возвращает
+ *  человека на его шаг. Отказ без адреса («не удалось подать заявку») живёт только сводкой. */
+export type ApplicationRefusal = { error: string; field?: ApplicationField };
 
 /** Отправить анкету нового игрока: проверяем, пишем JSON и переводим аккаунт в pending.
- *  Возвращает текст ошибки или null при успехе (как updateOwnProfile). */
+ *  Возвращает отказ или null при успехе (как updateOwnProfile). */
 export async function submitApplication(
   accountId: number,
   input: ApplicationInput,
   policyAccepted: boolean,
-): Promise<string | null> {
-  if (!policyAccepted) return POLICY_REQUIRED;
+): Promise<ApplicationRefusal | null> {
+  if (!policyAccepted) return { error: POLICY_PROBLEM, field: "policy" };
   const parsed = normalizeApplication(input);
-  if (!parsed.ok) return parsed.error;
+  if (!parsed.ok) return { error: parsed.error, field: parsed.field };
 
   const now = new Date();
   await prisma.userAccount.update({
@@ -311,15 +315,15 @@ export async function submitClaimWithApplication(
   playerId: number,
   input: ApplicationInput,
   policyAccepted: boolean,
-): Promise<string | null> {
-  if (!policyAccepted) return POLICY_REQUIRED;
+): Promise<ApplicationRefusal | null> {
+  if (!policyAccepted) return { error: POLICY_PROBLEM, field: "policy" };
   const parsed = normalizeApplication(input);
-  if (!parsed.ok) return parsed.error;
+  if (!parsed.ok) return { error: parsed.error, field: parsed.field };
 
   try {
     await claimExisting(accountId, playerId);
   } catch (e) {
-    return e instanceof Error ? e.message : "Не удалось подать заявку";
+    return { error: e instanceof Error ? e.message : "Не удалось подать заявку" };
   }
 
   const app = parsed.value;
@@ -574,12 +578,19 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** Нормализованный (нижний регистр, без пробелов) email — им всегда ищем и пишем. */
 const normEmail = (email: string) => email.trim().toLowerCase();
 
-/** Претензии к формату почты, либо null. */
+/** Претензии к формату почты, либо null. Текст называет, что нужно, а не что неверно. */
 export function emailProblem(email: string): string | null {
-  return EMAIL_RE.test(normEmail(email)) ? null : "Введите корректный email";
+  const mail = normEmail(email);
+  if (!mail) return "Впишите почту";
+  return EMAIL_RE.test(mail) ? null : "Почта вида you@gmail.com";
 }
 
-export type RegisterResult = { ok: true; accountId: number } | { ok: false; error: string };
+/** Поле формы входа, к которому относится отказ. Без адреса — отказ живёт сводкой сверху. */
+export type AuthField = "email" | "password" | "confirm";
+
+export type RegisterResult =
+  | { ok: true; accountId: number }
+  | { ok: false; error: string; field?: AuthField };
 
 /** Регистрация по email + паролю. Заводит аккаунт в статусе draft (дефолт схемы) и отдаёт его id —
  *  сессию выдаёт вызывающий, а дальше кабинет требует анкету. Писем не шлём: почтового флоу нет.
@@ -588,13 +599,13 @@ export type RegisterResult = { ok: true; accountId: number } | { ok: false; erro
 export async function registerWithPassword(email: string, password: string): Promise<RegisterResult> {
   const mail = normEmail(email);
   const ep = emailProblem(mail);
-  if (ep) return { ok: false, error: ep };
+  if (ep) return { ok: false, error: ep, field: "email" };
   // Контекст правил — почта: пароль, повторяющий её, знакомый подберёт с первого раза.
   const pp = passwordProblem(password, { email: mail });
-  if (pp) return { ok: false, error: pp };
+  if (pp) return { ok: false, error: pp, field: "password" };
 
   const existing = await prisma.userAccount.findUnique({ where: { email: mail }, select: { id: true } });
-  if (existing) return { ok: false, error: "Почта уже занята — войдите под ней." };
+  if (existing) return { ok: false, error: "На эту почту аккаунт уже есть — войдите под ней", field: "email" };
 
   const account = await prisma.userAccount.create({
     data: { email: mail, passwordHash: hashPassword(password) },

@@ -10,7 +10,7 @@
 // него — два остальных адреса (`playerLinks`), поэтому три поля были тремя способами сказать одно.
 // Какая площадка досталась, видно по хосту — оператору этого хватает.
 
-import { parseBirthday, normalizeTelegram, playerAccountId } from "./profiles";
+import { accountIdFromUrl, parseBirthday, normalizeTelegram, playerAccountId } from "./profiles";
 import { isRole } from "./roles";
 
 export type Application = {
@@ -156,13 +156,25 @@ export function profileLinkKind(raw: string): keyof typeof LINK_HOSTS | null {
   return null;
 }
 
-/** Одна ссылка на профиль — годится любая из трёх площадок. Пусто → null (обязательность отдельно). */
+/**
+ * Претензия к ссылке на профиль, либо null. Одно место правды на форму, бота и сервер:
+ * анкета показывает этот текст у самого поля, поэтому разъехаться правилам негде.
+ *
+ * Мало правильного хоста — из ссылки обязан выводиться account_id: без него человек потом
+ * не находится ни в одном матче лиги, а оператор узнаёт об этом уже после апрува. Пример в
+ * тексте намеренно без `https://` и `www` — с ними плашка на 390 уходит в три строки.
+ */
 export function anyProfileLinkProblem(raw: string): string | null {
   const value = raw.trim();
-  if (!value) return null;
-  return profileLinkKind(value)
-    ? null
-    : "Ждём ссылку на Dotabuff, Stratz или Steam — например https://www.dotabuff.com/players/123456";
+  if (!value) return "Нужна ссылка на профиль: Dotabuff, Stratz или Steam";
+  const kind = profileLinkKind(value);
+  if (!kind) return "Нужна ссылка на Dotabuff, Stratz или Steam — например dotabuff.com/players/123456";
+  if (accountIdFromUrl(value)) return null;
+  // Именной адрес Steam в id не превращается: имя → steam64 знает только Steam Web API.
+  if (kind === "steam") {
+    return "Именную ссылку Steam мы не разбираем — возьмите адрес с числом (/profiles/7656…) или ссылку Dotabuff";
+  }
+  return "В ссылке нет номера профиля — нужен адрес вида dotabuff.com/players/123456";
 }
 
 /** Ссылка на профиль конкретной площадки: пусто → null, мусор → текст ошибки. */
@@ -195,81 +207,116 @@ const normalizeLink = (raw: string): string => {
   return /^https?:\/\//i.test(value) ? value : `https://${value}`;
 };
 
-export type ApplicationResult = { ok: true; value: Application } | { ok: false; error: string };
+/** Адрес претензии: поле анкеты либо флажок согласия (он не поле ввода, но отвергает отправку). */
+export type ApplicationField = keyof ApplicationInput | "policy";
+
+/** Что не так с каждым полем. Пусто — анкета годится. */
+export type ApplicationProblems = Partial<Record<ApplicationField, string>>;
+
+export type ApplicationResult =
+  | { ok: true; value: Application }
+  | { ok: false; error: string; field: ApplicationField };
 
 // Заявленный MMR — со слов игрока, но верхняя граница нужна: без неё в очередь модерации приезжают
 // «99999», и оператору приходится гадать, опечатка это или шутка.
 export const MMR_MAX = 15000;
 
-/** Значения формы → проверенная анкета. Одно место правды: зовёт и server-action, и (позже) апрув. */
-export function normalizeApplication(input: ApplicationInput): ApplicationResult {
-  const nickname = input.nickname.trim();
-  if (!nickname) return { ok: false, error: "Укажите ник — под ним вас увидят в лиге" };
+/** Отказ без согласия с правилами. Текст здесь, а не в account.ts: форма показывает тот же. */
+export const POLICY_PROBLEM = "Без согласия заявку не отправить — отметьте флажок";
+
+/** «Другая» страна выбрана, а строка пустая — случай виден только форме, текст живёт здесь. */
+export const COUNTRY_OTHER_PROBLEM = "Впишите страну";
+
+/** Порядок полей в форме: им же выбирается, о чём сказать первым и куда увести фокус. */
+export const APPLICATION_FIELDS: ApplicationField[] = [
+  "nickname",
+  "realName",
+  "realSurname",
+  "birthday",
+  "city",
+  "country",
+  "telegram",
+  "phone",
+  "policy",
+  "profileUrl",
+  "mmr",
+  "position",
+];
+
+/**
+ * Претензии ко всем полям сразу — один словарь на форму и на сервер.
+ *
+ * Зачем словарём, а не «первой ошибкой»: форма обязана подсветить ВСЕ незаполненные поля шага
+ * разом, иначе человек чинит их по одному, каждый раз упираясь в ту же кнопку. Сервер из этого
+ * же словаря берёт первую претензию по порядку формы — ему хватает одной.
+ *
+ * Тексты называют, что нужно сделать, а не что неверно, и не кавычат введённое: оно стоит в поле
+ * прямо над плашкой.
+ */
+export function applicationProblems(input: ApplicationInput, policyAccepted = true): ApplicationProblems {
+  const p: ApplicationProblems = {};
+
+  if (!input.nickname.trim()) p.nickname = "Впишите ник — под ним вас увидят в таблицах";
 
   // Анкета уходит на модерацию только заполненной целиком: оператор решает по ней одну,
   // и добирать недостающее перепиской — та же работа, что вернуть заявку.
-  const realName = input.realName.trim();
-  if (!realName) return { ok: false, error: "Укажите имя" };
+  if (!input.realName.trim()) p.realName = "Впишите имя";
+  if (!input.realSurname.trim()) p.realSurname = "Впишите фамилию";
 
-  const realSurname = input.realSurname.trim();
-  if (!realSurname) return { ok: false, error: "Укажите фамилию" };
+  if (!input.birthday.trim()) p.birthday = "Укажите дату рождения";
+  else if (!parseBirthday(input.birthday)) p.birthday = "Дата вида 21.04.1998";
 
-  if (!input.birthday.trim()) return { ok: false, error: "Укажите дату рождения" };
-  const date = parseBirthday(input.birthday);
-  if (!date) return { ok: false, error: `Дата «${input.birthday.trim()}» не разобрана — ждём 21.04.1998` };
-  const birthday = date.toISOString().slice(0, 10);
+  if (!input.city.trim()) p.city = "Впишите город";
+  if (!input.country.trim()) p.country = "Выберите страну";
 
-  const city = input.city.trim();
-  if (!city) return { ok: false, error: "Укажите город" };
-
-  const country = input.country.trim();
-  if (!country) return { ok: false, error: "Укажите страну" };
-
-  if (!input.telegram.trim()) return { ok: false, error: "Укажите телеграм — по нему с вами свяжется организатор" };
-  const telegram = normalizeTelegram(input.telegram);
-  if (!telegram) return { ok: false, error: `«${input.telegram.trim()}» не похоже на телеграм-хендл` };
+  if (!input.telegram.trim()) p.telegram = "Впишите телеграм — по нему с вами свяжется организатор";
+  else if (!normalizeTelegram(input.telegram)) p.telegram = "Ждём @nickname или ссылку t.me";
 
   // Телефон — единственное необязательное поле анкеты: связываться организатор всё равно будет
   // телеграмом, а обязательный номер отсекал тех, кто его не даёт. Написали — проверяем.
-  const phone = input.phone.trim() ? normalizePhone(input.phone) : "";
-  if (input.phone.trim() && !phone) {
-    return { ok: false, error: `«${input.phone.trim()}» не похоже на номер телефона` };
+  if (input.phone.trim() && !normalizePhone(input.phone)) {
+    p.phone = "Ждём номер с кодом страны: +7 900 000-00-00";
   }
+
+  if (!policyAccepted) p.policy = POLICY_PROBLEM;
 
   // Ссылка обязательна: по ней оператор опознаёт человека, а без account_id игрок потом
   // не находится ни в одном матче (см. §7 CLAUDE.md).
-  if (!input.profileUrl.trim()) {
-    return { ok: false, error: "Дайте ссылку на свой профиль: Dotabuff, Stratz или Steam" };
-  }
-  const linkProblem = anyProfileLinkProblem(input.profileUrl);
-  if (linkProblem) return { ok: false, error: linkProblem };
-  const profileUrl = normalizeLink(input.profileUrl);
+  const link = anyProfileLinkProblem(input.profileUrl);
+  if (link) p.profileUrl = link;
 
-  const position = input.position.trim();
-  if (!position) return { ok: false, error: "Выберите позицию" };
-  if (!isRole(position)) return { ok: false, error: "Выберите позицию из списка" };
-
-  if (!input.mmr.trim()) return { ok: false, error: "Укажите MMR — заявленный, его проверит организатор" };
-  const n = Number(input.mmr.replace(/\s+/g, ""));
-  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0 || n > MMR_MAX) {
-    return { ok: false, error: `MMR — целое число от 0 до ${MMR_MAX}` };
+  if (!input.mmr.trim()) p.mmr = "Впишите MMR — числом";
+  else {
+    const n = Number(input.mmr.replace(/\s+/g, ""));
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) p.mmr = "Только цифры, без букв и пробелов";
+    else if (n > MMR_MAX) p.mmr = "Столько MMR не бывает — проверьте число";
   }
-  const mmr = n;
+
+  if (!isRole(input.position.trim())) p.position = "Выберите позицию";
+
+  return p;
+}
+
+/** Значения формы → проверенная анкета. Одно место правды: зовёт и server-action, и (позже) апрув. */
+export function normalizeApplication(input: ApplicationInput): ApplicationResult {
+  const problems = applicationProblems(input);
+  const field = APPLICATION_FIELDS.find((f) => problems[f]);
+  if (field) return { ok: false, error: problems[field]!, field };
 
   return {
     ok: true,
     value: {
-      nickname,
-      realName,
-      realSurname,
-      birthday,
-      city,
-      country,
-      profileUrl,
-      telegram,
-      phone,
-      position,
-      mmr,
+      nickname: input.nickname.trim(),
+      realName: input.realName.trim(),
+      realSurname: input.realSurname.trim(),
+      birthday: parseBirthday(input.birthday)!.toISOString().slice(0, 10),
+      city: input.city.trim(),
+      country: input.country.trim(),
+      profileUrl: normalizeLink(input.profileUrl),
+      telegram: normalizeTelegram(input.telegram)!,
+      phone: input.phone.trim() ? normalizePhone(input.phone) : "",
+      position: input.position.trim(),
+      mmr: Number(input.mmr.replace(/\s+/g, "")),
     },
   };
 }

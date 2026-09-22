@@ -17,6 +17,10 @@ interface FieldProps {
   children: (id: string, describedBy: string | undefined) => ReactNode
   hint?: string
   error?: string
+  /* Звёздочка у подписи. Метка о самом ПОЛЕ, а не о текущем состоянии формы: обязательность
+   * не мигает. Жила локальными копиями Field в двух файлах /me — из-за одной этой звёздочки
+   * и расходились три вёрстки одной мысли. */
+  required?: boolean
   /* Счётчик знаков под полем («12 / 48») вместо подсказки. Нужен там, где у поля есть
    * `maxLength`: без счётчика ограничение читается как «поле вдруг перестало печатать».
    * Длину поле не знает само — `Field` оборачивает и контролируемые, и неконтролируемые
@@ -27,7 +31,7 @@ interface FieldProps {
 /** Wraps any control with a real <label for>, hint and error text, and wires
  * aria-describedby. Screens pass a render fn so the same wrapper serves Input,
  * Select and Switch without duplicating the a11y plumbing. */
-export function Field({ label, children, hint, error, counter }: FieldProps) {
+export function Field({ label, children, hint, error, required, counter }: FieldProps) {
   const id = useId()
   const describedBy = error ? `${id}-err` : hint || counter ? `${id}-hint` : undefined
   return (
@@ -35,6 +39,11 @@ export function Field({ label, children, hint, error, counter }: FieldProps) {
       {/* Labels use ink so their compact uppercase treatment stays emphatic. */}
       <label className="pouf-label text-[13px] font-black tracking-[0.6px] uppercase text-ink" htmlFor={id}>
         {label}
+        {required && (
+          <span aria-hidden className="ml-1 text-[var(--color-err-ink)]">
+            *
+          </span>
+        )}
       </label>
       {children(id, describedBy)}
       {(hint || counter) && !error && (
@@ -51,20 +60,28 @@ export function Field({ label, children, hint, error, counter }: FieldProps) {
           )}
         </span>
       )}
-      {/* FIELD-level validation message: a compact one-liner under a control.
-        * NOT the page alert cushion (ErrorNote) — this one must stay quiet, so
-        * it keeps the flat little pill it always was. self-start: hug the
-        * message rather than stretch to fill a flex/grid cell. */}
-      {error && (
-        <span
-          className="pouf-error text-[13px] font-extrabold text-[var(--color-err-ink)] bg-err rounded-xl py-(--s2) px-(--s3) [align-self:start] max-w-full"
-          id={`${id}-err`}
-          role="alert"
-        >
-          {error}
-        </span>
-      )}
+      {error && <FieldError id={`${id}-err`}>{error}</FieldError>}
     </div>
+  )
+}
+
+/* FIELD-level validation message: a compact one-liner under a control.
+ * NOT the page alert cushion (ErrorNote) — this one must stay quiet, so
+ * it keeps the flat little pill it always was. self-start: hug the
+ * message rather than stretch to fill a flex/grid cell.
+ *
+ * Экспортируется наружу ради одного случая: флажок согласия в анкете в `Field` не
+ * заворачивается (подпись у него своя, `label for` смотрит на кнопку radix), а рисовать
+ * ту же плашку третьей вёрсткой по месту — ровно то, от чего Кит и заведён. */
+export function FieldError({ id, children }: { id?: string; children: ReactNode }) {
+  return (
+    <span
+      className="pouf-error text-[13px] font-extrabold text-[var(--color-err-ink)] bg-err rounded-xl py-(--s2) px-(--s3) [align-self:start] max-w-full"
+      id={id}
+      role="alert"
+    >
+      {children}
+    </span>
   )
 }
 
