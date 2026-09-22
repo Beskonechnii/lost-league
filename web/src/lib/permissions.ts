@@ -56,6 +56,12 @@ export const PERMISSIONS = [
     hint: "Картинка, заголовок, подпись и кнопка первого экрана лиги",
   },
   { key: "tools", label: "Разбор матчей", group: "Инструменты", hint: "Постгейм, карта вардов, показатели" },
+  {
+    key: "privacy",
+    label: "Приватность витрины",
+    group: "Инструменты",
+    hint: "Видеть экран показа телеграма и MMR. Менять значения может только владелец",
+  },
 ] as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[number]["key"];

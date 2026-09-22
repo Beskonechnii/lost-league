@@ -28,7 +28,9 @@ export default async function FearlessSessionPage({ params }: { params: Promise<
 
   const [session, teams] = await Promise.all([
     prisma.fearlessSession.findUnique({ where: { id: sessionId } }),
-    listTeamRosters(), // ради капитана команды: состав нужен только за полем isCaptain
+    // ради капитана команды: состав нужен за полем isCaptain, а MMR — для его карточки.
+    // `operator` — заход из служебной части: показ витрины (ТЗ 32) оператора не касается.
+    listTeamRosters(undefined, { operator: true }),
   ]);
   if (!session) notFound();
 

@@ -12,6 +12,7 @@ import { rankDelta, rankLabel } from "@/lib/dota-rank";
 import { roleLabel } from "@/lib/roles";
 import { parseTags, tagLabel } from "@/lib/player-tags";
 import { can, currentAccount } from "@/lib/account";
+import { privacy } from "@/lib/privacy";
 import { chatAccountOfPlayer, chatIdentity } from "@/lib/chat";
 import { shardsOfPlayer } from "@/lib/shards";
 import { shardReasonLabel } from "@/lib/shard-grades";
@@ -133,7 +134,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ key: st
   if (!player) notFound();
   if (key !== player.slug) redirect(playerPath(player));
   const pid = player.id;
-  const [authed, report, heroes, record, league, divisions, tournament, me, peerAccount] = await Promise.all([
+  const [authed, report, heroes, record, league, divisions, tournament, me, peerAccount, show] = await Promise.all([
     can("roster.edit"), // кнопка «Править» — ровно то право, что откроет саму страницу правки
     can("tools"), // отчёт карты живёт в служебной части: гостю ссылка на него даёт редирект, а не отчёт
     getPlayerHeroes(pid),
@@ -143,6 +144,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ key: st
     currentTournament(), // для крошек: витрина игроков живёт внутри турнира
     currentAccount().then(chatIdentity), // кто смотрит — от этого зависит кнопка «Написать»
     chatAccountOfPlayer(pid), // есть ли кому писать: у игрока может не быть аккаунта на сайте
+    privacy(), // что лига разрешила показывать публике: телеграм и MMR
   ]);
 
   // Написать можно игроку лиги, у которого есть аккаунт, и не самому себе.
@@ -160,7 +162,10 @@ export default async function PlayerPage({ params }: { params: Promise<{ key: st
   const currentIds = new Set(divisions.map((d) => d.id));
   const accent = main ? teamAccent(main.team) : "#a855f7";
   const links = playerLinks(player);
-  const gaps = playerGaps(player);
+  // Чек-лист анкеты — операторская диагностика полноты НАШИХ данных, а не факт об игроке: на
+  // витрине турнира он уже под правом, здесь был виден всем. Телеграм в дырки не идёт, когда
+  // лига его не показывает: иначе экран ругался бы на поле, которого сам же не отдаёт.
+  const gaps = authed ? playerGaps(player, { telegram: show.telegram }) : [];
   const tags = parseTags(player.tags);
   // Достижения — свободный текст оператора, одна строка = одна строчка списка; пустые отбрасываем.
   const achievements = (player.achievements ?? "").split("\n").map((x) => x.trim()).filter(Boolean);
@@ -445,7 +450,9 @@ export default async function PlayerPage({ params }: { params: Promise<{ key: st
                   )}
                 </OverlapRail>
               ) : (
-                <p className="mt-3 text-xs font-bold text-muted">Ссылок нет — заполните account_id или телеграм.</p>
+                <p className="mt-3 text-xs font-bold text-muted">
+                  {authed ? "Ссылок нет — заполните account_id или телеграм." : "Профилей игрока нет."}
+                </p>
               )}
             </Card>
           </div>
@@ -550,7 +557,11 @@ export default async function PlayerPage({ params }: { params: Promise<{ key: st
               {player.country && <FactBox label="Страна" value={player.country} small />}
             </div>
             {!player.mmr && !rankLabel(player.rank) && !player.city && !player.country && !player.birthday && player.tp === 0 && (
-              <p className="mt-3 text-xs font-bold text-muted">Анкета пока не заполнена.</p>
+              <p className="mt-3 text-xs font-bold text-muted">
+                {/* «Анкета не заполнена» посетителю врёт про человека, когда часть фактов скрыл
+                    флаг лиги, а не пустое поле. Оператору фраза остаётся прежней. */}
+                {authed ? "Анкета пока не заполнена." : "Открытых данных об игроке нет."}
+              </p>
             )}
           </Card>
 

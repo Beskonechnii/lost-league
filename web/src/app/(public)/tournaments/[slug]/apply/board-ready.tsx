@@ -51,10 +51,14 @@ export function ReadyTeamCard({ team, onPick }: { team: ReadyTeam; onPick: () =>
               </div>
             </div>
             {p.inPool ? (
-              <span className="shrink-0 text-right text-[11px] font-extrabold tabular-nums text-muted">
-                {p.mmr ? p.mmr.toLocaleString("ru-RU") : "—"}
-                <span className="block text-[10px] font-bold uppercase tracking-[0.5px] text-muted">MMR</span>
-              </span>
+              // Правый угол занят двумя смыслами сразу: MMR и «нет в пуле». Гасим только число —
+              // предупреждение про заявку остаётся, а подпись MMR уходит вместе со значением.
+              p.mmr ? (
+                <span className="shrink-0 text-right text-[11px] font-extrabold tabular-nums text-muted">
+                  {p.mmr.toLocaleString("ru-RU")}
+                  <span className="block text-[10px] font-bold uppercase tracking-[0.5px] text-muted">MMR</span>
+                </span>
+              ) : null
             ) : (
               <span className="shrink-0 text-[10px] font-extrabold text-[var(--color-warn-ink)]">нет в пуле</span>
             )}

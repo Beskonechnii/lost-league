@@ -36,6 +36,9 @@ export function PlayerLine({
       nickname={player.nickname}
       sub={[player.teamName, roleShort(player.role)].filter(Boolean).join(" · ") || "без команды"}
       value={player.mmr ? player.mmr.toLocaleString("ru-RU") : null}
+      // Без числа правый угол не рисуется: прочерк с подписью «MMR» врёт про игрока, когда
+      // показ закрыт настройкой лиги, а не пустым полем (ТЗ 32).
+      hideValue={!player.mmr}
       note={note}
       dense={dense}
     />

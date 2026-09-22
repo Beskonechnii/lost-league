@@ -305,7 +305,7 @@ export function playerGaps(p: {
   city?: string | null;
   country?: string | null;
   telegram?: string | null;
-}): string[] {
+}, { telegram = true }: { telegram?: boolean } = {}): string[] {
   return [
     // Дырка — это когда id не выводится ВООБЩЕ ниоткуда. Пустое поле при живой ссылке на профиль
     // дыркой не считается: id из неё разбирается на лету (`playerAccountId`), и матчи такого
@@ -315,7 +315,9 @@ export function playerGaps(p: {
     !p.birthday && "дата рождения",
     // в CRM часто указана только страна — считаем, что место жительства всё-таки есть
     !p.city && !p.country && "город",
-    !p.telegram && "телеграм",
+    // Телеграм считаем дыркой, только пока лига его показывает: при выключенном показе витрина
+    // ругалась бы на поле, которого сама же не отдаёт (флаг передаёт вызывающая сторона).
+    telegram && !p.telegram && "телеграм",
   ].filter((x): x is string => typeof x === "string");
 }
 

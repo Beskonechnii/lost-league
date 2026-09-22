@@ -80,12 +80,13 @@ export const TOOL_GROUPS: ToolGroup[] = [
     slug: "tools",
     title: "Инструменты",
     icon: "settings",
-    desc: "Архив серий, турнирная графика и настройки внешнего вида сайта.",
+    desc: "Архив серий, турнирная графика, внешний вид сайта и то, что из данных лиги видно публике.",
     tools: [
       { href: "/admin/series", perm: "series.edit", label: "Архив серий", icon: "history", desc: "Встречи турнира и карты в них — отсюда стата идёт в статистику." },
       { href: "/studio/editor", perm: "studio", label: "Студия", icon: "photo", desc: "Сборка турнирной графики по данным ростера." },
       { href: "/admin/theme", perm: "theme", label: "Тема", icon: "settings", desc: "Цвета UI проекта: акцент, поверхности, текст. Правится и едет в data/theme.json." },
       { href: "/admin/banner", perm: "banner", label: "Баннер главной", icon: "home", desc: "Первый экран лиги: картинка, заголовок, подпись и кнопка. Пусто или выключен — на главной работает герой по данным." },
+      { href: "/admin/privacy", perm: "privacy", label: "Приватность витрины", icon: "eye-off", desc: "Показ телеграма и MMR на публичной части. Выключено — данных нет ни на странице, ни в открытом API, ни в ответах бота." },
     ],
   },
 ];

@@ -8,6 +8,7 @@ import { rolePosition, roleOrder } from "@/lib/roles";
 import { withPlayerUploads, withTeamUploads } from "@/lib/uploads";
 import { rankTotals, tpByTournament, type Rating } from "@/lib/tp";
 import { teamRating, teamRatingByTournament } from "@/lib/team-rating";
+import { mmrShown, privacy } from "@/lib/privacy";
 
 /**
  * Порядок витрин пула: сперва ранжированные по убыванию очков, следом — все без рейтинга, по имени
@@ -43,6 +44,11 @@ export function teamMmr(players: { role: string | null; mmr: number | null }[]) 
   const total = core.reduce((sum, p) => sum + (p.mmr ?? 0), 0);
   return { total, average: core.length ? Math.round(total / core.length) : null, counted: core.length };
 }
+
+// MMR гасится ЗДЕСЬ, в слое данных, а не условием в разметке: условие оставляет число в
+// RSC-payload страницы, и поле уезжает наружу, даже если его не рисуют (грабля ТЗ 29).
+// Производные гасятся вместе с числом — средний по пятёрке при четырёх известных выдаёт пятого,
+// а полоска силы это то же число, нарисованное иначе.
 
 export type TeamCard = {
   id: number;
@@ -89,7 +95,7 @@ export async function seasonRosterWhere(divisionIds?: number[]) {
  * команды. Без аргумента (студия, драфт) — весь ростер лиги, как раньше.
  */
 export async function listTeams(divisionIds?: number[]): Promise<TeamCard[]> {
-  const where = await seasonRosterWhere(divisionIds);
+  const [where, showMmr] = await Promise.all([seasonRosterWhere(divisionIds), mmrShown()]);
   const teams = await prisma.team.findMany({
     where: divisionIds ? { entries: { some: { divisionId: { in: divisionIds } } } } : undefined,
     orderBy: [{ group: "asc" }, { name: "asc" }],
@@ -113,8 +119,8 @@ export async function listTeams(divisionIds?: number[]): Promise<TeamCard[]> {
         playersCount: roster.length,
         // «Без account_id» — это когда id не выводится вообще ниоткуда, а не когда пусто поле.
         noAccountIdCount: roster.filter((s) => !playerAccountId(s.player)).length,
-        mmrAverage: mmr.average,
-        mmrTotal: mmr.total,
+        mmrAverage: showMmr ? mmr.average : null,
+        mmrTotal: showMmr ? mmr.total : 0,
         lineup: lineupOf(roster),
       };
     }),
@@ -162,13 +168,13 @@ const lineupOf = (roster: { player: PlayerRecord }[]) =>
     .filter((x): x is { accountId: string; nickname: string } => !!x.accountId);
 
 /** Место в составе → строка ростера. Один вид данных для списка команд и для страницы команды. */
-async function toRosterMember(spot: SpotWithPlayer): Promise<RosterMember> {
+async function toRosterMember(spot: SpotWithPlayer, showMmr: boolean): Promise<RosterMember> {
   const player = await withPlayerUploads(spot.player);
   return {
     id: player.id,
     nickname: player.nickname,
     photo: player.photo,
-    mmr: player.mmr,
+    mmr: showMmr ? player.mmr : null,
     role: spot.role,
     position: rolePosition(spot.role),
     isCaptain: spot.isCaptain,
@@ -184,6 +190,7 @@ const byRole = (a: SpotWithPlayer, b: SpotWithPlayer) =>
 async function withRoster<T extends { slug: string; logo: string | null; wordmark?: string | null; photo?: string | null }>(
   team: T,
   roster: SpotWithPlayer[],
+  showMmr: boolean,
 ): Promise<
   T & {
     players: RosterMember[];
@@ -197,11 +204,11 @@ async function withRoster<T extends { slug: string; logo: string | null; wordmar
   const mmr = teamMmr(roster.map((s) => ({ role: s.role, mmr: s.player.mmr })));
   return {
     ...(await withTeamUploads(team)),
-    players: await Promise.all([...roster].sort(byRole).map(toRosterMember)),
+    players: await Promise.all([...roster].sort(byRole).map((s) => toRosterMember(s, showMmr))),
     playersCount: roster.length,
     noAccountIdCount: roster.filter((s) => !playerAccountId(s.player)).length,
-    mmrAverage: mmr.average,
-    mmrTotal: mmr.total,
+    mmrAverage: showMmr ? mmr.average : null,
+    mmrTotal: showMmr ? mmr.total : 0,
     lineup: lineupOf(roster),
   };
 }
@@ -210,9 +217,18 @@ async function withRoster<T extends { slug: string; logo: string | null; wordmar
  * Список команд вместе с составами — для карточек на /roster/teams, которые разворачиваются
  * прямо в списке. Отдельно от listTeams(): там состав не нужен, а тут без него нечего показывать.
  */
-/** То же, что `listTeams`, но с полным составом — витрина команд турнира. */
-export async function listTeamRosters(divisionIds?: number[]): Promise<TeamWithRoster[]> {
-  const where = await seasonRosterWhere(divisionIds);
+/**
+ * То же, что `listTeams`, но с полным составом — витрина команд турнира.
+ *
+ * `operator` — заход из служебной части (админский fearless-драфт): там MMR виден всегда, флаг
+ * витрины его не касается. По умолчанию заход витринный, то есть закрытый: забыть флаг здесь
+ * должно быть безопасно.
+ */
+export async function listTeamRosters(
+  divisionIds?: number[],
+  { operator = false }: { operator?: boolean } = {},
+): Promise<TeamWithRoster[]> {
+  const [where, showMmr] = await Promise.all([seasonRosterWhere(divisionIds), operator ? true : mmrShown()]);
   const teams = await prisma.team.findMany({
     where: divisionIds ? { entries: { some: { divisionId: { in: divisionIds } } } } : undefined,
     orderBy: [{ group: "asc" }, { name: "asc" }],
@@ -224,7 +240,7 @@ export async function listTeamRosters(divisionIds?: number[]): Promise<TeamWithR
   });
   return Promise.all(
     teams.map(async ({ roster, entries, ...t }) => ({
-      ...(await withRoster(t, roster)),
+      ...(await withRoster(t, roster, showMmr)),
       divisionIds: entries.map((e) => e.divisionId).filter((id) => !divisionIds || divisionIds.includes(id)),
     })),
   );
@@ -256,7 +272,11 @@ export type PoolTeam = TeamWithRoster & {
 export async function listPoolTeams({ archived = false }: { archived?: boolean } = {}): Promise<PoolTeam[]> {
   // Рейтинг — за текущий турнир; карта по турнирам едет следом для разреза «По турнирам».
   const current = await currentTournament();
-  const [rating, ratingByTournament] = await Promise.all([teamRating(current?.id ?? null), teamRatingByTournament()]);
+  const [rating, ratingByTournament, showMmr] = await Promise.all([
+    teamRating(current?.id ?? null),
+    teamRatingByTournament(),
+    mmrShown(),
+  ]);
   const teams = await prisma.team.findMany({
     where: { archivedAt: archived ? { not: null } : null },
     orderBy: [{ name: "asc" }],
@@ -302,7 +322,7 @@ export async function listPoolTeams({ archived = false }: { archived?: boolean }
         .filter((tr, i, all) => all.findIndex((x) => x.slug === tr.slug) === i);
 
       return {
-        ...(await withRoster(t, shown)),
+        ...(await withRoster(t, shown, showMmr)),
         archivedAt: t.archivedAt,
         divisionIds: [...divTour.keys()],
         tournaments,
@@ -361,6 +381,7 @@ export type PoolPlayer = {
  * турниров для фильтра/меток. Фильтр по турниру и поиск считает клиент (PlayersExplorer).
  */
 export async function listPoolPlayers(): Promise<PoolPlayer[]> {
+  const showMmr = await mmrShown();
   const players = await prisma.player.findMany({
     orderBy: [{ nickname: "asc" }],
     include: {
@@ -417,7 +438,7 @@ export async function listPoolPlayers(): Promise<PoolPlayer[]> {
         slug: p.slug,
         nickname: p.nickname,
         photo: uploaded.photo,
-        mmr: p.mmr,
+        mmr: showMmr ? p.mmr : null,
         rank: p.rank,
         rankPrev: p.rankPrev,
         country: p.country,
@@ -455,6 +476,7 @@ export function rosterKey(key: string | number): { id: number } | { slug: string
  * прошлого сезона незачем — карточка не таблица, а подпись «где команда закончила».
  */
 export async function teamRosterHistory(teamId: number, currentDivisionId?: number | null) {
+  const showMmr = await mmrShown();
   const spots = await prisma.rosterSpot.findMany({
     where: {
       teamId,
@@ -494,7 +516,7 @@ export async function teamRosterHistory(teamId: number, currentDivisionId?: numb
           startAt: division.tournament.startAt,
         },
         result: placeBy.get(divisionId) ?? null,
-        players: await Promise.all([...list].sort(byRole).map(toRosterMember)),
+        players: await Promise.all([...list].sort(byRole).map((s) => toRosterMember(s, showMmr))),
       };
     }),
   );
@@ -522,7 +544,7 @@ export async function getTeamProfile(key: string | number, divisionId?: number |
   });
   if (!team) return null;
   const { roster, ...rest } = team;
-  return withRoster(rest, roster);
+  return withRoster(rest, roster, await mmrShown());
 }
 
 /** Команда с составом: место в составе разворачивается в игрока с ролью этого места. */
@@ -587,7 +609,12 @@ export async function getPlayerProfile(key: string | number) {
       })),
   );
 
-  return { ...(await withPlayerUploads(player)), spots };
+  // Страница игрока публичная: MMR и телеграм гасим ДО сборки ответа, а не условием в разметке —
+  // иначе они уезжают в RSC-payload страницы (грабля ТЗ 29). Оператор правит эти поля в ростер-
+  // редакторе, который ходит в базу своей выборкой (`getPlayer`) и флага не спрашивает.
+  const show = await privacy();
+  const self = await withPlayerUploads(player);
+  return { ...self, mmr: show.mmr ? self.mmr : null, telegram: show.telegram ? self.telegram : null, spots };
 }
 
 /**

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { bad, parseId } from "@/lib/api";
 import { DRAFT_VERSION, type DraftState } from "@/lib/draft";
 import { guard } from "@/lib/api-guard";
+import { mmrShown, withoutMmr } from "@/lib/privacy";
 
 // Одна сессия драфта: чтение, автосейв состояния (payload) по каждому ходу, удаление.
 // Правила хода живут в src/lib/draft.ts и применяются на клиенте — сюда прилетает уже готовое
@@ -14,7 +15,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!id) return bad("id: ожидался числовой id");
   const session = await prisma.draftSession.findUnique({ where: { id } });
   if (!session) return bad("Сессия не найдена", 404);
-  return NextResponse.json(session);
+  // Гейта у роута нет намеренно (OBS ходит без куки), поэтому флаг лиги обязан действовать на
+  // ОТВЕТ, а не только на рендер оверлея: иначе закрытое число уезжает первым же curl'ом.
+  if (await mmrShown()) return NextResponse.json(session);
+  let payload = session.payload;
+  try {
+    payload = JSON.stringify(withoutMmr(JSON.parse(session.payload)));
+  } catch {
+    // Битый JSON отдаём как есть: он и так ничего не значит для оверлея.
+  }
+  return NextResponse.json({ ...session, payload });
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {

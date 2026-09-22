@@ -25,6 +25,7 @@ export function PlayerLine({
   sub,
   value,
   valueLabel = "MMR",
+  hideValue = false,
   note,
   dense = false,
 }: {
@@ -35,6 +36,9 @@ export function PlayerLine({
   /** Число справа. `null`/`undefined` — прочерк, чтобы столбик не «дышал». */
   value?: ReactNode;
   valueLabel?: ReactNode;
+  /** Правого столбца нет вовсе — вместо прочерка. Прочерк означает «у этого игрока пусто» и врёт,
+   *  когда числа нет по другой причине: например, лига закрыла показ MMR (ТЗ 32). */
+  hideValue?: boolean;
   /** Подпись вместо числа: «занят: X», «в составе» — состояние важнее MMR. */
   note?: ReactNode;
   /** Плотный вариант: уже поля и без числа на узком экране (строка в слоте,
@@ -50,7 +54,7 @@ export function PlayerLine({
       </div>
       {note ? (
         <span className="shrink-0 text-[11px] font-extrabold text-muted">{note}</span>
-      ) : (
+      ) : hideValue ? null : (
         <span
           className={`shrink-0 text-right text-[11px] font-extrabold tabular-nums text-muted ${dense ? "max-sm:hidden" : ""}`}
         >

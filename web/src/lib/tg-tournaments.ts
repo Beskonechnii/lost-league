@@ -15,6 +15,7 @@ import { siteIsLocal, siteUrl } from "./site";
 import { playerLinks, playerPath, telegramUrl } from "./profiles";
 import { roleShort, roleOrder } from "./roles";
 import { teamMmr } from "./roster-data";
+import { privacy } from "./privacy";
 import { registrationOpen, TOURNAMENT_STATUS_LABELS, isTournamentStatus } from "./tournaments";
 import { parseDraft } from "./team-application";
 import { MENU, applicationsOf, identify, unknownReply } from "./tg-menu";
@@ -276,6 +277,9 @@ async function teamCard(entry: Entry): Promise<string> {
   });
   const sorted = roster.sort((a, b) => roleOrder(a.role) - roleOrder(b.role));
   const mmr = teamMmr(sorted.map((s) => ({ role: s.role, mmr: s.player.mmr })));
+  // Настройку спрашиваем на каждое обращение: бот живёт долгоживущим процессом, и показ,
+  // требующий его перезапуска, — это показ, который не работает.
+  const show = await privacy();
 
   const lines = sorted.map((s) => {
     const link = playerLinks(s.player).dotabuff;
@@ -293,12 +297,13 @@ async function teamCard(entry: Entry): Promise<string> {
   return [
     `<b>${entry.team.name}</b>${entry.division ? ` · ${entry.division.name}` : ""}`,
     // Средний MMR — по основе (позиции 1–5), как на витрине: замены и тренер цифру двигать не должны.
-    mmr.average ? `Средний MMR основы: ${mmr.average}` : null,
+    show.mmr && mmr.average ? `Средний MMR основы: ${mmr.average}` : null,
     "",
     ...(lines.length ? lines : ["Состав ещё не заведён."]),
     captain
       ? `\nКапитан: <a href="${siteUrl()}${playerPath(captain.player)}"><b>${captain.player.nickname}</b></a>` +
-        `${captain.player.telegram ? ` — ${telegramUrl(captain.player.telegram)}` : " (телеграм не указан)"}`
+        // Скрытый телеграм уходит вместе с подписью: «не указан» при закрытом показе — вранье.
+        (show.telegram ? `${captain.player.telegram ? ` — ${telegramUrl(captain.player.telegram)}` : " (телеграм не указан)"}` : "")
       : null,
   ]
     .filter((line) => line !== null)

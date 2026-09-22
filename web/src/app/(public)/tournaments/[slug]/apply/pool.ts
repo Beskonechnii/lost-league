@@ -2,6 +2,7 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { listPlayers } from "@/lib/roster-data";
+import { mmrShown } from "@/lib/privacy";
 import { playerAccountId, teamAccent } from "@/lib/profiles";
 import { isCoreRole } from "@/lib/roster-spots";
 import { roleOrder } from "@/lib/roles";
@@ -72,6 +73,7 @@ export type ReadyTeam = {
  * команды не предлагаем.
  */
 export async function captainReadyTeams(playerId: number, pool: PoolEntry[]): Promise<ReadyTeam[]> {
+  const showMmr = await mmrShown();
   const captainRows = await prisma.rosterSpot.findMany({
     where: { playerId, isCaptain: true },
     select: { teamId: true, divisionId: true },
@@ -110,7 +112,7 @@ export async function captainReadyTeams(playerId: number, pool: PoolEntry[]): Pr
             nickname: s.player.nickname,
             photo: withPhoto.photo,
             role: s.role,
-            mmr: s.player.mmr,
+            mmr: showMmr ? s.player.mmr : null,
             isCaptain: s.player.id === playerId,
             inPool: inPool.has(s.player.id),
           };
@@ -147,7 +149,10 @@ export type TakenSpot = {
 
 /** Пул: игроки лиги, которых можно поставить в состав. Порядок — по нику (как в `listPlayers`). */
 export async function applyPool(): Promise<PoolEntry[]> {
-  const players = await listPlayers();
+  // Пул целиком уезжает в разметку капитана, поэтому закрытое поле гасим здесь, а не в доске:
+  // условие в разметке оставило бы число в RSC-payload страницы (грабля ТЗ 29). На саму заявку
+  // это не влияет — `buildDraft` собирает состав из базы, а не из пула (см. actions.ts).
+  const [players, showMmr] = await Promise.all([listPlayers(), mmrShown()]);
   return players.flatMap((p) => {
     const accountId = playerAccountId(p);
     if (!accountId) return [];
@@ -157,7 +162,7 @@ export async function applyPool(): Promise<PoolEntry[]> {
         id: p.id,
         nickname: p.nickname,
         photo: p.photo,
-        mmr: p.mmr,
+        mmr: showMmr ? p.mmr : null,
         color: team ? teamAccent(team) : teamAccent({ slug: p.slug, name: p.nickname }),
         teamName: team?.name ?? null,
         role: p.main?.role ?? null,

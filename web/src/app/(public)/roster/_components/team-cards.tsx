@@ -87,12 +87,14 @@ function PlayerRow({ player, accent }: { player: RosterMember; accent: string })
         {role && <Chip className="mt-1">{role}</Chip>}
       </div>
 
-      <div className="shrink-0 text-right">
-        <div className="text-sm font-bold tabular-nums text-ink">
-          {player.mmr ? player.mmr.toLocaleString("ru") : "—"}
+      {/* Без числа правый столбец не рисуется вовсе: прочерк у всей пятёрки читается как потеря
+          данных, хотя MMR может быть просто закрыт настройкой лиги. Высоту ряда держит аватарка. */}
+      {player.mmr ? (
+        <div className="shrink-0 text-right">
+          <div className="text-sm font-bold tabular-nums text-ink">{player.mmr.toLocaleString("ru")}</div>
+          <Meter pct={mmrPct(player.mmr)} className="mt-1 ml-auto w-14" />
         </div>
-        {player.mmr ? <Meter pct={mmrPct(player.mmr)} className="mt-1 ml-auto w-14" /> : null}
-      </div>
+      ) : null}
     </Link>
   );
 }

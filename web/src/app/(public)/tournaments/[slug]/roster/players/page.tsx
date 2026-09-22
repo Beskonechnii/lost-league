@@ -4,6 +4,7 @@ import { tpByTournament } from "@/lib/tp";
 import { roleLabel } from "@/lib/roles";
 import { playerAccountId, playerGaps, teamAccent } from "@/lib/profiles";
 import { can } from "@/lib/account";
+import { privacy } from "@/lib/privacy";
 import { SectionHeader } from "@/components/pouf/blocks";
 import { PillLink } from "@/components/pouf/tabs";
 import { notFound } from "next/navigation";
@@ -55,6 +56,7 @@ export default async function PlayersPage({
     tpByTournament(tournament.id),
   ]);
   const authed = await can("roster.edit"); // формы и диагностика — те же права, что у пишущих роутов
+  const show = await privacy(); // что лига разрешила показывать публике
 
   // Дивизион игрока — по его местам в составе (`RosterSpot.divisionId`): выборка выше уже сужена
   // переданными `ids`, второй раз резать по строке-зеркалу `Team.group` не нужно — именно этот
@@ -79,7 +81,7 @@ export default async function PlayersPage({
   // Без account_id игрок не подтягивается из OpenDota; остальные дыры анкеты — из CRM, их добиваем
   // руками. Считаем по `playerAccountId`: id может лежать в ссылке на профиль, а не в своём поле.
   const noId = players.filter((p) => !playerAccountId(p)).length;
-  const incomplete = players.filter((p) => playerGaps(p).length > 0).length;
+  const incomplete = players.filter((p) => playerGaps(p, { telegram: show.telegram }).length > 0).length;
 
   return (
     <div className="space-y-6 font-pouf">
@@ -121,7 +123,7 @@ export default async function PlayersPage({
         {ranked.map((p) => {
           // Пробелы анкеты подсвечиваем только оператору — это состояние наших данных,
           // а не факт об игроке. Посетитель видит ровную сетку карточек.
-          const gaps = authed ? playerGaps(p) : [];
+          const gaps = authed ? playerGaps(p, { telegram: show.telegram }) : [];
           const flagId = authed && !playerAccountId(p);
           return (
             <PlayerMiniCard
@@ -132,7 +134,7 @@ export default async function PlayersPage({
               photo={p.photo}
               accent={p.main ? teamAccent(p.main.team) : null}
               role={roleLabel(p.main?.role)}
-              mmr={p.mmr}
+              mmr={show.mmr ? p.mmr : null}
               rank={p.rank}
               rankPrev={p.rankPrev}
               isCaptain={p.main?.isCaptain ?? false}

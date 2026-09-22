@@ -18,10 +18,14 @@ export function OverlayLive({
   sessionId,
   initialState,
   pool,
+  showMmr,
 }: {
   sessionId: number;
   initialState: DraftState;
   pool: PoolPlayer[];
+  /** Показывает ли лига MMR. Числа в пуле уже сняты на сервере, но без флага «Σ MMR 0» и пустая
+   *  подпись «MMR» остались бы в эфире: подпись уходит вместе со значением. */
+  showMmr: boolean;
 }) {
   const [state, setState] = useState<DraftState>(initialState);
 
@@ -79,7 +83,7 @@ export function OverlayLive({
                   <span className="h-3.5 w-3.5 rounded-full" style={{ background: team.color }} />
                   <span className="text-lg font-bold">{team.name}</span>
                 </div>
-                <span className="text-xs text-white/60">Σ MMR {mmrSum.toLocaleString("ru-RU")}</span>
+                {showMmr && <span className="text-xs text-white/60">Σ MMR {mmrSum.toLocaleString("ru-RU")}</span>}
               </div>
               <div className="space-y-2 p-3">
                 {members.map((p) => (
@@ -94,10 +98,12 @@ export function OverlayLive({
                         {team.locked.includes(p.id) && <span title="Закреплён">🔒</span>}
                       </div>
                     </div>
-                    <div className="shrink-0 text-right">
-                      <div className="text-sm font-medium">{p.mmr ? p.mmr.toLocaleString("ru-RU") : "—"}</div>
-                      <div className="text-[10px] text-white/45">MMR</div>
-                    </div>
+                    {showMmr && (
+                      <div className="shrink-0 text-right">
+                        <div className="text-sm font-medium">{p.mmr ? p.mmr.toLocaleString("ru-RU") : "—"}</div>
+                        <div className="text-[10px] text-white/45">MMR</div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
