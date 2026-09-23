@@ -249,7 +249,7 @@ export function DraftBoard({
           {/* Ссылкой, а не кнопкой: оверлей открывается отдельной вкладкой в OBS-сцене —
               это переход, и средний клик по нему обязан работать. */}
           <Link
-            href={`/overlay/underbeer/${sessionId}`}
+            href={`/overlay/draft/${sessionId}`}
             target="_blank"
             className={buttonClasses({ variant: "quiet", size: "sm" })}
           >
