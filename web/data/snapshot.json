@@ -1,6 +1,6 @@
 {
   "version": 16,
-  "exportedAt": "2026-09-23T08:44:52.254Z",
+  "exportedAt": "2026-09-23T10:49:04.255Z",
   "teams": [
     {
       "slug": "123-gaming",
@@ -129,7 +129,7 @@
       "banner": null,
       "color": null,
       "group": null,
-      "archivedAt": null,
+      "archivedAt": "2026-09-23T00:00:00.000Z",
       "createdAt": "2026-08-22T17:12:45.391Z"
     },
     {
@@ -532,7 +532,7 @@
       "banner": null,
       "color": null,
       "group": "Division 2",
-      "archivedAt": null,
+      "archivedAt": "2026-09-23T00:00:00.000Z",
       "createdAt": "2026-07-28T14:35:32.553Z"
     },
     {
@@ -3755,7 +3755,7 @@
       "banner": null,
       "interviewUrl": null,
       "orderNo": null,
-      "achievements": "основатель ебки",
+      "achievements": null,
       "tags": null,
       "createdAt": "2026-08-20T21:43:06.510Z",
       "verified": true,
@@ -3785,7 +3785,7 @@
       "banner": null,
       "interviewUrl": null,
       "orderNo": null,
-      "achievements": "123",
+      "achievements": null,
       "tags": null,
       "createdAt": "2026-08-27T13:42:41.787Z",
       "verified": true,
@@ -13372,7 +13372,7 @@
       "banner": null,
       "matchesUrl": null,
       "leagueId": null,
-      "status": "registration",
+      "status": "draft",
       "series": "",
       "startAt": "2026-09-16T00:00:00.000Z",
       "endAt": "2026-09-30T00:00:00.000Z",
@@ -13447,7 +13447,7 @@
       "banner": null,
       "matchesUrl": null,
       "leagueId": null,
-      "status": "registration",
+      "status": "draft",
       "series": "",
       "startAt": "2026-08-20T00:00:00.000Z",
       "endAt": "2026-08-29T00:00:00.000Z",
