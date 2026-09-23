@@ -110,8 +110,11 @@ export function PartnerMark({
 }) {
   if (!src) return <Badge tone="idle">Партнёр — {name}</Badge>
   const h = size === 'md' ? 'h-11' : 'h-7'
+  // Без своей подложки: знак партнёра приходит с собственным фоном (у Eclipse внутри SVG
+  // чёрный прямоугольник), и светлая бумага Кита под ним читалась бы как рамка вокруг чужого
+  // квадрата. Скругление обрезает углы файла, чтобы знак сидел в раскладке как элемент Кита.
   return (
-    <span className={cx('inline-flex items-center rounded-control bg-surface px-2 cushion-field', h)}>
+    <span className={cx('inline-flex items-center overflow-hidden rounded-control', h)}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt={name} className="h-full w-auto object-contain" />
     </span>
