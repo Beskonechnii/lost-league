@@ -7,17 +7,25 @@ import { StatusPill } from "@/components/pouf/feedback";
 import { Icon } from "@/components/pouf/Icon";
 import { PartnerMark } from "@/components/pouf/media";
 import { Card } from "@/components/pouf/surface";
+import { OVERLAY_DARK_SKIN } from "./skin";
 
 // Живой оверлей: опрашивает сессию раз в ~1.5с и перерисовывает составы, пока идёт драфт.
 // OBS держит сцену открытой всё эфирное время, поэтому опрос дешевле любого сокета и не требует
 // отдельного канала — сервер отдаёт готовый payload, пул резолвим на клиенте по id.
 //
-// Кожа — Light Clay (ТЗ 35, решение 15.09.2026: тёмной эфирной кожи не делаем нигде). Раньше здесь
-// стояло тёмное полупрозрачное стекло — карточка держалась на прозрачности, чтобы не перекрывать
-// картинку игры под собой. Теперь карточка НЕПРОЗРАЧНА (бумага Кита `bg-surface`+`cushion-card`):
-// она перекрывает игру под собой полностью, и полупрозрачность ей для этого не нужна вовсе — тем
-// самым отпадет и причина держать здесь отдельную тёмную палитру. Фон страницы остаётся прозрачным
-// (правило группы `(bare)`) — так игра видна там, где карточек нет.
+// Кожа — Light Clay по умолчанию (ТЗ 35). Карточка НЕПРОЗРАЧНА (бумага Кита
+// `bg-surface`+`cushion-card`): она перекрывает игру под собой полностью, полупрозрачность ей
+// не нужна.
+//
+// ФОН СОБЫТИЯ (23.09.2026, решение Стаса): у события с партнёром под карточки ложится его
+// картинка. Это отменяет прозрачность страницы для таких событий — оверлей перестаёт быть
+// накладкой поверх игры и становится самостоятельной сценой OBS. У обычного UNDERBEER фона нет,
+// прозрачность сохраняется как была (правило группы `(bare)`).
+//
+// ТЁМНАЯ КОЖА (23.09.2026, решение Стаса — отменяет 15.09.2026 «тёмной эфирной кожи не делаем
+// нигде»): на тёмной картинке события светлая бумага Кита читается наклейкой. `OVERLAY_DARK_SKIN`
+// (см. `skin.ts`) вешается на ту же рамку, что и картинка, и ТОЛЬКО когда она есть — у обычного
+// UNDERBEER кожи по-прежнему нет, вёрстка остаётся светлой и прозрачной без единой правки.
 
 export function OverlayLive({
   sessionId,
@@ -32,8 +40,9 @@ export function OverlayLive({
   /** Показывает ли лига MMR. Числа в пуле уже сняты на сервере, но без флага «Σ MMR 0» и пустая
    *  подпись «MMR» остались бы в эфире: подпись уходит вместе со значением. */
   showMmr: boolean;
-  /** Партнёр-организатор (Mix Cup by Eclipse, ТЗ 33) — не передан у обычного UNDERBEER. */
-  partner?: { name: string; src: string | null };
+  /** Партнёр-организатор (Mix Cup by Eclipse, ТЗ 33) — не передан у обычного UNDERBEER.
+   *  `background` — картинка под карточки; пока её нет, фон страницы остаётся прозрачным. */
+  partner?: { name: string; src: string | null; background?: string | null };
 }) {
   const [state, setState] = useState<DraftState>(initialState);
   // «Последний взятый» — не поле payload (ТЗ 35 не меняет формат), а разница между соседними
@@ -72,7 +81,14 @@ export function OverlayLive({
   const notStarted = state.phase !== "draft" && state.phase !== "done";
 
   return (
-    <div className="min-h-screen p-6 font-pouf">
+    <div
+      className="min-h-screen bg-cover bg-center bg-no-repeat p-6 font-pouf"
+      style={
+        partner?.background
+          ? { backgroundImage: `url(${partner.background})`, ...OVERLAY_DARK_SKIN }
+          : undefined
+      }
+    >
       {notStarted ? (
         <div className="grid min-h-[calc(100vh-3rem)] place-items-center">
           <div className="rounded-card bg-surface px-8 py-6 text-center cushion-card">

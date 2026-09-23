@@ -11,4 +11,8 @@
 export const ECLIPSE_PARTNER = {
   name: "Eclipse",
   src: "/assets/partners/eclipse-wordmark.svg" as string | null,
+  // Фон оверлея (решение Стаса 23.09.2026): картинка события ложится под карточки драфта.
+  // Оверлей с ней перестаёт быть прозрачной накладкой — это отдельная сцена OBS, а не слой
+  // поверх игры. Убрать фон — вернуть сюда null, вёрстка это переживает без правок.
+  background: "/assets/partners/eclipse-overlay-bg.webp" as string | null,
 };
