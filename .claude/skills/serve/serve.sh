@@ -6,7 +6,7 @@
 # Постоянный сервер требует включённого Mac, живого контейнера и процесса cloudflared.
 set -euo pipefail
 
-PORT=3000
+PORT=3001  # хостовый порт контейнера; 3000 занят dev-сервером
 CF="$HOME/.local/bin/cloudflared"
 
 # web/ вычисляем от места скрипта: .claude/skills/serve/serve.sh → ../../../web

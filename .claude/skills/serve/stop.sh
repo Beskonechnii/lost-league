@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Снять публичный туннель LOST. Контейнер не трогаем — сайт остаётся на localhost:3000.
+# Снять публичный туннель LOST. Контейнер не трогаем — сайт остаётся на localhost:3001.
 set -euo pipefail
 
-PORT=3000
+PORT=3001  # хостовый порт контейнера; 3000 занят dev-сервером
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WEB_DIR="$(cd "$SKILL_DIR/../../../web" && pwd)"
 RUN_DIR="$WEB_DIR/.cache"
