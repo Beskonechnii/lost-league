@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/prisma";
 import { currentAccountId, clearSessionCookie } from "@/lib/player-session";
 import {
   registerWithPassword,
@@ -12,6 +13,7 @@ import {
   storeApplicationDraft,
   type AuthField,
 } from "@/lib/account";
+import { readMixCupIntentSlug, clearMixCupIntent, registerForMixCup } from "@/lib/mixcup";
 import { noticeNewProfile, noticeProfileClaim } from "@/lib/queue-notify";
 import type { ApplicationField, ApplicationInput } from "@/lib/application";
 
@@ -78,8 +80,26 @@ export async function sendApplication(_state: ApplyState, form: FormData): Promi
   // Уведомление оператору — своим шагом после записи: анкета уже в очереди, и ронять её из-за
   // несостоявшегося сообщения нельзя (`queue-notify.ts` молчит сам, но порядок важен).
   await noticeNewProfile(input.nickname.trim(), id);
-  revalidatePath("/me");
+  await finishAfterApplication(id);
   return null;
+}
+
+/**
+ * Общий хвост обеих форм анкеты: анкета отправлена — самое время реализовать исключение Mix Cup
+ * (ТЗ 34, «в пул до апрува») и увести человека обратно на событие, если он шёл сюда через его
+ * дверь (кука-намерение). Обычный путь (без намерения) не меняется — только revalidatePath.
+ */
+async function finishAfterApplication(accountId: number): Promise<void> {
+  const slug = await readMixCupIntentSlug();
+  if (slug) {
+    const event = await prisma.mixCupEvent.findUnique({ where: { slug }, select: { id: true } });
+    const res = event ? await registerForMixCup(accountId, event.id) : null;
+    if (res?.ok) {
+      await clearMixCupIntent();
+      redirect(`/mixcup/${slug}`);
+    }
+  }
+  revalidatePath("/me");
 }
 
 /**
@@ -133,10 +153,39 @@ export async function sendClaimWithApplication(_state: ApplyState, form: FormDat
   const refusal = await submitClaimWithApplication(id, playerId, input, form.get("policy") != null);
   if (refusal) return { ...refusal, values: input };
   await noticeProfileClaim(playerId, id);
-  revalidatePath("/me");
+  await finishAfterApplication(id);
   return null;
 }
 
 // Действий «завести профиль по нику» и «подать привязку без анкеты» здесь больше нет (Э18): это был
 // второй, обходной вход в лигу — аккаунт без профиля заводил `Player` одним ником, минуя модерацию.
 // Вход остался один, через анкету: `sendApplication` и `sendClaimWithApplication` выше.
+
+// ── намерение Mix Cup (ТЗ 34) ───────────────────────────────────────────────────
+
+/**
+ * Разобрать куку-намерение с /mixcup/<slug> (см. lib/mixcup.ts): если вошедшему аккаунту уже
+ * хватает профиля для записи — записывает и возвращает путь на событие, кука гасится. Не хватает
+ * (анкеты ещё нет) — молчит и оставляет куку: вызовут снова, когда анкета будет отправлена
+ * (see MixCupIntentConsumer, retryKey = submittedAt).
+ */
+export async function consumeMixCupIntent(): Promise<string | null> {
+  const accountId = await currentAccountId();
+  if (accountId == null) return null;
+  const slug = await readMixCupIntentSlug();
+  if (!slug) return null;
+
+  const event = await prisma.mixCupEvent.findUnique({ where: { slug }, select: { id: true, status: true } });
+  if (!event) {
+    await clearMixCupIntent();
+    return null;
+  }
+
+  const res = await registerForMixCup(accountId, event.id);
+  if (!res.ok) {
+    if (res.reason === "closed") await clearMixCupIntent(); // событие закрылось, пока шли — ждать больше нечего
+    return null; // no-profile: попробуем снова после анкеты
+  }
+  await clearMixCupIntent();
+  return `/mixcup/${slug}`;
+}

@@ -48,6 +48,12 @@ export const PERMISSIONS = [
   },
   { key: "studio", label: "Студия графики", group: "Инструменты", hint: "В том числе платная генерация картинок" },
   { key: "underbeer", label: "UNDERBEER", group: "Инструменты", hint: "Шоу-драфт и его оверлей" },
+  {
+    key: "mixcup",
+    label: "Mix Cup",
+    group: "Инструменты",
+    hint: "Mix Cup by Eclipse: события, правила драфта и сохранённые составы",
+  },
   { key: "theme", label: "Тема UI", group: "Инструменты", hint: "Цвета интерфейса сайта" },
   {
     key: "banner",

@@ -52,6 +52,11 @@ export type DraftState = {
   // Форс-добор после кражи: у кого украли — добирает игрока ВНЕ очереди, потом змейка возобновляется.
   // Старые payload'ы поля не имеют → undefined, трактуется как «нет форс-добора».
   pendingPick?: string | null;
+  // Тумблеры правил Mix Cup (ТЗ 33): отсутствие поля (обычный UNDERBEER и старые payload'ы) —
+  // действие разрешено, иначе выключатель молча переписал бы историю прошлых драфтов.
+  // Значения берутся из настроек события при старте и заморожены на фазе draft/done.
+  stealEnabled?: boolean;
+  lockEnabled?: boolean;
 };
 
 /** Сегмент пула по позиции: керри…хард, затем «без позиции» (замены/тренеры). */
@@ -85,8 +90,19 @@ let seq = 0;
 /** Слабый уникальный id команды драфта: draft-состояние живёт коротко и в одном payload. */
 export const newTeamId = () => `t${Date.now().toString(36)}${(seq++).toString(36)}`;
 
-export function newDraftState(): DraftState {
-  return { version: DRAFT_VERSION, phase: "roster", snake: true, targetSize: 5, teams: [], order: [], turn: 0, participants: [], pendingPick: null };
+export function newDraftState(rules?: { stealEnabled?: boolean; lockEnabled?: boolean }): DraftState {
+  return {
+    version: DRAFT_VERSION,
+    phase: "roster",
+    snake: true,
+    targetSize: 5,
+    teams: [],
+    order: [],
+    turn: 0,
+    participants: [],
+    pendingPick: null,
+    ...rules,
+  };
 }
 
 export function newTeam(name: string, color: string): DraftTeam {
@@ -110,6 +126,26 @@ export function takenIds(state: DraftState): Set<number> {
   const s = new Set<number>();
   for (const t of state.teams) for (const id of memberIds(t)) s.add(id);
   return s;
+}
+
+/**
+ * Кто сменил владельца между двумя срезами состояния — обычный пик, форс-добор после кражи или
+ * сама кража (для нового владельца это тоже «взяли только что»). Payload истории ходов не хранит
+ * (ТЗ 35: формат не меняем) — вид сравнивает два снимка сам: борд — «до» и «после» своего
+ * действия, оверлей — соседние тики опроса. `prev` нет (первая отрисовка) — сравнивать не с чем.
+ */
+export function lastMovedPlayer(prev: DraftState | null, next: DraftState): number | null {
+  if (!prev) return null;
+  const owners = (s: DraftState) => {
+    const m = new Map<number, string>();
+    for (const t of s.teams) for (const pid of memberIds(t)) m.set(pid, t.id);
+    return m;
+  };
+  const before = owners(prev);
+  for (const [pid, teamId] of owners(next)) {
+    if (before.get(pid) !== teamId) return pid;
+  }
+  return null;
 }
 
 /** Индекс команды в змейка-развёртке для позиции pos (0-based круг). */
@@ -161,6 +197,7 @@ export function canPick(state: DraftState, playerId: number): boolean {
 }
 
 export function canLock(state: DraftState, teamId: string, playerId: number): boolean {
+  if (state.lockEnabled === false) return false; // выключено тумблером события (Mix Cup) — единственное место проверки
   const cur = currentTurn(state);
   if (!cur || cur.comp || cur.teamId !== teamId) return false; // закреплять можно только в свой обычный ход
   const team = teamById(state, teamId);
@@ -170,6 +207,7 @@ export function canLock(state: DraftState, teamId: string, playerId: number): bo
 
 /** Можно ли текущей команде украсть игрока playerId из команды fromTeamId. */
 export function canSteal(state: DraftState, fromTeamId: string, playerId: number): boolean {
+  if (state.stealEnabled === false) return false; // выключено тумблером события (Mix Cup) — единственное место проверки
   const cur = currentTurn(state);
   if (!cur || cur.comp) return false; // во время форс-добора красть нельзя — цепной кражи не устраиваем
   const me = teamById(state, cur.teamId);

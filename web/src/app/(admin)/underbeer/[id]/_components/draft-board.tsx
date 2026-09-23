@@ -7,6 +7,8 @@ import { Button, buttonClasses } from "@/components/pouf/Button";
 import { FormInput } from "@/components/pouf/Input";
 import { Icon } from "@/components/pouf/Icon";
 import { Alert, StatusPill } from "@/components/pouf/feedback";
+import { PartnerMark } from "@/components/pouf/media";
+import { Separator } from "@/components/pouf/separator";
 import { Toolbar, ToolbarActions, ToolbarCount, ToolbarSearch } from "@/components/pouf/toolbar";
 import { Eyebrow } from "@/components/pouf/text";
 import {
@@ -14,6 +16,7 @@ import {
   currentTurn,
   draftBlocker,
   goToConfig,
+  lastMovedPlayer,
   patchTeam,
   participantsBlocker,
   pickPlayer,
@@ -64,17 +67,25 @@ export function DraftBoard({
   initialTitle,
   initialState,
   pool,
+  partner,
 }: {
   sessionId: number;
   initialTitle: string | null;
   initialState: DraftState;
   pool: PoolPlayer[];
+  /** Партнёр-организатор (Mix Cup by Eclipse, ТЗ 33, см. `lib/partners.ts`) — рисует знак в
+   *  тулбаре. Не передан — обычный UNDERBEER, Eclipse не его партнёр, знака нет вовсе. */
+  partner?: { name: string; src: string | null };
 }) {
   const [state, setState] = useState<DraftState>(initialState);
   const [title, setTitle] = useState(initialTitle ?? "");
   const [saving, setSaving] = useState<"idle" | "saving" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
+  // Кого взяли последним — не поле payload (ТЗ 35: формат не трогаем), а разница между состоянием
+  // до и после действия оператора. Вне фазы драфта смысла нет (config переставляет капитанов,
+  // done — ходов больше нет) — там пусто.
+  const [lastPickId, setLastPickId] = useState<number | null>(null);
 
   const poolById = useMemo(() => new Map(pool.map((p) => [p.id, p])), [pool]);
   // Участники: пул команд/драфта — только отобранные (старые сессии без participants → весь ростер).
@@ -131,6 +142,9 @@ export function DraftBoard({
         try {
           setError(null);
           const next = fn(s);
+          const moved = lastMovedPlayer(s, next);
+          if (next.phase === "draft" && moved != null) setLastPickId(moved);
+          else if (next.phase !== "draft") setLastPickId(null);
           void save(next);
           return next;
         } catch (e) {
@@ -225,6 +239,13 @@ export function DraftBoard({
           {saving === "saving" ? "сохраняю…" : saving === "error" ? "ошибка сохранения" : "сохранено"}
         </ToolbarCount>
         <ToolbarActions>
+          {/* Знак партнёра — только у Mix Cup (Eclipse — организатор ивента, не UNDERBEER'а). */}
+          {partner && (
+            <>
+              <PartnerMark src={partner.src} name={partner.name} size="sm" />
+              <Separator orientation="vertical" />
+            </>
+          )}
           {/* Ссылкой, а не кнопкой: оверлей открывается отдельной вкладкой в OBS-сцене —
               это переход, и средний клик по нему обязан работать. */}
           <Link
@@ -314,6 +335,7 @@ export function DraftBoard({
                   poolById={poolById}
                   isCurrent={cur?.teamId === team.id}
                   isActiveConfig={state.phase === "config" && activeTeam?.id === team.id}
+                  lastPickId={lastPickId}
                   onSelectActive={() => setActiveTeamId(team.id)}
                   onRemove={() => run((s) => removeTeam(s, team.id))}
                   onRename={(name) => run((s) => patchTeam(s, team.id, { name }))}

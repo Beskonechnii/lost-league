@@ -383,6 +383,9 @@ export type PoolPlayer = {
 export async function listPoolPlayers(): Promise<PoolPlayer[]> {
   const showMmr = await mmrShown();
   const players = await prisma.player.findMany({
+    // Непроверенный (Mix Cup до апрува, ТЗ 34) на публичную витрину лиги не выходит —
+    // он участник микса и строка в пуле драфта, но не факт ростера (DECISIONS 10.09.2026).
+    where: { verified: true },
     orderBy: [{ nickname: "asc" }],
     include: {
       spots: {
@@ -577,7 +580,9 @@ export function getPlayer(id: number) {
  */
 export async function getPlayerProfile(key: string | number) {
   const player = await prisma.player.findUnique({
-    where: rosterKey(key),
+    // verified: true — непроверенный (Mix Cup до апрува, ТЗ 34) на свою публичную карточку не
+    // выходит: findUnique молча вернёт null, страница/редирект обработают это как «не найден».
+    where: { ...rosterKey(key), verified: true },
     include: {
       spots: {
         // Историю не режем: на странице игрока видно все его места, каждое — со своим турниром.

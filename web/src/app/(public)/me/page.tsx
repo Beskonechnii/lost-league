@@ -1,10 +1,12 @@
 import { redirect } from "next/navigation";
 import { playerPath } from "@/lib/profiles";
 import { currentAccount, accountStatus } from "@/lib/account";
+import { readMixCupIntentSlug } from "@/lib/mixcup";
 import { Alert } from "@/components/pouf/feedback";
 import { AuthCard } from "@/components/pouf/auth";
 import { Door } from "./door";
 import { Cabinet, cabinetIsWide } from "./cabinet";
+import { MixCupIntentConsumer } from "./mixcup-intent";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Кабинет" };
@@ -34,14 +36,20 @@ const ERRORS: Record<string, string> = {
 export default async function AccountPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
   const account = await currentAccount();
+  // Mix Cup (ТЗ 34): намерение читаем ДО обычного редиректа активного игрока на его профиль —
+  // иначе вернувшийся через дверь Mix Cup участник соскакивал бы на карточку раньше, чем успевал
+  // записаться. Чтение куки безопасно и в плейн-компоненте (только set/delete требуют action).
+  const mixCupIntent = account ? await readMixCupIntentSlug() : null;
+
   // У одобренного игрока кабинет и профиль — одна и та же страница (решение 04.09.2026): всё, что
   // кабинет показывал про него самого, лежит на его странице в лиге, а служебное про аккаунт —
   // в настройках. Здесь остаётся ровно то, чего на той странице быть не может: вход, анкета,
   // ожидание решения и привязка профиля.
-  if (account?.player && accountStatus(account) === "active") redirect(playerPath(account.player));
+  if (account?.player && accountStatus(account) === "active" && !mixCupIntent) redirect(playerPath(account.player));
 
   return (
     <AuthCard title={account ? "Личный кабинет" : "Вход в лигу"} wide={!!account && cabinetIsWide(account)}>
+      {mixCupIntent && <MixCupIntentConsumer retryKey={account?.submittedAt?.toISOString() ?? "0"} />}
       {error && ERRORS[error] && (
         <div className="mb-4">
           <Alert tone="err" block>

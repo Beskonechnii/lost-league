@@ -54,18 +54,18 @@ model Tournament {
 /// Series.division / GroupEntry.division: строки остались как denormalized-зеркало ради полутора
 /// десятков выборок, которые фильтруют по имени; единственный, кто их пишет — src/lib/tournaments.ts.
 model Division {
-  id      Int     @id @default(autoincrement())
-  slug    String // d1 | d2
-  name    String // «Division 1» — то же значение, что в Team.group
-  label   String? // «LOST D1» — подпись вкладки
-  short   String? // «D1»
-  orderNo Int     @default(0) // порядок вкладок в навигации
-  mmrFrom Int? // порог входа, если у дивизиона он есть
-  mmrTo   Int?
+  id         Int     @id @default(autoincrement())
+  slug       String // d1 | d2
+  name       String // «Division 1» — то же значение, что в Team.group
+  label      String? // «LOST D1» — подпись вкладки
+  short      String? // «D1»
+  orderNo    Int     @default(0) // порядок вкладок в навигации
+  mmrFrom    Int? // порог входа, если у дивизиона он есть
+  mmrTo      Int?
   /// Сколько команд принимает дивизион; пусто — без ограничения. Лимит живёт здесь, а не у
   /// турнира: команда записывается в ДИВИЗИОН (TournamentEntry.divisionId), и на уровне турнира
   /// момент записи проверять нечем. Турнир показывает сумму по дивизионам.
-  teamLimit Int?
+  teamLimit  Int?
   /// Вылетают ли последние из группы. В D1 два последних вылетают, в D2 все непопавшие в верхнюю
   /// сетку падают в нижнюю — раньше это правило различалось сравнением имени дивизиона со строкой
   /// «Division 2» (src/lib/qualification.ts), что в новом турнире с другими именами не сработало бы.
@@ -89,10 +89,10 @@ model Division {
 /// Состав (RosterSpot) при этом остаётся текущим составом команды — сезонные составы это отдельный
 /// долг (§9 CLAUDE.md); историю игр он не рвёт, кто играл на карте помнит MatchStat.
 model TournamentEntry {
-  id         Int      @id @default(autoincrement())
-  seed       Int? // посев в жеребьёвке
-  group      String? // «A» | «B» — группа, если дивизион делится
-  createdAt  DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  seed      Int? // посев в жеребьёвке
+  group     String? // «A» | «B» — группа, если дивизион делится
+  createdAt DateTime @default(now())
 
   division   Division @relation(fields: [divisionId], references: [id], onDelete: Cascade)
   divisionId Int
@@ -107,29 +107,29 @@ model TournamentEntry {
 /// публичные витрины читают ростер без фильтров, и залитый сразу кривой файл на дюжину команд
 /// немедленно виден на /roster/teams, а откатить его нечем.
 model TeamApplication {
-  id           Int      @id @default(autoincrement())
+  id              Int       @id @default(autoincrement())
   /// import (файл в админке) | web (капитан из кабинета) | telegram (бот) — откуда пришла заявка.
-  source       String   @default("import")
+  source          String    @default("import")
   /// Состав целиком, JSON (src/lib/team-application.ts → TeamDraft).
-  payload      String
-  status       String   @default("pending") // pending | approved | rejected
-  notes        String? // причина возврата — её видит подавший
+  payload         String
+  status          String    @default("pending") // pending | approved | rejected
+  notes           String? // причина возврата — её видит подавший
   /// Кто подал (id аккаунта) — заполнено у заявок с сайта, у импорта пусто. Без relation, как
   /// reviewedById: это след «чью заявку показывать в кабинете», а не связь (id на машинах разные).
-  submittedById Int?
+  submittedById   Int?
   /// Чат в Telegram, из которого пришла заявка бота. Единственная надёжная ниточка к подавшему:
   /// аккаунта у бота нет, а телеграм капитана в составе может быть и не указан. По ней бот
   /// показывает статус заявки и уведомляет о решении организатора.
   submittedChatId String?
-  submittedAt  DateTime @default(now())
-  reviewedAt   DateTime?
-  reviewedById Int? // след в истории, без relation — как UserAccount.reviewedById
+  submittedAt     DateTime  @default(now())
+  reviewedAt      DateTime?
+  reviewedById    Int? // след в истории, без relation — как UserAccount.reviewedById
 
-  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  tournament   Tournament              @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   tournamentId Int
-  division     Division?  @relation(fields: [divisionId], references: [id], onDelete: SetNull)
+  division     Division?               @relation(fields: [divisionId], references: [id], onDelete: SetNull)
   divisionId   Int? // предложенный дивизион; оператор может переставить перед апрувом
-  team         Team?      @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  team         Team?                   @relation(fields: [teamId], references: [id], onDelete: SetNull)
   teamId       Int? // проставляется при апруве — по нему видно, что заявка уже заведена
   members      TeamApplicationMember[]
 }
@@ -141,17 +141,17 @@ model TeamApplication {
 /// подтвердил. Отдельной таблицей, а не полем в payload: payload капитан перезаписывает при
 /// каждой правке состава, и ответы игроков стирались бы вместе с ним.
 model TeamApplicationMember {
-  id            Int      @id @default(autoincrement())
+  id            Int             @id @default(autoincrement())
   application   TeamApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   applicationId Int
   /// Ник из состава — ключ строки: по нему она переживает переотправку заявки.
   nickname      String
   /// Опознанный игрок лиги. null — человека в ростере ещё нет: отвечать некому, статус так и
   /// останется «позван», а профиль ему заведёт апрув заявки.
-  player        Player?  @relation(fields: [playerId], references: [id], onDelete: SetNull)
+  player        Player?         @relation(fields: [playerId], references: [id], onDelete: SetNull)
   playerId      Int?
-  status        String   @default("invited") // invited | accepted | declined
-  invitedAt     DateTime @default(now())
+  status        String          @default("invited") // invited | accepted | declined
+  invitedAt     DateTime        @default(now())
   respondedAt   DateTime?
 
   @@unique([applicationId, nickname])
@@ -159,85 +159,100 @@ model TeamApplicationMember {
 }
 
 model Team {
-  id        Int      @id @default(autoincrement())
-  slug      String   @unique // ключ импорта и имя файла ассета
-  name      String
-  tag       String?
-  logo      String?
-  wordmark  String? // граффити-надпись названия (для анонсов)
-  photo     String? // командное фото в рамку
-  banner    String? // баннер команды (широкая подложка шапки); путь как у logo
-  color     String? // акцент команды, hex
-  group     String? // имя дивизиона текущего турнира — зеркало TournamentEntry (src/lib/tournaments.ts)
+  id         Int       @id @default(autoincrement())
+  slug       String    @unique // ключ импорта и имя файла ассета
+  name       String
+  tag        String?
+  logo       String?
+  wordmark   String? // граффити-надпись названия (для анонсов)
+  photo      String? // командное фото в рамку
+  banner     String? // баннер команды (широкая подложка шапки); путь как у logo
+  color      String? // акцент команды, hex
+  group      String? // имя дивизиона текущего турнира — зеркало TournamentEntry (src/lib/tournaments.ts)
   /// Убрана из общего пула (архив). null — в пуле; дата — когда убрали. Двухэтапное удаление: первое
   /// удаление лишь ставит эту дату (команда исчезает из таба «Ростер» и из добавления в новые турниры,
   /// но её прошлые таблицы/матчи/серии целы), второе — физически сносит запись. См. src/lib/roster-data.ts.
   archivedAt DateTime?
-  createdAt DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
   roster         RosterSpot[]
-  matchesA       Match[]       @relation("TeamA")
-  matchesB       Match[]       @relation("TeamB")
-  matchesWon     Match[]       @relation("Winner")
-  matchesRadiant Match[]       @relation("Radiant")
+  matchesA       Match[]           @relation("TeamA")
+  matchesB       Match[]           @relation("TeamB")
+  matchesWon     Match[]           @relation("Winner")
+  matchesRadiant Match[]           @relation("Radiant")
   groupEntries   GroupEntry[]
-  seriesHome     Series[]      @relation("SeriesHome")
-  seriesAway     Series[]      @relation("SeriesAway")
+  seriesHome     Series[]          @relation("SeriesHome")
+  seriesAway     Series[]          @relation("SeriesAway")
   wards          Ward[]
   entries        TournamentEntry[] // в каких дивизионах каких турниров команда играла
   applications   TeamApplication[]
-  lobbiesA       Lobby[]       @relation("LobbySideA")
-  lobbiesB       Lobby[]       @relation("LobbySideB")
+  lobbiesA       Lobby[]           @relation("LobbySideA")
+  lobbiesB       Lobby[]           @relation("LobbySideB")
 }
 
 model Player {
-  id          Int       @id @default(autoincrement())
-  slug        String    @unique // ключ импорта и имя файла фото; ставится один раз и НЕ меняется —
-                                 // от него зависят файлы картинок (uploads.ts), поэтому ник правится, а slug нет
-  nickname    String
+  id                Int       @id @default(autoincrement())
+  slug              String    @unique // ключ импорта и имя файла фото; ставится один раз и НЕ меняется —
+  // от него зависят файлы картинок (uploads.ts), поэтому ник правится, а slug нет
+  nickname          String
   nicknameChangedAt DateTime? // когда игрок сам менял ник — для лимита «раз в сезон»; правка оператором не в счёт
-  realName    String?
-  realSurname String? // фамилия отдельно от имени — анкета спрашивает их двумя полями
-  phone       String? // телефон для связи с оператором, со слов игрока
-  accountId   String? // Dota/Steam32 account id (для OpenDota)
-  mmr         Int? // из таблицы сезона; у команды не хранится — считается по составу
+  realName          String?
+  realSurname       String? // фамилия отдельно от имени — анкета спрашивает их двумя полями
+  phone             String? // телефон для связи с оператором, со слов игрока
+  accountId         String? // Dota/Steam32 account id (для OpenDota)
+  mmr               Int? // из таблицы сезона; у команды не хранится — считается по составу
   /// Ранг (rank_tier OpenDota: десятки — медаль, единицы — звезда; 80 = Immortal). В отличие от
   /// mmr — не со слов игрока, а подтянут по account_id при импорте состава (src/lib/enrich.ts).
-  rank        Int?
+  rank              Int?
   /// Ранг на момент ПРЕДЫДУЩЕГО изменения — чтобы витрина показывала «было → стало», а не голое
   /// текущее число. Пишется только когда ранг реально сменился: массовое обновление, заставшее ту
   /// же медаль, значение не трогает, иначе дельта затиралась бы при первом же холостом прогоне.
-  rankPrev    Int?
+  rankPrev          Int?
   /// Когда ранг последний раз ПОДТВЕРЖДАЛИ у OpenDota (даже если он не изменился). По нему видно,
   /// свежая цифра или прошлогодняя, и по нему же обновление пропускает недавно проверенных.
-  rankAt      DateTime?
+  rankAt            DateTime?
   /// TP за всё время — кеш суммы начислений (`PointsEntry`, reason="tp"). Истина в реестре:
   /// зачёт сезонный, а это поле кормит витрины, которым нужна одна цифра (см. src/lib/tp.ts).
-  tp          Int      @default(0)
-  photo       String?
-  steamUrl    String? // перекрывает ссылку, выведенную из accountId
-  dotabuffUrl String?
-  stratzUrl   String?
-  telegram    String? // хранится без «@» — собачку рисует UI (см. src/lib/profiles.ts)
-  birthday    DateTime? // только дата, время не значимо; нужна для возраста в графике и поздравлений
-  city        String? // где живёт — город как в CRM, страна опционально следом
-  country     String?
-  banner      String? // баннер профиля (широкая подложка шапки); путь как у photo
-  interviewUrl String? // ссылка на интервью игрока, если есть
-  orderNo     Int? // ручное перекрытие номера в шапке профиля; null — номер по id (он же в адресе)
-  achievements String? // достижения игрока — их ведёт ОПЕРАТОР (в анкете игрока поля нет); одна строка = одно достижение
-  tags        String? // роли в лиге через запятую (player,streamer,caster,partner,organizer) — src/lib/player-tags.ts
-  createdAt   DateTime  @default(now())
+  tp                Int       @default(0)
+  photo             String?
+  steamUrl          String? // перекрывает ссылку, выведенную из accountId
+  dotabuffUrl       String?
+  stratzUrl         String?
+  telegram          String? // хранится без «@» — собачку рисует UI (см. src/lib/profiles.ts)
+  birthday          DateTime? // только дата, время не значимо; нужна для возраста в графике и поздравлений
+  city              String? // где живёт — город как в CRM, страна опционально следом
+  country           String?
+  banner            String? // баннер профиля (широкая подложка шапки); путь как у photo
+  interviewUrl      String? // ссылка на интервью игрока, если есть
+  orderNo           Int? // ручное перекрытие номера в шапке профиля; null — номер по id (он же в адресе)
+  achievements      String? // достижения игрока — их ведёт ОПЕРАТОР (в анкете игрока поля нет); одна строка = одно достижение
+  tags              String? // роли в лиге через запятую (player,streamer,caster,partner,organizer) — src/lib/player-tags.ts
+  createdAt         DateTime  @default(now())
+
+  /// Прошёл модерацию и виден на публичных витринах (`/roster/players`, поиск, своя карточка).
+  /// По умолчанию true — так заведён весь существующий ростер (импорт, обычный апрув анкеты).
+  /// false ставит только регистрация на Mix Cup (`lib/mixcup.ts`): исключение «в пул драфта —
+  /// до апрува» (ТЗ 34, решение Стаса 22.09.2026) заводит профиль сразу, но прятать его с
+  /// публики до решения оператора обязано ровно то же место, где он создан. Апрув анкеты
+  /// (`approveRegistration`) переводит в true — второй раз профиль не заводится.
+  verified            Boolean      @default(true)
+  /// Событие Mix Cup, через дверь которого профиль впервые появился (null — обычный путь: импорт
+  /// или своя анкета). Ставится один раз при заведении, апрув его не трогает — это факт о том,
+  /// откуда человек пришёл, а не о том, прошёл ли он с тех пор проверку (Scope п.6 ТЗ 34).
+  mixCupSourceEventId Int?
+  mixCupSource        MixCupEvent? @relation("PlayerMixCupSource", fields: [mixCupSourceEventId], references: [id], onDelete: SetNull)
 
   spots RosterSpot[]
   stats MatchStat[]
 
-  account UserAccount?  @relation("AccountPlayer") // подтверждённый вход игрока (0..1)
-  claims  UserAccount[] @relation("AccountClaim") // заявки на привязку, ждущие подтверждения
-  edits   ProfileEditRequest[] // правки анкеты, присланные из бота и ждущие оператора
-  proposals MatchRequest[] // предложения времени встречи, отправленные им как капитаном
-  invites   TeamApplicationMember[] // заявки команд, в составе которых он значится
-  lobbies   LobbyMember[] // комнаты встреч, куда он приглашён
+  account             UserAccount?            @relation("AccountPlayer") // подтверждённый вход игрока (0..1)
+  claims              UserAccount[]           @relation("AccountClaim") // заявки на привязку, ждущие подтверждения
+  edits               ProfileEditRequest[] // правки анкеты, присланные из бота и ждущие оператора
+  proposals           MatchRequest[] // предложения времени встречи, отправленные им как капитаном
+  invites             TeamApplicationMember[] // заявки команд, в составе которых он значится
+  lobbies             LobbyMember[] // комнаты встреч, куда он приглашён
+  mixCupPicks         MixCupPick[] // строки результата Mix Cup, где он был задрафтован
+  mixCupRegistrations MixCupRegistration[] // записи на Mix Cup (участник ↔ событие, ТЗ 34)
 }
 
 /// Аккаунт игрока: вход по Google. Отдельно от `Player` намеренно — профиль игрока есть у всех в
@@ -254,41 +269,41 @@ model Player {
 /// почтой, что регистрировался паролем, — это тот же аккаунт, к нему прицепляется `googleSub`.
 /// Поэтому `googleSub` теперь опционален (у чисто парольного аккаунта его нет).
 model UserAccount {
-  id        Int      @id @default(autoincrement())
+  id            Int     @id @default(autoincrement())
   /// Почта. Необязательна с приходом регистрации через бота: у пришедшего из телеграма её нет и
   /// спрашивать её незачем — вход ему тоже телеграмный. Уникальность остаётся: аккаунт с почтой
   /// по-прежнему один на адрес, а null'ов в sqlite уникальный индекс допускает сколько угодно.
-  email     String?  @unique
-  googleSub String?  @unique // id google-аккаунта («sub» из id_token); null у аккаунта только с паролем
-  steamId   String?  @unique // steamid64 из OpenID-входа Steam; null у аккаунта без привязки Steam
+  email         String? @unique
+  googleSub     String? @unique // id google-аккаунта («sub» из id_token); null у аккаунта только с паролем
+  steamId       String? @unique // steamid64 из OpenID-входа Steam; null у аккаунта без привязки Steam
   // Хеш пароля (scrypt, формат `salt:hash` hex — см. src/lib/password.ts). null = входа по паролю нет,
   // только через Google. Сам пароль в БД не хранится нигде.
-  passwordHash String?
+  passwordHash  String?
   // Подтверждена ли почта. Гейтом входа НЕ является: почтовый флоу убран (писем нет), поэтому
   // true ставит только Google-вход — и значит это честно «почту подтвердил Google».
   emailVerified Boolean @default(false)
-  name      String? // имя (из google-профиля или введённое при регистрации) — для списка заявок
-  avatar    String? // ссылка на аватар google
+  name          String? // имя (из google-профиля или введённое при регистрации) — для списка заявок
+  avatar        String? // ссылка на аватар google
   // Роль в системе: player (по умолчанию) | admin | owner. Владелец назначается не здесь, а по
   // OWNER_EMAIL (src/lib/account.ts): совпал email при входе — роль owner, и её нельзя отобрать из UI.
   // admin раздаёт владелец в панели ролей; проверка доступа в proxy читает роль из подписанной куки.
-  role      String   @default("player")
+  role          String  @default("player")
   // Гранулярные права админа: ключи через запятую (как Player.tags — sqlite не умеет массивы, а
   // таблица ради десятка флагов избыточна). Канон ключей — src/lib/permissions.ts. У владельца
   // права все и неявно, поле ему не нужно.
-  permissions String?
+  permissions   String?
 
   // Воронка регистрации: draft (вошёл, анкеты нет) | pending (анкета отправлена, ждёт решения) |
   // active (одобрен) | rejected (отказ с причиной, можно поправить анкету и отправить снова).
   // Дефолт именно draft, чтобы новый аккаунт — в том числе заведённый Google-callback'ом — попадал
   // в воронку сам, без «не забыть проставить» в каждом месте создания. Владелец (OWNER_EMAIL) вне
   // воронки: он всегда active, иначе апрувить его было бы некому (src/lib/account.ts).
-  status String @default("draft")
+  status           String    @default("draft")
   /// Служебный аккаунт лиги — «Spirit CTRL». От его имени приходят системные сообщения в чат
   /// (решения модерации, приглашения в состав), и писать ему нельзя: это не собеседник, а канал.
   /// Флаг стоит ровно у одного аккаунта, и это ОТДЕЛЬНЫЙ аккаунт лиги, а не чей-то живой: помеченный
   /// человек перестаёт быть собеседником и не получает системных сообщений (`src/lib/system-chat.ts`).
-  system Boolean @default(false)
+  system           Boolean   @default(false)
   // Анкета-заявка целиком, JSON (src/lib/account.ts). Player из неё создаётся только при апруве:
   // публичные витрины читают Player без фильтров, и заведённый заранее неодобренный сразу попал бы
   // в ростер.
@@ -322,15 +337,16 @@ model UserAccount {
   /// 30 дней, поэтому сменить пароль мало: угнанная сессия пережила бы смену. Поле поднимается
   /// при каждой смене пароля, и `player-session.ts` отбрасывает куку, выданную до него.
   /// null = ни разу не сбрасывали, все живые куки в силе.
-  sessionsFrom DateTime?
+  sessionsFrom      DateTime?
   /// След сброса пароля: когда сбросили и кто инициировал (id аккаунта оператора; null —
   /// человек сам через телеграм). Не связь, а запись в историю — relation здесь не нужен.
   passwordResetAt   DateTime?
   passwordResetById Int?
 
-  chats    ConversationMember[] // беседы, в которых состоит (личная переписка игроков)
-  sent     ChatMessage[] // отправленные сообщения
-  shards   ShardEntry[] // начисления осколков (src/lib/shards.ts)
+  chats               ConversationMember[] // беседы, в которых состоит (личная переписка игроков)
+  sent                ChatMessage[] // отправленные сообщения
+  shards              ShardEntry[] // начисления осколков (src/lib/shards.ts)
+  mixCupRegistrations MixCupRegistration[] // записи на Mix Cup (ТЗ 34)
 
   createdAt DateTime @default(now())
 }
@@ -345,10 +361,10 @@ model RosterSpot {
   isCaptain Boolean  @default(false)
   createdAt DateTime @default(now())
 
-  team     Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  teamId   Int
-  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  playerId Int
+  team       Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId     Int
+  player     Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId   Int
   /// Дивизион турнира, к которому относится это место. Появился вместе с турнирами: состав команды
   /// меняется от сезона к сезону, и без него заявка нового сезона затирала бы прошлый. NULL —
   /// состав вне турнира (места, заведённые до модели, и команды, ни в чём не участвующие).
@@ -410,8 +426,8 @@ model GroupEntry {
   losses   Int
   points   Int
 
-  team   Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  teamId Int
+  team        Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId      Int
   /// Дивизион турнира; строка `division` — зеркало (см. Division).
   divisionRef Division? @relation(fields: [divisionId], references: [id], onDelete: SetNull)
   divisionId  Int?
@@ -462,8 +478,8 @@ model Series {
   away   Team @relation("SeriesAway", fields: [awayId], references: [id], onDelete: Cascade)
   awayId Int
 
-  games   Match[]
-  designs Design[]
+  games    Match[]
+  designs  Design[]
   notices  SeriesNotice[]
   requests MatchRequest[]
   lobbies  Lobby[]
@@ -533,6 +549,94 @@ model DraftSession {
   payload   String // JSON всего состояния драфта (src/lib/draft.ts → DraftState)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  /// Обратная связь к Mix Cup (ТЗ 33): непусто, если эта сессия — рабочий стол события Mix Cup,
+  /// а не обычного UNDERBEER. Сам движок один (src/lib/draft.ts), различает их только эта ссылка.
+  mixCupEvent MixCupEvent?
+}
+
+/// Mix Cup by Eclipse — серия микс-драфтов оператора (Scope п.1 ТЗ 33). В отличие от UNDERBEER
+/// у события есть результат, к которому возвращаются после эфира: составы лежат строками
+/// (MixCupTeam/MixCupPick) со ссылкой на игрока и снимком ника, событие входит в снимок БД
+/// (DECISIONS 22.09.2026). Живой драфт по-прежнему ведёт DraftSession — движок один, не копия;
+/// durable-строки результата пишутся, когда драфт доходит до фазы done (src/lib/mixcup.ts).
+model MixCupEvent {
+  id    Int     @id @default(autoincrement())
+  slug  String  @unique // ключ будущей публичной страницы (ТЗ 34); в этом этапе не используется в URL
+  title String?
+
+  /// Когда эфир Mix Cup — для будущего списка/архива (ТЗ 34: «когда следующий»). В этом этапе
+  /// поле не редактируется в UI (раздел DESIGN его не описывает), но лежит в модели сразу:
+  /// Scope п.1 — «Mix Cup первый, дальше будут», архив закладывается сейчас, а не миграцией потом.
+  playedAt DateTime?
+
+  /// open (приём открыт) | closed (приём закрыт) | done (сыгран)
+  status String @default("open")
+
+  /// Тумблеры правил (Scope п.2) — значения по умолчанию для НОВОГО драфта события. Сам драфт,
+  /// начатый по одним правилам, их на ходу не меняет: актуальные флаги живут в DraftState.
+  stealEnabled Boolean @default(true)
+  lockEnabled  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Живой рабочий стол — та же DraftSession, что у UNDERBEER (один движок, два входа). Пусто,
+  /// пока оператор ни разу не нажал «К драфту»; после done результат читается из teams/picks,
+  /// а не отсюда — сессию можно даже удалить, история события не пострадает.
+  draftSession   DraftSession? @relation(fields: [draftSessionId], references: [id], onDelete: SetNull)
+  draftSessionId Int?          @unique
+
+  teams         MixCupTeam[]
+  /// Записи одиночных игроков (ТЗ 34) — пул участников до драфта, отдельно от MixCupTeam/Pick.
+  registrations MixCupRegistration[]
+  /// Профили, впервые заведённые через дверь ЭТОГО события (Player.mixCupSourceEventId) —
+  /// разрез «пришли с Mix Cup» у оператора.
+  playerSources Player[]             @relation("PlayerMixCupSource")
+}
+
+/// Собранная команда Mix Cup — durable-строка результата, переживает и удаление живой
+/// DraftSession, и уход игрока из ростера (тот стирает только связь конкретного пика, п.4 Scope).
+model MixCupTeam {
+  id      Int         @id @default(autoincrement())
+  event   MixCupEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId Int
+  name    String
+  color   String
+  orderNo Int // порядок колонки на экране сохранённого состава
+
+  picks MixCupPick[]
+}
+
+/// Один пик Mix Cup: ссылка на игрока И снимок ника на момент драфта (Scope п.4) — удаление
+/// игрока из ростера обнуляет `player` (SetNull), но строка и ник остаются.
+model MixCupPick {
+  id        Int        @id @default(autoincrement())
+  team      MixCupTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId    Int
+  player    Player?    @relation(fields: [playerId], references: [id], onDelete: SetNull)
+  playerId  Int?
+  nickname  String
+  isCaptain Boolean    @default(false)
+  orderNo   Int // порядок пика внутри команды; капитан = 0
+}
+
+/// Запись одиночного игрока на Mix Cup (ТЗ 34) — «я иду», отдельно от MixCupTeam/Pick (те
+/// появляются только после драфта). Отмена записи стирает строку целиком: истории не ведём,
+/// лимита участников и листа ожидания нет (решение Стаса 22.09.2026).
+model MixCupRegistration {
+  id        Int         @id @default(autoincrement())
+  event     MixCupEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId   Int
+  account   UserAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId Int
+  /// Профиль в пуле драфта — уже существующий (роster-игрок) либо заведённый прямо здесь, до
+  /// апрува анкеты (исключение ТЗ 34, см. lib/mixcup.ts → registerForMixCup).
+  player    Player      @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId  Int
+  createdAt DateTime    @default(now())
+
+  @@unique([eventId, accountId])
 }
 
 /// Сессия fearless-драфта: серия драфтов героев без повторов. Как DraftSession (UNDERBEER) —
@@ -562,9 +666,9 @@ model Lobby {
   status String @default("gather")
 
   /// Стороны — команды ростера: имя, цвет и лого берутся из карточки, а не копируются сюда.
-  sideA   Team @relation("LobbySideA", fields: [sideATeamId], references: [id], onDelete: Cascade)
+  sideA       Team @relation("LobbySideA", fields: [sideATeamId], references: [id], onDelete: Cascade)
   sideATeamId Int
-  sideB   Team @relation("LobbySideB", fields: [sideBTeamId], references: [id], onDelete: Cascade)
+  sideB       Team @relation("LobbySideB", fields: [sideBTeamId], references: [id], onDelete: Cascade)
   sideBTeamId Int
 
   /// Тайминги лобби — НАСТРОЙКА встречи, а не константа: к команде могут применяться пенальти.
@@ -588,7 +692,7 @@ model Lobby {
   firstPick  Int?
   radiant    Int?
 
-  payload   String   @default("") // JSON состояния драфта; пусто = драфт ещё не начат
+  payload String @default("") // JSON состояния драфта; пусто = драфт ещё не начат
 
   /// Часы драфта (ТЗ 22б). Время считает СЕРВЕР, вкладка его только показывает: иначе истечение
   /// хода зависело бы от того, смотрит ли кто-нибудь на экран, а перезагрузка страницы обнуляла
@@ -599,12 +703,12 @@ model Lobby {
   /// Остаток банка доп-времени, секунды. Адресуется ИНДЕКСОМ КОМАНДЫ (A = 0, B = 1), а не
   /// стороной экрана: стороны и первый пик чередуются по картам, и привязка к экрану обменяла бы
   /// командам накопленное доп-время на каждой чётной карте.
-  reserveA Int @default(0)
-  reserveB Int @default(0)
+  reserveA      Int       @default(0)
+  reserveB      Int       @default(0)
   /// С какого хода текущей карты пошли АВТОходы (время вышло), null — последний ход сделан руками.
   /// Не в состоянии драфта: состояние драфта — это ходы, а не их история; здесь же живёт ровно
   /// та подпись на экране, которая объясняет участнику, почему герой выбрался сам.
-  autoFrom Int?
+  autoFrom      Int?
 
   /// Ключ ОБС-вида: неугадываемая строка, по которой браузерный источник OBS открывает борд
   /// без входа (ТЗ 22в §6). Куки у такого источника нет, а входить в аккаунт внутри OBS перед
@@ -646,16 +750,16 @@ model LobbyMember {
 
   accountId Int
   /// Профиль в ростере, если он есть: им подписан участник и по нему рисуется точка «в сети».
-  player   Player? @relation(fields: [playerId], references: [id], onDelete: SetNull)
-  playerId Int?
+  player    Player? @relation(fields: [playerId], references: [id], onDelete: SetNull)
+  playerId  Int?
 
   /// Сторона: 0 = A, 1 = B. null — вне сторон (админ комнаты, ОБС): он не игрок и готовность не блокирует.
   side Int?
   /// player | coach | caster | admin. Тренер и ОБС в счёт готовности стороны не идут.
   role String @default("player")
 
-  captain Boolean @default(false)
-  ready   Boolean @default(false)
+  captain  Boolean   @default(false)
+  ready    Boolean   @default(false)
   /// Когда человек впервые открыл комнату. null = приглашён, но не заходил.
   joinedAt DateTime?
 
@@ -729,13 +833,12 @@ model PointsEntry {
   createdBy   String?
   createdAt   DateTime @default(now())
 
-  match   Match? @relation(fields: [matchId], references: [id])
-  matchId Int?
+  match        Match?      @relation(fields: [matchId], references: [id])
+  matchId      Int?
   /// За какой турнир начислено. Появилось вместе с турнирами: зачёт TP сезонный, и без этого поля
   /// новый сезон продолжал бы копить в ту же цифру. NULL — начисление вне турнира.
   tournament   Tournament? @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
   tournamentId Int?
-
 }
 
 /// Осколки — вторая валюта лиги, рядом с TP и отдельно от него (`src/lib/shards.ts`).
@@ -754,16 +857,16 @@ model PointsEntry {
 /// трата ляжет отрицательной строкой сюда же, а грейд её не заметит: он считает сумму ПЛЮСОВЫХ
 /// начислений, поэтому потратить и упасть в грейде нельзя.
 model ShardEntry {
-  id     Int         @id @default(autoincrement())
+  id        Int         @id @default(autoincrement())
   account   UserAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   accountId Int
-  reason String // welcome | steam | telegram | profile | manual (src/lib/shard-grades.ts)
-  amount Int
+  reason    String // welcome | steam | telegram | profile | manual (src/lib/shard-grades.ts)
+  amount    Int
   /// Ключ идемпотентности: `<reason>:<dota account_id>`. Уникален по всей таблице — это и есть
   /// анти-абуз из плана: веха, однажды оплаченная на этот игровой аккаунт, второй раз не
   /// оплачивается НИКОМУ — даже если человек завёл в лиге второй аккаунт и перевесил на него Steam.
-  key    String      @unique
-  note   String?
+  key       String      @unique
+  note      String?
 
   createdAt DateTime @default(now())
 
@@ -775,23 +878,23 @@ model ShardEntry {
 /// перезапускают, а капитан к этому моменту продиктовал полсостава. Одна строка на чат;
 /// заполненный квиз уезжает в `TeamApplication` (source = telegram) и строка обнуляется.
 model BotSession {
-  id        Int      @id @default(autoincrement())
-  chatId    String   @unique // id чата в Telegram, строкой: числа там выходят за 2^53
-  step      String // шаг квиза (src/lib/tg-quiz.ts → Step) либо `flow` — диалог ведёт граф
+  id          Int      @id @default(autoincrement())
+  chatId      String   @unique // id чата в Telegram, строкой: числа там выходят за 2^53
+  step        String // шаг квиза (src/lib/tg-quiz.ts → Step) либо `flow` — диалог ведёт граф
   /// Всё собранное на текущий момент, JSON (src/lib/tg-quiz.ts → State).
-  state     String
+  state       String
   /// В каком флоу стоит диалог: `BotFlow.key` (main, invite, answer — src/lib/bot-flow/default-flow.ts).
   /// NULL — строка от диалога до Э7, когда флоу был единственный: читается как `main`.
-  flowKey   String?
+  flowKey     String?
   /// На какой ноде графа стоит диалог (src/lib/bot-flow). NULL — граф этот чат не ведёт.
-  flowNode  String?
+  flowNode    String?
   /// Версия графа, на которой диалог начался: `BotFlow.id`. Публикация новой версии не должна
   /// выбрасывать человека из середины анкеты, поэтому сессия доигрывает на своей.
   /// NULL при непустом `flowNode` — граф из сида в коде (BotFlow ещё ни разу не правили).
   flowVersion Int?
   /// Переменные, собранные графом: JSON `{ "ник": "…" }` (область `vars.*`).
-  flowVars  String?
-  updatedAt DateTime @updatedAt
+  flowVars    String?
+  updatedAt   DateTime @updatedAt
 }
 
 /// Версия графа диалога телеграм-бота (src/lib/bot-flow). Граф описывает **навигацию**: что бот
@@ -810,20 +913,20 @@ model BotSession {
 /// тоже не больше одного) | archived (бывшая живая). Версии **не удаляются**: на них доигрывают
 /// начатые диалоги (`BotSession.flowVersion`), и откат — это возврат к существующей строке.
 model BotFlow {
-  id        Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   /// Какой флоу: main (меню), invite (онбординг по ссылке), answer (ответ сопернику) — плюс
   /// заведённые оператором. Как в него попадают, объявлено в самом графе (`entry`), а не здесь.
-  key       String
-  version   Int // номер версии внутри `key`, растёт монотонно
-  status    String // draft | published | archived
+  key         String
+  version     Int // номер версии внутри `key`, растёт монотонно
+  status      String // draft | published | archived
   /// Граф целиком, JSON (src/lib/bot-flow/types.ts → BotFlowGraph).
-  graph     String
+  graph       String
   /// Подпись версии оператором: по чему её узнать в списке откатов.
-  note      String?
+  note        String?
   /// Когда версия ушла в эфир. NULL у черновика; у архивной остаётся — по ней виден порядок.
   publishedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@unique([key, version])
 }
@@ -853,10 +956,10 @@ model BotSetting {
 /// данных ближайшее напоминание может уйти вторично, и это дешевле, чем следы, указывающие на
 /// чужую встречу с тем же id.
 model SeriesNotice {
-  id       Int      @id @default(autoincrement())
-  kind     String // remind | moved | scheduled | no_time (src/lib/tg-schedule.ts)
-  mark     String // что именно отправлено: интервал напоминания, новое время или дата дайджеста
-  sentAt   DateTime @default(now())
+  id     Int      @id @default(autoincrement())
+  kind   String // remind | moved | scheduled | no_time (src/lib/tg-schedule.ts)
+  mark   String // что именно отправлено: интервал напоминания, новое время или дата дайджеста
+  sentAt DateTime @default(now())
 
   series   Series @relation(fields: [seriesId], references: [id], onDelete: Cascade)
   seriesId Int
@@ -888,8 +991,8 @@ model MatchRequest {
   declineReason     String? // причина отказа — её видят оба капитана
   createdAt         DateTime  @default(now())
 
-  series   Series @relation(fields: [seriesId], references: [id], onDelete: Cascade)
-  seriesId Int
+  series             Series @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  seriesId           Int
   /// Кто предложил — капитан, а не аккаунт: в составе стоит игрок, и «чья это команда» читается
   /// именно из его места (`RosterSpot`).
   proposedBy         Player @relation(fields: [proposedByPlayerId], references: [id], onDelete: Cascade)
@@ -908,13 +1011,13 @@ model MatchRequest {
 /// сам написал боту. Поэтому запоминаем всех, кто хоть раз написал: иначе уведомить о решении по
 /// заявке некого. Ничего личного здесь нет — id чата и публичный хендл.
 model TgChat {
-  id       Int      @id @default(autoincrement())
-  chatId   String   @unique
-  username String? // без «@», как Player.telegram; у человека без хендла пусто
+  id        Int      @id @default(autoincrement())
+  chatId    String   @unique
+  username  String? // без «@», как Player.telegram; у человека без хендла пусто
   /// Аккаунт, за которым закреплён чат (после регистрации в боте). Без relation — как остальные
   /// следы в этой базе: id на машинах разные, а связь здесь нужна только чтобы знать, куда писать.
   accountId Int?
-  seenAt   DateTime @updatedAt
+  seenAt    DateTime @updatedAt
 }
 
 /// Одноразовый код входа на сайт, выданный ботом (`src/lib/tg-login.ts`). У пришедшего из телеграма
@@ -955,15 +1058,15 @@ model TgLinkToken {
 /// Почему не письмо со ссылкой: писем приложение не шлёт вовсе (`DECISIONS.md`, 20.08.2026).
 /// Ссылка уходит либо в телеграм самому человеку, либо оператору в админке — руками адресату.
 model PasswordResetToken {
-  id        Int       @id @default(autoincrement())
-  token     String    @unique // случайный base64url, живёт в ссылке
+  id         Int       @id @default(autoincrement())
+  token      String    @unique // случайный base64url, живёт в ссылке
   /// Чей пароль сбрасываем. Без relation — как остальные токены в этой базе.
-  accountId Int
+  accountId  Int
   /// Кто заказал сброс: id аккаунта оператора, либо null — человек сам, через бота.
   issuedById Int?
-  expiresAt DateTime
-  usedAt    DateTime? // непусто = токен потрачен, второй раз пароль не сменит
-  createdAt DateTime  @default(now())
+  expiresAt  DateTime
+  usedAt     DateTime? // непусто = токен потрачен, второй раз пароль не сменит
+  createdAt  DateTime  @default(now())
 }
 
 /// «Эти двое — разные люди»: решение оператора по паре похожих профилей (`/admin/roster/duplicates`).
@@ -980,21 +1083,20 @@ model PlayerDistinct {
   @@unique([aId, bId])
 }
 
-
 /// Анкета под ивент: набор произвольных вопросов, который бот задаёт в телеграме. Отдельно от
 /// заявки команды (`TeamApplication`) сознательно: заявка завязана на модель ростера — команда,
 /// позиции, ссылки на профили, — а анкета собирает что угодно (запись на шоуматч, опрос, заявка
 /// кастера) и никуда, кроме своих ответов, не пишет. Общий у них только движок «вопрос → ответ →
 /// сводка», а правила проверки и последствия разные.
 model Quiz {
-  id          Int      @id @default(autoincrement())
-  slug        String   @unique // в адресе админки
+  id          Int       @id @default(autoincrement())
+  slug        String    @unique // в адресе админки
   title       String // подпись кнопки в боте
   description String? // что это и зачем — показывается перед первым вопросом
   /// draft (не видно никому) | open (бот предлагает) | closed (приём закрыт, ответы остались)
-  status      String   @default("draft")
+  status      String    @default("draft")
   closeAt     DateTime? // срок приёма; пусто — до ручного закрытия
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   questions QuizQuestion[]
   responses QuizResponse[]
@@ -1045,17 +1147,17 @@ model QuizResponse {
 /// меняется, без диффа всей анкеты. Старое значение снимается на момент отправки — чтобы в очереди
 /// было видно «из чего во что», даже если профиль успели поправить с другой стороны.
 model ProfileEditRequest {
-  id       Int    @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   /// Какое поле правим: nickname | city | mmr | dotabuffUrl | stratzUrl | steamUrl | photo
   /// (канон — EDIT_FIELDS в src/lib/profile-edit.ts).
-  field    String
-  oldValue String?
-  newValue String
-  status   String @default("pending") // pending | approved | rejected
-  notes    String? // причина возврата — её видит приславший
+  field        String
+  oldValue     String?
+  newValue     String
+  status       String    @default("pending") // pending | approved | rejected
+  notes        String? // причина возврата — её видит приславший
   /// Чат, из которого пришла правка: по нему уйдёт решение организатора. Как и у заявки команды,
   /// это единственная надёжная ниточка к человеку.
-  chatId   String?
+  chatId       String?
   submittedAt  DateTime  @default(now())
   reviewedAt   DateTime?
   reviewedById Int? // след в истории, без relation — как UserAccount.reviewedById

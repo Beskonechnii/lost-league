@@ -154,6 +154,10 @@ export async function applyPool(): Promise<PoolEntry[]> {
   // это не влияет — `buildDraft` собирает состав из базы, а не из пула (см. actions.ts).
   const [players, showMmr] = await Promise.all([listPlayers(), mmrShown()]);
   return players.flatMap((p) => {
+    // Непроверенный (Mix Cup до апрува, ТЗ 34) сюда не должен доходить: заявка команды — публичная
+    // витрина не хуже /roster/players, а listPlayers() отдаёт всех (её отдельно использует и
+    // draftPool() для самого Mix Cup, где непроверенный нужен — фильтруем здесь, а не в источнике).
+    if (!p.verified) return [];
     const accountId = playerAccountId(p);
     if (!accountId) return [];
     const team = p.main?.team ?? null;

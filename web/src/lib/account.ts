@@ -412,8 +412,16 @@ export type PendingRegistration = Awaited<ReturnType<typeof pendingRegistrations
 
 /** Анкета → новый Player. MMR берём не из анкеты: там он со слов игрока, а в лиге это её собственные
  *  данные — их ставит оператор в форме апрува. Позиции у Player нет вовсе: роль в составе живёт в
- *  RosterSpot и появляется вместе с командой, поэтому заявленная позиция остаётся в анкете. */
-async function createPlayerFromApplication(app: Application, mmr: number | null): Promise<number> {
+ *  RosterSpot и появляется вместе с командой, поэтому заявленная позиция остаётся в анкете.
+ *
+ *  `extra` — исключение Mix Cup (ТЗ 34, экспортируется ради lib/mixcup.ts): профиль там заводится
+ *  ДО апрува, поэтому `verified: false` и отметка события-источника; обычный путь (апрув анкеты)
+ *  извне extra не передаёт, и профиль сразу верифицирован (дефолт схемы). */
+export async function createPlayerFromApplication(
+  app: Application,
+  mmr: number | null,
+  extra?: { verified?: boolean; mixCupSourceEventId?: number },
+): Promise<number> {
   const slug = await uniqueSlug(slugify(app.nickname));
   const player = await prisma.player.create({
     data: {
@@ -430,6 +438,8 @@ async function createPlayerFromApplication(app: Application, mmr: number | null)
       // Без account_id игрок не находится ни в одном матче (§7 CLAUDE.md) — выводим из ссылок сразу.
       accountId: applicationAccountId(app),
       mmr,
+      ...(extra?.verified === false ? { verified: false } : {}),
+      ...(extra?.mixCupSourceEventId ? { mixCupSourceEventId: extra.mixCupSourceEventId } : {}),
     },
   });
   return player.id;
@@ -451,9 +461,18 @@ export async function approveRegistration(accountId: number, mmr: number | null)
       if (taken && taken.id !== accountId) return { ok: false, error: "Игрок уже привязан к другому аккаунту" };
       playerId = account.claimId;
     } else {
-      const app = parseApplication(account.application);
-      if (!app) return { ok: false, error: "У заявки нет ни анкеты, ни выбранного профиля — верните её с причиной" };
-      playerId = await createPlayerFromApplication(app, mmr);
+      // Mix Cup (ТЗ 34): если человек уже записался на событие до апрува, профиль для него
+      // заведён заранее (`registerForMixCup` в lib/mixcup.ts, verified: false) — здесь его
+      // переиспользуем, а не заводим дубль, и снимаем пометку «не проверен».
+      const shadow = await prisma.mixCupRegistration.findFirst({ where: { accountId }, select: { playerId: true } });
+      if (shadow) {
+        playerId = shadow.playerId;
+        await prisma.player.update({ where: { id: playerId }, data: { verified: true } });
+      } else {
+        const app = parseApplication(account.application);
+        if (!app) return { ok: false, error: "У заявки нет ни анкеты, ни выбранного профиля — верните её с причиной" };
+        playerId = await createPlayerFromApplication(app, mmr);
+      }
     }
   }
 

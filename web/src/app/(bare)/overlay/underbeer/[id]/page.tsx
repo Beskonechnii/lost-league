@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { draftPool } from "@/lib/draft-data";
 import { type DraftState } from "@/lib/draft";
 import { mmrShown, withoutMmr } from "@/lib/privacy";
+import { ECLIPSE_PARTNER } from "@/lib/partners";
 import { OverlayLive } from "./_components/overlay-live";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +15,7 @@ export const dynamic = "force-dynamic";
 export default async function OverlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [session, full, showMmr] = await Promise.all([
-    prisma.draftSession.findUnique({ where: { id: Number(id) } }),
+    prisma.draftSession.findUnique({ where: { id: Number(id) }, include: { mixCupEvent: { select: { id: true } } } }),
     draftPool(),
     mmrShown(),
   ]);
@@ -35,5 +36,13 @@ export default async function OverlayPage({ params }: { params: Promise<{ id: st
     notFound();
   }
 
-  return <OverlayLive sessionId={session.id} initialState={state} pool={pool} showMmr={showMmr} />;
+  return (
+    <OverlayLive
+      sessionId={session.id}
+      initialState={state}
+      pool={pool}
+      showMmr={showMmr}
+      partner={session.mixCupEvent ? ECLIPSE_PARTNER : undefined}
+    />
+  );
 }

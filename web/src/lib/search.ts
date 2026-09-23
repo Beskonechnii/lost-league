@@ -60,7 +60,9 @@ export async function searchLeague(query: string, limit = 8): Promise<SearchHit[
     }),
     // Настоящее имя из выборки исключено намеренно (DECISIONS 18.09.2026): поиск открыт гостю,
     // поэтому имени нет ни в ответе, ни в ранжировании — иначе по нему можно перебрать лигу.
-    prisma.player.findMany({ select: { id: true, slug: true, nickname: true, photo: true } }),
+    // Непроверенный (Mix Cup до апрува, ТЗ 34) в поиске не находится — та же граница, что у
+    // /roster/players и карточки профиля.
+    prisma.player.findMany({ where: { verified: true }, select: { id: true, slug: true, nickname: true, photo: true } }),
     // Черновики турниров публично не существуют — так же, как на /tournaments.
     prisma.tournament.findMany({
       where: { status: { not: "draft" } },

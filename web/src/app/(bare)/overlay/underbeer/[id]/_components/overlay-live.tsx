@@ -1,24 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { currentTurn, memberIds, type DraftState, type PoolPlayer } from "@/lib/draft";
-import { PlayerAvatar } from "@/app/(public)/roster/_components/avatar";
+import { useEffect, useRef, useState } from "react";
+import { currentTurn, lastMovedPlayer, memberIds, type DraftState, type PoolPlayer } from "@/lib/draft";
+import { DraftPlayerLine } from "@/app/(admin)/underbeer/[id]/_components/player-line";
+import { StatusPill } from "@/components/pouf/feedback";
+import { Icon } from "@/components/pouf/Icon";
+import { PartnerMark } from "@/components/pouf/media";
+import { Card } from "@/components/pouf/surface";
 
 // Живой оверлей: опрашивает сессию раз в ~1.5с и перерисовывает составы, пока идёт драфт.
 // OBS держит сцену открытой всё эфирное время, поэтому опрос дешевле любого сокета и не требует
 // отдельного канала — сервер отдаёт готовый payload, пул резолвим на клиенте по id.
 //
-// Единственный экран проекта, который НЕ переезжает на Light Clay (Э11): это не страница, а слой
-// поверх картинки игры в OBS-сцене. Тёмные полупрозрачные карточки читаются на любом кадре, а
-// светлые — нет. Поэтому здесь свои цвета и `text-white`: токены Кита рассчитаны на бумагу.
-// После Э3 (`--ink` стал тёмным) оверлей унаследовал тёмный текст на тёмной карточке и в эфире
-// был нечитаем — цвета проставлены явно, чтобы это не повторилось при следующей смене палитры.
+// Кожа — Light Clay (ТЗ 35, решение 15.09.2026: тёмной эфирной кожи не делаем нигде). Раньше здесь
+// стояло тёмное полупрозрачное стекло — карточка держалась на прозрачности, чтобы не перекрывать
+// картинку игры под собой. Теперь карточка НЕПРОЗРАЧНА (бумага Кита `bg-surface`+`cushion-card`):
+// она перекрывает игру под собой полностью, и полупрозрачность ей для этого не нужна вовсе — тем
+// самым отпадет и причина держать здесь отдельную тёмную палитру. Фон страницы остаётся прозрачным
+// (правило группы `(bare)`) — так игра видна там, где карточек нет.
 
 export function OverlayLive({
   sessionId,
   initialState,
   pool,
   showMmr,
+  partner,
 }: {
   sessionId: number;
   initialState: DraftState;
@@ -26,8 +32,14 @@ export function OverlayLive({
   /** Показывает ли лига MMR. Числа в пуле уже сняты на сервере, но без флага «Σ MMR 0» и пустая
    *  подпись «MMR» остались бы в эфире: подпись уходит вместе со значением. */
   showMmr: boolean;
+  /** Партнёр-организатор (Mix Cup by Eclipse, ТЗ 33) — не передан у обычного UNDERBEER. */
+  partner?: { name: string; src: string | null };
 }) {
   const [state, setState] = useState<DraftState>(initialState);
+  // «Последний взятый» — не поле payload (ТЗ 35 не меняет формат), а разница между соседними
+  // тиками опроса: `prevRef` держит срез с прошлого тика, первый тик сравнивать не с чем.
+  const prevRef = useRef<DraftState | null>(null);
+  const [lastPickId, setLastPickId] = useState<number | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -37,7 +49,12 @@ export function OverlayLive({
         if (!res.ok) return;
         const session = (await res.json()) as { payload: string };
         const next = JSON.parse(session.payload) as DraftState;
-        if (alive) setState(next);
+        if (!alive) return;
+        const moved = lastMovedPlayer(prevRef.current, next);
+        if (next.phase === "draft" && moved != null) setLastPickId(moved);
+        else if (next.phase !== "draft") setLastPickId(null);
+        prevRef.current = next;
+        setState(next);
       } catch {
         // сеть моргнула — оставляем последнее состояние, следующий тик подхватит
       }
@@ -51,66 +68,94 @@ export function OverlayLive({
 
   const byId = new Map(pool.map((p) => [p.id, p]));
   const cur = currentTurn(state);
+  // Драфт не идёт и не завершён — сцена открыта раньше эфира (OBS держит её загруженной заранее).
+  const notStarted = state.phase !== "draft" && state.phase !== "done";
 
   return (
-    <div className="min-h-screen p-6 text-white">
-      <div
-        className="mx-auto grid gap-4"
-        style={{
-          // auto-fit + минимум 240px: команды переносятся на новую строку, а не схлопываются
-          // в нечитаемо-узкие колонки при большом их числе. Ширину контейнера ограничиваем по
-          // числу команд, чтобы 2–3 команды не растягивались на весь экран.
-          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-          maxWidth: `min(100%, ${Math.max(1, state.teams.length) * 340}px)`,
-        }}
-      >
-        {state.teams.map((team) => {
-          const members = memberIds(team)
-            .map((pid) => byId.get(pid))
-            .filter((p): p is PoolPlayer => !!p);
-          const mmrSum = members.reduce((s, p) => s + (p.mmr ?? 0), 0);
-          const isCurrent = cur?.teamId === team.id;
-          return (
-            <div
-              key={team.id}
-              className={`overflow-hidden rounded-2xl border bg-neutral-950/85 backdrop-blur transition-[box-shadow] ${
-                isCurrent ? "ring-2 ring-amber-400" : ""
-              }`}
-              style={{ borderColor: isCurrent ? "#fbbf24" : `${team.color}88` }}
-            >
-              <div className="flex items-center justify-between px-4 py-3" style={{ background: `${team.color}22` }}>
-                <div className="flex items-center gap-2">
-                  <span className="h-3.5 w-3.5 rounded-full" style={{ background: team.color }} />
-                  <span className="text-lg font-bold">{team.name}</span>
-                </div>
-                {showMmr && <span className="text-xs text-white/60">Σ MMR {mmrSum.toLocaleString("ru-RU")}</span>}
-              </div>
-              <div className="space-y-2 p-3">
-                {members.map((p) => (
-                  <div key={p.id} className="flex items-center gap-3 rounded-xl bg-neutral-900/70 p-2">
-                    <PlayerAvatar photo={p.photo} nickname={p.nickname} color={team.color} size={44} className="!rounded-lg" />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="truncate font-semibold">{p.nickname}</span>
-                        {team.captainId === p.id && (
-                          <span className="rounded bg-amber-400/25 px-1 text-[10px] font-bold text-amber-200">КАП</span>
-                        )}
-                        {team.locked.includes(p.id) && <span title="Закреплён">🔒</span>}
-                      </div>
-                    </div>
-                    {showMmr && (
-                      <div className="shrink-0 text-right">
-                        <div className="text-sm font-medium">{p.mmr ? p.mmr.toLocaleString("ru-RU") : "—"}</div>
-                        <div className="text-[10px] text-white/45">MMR</div>
-                      </div>
-                    )}
+    <div className="min-h-screen p-6 font-pouf">
+      {notStarted ? (
+        <div className="grid min-h-[calc(100vh-3rem)] place-items-center">
+          <div className="rounded-card bg-surface px-8 py-6 text-center cushion-card">
+            <p className="text-lg font-black text-ink">Драфт ещё не начался</p>
+          </div>
+        </div>
+      ) : (
+        <div
+          className="mx-auto grid gap-4"
+          style={{
+            // auto-fit + минимум 240px: команды переносятся на новую строку, а не схлопываются
+            // в нечитаемо-узкие колонки при большом их числе. Ширину контейнера ограничиваем по
+            // числу команд, чтобы 2–3 команды не растягивались на весь экран.
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            maxWidth: `min(100%, ${Math.max(1, state.teams.length) * 340}px)`,
+          }}
+        >
+          {state.teams.map((team) => {
+            const members = memberIds(team)
+              .map((pid) => byId.get(pid))
+              .filter((p): p is PoolPlayer => !!p);
+            const mmrSum = members.reduce((s, p) => s + (p.mmr ?? 0), 0);
+            const isCurrent = cur?.teamId === team.id;
+            return (
+              <Card key={team.id} variant="flush">
+                <div className="flex items-center justify-between gap-2 px-4 py-3" style={{ background: `${team.color}22` }}>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="h-3.5 w-3.5 shrink-0 rounded-pill" style={{ background: team.color }} />
+                    <span className="min-w-0 truncate text-lg font-black text-ink">{team.name}</span>
+                    {/* Название команды, чей сейчас ход — текстовая пилюля, а не только цветная
+                        обводка карточки: зритель на стрим-захвате низкого битрейта её не различит. */}
+                    {isCurrent && <StatusPill tone="warn">Ходит</StatusPill>}
                   </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                  {showMmr && (
+                    <span className="shrink-0 text-xs font-bold text-muted">Σ MMR {mmrSum.toLocaleString("ru-RU")}</span>
+                  )}
+                </div>
+                <div className="space-y-2 p-3">
+                  {members.map((p) => {
+                    const isLastPick = lastPickId === p.id;
+                    return (
+                      <div
+                        key={p.id}
+                        className={`rounded-control bg-surface-2 p-1 cushion-field ${
+                          // Тонкая рамка последнего взятого — тот же приём, что на борде (ТЗ 35
+                          // п.4): другая толщина (1px), чем обводка хода команды.
+                          isLastPick ? "outline outline-1 outline-offset-1 outline-[color:var(--accent-fill)]" : ""
+                        }`}
+                      >
+                        <DraftPlayerLine player={p} hideValue={!showMmr} />
+                        {(team.captainId === p.id || team.locked.includes(p.id)) && (
+                          <div className="flex items-center gap-1.5 px-2 pb-1">
+                            {team.captainId === p.id && (
+                              <span className="rounded-pill bg-accent-fill px-1.5 py-0.5 text-[9px] font-black text-[var(--on-accent)]">
+                                КАП
+                              </span>
+                            )}
+                            {team.locked.includes(p.id) && (
+                              <span title="Закреплён" className="text-muted">
+                                <Icon name="lock" size="sm" label="Закреплён" />
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Знак организатора — фиксированный угол, вне грида команд: сетка центрирована по ширине
+          экрана и по числу команд (2–8), угол гарантированно свободен при любом их числе (ТЗ 35
+          п.7). 48px поля с каждой стороны на 1920×1080 — запас внутри вещательной safe area. */}
+      {partner && (
+        <div className="fixed bottom-12 right-12 flex flex-col items-center gap-1.5 rounded-card bg-surface px-4 py-3 cushion-card">
+          <PartnerMark src={partner.src} name={partner.name} size="md" />
+          <span className="text-[11px] font-bold text-muted">Организатор</span>
+        </div>
+      )}
     </div>
   );
 }

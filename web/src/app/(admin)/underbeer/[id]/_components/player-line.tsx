@@ -11,7 +11,21 @@ import type { PoolPlayer } from "@/lib/draft";
  * До Э11 драфт рисовал эту строку своей вёрсткой — аватарка 34px с `!rounded-md`, ник
  * `font-medium`, подпись `text-ink-subtle`, — а в доске заявки стояла её разошедшаяся копия.
  */
-export function DraftPlayerLine({ player, note }: { player: PoolPlayer; note?: string | null }) {
+export function DraftPlayerLine({
+  player,
+  note,
+  unavailable = false,
+  hideValue = false,
+}: {
+  player: PoolPlayer;
+  note?: string | null;
+  /** Игрок ушёл из ростера (сохранённый состав Mix Cup, ТЗ 33): позиции и MMR у него больше
+   *  нет — подпись говорит об этом прямо, а не показывает пустую позицию. */
+  unavailable?: boolean;
+  /** Скрыть колонку MMR целиком, не прочерком — для оверлея, когда лига выключила показ MMR
+   *  (`mmrShown`, ТЗ 32): прочерк выглядел бы как «у игрока нет MMR», а не «лига его прячет». */
+  hideValue?: boolean;
+}) {
   return (
     <KitPlayerLine
       thumb={
@@ -24,8 +38,9 @@ export function DraftPlayerLine({ player, note }: { player: PoolPlayer; note?: s
         />
       }
       nickname={player.nickname}
-      sub={[player.realName, roleShort(player.role)].filter(Boolean).join(" · ") || "без позиции"}
-      value={player.mmr ? player.mmr.toLocaleString("ru-RU") : null}
+      sub={unavailable ? "не в ростере" : [player.realName, roleShort(player.role)].filter(Boolean).join(" · ") || "без позиции"}
+      value={unavailable ? null : player.mmr ? player.mmr.toLocaleString("ru-RU") : null}
+      hideValue={unavailable || hideValue}
       note={note}
     />
   );

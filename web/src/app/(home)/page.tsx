@@ -10,6 +10,7 @@ import { TournamentsBlock } from "./tournaments-block";
 import { MatchesBlock, isMatchCut } from "./matches-block";
 import { HomeBanner } from "./banner";
 import { PointsBlock, isPointsCut } from "./points";
+import { MixCupSection } from "./mixcup-section";
 
 // Входная дверь продукта — витрина, а не список разделов (Э21 RELEASE-PLAN §E).
 //
@@ -65,6 +66,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
         {/* Кто здесь я: гостю — дверь, новичку — состояние заявки, игроку — его карточка. */}
         <MiniProfile account={nav.raw} nav={nav} record={record} place={standing?.me?.place ?? null} />
       </div>
+
+      {/* «Второй, но срочный» призыв — сразу за героем (тот решает первым) и перед турнирами
+          (лига показывает их постоянно). На 390 в DOM остаётся тем же соседом ряда выше —
+          flex-col-reverse там разворачивает только герой и мини-профиль между собой. */}
+      <MixCupSection />
 
       <TournamentsBlock />
 

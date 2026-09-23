@@ -91,6 +91,33 @@ export function Dot({ tone = 'purple' }: { tone?: Tone }) {
   )
 }
 
+/**
+ * Знак партнёра-организатора события (Mix Cup by Eclipse, ТЗ 33) — тем же приёмом, что
+ * `HeroLogo` (`pouf/hero.tsx`): картинка или подпись-заглушка, никогда пустое место.
+ *
+ * `src` нет (ассетов Eclipse ещё нет, MANUAL-TASKS §7) → пилюля Badge того же слота высоты —
+ * когда файл появится, вокруг ничего не сдвигается, меняется только содержимое. Своих
+ * CSS-фильтров поверх присланного файла атом не накладывает: перекраска чужого знака запрещена.
+ */
+export function PartnerMark({
+  src,
+  name,
+  size = 'sm',
+}: {
+  src?: string | null
+  name: string
+  size?: 'sm' | 'md'
+}) {
+  if (!src) return <Badge tone="idle">Партнёр — {name}</Badge>
+  const h = size === 'md' ? 'h-11' : 'h-7'
+  return (
+    <span className={cx('inline-flex items-center rounded-control bg-surface px-2 cushion-field', h)}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt={name} className="h-full w-auto object-contain" />
+    </span>
+  )
+}
+
 /** An image, framed in clay.
  *
  * `alt` is required with no default: these render user-supplied screenshots,

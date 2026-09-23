@@ -5,7 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { IconButton } from "@/components/pouf/Button";
 import { Icon, type IconName } from "@/components/pouf/Icon";
-import { EmptyState, StatusPill } from "@/components/pouf/feedback";
+import { EmptyState, StatusPill, type AlertTone } from "@/components/pouf/feedback";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +41,10 @@ export type ToolSession = {
   title: string;
   updated: string;
   done: boolean;
+  /** Переопределяет пилюлю статуса своим тоном и подписью — когда состояний больше двух
+   *  (Mix Cup, ТЗ 33: приём открыт/закрыт/сыгран). `done` тогда только решает, куда попала
+   *  карточка по смыслу вызова, саму пилюлю рисует это поле. */
+  status?: { tone: AlertTone | "neutral"; label: string };
 };
 
 export function SessionList({
@@ -105,7 +109,9 @@ export function SessionList({
           >
             <div className="flex items-center justify-between gap-2 pr-12">
               <span className="truncate font-black text-ink">{s.title}</span>
-              <StatusPill tone={s.done ? "ok" : "warn"}>{s.done ? doneLabel : draftLabel}</StatusPill>
+              <StatusPill tone={s.status?.tone ?? (s.done ? "ok" : "warn")}>
+                {s.status?.label ?? (s.done ? doneLabel : draftLabel)}
+              </StatusPill>
             </div>
             <div className="mt-2 text-xs font-bold text-muted">Обновлён {s.updated}</div>
           </Link>

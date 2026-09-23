@@ -2,6 +2,7 @@
 
 import { DragCard, useDropTarget } from "@/components/pouf/board";
 import { Button, IconButton } from "@/components/pouf/Button";
+import { StatusPill } from "@/components/pouf/feedback";
 import { Icon } from "@/components/pouf/Icon";
 import {
   canLock,
@@ -31,6 +32,7 @@ export function TeamColumn({
   poolById,
   isCurrent,
   isActiveConfig,
+  lastPickId,
   onSelectActive,
   onRemove,
   onRename,
@@ -42,6 +44,9 @@ export function TeamColumn({
   poolById: Map<number, PoolPlayer>;
   isCurrent: boolean;
   isActiveConfig: boolean;
+  /** Кого взяли последним (пик/кража) — по всему борду, не только этой команде. Рамка ставится,
+   *  только если это игрок в этой колонке (см. `lastMovedPlayer`, `lib/draft.ts`). */
+  lastPickId: number | null;
   onSelectActive: () => void;
   onRemove: () => void;
   onRename: (name: string) => void;
@@ -99,11 +104,22 @@ export function TeamColumn({
         )}
       </div>
 
-      {/* Спец-действия: по разу на команду. Использованное гаснет — это счётчик, а не кнопка. */}
-      {!config && (
+      {/* Чей сейчас ход — текстом, не только цветной обводкой колонки (WCAG SC 1.4.1, см. ТЗ 35
+          и fearless-драфт 15а). Тот же тон, что несёт фаза «Идёт драфт» в шапке борда. */}
+      {isCurrent && (
+        <div>
+          <StatusPill tone="warn">Ходит</StatusPill>
+        </div>
+      )}
+
+      {/* Спец-действия: по разу на команду. Использованное гаснет — это счётчик, а не кнопка.
+          Тумблеры события (Mix Cup) могут выключить действие вовсе — тогда ряда для него нет,
+          а не пилюли с прочерком: прочерк читался бы как «есть, но не сработало». Свойство
+          сессии, а не команды — поэтому ряд то есть у всех колонок сразу, то нет ни у одной. */}
+      {!config && (state.lockEnabled !== false || state.stealEnabled !== false) && (
         <div className="flex flex-wrap gap-1.5">
-          <SpecialTag used={team.usedLock}>Закрепить</SpecialTag>
-          <SpecialTag used={team.usedSteal}>Украсть</SpecialTag>
+          {state.lockEnabled !== false && <SpecialTag used={team.usedLock}>Закрепить</SpecialTag>}
+          {state.stealEnabled !== false && <SpecialTag used={team.usedSteal}>Украсть</SpecialTag>}
         </div>
       )}
 
@@ -119,8 +135,17 @@ export function TeamColumn({
           const canLockThis = canLock(state, team.id, pid);
           // украсть можно, когда сейчас ходит ДРУГАЯ команда и правило разрешает
           const stealable = curTeamId != null && curTeamId !== team.id && canSteal(state, team.id, pid);
+          const isLastPick = lastPickId === pid;
           return (
-            <div key={pid} className="rounded-control bg-surface-2 p-1 cushion-field">
+            <div
+              key={pid}
+              className={`rounded-control bg-surface-2 p-1 cushion-field ${
+                // Тонкая рамка последнего взятого — другая толщина, чем обводка хода колонки
+                // (1px против 2px там), тот же атом и на борде, и на оверлее (см. ТЗ 35 п.4).
+                isLastPick ? "outline outline-1 outline-offset-1 outline-[color:var(--accent-fill)]" : ""
+              }`}
+            >
+              {isLastPick && <span className="sr-only">Последний взятый игрок</span>}
               <div className="flex items-center gap-1">
                 {/* Игрока, которого можно украсть, ещё и тащат: бросок в свою колонку — та же
                     кража. До Э11 обработчик броска её ждал, но строка состава не была
