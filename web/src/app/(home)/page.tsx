@@ -10,7 +10,6 @@ import { TournamentsBlock } from "./tournaments-block";
 import { MatchesBlock, isMatchCut } from "./matches-block";
 import { HomeBanner } from "./banner";
 import { PointsBlock, isPointsCut } from "./points";
-import { MixCupSection } from "./mixcup-section";
 
 // Входная дверь продукта — витрина, а не список разделов (Э21 RELEASE-PLAN §E).
 //
@@ -67,11 +66,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
         <MiniProfile account={nav.raw} nav={nav} record={record} place={standing?.me?.place ?? null} />
       </div>
 
-      {/* «Второй, но срочный» призыв — сразу за героем (тот решает первым) и перед турнирами
-          (лига показывает их постоянно). На 390 в DOM остаётся тем же соседом ряда выше —
-          flex-col-reverse там разворачивает только герой и мини-профиль между собой. */}
-      <MixCupSection />
-
+      {/* Отдельной секции-призыва Mix Cup здесь больше нет (ТЗ 37): Mix Cup стал обычным
+          турниром и показывается карточкой в общей ленте ниже — то же приглашение дважды на
+          одной странице было бы вторым входом в то же место. */}
       <TournamentsBlock />
 
       {/* Нижний ряд макета: матчи в узкой колонке, баллы на остаток, высоты плит равны

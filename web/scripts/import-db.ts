@@ -28,9 +28,9 @@ const d = (v: string | Date | null | undefined) => (v ? new Date(v) : null);
 
 async function main() {
   const snap = JSON.parse(readFileSync(input, "utf8"));
-  if (snap.version !== 16) {
+  if (snap.version !== 17) {
     throw new Error(
-      `Снимок версии ${snap.version}, а нужен 16. Снимки не мигрируются: пересними базу свежим ` +
+      `Снимок версии ${snap.version}, а нужен 17. Снимки не мигрируются: пересними базу свежим ` +
         `scripts/export-db.ts на той машине, где данные актуальны.`,
     );
   }
@@ -96,9 +96,9 @@ async function main() {
   await prisma.tournament.deleteMany();
   // Аккаунты ссылаются на игрока (SetNull) — сносим до игроков и создаём заново из снимка.
   await prisma.userAccount.deleteMany();
-  // Mix Cup (ТЗ 33): пики и команды — производные строки того же рода, что RosterSpot/GroupEntry
-  // (сносим и пересоздаём); само событие ниже upsert'ится по slug, как турнир — у него есть
-  // собственная идентичность (публичный адрес появится в ТЗ 34), а не только снимок результата.
+  // Mix Cup (ТЗ 33/37): пики и команды — производные строки того же рода, что RosterSpot/
+  // GroupEntry, и сносятся каскадом вместе с турниром выше. Явный снос оставлен для ясности
+  // порядка: их пересоздаёт этот же скрипт, ниже, из снимка.
   await prisma.mixCupPick.deleteMany();
   await prisma.mixCupTeam.deleteMany();
   await prisma.team.deleteMany({ where: { slug: { notIn: keepTeams } } });
@@ -113,37 +113,17 @@ async function main() {
     });
   }
 
-  // Mix Cup: событие апсертится по slug РАНЬШЕ игроков — Player.mixCupSourceEventId (ТЗ 34)
-  // ссылается на него, и id должен уже существовать. Команды/пики — ниже, после playerId (ищут
-  // игрока по слагу пика).
-  const mixCupEventId = new Map<string, number>();
-  for (const e of snap.mixCupEvents ?? []) {
-    // teams разбирается ниже отдельным циклом (нужен playerId, готовый только после игроков).
-    const { slug, title, status, stealEnabled, lockEnabled, playedAt, createdAt } = e;
-    const rest = { title, status, stealEnabled, lockEnabled };
-    const event = await prisma.mixCupEvent.upsert({
-      where: { slug },
-      create: { slug, ...rest, playedAt: d(playedAt), createdAt: d(createdAt) ?? new Date() },
-      update: { ...rest, playedAt: d(playedAt) },
-    });
-    mixCupEventId.set(slug, event.id);
-  }
-
-  for (const { slug, createdAt, mixCupSourceEventSlug, ...p } of snap.players) {
-    const data = { ...p, mixCupSourceEventId: mixCupSourceEventSlug ? mixCupEventId.get(mixCupSourceEventSlug) ?? null : null };
-    await prisma.player.upsert({
-      where: { slug },
-      create: { slug, ...data, createdAt: d(createdAt) ?? new Date() },
-      update: data,
-    });
-  }
-
   // ── турниры ────────────────────────────────────────────────────────────────
   // Раньше серий и итогов групп: те ссылаются на дивизион. Ключ дивизиона в снимке — «турнир/слаг»
   // (см. export-db): слаг дивизиона уникален только внутри своего турнира.
+  // Турниры заводятся РАНЬШЕ игроков: Player.sourceTournamentId (ТЗ 34/37) ссылается на турнир,
+  // и id должен уже существовать. Составы драфта (mixCupTeams) — ниже, после игроков: пик ищет
+  // игрока по слагу.
   const divisionId = new Map<string, number>();
+  const tournamentId = new Map<string, number>();
   for (const t of snap.tournaments) {
-    const { divisions, createdAt, startAt, endAt, regOpenAt, regCloseAt, ...rest } = t;
+    const { divisions, draftSettings, mixCupTeams, createdAt, startAt, endAt, regOpenAt, regCloseAt, ...rest } = t;
+    void mixCupTeams;
     const row = await prisma.tournament.create({
       data: {
         ...rest,
@@ -152,13 +132,26 @@ async function main() {
         regOpenAt: d(regOpenAt),
         regCloseAt: d(regCloseAt),
         createdAt: d(createdAt) ?? new Date(),
+        // draftSessionId не переносим — рабочий стол остаётся тем, что есть локально.
+        ...(draftSettings ? { draftSettings: { create: draftSettings } } : {}),
       },
     });
+    tournamentId.set(row.slug, row.id);
     for (const div of divisions) {
       const created = await prisma.division.create({ data: { ...div, tournamentId: row.id } });
       divisionId.set(`${row.slug}/${created.slug}`, created.id);
     }
   }
+
+  for (const { slug, createdAt, sourceTournamentSlug, ...p } of snap.players) {
+    const data = { ...p, sourceTournamentId: sourceTournamentSlug ? tournamentId.get(sourceTournamentSlug) ?? null : null };
+    await prisma.player.upsert({
+      where: { slug },
+      create: { slug, ...data, createdAt: d(createdAt) ?? new Date() },
+      update: data,
+    });
+  }
+
   const divRef = (key: string | null | undefined) => (key ? divisionId.get(key) ?? null : null);
 
   const teamId = new Map((await prisma.team.findMany({ select: { id: true, slug: true } })).map((t) => [t.slug, t.id]));
@@ -299,9 +292,11 @@ async function main() {
     });
   }
 
-  // Аккаунты игроков — после игроков: привязка и заявка резолвятся по slug в id.
+  // Аккаунты игроков — после игроков: привязка и заявка резолвятся по slug в id. Ключ аккаунта
+  // в связях снимка — почта, а у телеграмного аккаунта её нет, тогда tgId (см. export-db).
+  const accountId = new Map<string, number>();
   for (const a of snap.accounts ?? []) {
-    await prisma.userAccount.create({
+    const created = await prisma.userAccount.create({
       data: {
         email: a.email ?? null,
         googleSub: a.googleSub ?? null,
@@ -325,22 +320,42 @@ async function main() {
         claimId: a.claimSlug ? playerId.get(a.claimSlug) ?? null : null,
       },
     });
+    const key = a.email ?? a.tgId;
+    if (key) accountId.set(String(key), created.id);
   }
 
-  // Mix Cup (ТЗ 33/34): событие уже апсертнуто выше (до игроков) — здесь только команды и пики,
-  // пересоздаются целиком из снимка. draftSessionId не трогаем — снимок его не несёт, рабочий стол
-  // остаётся тем, что есть локально (или null у события, которого на этой машине ещё не было).
-  for (const e of snap.mixCupEvents ?? []) {
-    const eventId = mixCupEventId.get(e.slug)!;
-    for (const t of e.teams as { name: string; color: string; orderNo: number; picks: { playerSlug: string | null; nickname: string; isCaptain: boolean; orderNo: number }[] }[]) {
+  // Записи игроков на индивидуальный турнир (ТЗ 37). Сносить нечего: турниры пересозданы выше,
+  // строки ушли каскадом. Аккаунта из снимка может не быть (ключа нет вовсе) — такую запись
+  // пропускаем молча: восстанавливать её не от кого.
+  for (const r of snap.tournamentRegistrations ?? []) {
+    const key = r.accountEmail ?? r.accountTgId;
+    const account = key ? accountId.get(String(key)) : undefined;
+    const tournament = tournamentId.get(r.tournamentSlug);
+    const player = playerId.get(r.playerSlug);
+    if (account === undefined || tournament === undefined || player === undefined) continue;
+    await prisma.tournamentRegistration.create({
+      data: { tournamentId: tournament, accountId: account, playerId: player, createdAt: d(r.createdAt) ?? new Date() },
+    });
+  }
+
+  // Mix Cup (ТЗ 33/34/37): турнир уже создан выше (до игроков) — здесь только команды и пики,
+  // пересоздаются целиком из снимка.
+  for (const t of snap.tournaments) {
+    const id = tournamentId.get(t.slug)!;
+    for (const team of (t.mixCupTeams ?? []) as {
+      name: string;
+      color: string;
+      orderNo: number;
+      picks: { playerSlug: string | null; nickname: string; isCaptain: boolean; orderNo: number }[];
+    }[]) {
       await prisma.mixCupTeam.create({
         data: {
-          eventId,
-          name: t.name,
-          color: t.color,
-          orderNo: t.orderNo,
+          tournamentId: id,
+          name: team.name,
+          color: team.color,
+          orderNo: team.orderNo,
           picks: {
-            create: t.picks.map((p) => ({
+            create: team.picks.map((p) => ({
               playerId: p.playerSlug ? playerId.get(p.playerSlug) ?? null : null,
               nickname: p.nickname,
               isCaptain: p.isCaptain,
@@ -365,7 +380,8 @@ async function main() {
     генерации: await prisma.render.count(),
     варды: await prisma.ward.count(),
     аккаунты: await prisma.userAccount.count(),
-    "Mix Cup": await prisma.mixCupEvent.count(),
+    "Mix Cup": await prisma.tournament.count({ where: { kind: "mixcup" } }),
+    "записи на турнир": await prisma.tournamentRegistration.count(),
   });
 }
 

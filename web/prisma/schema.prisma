@@ -20,7 +20,13 @@ model Tournament {
   name        String // «LOST Season 2»
   short       String? // «S2» — для навигации, где длинное имя не влезает
   description String? // регламент и описание, длинный текст
-  format      String? // «2 дивизиона, группа + плей-офф»
+  format      String? // «2 дивизиона, группа + плей-офф» — регламент строкой, не формат регистрации
+  /// Формат турнира (ТЗ 37): season (регистрируются команды, сезон лиги) | mixcup | underbeer
+  /// (регистрируются игроки поодиночке). Решает, кто и как записывается, — и потому у каждого
+  /// значения своя ветка кода, а не свободная строка, как `series`. Список допустимых значений
+  /// живёт в коде (src/lib/tournaments.ts → TOURNAMENT_KINDS), как у `status`: sqlite не умеет
+  /// enum, а четвёртый формат не должен требовать миграции ядра.
+  kind        String    @default("season")
   prize       String?
   logo        String?
   banner      String?
@@ -47,6 +53,15 @@ model Tournament {
   divisions    Division[]
   applications TeamApplication[]
   points       PointsEntry[]
+
+  /// Спутники индивидуальных форматов (ТЗ 37). У сезонного турнира их не бывает: команды
+  /// заявляются TeamApplication/TournamentEntry, драфта у сезона нет.
+  draftSettings TournamentDraftSettings?
+  registrations TournamentRegistration[]
+  /// Сохранённый результат драфта — только у mixcup (durable-строки, DECISIONS 22.09.2026).
+  mixCupTeams   MixCupTeam[]
+  /// Профили, впервые заведённые через дверь ЭТОГО турнира (Player.sourceTournamentId).
+  playerSources Player[]                 @relation("PlayerSourceTournament")
 }
 
 /// Дивизион внутри турнира. `slug` живёт в адресе (/standings/d1) и уникален в пределах турнира —
@@ -235,24 +250,24 @@ model Player {
   /// до апрува» (ТЗ 34, решение Стаса 22.09.2026) заводит профиль сразу, но прятать его с
   /// публики до решения оператора обязано ровно то же место, где он создан. Апрув анкеты
   /// (`approveRegistration`) переводит в true — второй раз профиль не заводится.
-  verified            Boolean      @default(true)
-  /// Событие Mix Cup, через дверь которого профиль впервые появился (null — обычный путь: импорт
+  verified           Boolean     @default(true)
+  /// Турнир, через дверь которого профиль впервые появился (null — обычный путь: импорт
   /// или своя анкета). Ставится один раз при заведении, апрув его не трогает — это факт о том,
   /// откуда человек пришёл, а не о том, прошёл ли он с тех пор проверку (Scope п.6 ТЗ 34).
-  mixCupSourceEventId Int?
-  mixCupSource        MixCupEvent? @relation("PlayerMixCupSource", fields: [mixCupSourceEventId], references: [id], onDelete: SetNull)
+  sourceTournamentId Int?
+  sourceTournament   Tournament? @relation("PlayerSourceTournament", fields: [sourceTournamentId], references: [id], onDelete: SetNull)
 
   spots RosterSpot[]
   stats MatchStat[]
 
-  account             UserAccount?            @relation("AccountPlayer") // подтверждённый вход игрока (0..1)
-  claims              UserAccount[]           @relation("AccountClaim") // заявки на привязку, ждущие подтверждения
-  edits               ProfileEditRequest[] // правки анкеты, присланные из бота и ждущие оператора
-  proposals           MatchRequest[] // предложения времени встречи, отправленные им как капитаном
-  invites             TeamApplicationMember[] // заявки команд, в составе которых он значится
-  lobbies             LobbyMember[] // комнаты встреч, куда он приглашён
-  mixCupPicks         MixCupPick[] // строки результата Mix Cup, где он был задрафтован
-  mixCupRegistrations MixCupRegistration[] // записи на Mix Cup (участник ↔ событие, ТЗ 34)
+  account       UserAccount?             @relation("AccountPlayer") // подтверждённый вход игрока (0..1)
+  claims        UserAccount[]            @relation("AccountClaim") // заявки на привязку, ждущие подтверждения
+  edits         ProfileEditRequest[] // правки анкеты, присланные из бота и ждущие оператора
+  proposals     MatchRequest[] // предложения времени встречи, отправленные им как капитаном
+  invites       TeamApplicationMember[] // заявки команд, в составе которых он значится
+  lobbies       LobbyMember[] // комнаты встреч, куда он приглашён
+  mixCupPicks   MixCupPick[] // строки результата Mix Cup, где он был задрафтован
+  registrations TournamentRegistration[] // записи на индивидуальный турнир (участник ↔ турнир)
 }
 
 /// Аккаунт игрока: вход по Google. Отдельно от `Player` намеренно — профиль игрока есть у всех в
@@ -343,10 +358,10 @@ model UserAccount {
   passwordResetAt   DateTime?
   passwordResetById Int?
 
-  chats               ConversationMember[] // беседы, в которых состоит (личная переписка игроков)
-  sent                ChatMessage[] // отправленные сообщения
-  shards              ShardEntry[] // начисления осколков (src/lib/shards.ts)
-  mixCupRegistrations MixCupRegistration[] // записи на Mix Cup (ТЗ 34)
+  chats         ConversationMember[] // беседы, в которых состоит (личная переписка игроков)
+  sent          ChatMessage[] // отправленные сообщения
+  shards        ShardEntry[] // начисления осколков (src/lib/shards.ts)
+  registrations TournamentRegistration[] // записи на индивидуальный турнир (ТЗ 34/37)
 
   createdAt DateTime @default(now())
 }
@@ -550,60 +565,46 @@ model DraftSession {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  /// Обратная связь к Mix Cup (ТЗ 33): непусто, если эта сессия — рабочий стол события Mix Cup,
-  /// а не обычного UNDERBEER. Сам движок один (src/lib/draft.ts), различает их только эта ссылка.
-  mixCupEvent MixCupEvent?
+  /// Обратная связь к турниру (ТЗ 33/37): непусто, если эта сессия — рабочий стол турнира
+  /// индивидуального формата, а не ad hoc-драфта UNDERBEER. Движок один (src/lib/draft.ts),
+  /// различает их только эта ссылка.
+  draftSettings TournamentDraftSettings?
 }
 
-/// Mix Cup by Eclipse — серия микс-драфтов оператора (Scope п.1 ТЗ 33). В отличие от UNDERBEER
-/// у события есть результат, к которому возвращаются после эфира: составы лежат строками
-/// (MixCupTeam/MixCupPick) со ссылкой на игрока и снимком ника, событие входит в снимок БД
-/// (DECISIONS 22.09.2026). Живой драфт по-прежнему ведёт DraftSession — движок один, не копия;
-/// durable-строки результата пишутся, когда драфт доходит до фазы done (src/lib/mixcup.ts).
-model MixCupEvent {
-  id    Int     @id @default(autoincrement())
-  slug  String  @unique // ключ будущей публичной страницы (ТЗ 34); в этом этапе не используется в URL
-  title String?
+/// Настройки драфта турнира индивидуального формата (ТЗ 37) — таблица-спутник, общая для
+/// kind: "mixcup" и kind: "underbeer". Отдельно от Tournament, потому что сезонному турниру
+/// ни тумблеров, ни рабочего стола не нужно, а держать четыре всегда пустых колонки у главной
+/// модели лиги — врать её устройством. До ТЗ 37 эти поля жили на MixCupEvent.
+model TournamentDraftSettings {
+  id           Int        @id @default(autoincrement())
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  tournamentId Int        @unique
 
-  /// Когда эфир Mix Cup — для будущего списка/архива (ТЗ 34: «когда следующий»). В этом этапе
-  /// поле не редактируется в UI (раздел DESIGN его не описывает), но лежит в модели сразу:
-  /// Scope п.1 — «Mix Cup первый, дальше будут», архив закладывается сейчас, а не миграцией потом.
-  playedAt DateTime?
-
-  /// open (приём открыт) | closed (приём закрыт) | done (сыгран)
-  status String @default("open")
-
-  /// Тумблеры правил (Scope п.2) — значения по умолчанию для НОВОГО драфта события. Сам драфт,
-  /// начатый по одним правилам, их на ходу не меняет: актуальные флаги живут в DraftState.
+  /// Тумблеры правил (ТЗ 33) — значения по умолчанию для НОВОГО драфта. Сам драфт, начатый по
+  /// одним правилам, их на ходу не меняет: актуальные флаги живут в DraftState.
   stealEnabled Boolean @default(true)
   lockEnabled  Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  /// Живой рабочий стол — та же DraftSession, что у UNDERBEER (один движок, два входа). Пусто,
-  /// пока оператор ни разу не нажал «К драфту»; после done результат читается из teams/picks,
-  /// а не отсюда — сессию можно даже удалить, история события не пострадает.
+  /// Живой рабочий стол — та же DraftSession, что у ad hoc-UNDERBEER (один движок, два входа).
+  /// Пусто, пока оператор ни разу не нажал «К драфту»; после done результат mixcup читается из
+  /// MixCupTeam/MixCupPick, а не отсюда — сессию можно даже удалить, история не пострадает.
   draftSession   DraftSession? @relation(fields: [draftSessionId], references: [id], onDelete: SetNull)
   draftSessionId Int?          @unique
-
-  teams         MixCupTeam[]
-  /// Записи одиночных игроков (ТЗ 34) — пул участников до драфта, отдельно от MixCupTeam/Pick.
-  registrations MixCupRegistration[]
-  /// Профили, впервые заведённые через дверь ЭТОГО события (Player.mixCupSourceEventId) —
-  /// разрез «пришли с Mix Cup» у оператора.
-  playerSources Player[]             @relation("PlayerMixCupSource")
 }
 
 /// Собранная команда Mix Cup — durable-строка результата, переживает и удаление живой
 /// DraftSession, и уход игрока из ростера (тот стирает только связь конкретного пика, п.4 Scope).
+/// Только у kind: "mixcup": у UNDERBEER-турнира результат остаётся эфемерным (ТЗ 37, «НЕ входит»).
 model MixCupTeam {
-  id      Int         @id @default(autoincrement())
-  event   MixCupEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  eventId Int
-  name    String
-  color   String
-  orderNo Int // порядок колонки на экране сохранённого состава
+  id           Int        @id @default(autoincrement())
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  tournamentId Int
+  name         String
+  color        String
+  orderNo      Int // порядок колонки на экране сохранённого состава
 
   picks MixCupPick[]
 }
@@ -621,22 +622,23 @@ model MixCupPick {
   orderNo   Int // порядок пика внутри команды; капитан = 0
 }
 
-/// Запись одиночного игрока на Mix Cup (ТЗ 34) — «я иду», отдельно от MixCupTeam/Pick (те
-/// появляются только после драфта). Отмена записи стирает строку целиком: истории не ведём,
-/// лимита участников и листа ожидания нет (решение Стаса 22.09.2026).
-model MixCupRegistration {
-  id        Int         @id @default(autoincrement())
-  event     MixCupEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  eventId   Int
-  account   UserAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  accountId Int
+/// Запись одиночного игрока на турнир индивидуального формата (ТЗ 34, обобщена в ТЗ 37) — «я
+/// иду», отдельно от MixCupTeam/Pick (те появляются только после драфта). Одна на оба формата:
+/// mixcup и underbeer регистрируют игроков одинаково. Отмена записи стирает строку целиком:
+/// истории не ведём, лимита участников и листа ожидания нет (решение Стаса 22.09.2026).
+model TournamentRegistration {
+  id           Int         @id @default(autoincrement())
+  tournament   Tournament  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  tournamentId Int
+  account      UserAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId    Int
   /// Профиль в пуле драфта — уже существующий (роster-игрок) либо заведённый прямо здесь, до
-  /// апрува анкеты (исключение ТЗ 34, см. lib/mixcup.ts → registerForMixCup).
-  player    Player      @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  playerId  Int
-  createdAt DateTime    @default(now())
+  /// апрува анкеты (исключение ТЗ 34, см. lib/mixcup.ts → registerForTournament).
+  player       Player      @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId     Int
+  createdAt    DateTime    @default(now())
 
-  @@unique([eventId, accountId])
+  @@unique([tournamentId, accountId])
 }
 
 /// Сессия fearless-драфта: серия драфтов героев без повторов. Как DraftSession (UNDERBEER) —

@@ -42,7 +42,7 @@ function omit<T extends object, K extends keyof T>(row: T, ...keys: K[]): Omit<T
 }
 
 async function main() {
-  const [teams, players, spots, matches, groupEntries, series, stats, points, renders, wards, accounts, tournaments, entries, applications, mixCupEvents] =
+  const [teams, players, spots, matches, groupEntries, series, stats, points, renders, wards, accounts, tournaments, entries, applications, registrations] =
     await Promise.all([
       prisma.team.findMany({ orderBy: { slug: "asc" } }),
       prisma.player.findMany({ orderBy: { slug: "asc" } }),
@@ -57,16 +57,28 @@ async function main() {
       prisma.render.findMany({ include: { match: { include: { teamA: true, teamB: true } } } }),
       prisma.ward.findMany({ include: { team: true, match: { include: { teamA: true, teamB: true } } } }),
       prisma.userAccount.findMany({ include: { player: true, claim: true } }),
-      prisma.tournament.findMany({ orderBy: { slug: "asc" }, include: { divisions: { orderBy: { orderNo: "asc" } } } }),
+      // Турнир едет со спутниками индивидуального формата (ТЗ 37): тумблеры правил и
+      // сохранённый результат драфта. Живая DraftSession — нет (рабочий стол оператора,
+      // эфемерность отменена только для результата, DECISIONS 22.09.2026).
+      prisma.tournament.findMany({
+        orderBy: { slug: "asc" },
+        include: {
+          divisions: { orderBy: { orderNo: "asc" } },
+          draftSettings: true,
+          mixCupTeams: {
+            orderBy: { orderNo: "asc" },
+            include: { picks: { orderBy: { orderNo: "asc" }, include: { player: true } } },
+          },
+        },
+      }),
       prisma.tournamentEntry.findMany({ include: { team: true, division: { include: { tournament: true } } } }),
       prisma.teamApplication.findMany({
         include: { team: true, tournament: true, division: { include: { tournament: true } } },
       }),
-      // Mix Cup (ТЗ 33): событие и составы входят в снимок, живая DraftSession — нет (рабочий стол,
-      // эфемерность отменена только для результата — DECISIONS 22.09.2026).
-      prisma.mixCupEvent.findMany({
-        orderBy: { slug: "asc" },
-        include: { teams: { orderBy: { orderNo: "asc" }, include: { picks: { orderBy: { orderNo: "asc" }, include: { player: true } } } } },
+      // Записи игроков на индивидуальный турнир (ТЗ 34/37) — связи слагами: турнир по slug,
+      // игрок по slug, аккаунт тем же ключом, что и сам список аккаунтов (почта либо tgId).
+      prisma.tournamentRegistration.findMany({
+        include: { tournament: { select: { slug: true } }, player: { select: { slug: true } }, account: { select: { email: true, tgId: true } } },
       }),
     ]);
 
@@ -84,18 +96,18 @@ async function main() {
   const keyOfMatch = (m: { openDotaMatchId: string | null; scheduledAt: Date | null; teamA: { slug: string }; teamB: { slug: string } }) =>
     matchKey(m, m.teamA.slug, m.teamB.slug);
 
-  // Слаг события по его id — переводит Player.mixCupSourceEventId (сырой, машинный) в переносимый
-  // ключ (ТЗ 34, тот же приём, что divKey/teamById чуть выше).
-  const mixCupSlugById = new Map(mixCupEvents.map((e) => [e.id, e.slug]));
+  // Слаг турнира по его id — переводит Player.sourceTournamentId (сырой, машинный) в переносимый
+  // ключ (ТЗ 34/37, тот же приём, что divKey/teamById чуть выше).
+  const tournamentSlugById = new Map(tournaments.map((t) => [t.id, t.slug]));
 
   const snapshot = {
-    version: 16, // 16 — Mix Cup: регистрация игрока (Player.verified/mixCupSourceEventId, ТЗ 34)
+    version: 17, // 17 — формат турнира (Tournament.kind + спутники вместо MixCupEvent, ТЗ 37)
     exportedAt: new Date().toISOString(),
 
     teams: teams.map((t) => omit(t, "id")),
     players: players.map((p) => {
-      const { mixCupSourceEventId, ...rest } = omit(p, "id");
-      return { ...rest, mixCupSourceEventSlug: mixCupSourceEventId ? mixCupSlugById.get(mixCupSourceEventId) ?? null : null };
+      const { sourceTournamentId, ...rest } = omit(p, "id");
+      return { ...rest, sourceTournamentSlug: sourceTournamentId ? tournamentSlugById.get(sourceTournamentId) ?? null : null };
     }),
 
     rosterSpots: spots
@@ -132,8 +144,25 @@ async function main() {
       .sort((a, b) => a.key.localeCompare(b.key)),
 
     tournaments: tournaments.map((t) => ({
-      ...omit(t, "id", "divisions"),
+      ...omit(t, "id", "divisions", "draftSettings", "mixCupTeams"),
       divisions: t.divisions.map((d) => omit(d, "id", "tournamentId")),
+      // Спутники индивидуального формата. draftSessionId не переносим — рабочий стол остаётся
+      // локальным. Сами записи игроков едут отдельным списком ниже (`tournamentRegistrations`):
+      // им нужен ключ аккаунта, а он живёт в разделе аккаунтов.
+      draftSettings: t.draftSettings
+        ? { stealEnabled: t.draftSettings.stealEnabled, lockEnabled: t.draftSettings.lockEnabled }
+        : null,
+      mixCupTeams: t.mixCupTeams.map((team) => ({
+        name: team.name,
+        color: team.color,
+        orderNo: team.orderNo,
+        picks: team.picks.map((p) => ({
+          playerSlug: p.player?.slug ?? null,
+          nickname: p.nickname,
+          isCaptain: p.isCaptain,
+          orderNo: p.orderNo,
+        })),
+      })),
     })),
 
     tournamentEntries: entries
@@ -231,31 +260,17 @@ async function main() {
       // Сортируем по тому ключу, который есть: у телеграмного аккаунта почты нет.
       .sort((a, b) => (a.email ?? a.tgId ?? "").localeCompare(b.email ?? b.tgId ?? "")),
 
-    // Mix Cup (ТЗ 33): draftSessionId не переносим — рабочий стол остаётся эфемерным (как у
-    // UNDERBEER), в снимок едет только durable-результат, команды и пики строками по слагу игрока.
-    // Регистрации на приём (MixCupRegistration, ТЗ 34) в снимок НЕ идут по той же логике: это
-    // преддрафтовый рабочий стол оператора, а не факт лиги — «взять участников» переносит их в
-    // participants живой сессии, а сыгранный результат уже здесь, строками teams/picks.
-    mixCupEvents: mixCupEvents.map((e) => ({
-      slug: e.slug,
-      title: e.title,
-      status: e.status,
-      stealEnabled: e.stealEnabled,
-      lockEnabled: e.lockEnabled,
-      playedAt: e.playedAt,
-      createdAt: e.createdAt,
-      teams: e.teams.map((t) => ({
-        name: t.name,
-        color: t.color,
-        orderNo: t.orderNo,
-        picks: t.picks.map((p) => ({
-          playerSlug: p.player?.slug ?? null,
-          nickname: p.nickname,
-          isCaptain: p.isCaptain,
-          orderNo: p.orderNo,
-        })),
-      })),
-    })),
+    // Записи на индивидуальный турнир (ТЗ 37, Scope п.10). Аккаунт адресуется тем же ключом,
+    // что и в `accounts` выше: почта, а у телеграмного аккаунта — tgId.
+    tournamentRegistrations: registrations
+      .map((r) => ({
+        tournamentSlug: r.tournament.slug,
+        playerSlug: r.player.slug,
+        accountEmail: r.account.email,
+        accountTgId: r.account.tgId,
+        createdAt: r.createdAt,
+      }))
+      .sort((a, b) => `${a.tournamentSlug}${a.playerSlug}`.localeCompare(`${b.tournamentSlug}${b.playerSlug}`)),
   };
 
   writeFileSync(out, JSON.stringify(snapshot, null, 2) + "\n", "utf8");
@@ -276,7 +291,8 @@ async function main() {
     турниры: snapshot.tournaments.length,
     "участие команд": snapshot.tournamentEntries.length,
     "заявки команд": snapshot.teamApplications.length,
-    "Mix Cup": snapshot.mixCupEvents.length,
+    "Mix Cup": snapshot.tournaments.filter((t) => t.kind === "mixcup").length,
+    "записи на турнир": snapshot.tournamentRegistrations.length,
   });
 }
 

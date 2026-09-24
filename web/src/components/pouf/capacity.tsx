@@ -14,11 +14,20 @@ import { withPlural } from "@/lib/plural";
  * это не ошибка, а нормальное состояние турнира.
  */
 
+/** Кого считаем. Турнир индивидуального формата (ТЗ 37) занимают игроки, а не команды, и это
+ *  свойство атома: «участников» нужны сразу в четырёх местах (лицо, карточка ряда, строка
+ *  хронологии, панель участников), а не текстом по месту вызова. */
+const UNITS: Record<"teams" | "players", [one: string, few: string, many: string]> = {
+  teams: ["команда", "команды", "команд"],
+  players: ["участник", "участника", "участников"],
+};
+
 export function Capacity({
   taken,
   limit,
   size = "md",
   meter = true,
+  unit = "teams",
 }: {
   taken: number;
   /** null или не задан — «без ограничения», а не «ноль мест». */
@@ -26,6 +35,7 @@ export function Capacity({
   size?: "sm" | "md";
   /** Полоску можно погасить там, где на неё нет высоты (строка хронологии). */
   meter?: boolean;
+  unit?: keyof typeof UNITS;
 }) {
   const textSize = size === "sm" ? "text-[13px]" : "text-[15px]";
 
@@ -33,7 +43,7 @@ export function Capacity({
   if (limit == null) {
     return (
       <div className={`font-pouf font-bold tabular-nums text-ink ${textSize}`}>
-        {withPlural(taken, "команда", "команды", "команд")}
+        {withPlural(taken, ...UNITS[unit])}
       </div>
     );
   }

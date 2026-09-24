@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 export default async function OverlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [session, full, showMmr] = await Promise.all([
-    prisma.draftSession.findUnique({ where: { id: Number(id) }, include: { mixCupEvent: { select: { id: true } } } }),
+    prisma.draftSession.findUnique({ where: { id: Number(id) }, include: { draftSettings: { select: { tournament: { select: { kind: true } } } } } }),
     draftPool(),
     mmrShown(),
   ]);
@@ -42,7 +42,9 @@ export default async function OverlayPage({ params }: { params: Promise<{ id: st
       initialState={state}
       pool={pool}
       showMmr={showMmr}
-      partner={session.mixCupEvent ? ECLIPSE_PARTNER : undefined}
+      // Знак партнёра — только у Mix Cup: он партнёрское событие, а UNDERBEER (и турнирный,
+      // и ad hoc) идёт без организатора со стороны.
+      partner={session.draftSettings?.tournament.kind === "mixcup" ? ECLIPSE_PARTNER : undefined}
     />
   );
 }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listTournaments, registrationOpen } from "@/lib/tournaments";
+import { isIndividual, listTournaments, registrationOpen, tournamentHref, TOURNAMENT_KIND_SHORT, type TournamentKind } from "@/lib/tournaments";
 import { StatTile } from "@/components/pouf/blocks";
 import { EmptyState } from "@/components/pouf/feedback";
 import { Eyebrow } from "@/components/pouf/text";
@@ -48,16 +48,20 @@ function subtitle(t: Row): string | null {
 }
 
 function Card({ t }: { t: Row }) {
+  // Индивидуальный формат (ТЗ 37) считает записавшихся игроков: команд и дивизионов у него нет,
+  // и плитка «Команд: 0» была бы не пустым значением, а неправдой.
+  const individual = isIndividual(t);
   const teams = t.divisions.reduce((n, d) => n + d._count.entries, 0);
   return (
     <article className="flex flex-1 flex-col gap-4 rounded-card bg-surface p-[22px] cushion-card">
       <div className="flex items-center gap-2">
         <TournamentStatus status={t.status} />
-        {isOneDay(t) && <Badge tone="mint">1 день</Badge>}
+        {individual && <Badge tone="mint">{TOURNAMENT_KIND_SHORT[t.kind as TournamentKind] ?? t.kind}</Badge>}
+        {!individual && isOneDay(t) && <Badge tone="mint">1 день</Badge>}
       </div>
       <div className="min-w-0">
         <h3 className="text-xl font-black tracking-[-0.5px]">
-          <Link href={`/tournaments/${t.slug}`} className="hover:text-[var(--accent-ink)]">
+          <Link href={tournamentHref(t)} className="hover:text-[var(--accent-ink)]">
             {t.name}
           </Link>
         </h3>
@@ -67,9 +71,17 @@ function Card({ t }: { t: Row }) {
       </div>
       {/* Два показателя из макета. «Набрано N из M» со шкалой заполнения не рисуем: размера сетки
           у турнира в модели нет, и знаменатель пришлось бы выдумать. */}
-      <div className="mt-auto grid grid-cols-2 gap-3">
-        <StatTile label="Команд" value={teams} />
-        <StatTile label="Призовой" value={t.prize ?? "—"} />
+      {/* У индивидуального формата показатель один — записавшиеся: призового у него нет, и
+          плитка «Призовой —» была бы пустым обещанием рядом с живым числом (ТЗ 37, Scope п.8). */}
+      <div className={`mt-auto grid gap-3 ${individual ? "grid-cols-1" : "grid-cols-2"}`}>
+        {individual ? (
+          <StatTile label="Записалось" value={t._count.registrations} />
+        ) : (
+          <>
+            <StatTile label="Команд" value={teams} />
+            <StatTile label="Призовой" value={t.prize ?? "—"} />
+          </>
+        )}
       </div>
     </article>
   );

@@ -1,5 +1,5 @@
-import { notFound } from "next/navigation";
-import { getDivisions, listTournaments, tournamentBySlug } from "@/lib/tournaments";
+import { notFound, redirect } from "next/navigation";
+import { getDivisions, isIndividual, listTournaments, tournamentBySlug, tournamentHref } from "@/lib/tournaments";
 import { TournamentBar } from "@/app/_components/tournament-bar";
 import { SITE_MAX_W } from "@/components/pouf/blocks";
 
@@ -19,6 +19,9 @@ export default async function TournamentLayout({
   const tournament = await tournamentBySlug(slug);
   // Черновик наружу не показываем — он и раньше отдавал 404 со страницы турнира.
   if (!tournament || tournament.status === "draft") notFound();
+  // У турнира индивидуального формата (ТЗ 37) нет ни таблицы, ни плей-офф, ни ростера — строка
+  // вкладок оказалась бы рядом пустых обещаний. Его лицо — страница записи.
+  if (isIndividual(tournament)) redirect(tournamentHref(tournament));
 
   const divisions = await getDivisions(tournament.id);
   // Переключатель показывает все турниры, кроме черновиков и текущего: список «куда ещё можно уйти».

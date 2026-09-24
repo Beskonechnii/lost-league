@@ -11,14 +11,15 @@ import { persistMixCupResult } from "@/lib/mixcup";
 // состояние. Сервер лишь проверяет версию формата и что это валидный JSON, а не источник истины
 // правил: борд эфемерный, гонок между операторами тут нет (один оператор на эфире).
 //
-// Один движок, два входа (ТЗ 33): этот роут ведёт и UNDERBEER, и живой борд Mix Cup — вторые
-// используют ту же DraftSession, отличает их только связь на MixCupEvent. Право поэтому гейтится
-// по этой связи, а не жёстко «underbeer»: у оператора Mix Cup может не быть права на UNDERBEER.
+// Один движок, два входа (ТЗ 33/37): этот роут ведёт и ad hoc-драфт UNDERBEER, и живой борд
+// турнира индивидуального формата — вторые используют ту же DraftSession, отличает их только
+// связь на TournamentDraftSettings. Право гейтится по этой связи, а не жёстко «underbeer»:
+// турниром распоряжается тот, кто ведёт турниры.
 
-/** «underbeer» для обычной сессии, «mixcup» — если она рабочий стол события Mix Cup. */
+/** «underbeer» для ad hoc-сессии, «tournaments.edit» — если она рабочий стол турнира. */
 async function guardSession(id: number) {
-  const session = await prisma.draftSession.findUnique({ where: { id }, select: { mixCupEvent: { select: { id: true } } } });
-  return guard(session?.mixCupEvent ? "mixcup" : "underbeer");
+  const session = await prisma.draftSession.findUnique({ where: { id }, select: { draftSettings: { select: { id: true } } } });
+  return guard(session?.draftSettings ? "tournaments.edit" : "underbeer");
 }
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -60,10 +61,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!count) return bad("Сессия не найдена", 404);
 
   // Mix Cup: результат не только payload — как только драфт доходит до done, строки уезжают
-  // в durable-таблицы (MixCupTeam/MixCupPick), UNDERBEER этот шаг не делает (см. lib/mixcup.ts).
+  // в durable-таблицы (MixCupTeam/MixCupPick). Ни ad hoc-UNDERBEER, ни UNDERBEER-турнир этого
+  // шага не делают: их результат остаётся эфемерным (DECISIONS 22.09.2026, ТЗ 37).
   if (body.payload?.phase === "done") {
-    const withEvent = await prisma.draftSession.findUnique({ where: { id }, include: { mixCupEvent: true } });
-    if (withEvent?.mixCupEvent) await persistMixCupResult(withEvent.mixCupEvent.id, body.payload);
+    const bound = await prisma.draftSession.findUnique({
+      where: { id },
+      select: { draftSettings: { select: { tournamentId: true, tournament: { select: { kind: true } } } } },
+    });
+    if (bound?.draftSettings?.tournament.kind === "mixcup")
+      await persistMixCupResult(bound.draftSettings.tournamentId, body.payload);
   }
 
   return NextResponse.json(await prisma.draftSession.findUnique({ where: { id } }));

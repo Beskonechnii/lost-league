@@ -13,7 +13,7 @@ import {
   storeApplicationDraft,
   type AuthField,
 } from "@/lib/account";
-import { readMixCupIntentSlug, clearMixCupIntent, registerForMixCup } from "@/lib/mixcup";
+import { readJoinIntentSlug, clearJoinIntent, registerForTournament } from "@/lib/mixcup";
 import { noticeNewProfile, noticeProfileClaim } from "@/lib/queue-notify";
 import type { ApplicationField, ApplicationInput } from "@/lib/application";
 
@@ -85,18 +85,18 @@ export async function sendApplication(_state: ApplyState, form: FormData): Promi
 }
 
 /**
- * Общий хвост обеих форм анкеты: анкета отправлена — самое время реализовать исключение Mix Cup
- * (ТЗ 34, «в пул до апрува») и увести человека обратно на событие, если он шёл сюда через его
+ * Общий хвост обеих форм анкеты: анкета отправлена — самое время реализовать исключение записи
+ * (ТЗ 34, «в пул до апрува») и увести человека обратно на турнир, если он шёл сюда через его
  * дверь (кука-намерение). Обычный путь (без намерения) не меняется — только revalidatePath.
  */
 async function finishAfterApplication(accountId: number): Promise<void> {
-  const slug = await readMixCupIntentSlug();
+  const slug = await readJoinIntentSlug();
   if (slug) {
-    const event = await prisma.mixCupEvent.findUnique({ where: { slug }, select: { id: true } });
-    const res = event ? await registerForMixCup(accountId, event.id) : null;
+    const t = await prisma.tournament.findUnique({ where: { slug }, select: { id: true } });
+    const res = t ? await registerForTournament(accountId, t.id) : null;
     if (res?.ok) {
-      await clearMixCupIntent();
-      redirect(`/mixcup/${slug}`);
+      await clearJoinIntent();
+      redirect(`/join/${slug}`);
     }
   }
   revalidatePath("/me");
@@ -161,31 +161,31 @@ export async function sendClaimWithApplication(_state: ApplyState, form: FormDat
 // второй, обходной вход в лигу — аккаунт без профиля заводил `Player` одним ником, минуя модерацию.
 // Вход остался один, через анкету: `sendApplication` и `sendClaimWithApplication` выше.
 
-// ── намерение Mix Cup (ТЗ 34) ───────────────────────────────────────────────────
+// ── намерение записаться на турнир (ТЗ 34/37) ───────────────────────────────────
 
 /**
- * Разобрать куку-намерение с /mixcup/<slug> (см. lib/mixcup.ts): если вошедшему аккаунту уже
- * хватает профиля для записи — записывает и возвращает путь на событие, кука гасится. Не хватает
+ * Разобрать куку-намерение с /join/<slug> (см. lib/mixcup.ts): если вошедшему аккаунту уже
+ * хватает профиля для записи — записывает и возвращает путь на турнир, кука гасится. Не хватает
  * (анкеты ещё нет) — молчит и оставляет куку: вызовут снова, когда анкета будет отправлена
  * (see MixCupIntentConsumer, retryKey = submittedAt).
  */
 export async function consumeMixCupIntent(): Promise<string | null> {
   const accountId = await currentAccountId();
   if (accountId == null) return null;
-  const slug = await readMixCupIntentSlug();
+  const slug = await readJoinIntentSlug();
   if (!slug) return null;
 
-  const event = await prisma.mixCupEvent.findUnique({ where: { slug }, select: { id: true, status: true } });
-  if (!event) {
-    await clearMixCupIntent();
+  const t = await prisma.tournament.findUnique({ where: { slug }, select: { id: true } });
+  if (!t) {
+    await clearJoinIntent();
     return null;
   }
 
-  const res = await registerForMixCup(accountId, event.id);
+  const res = await registerForTournament(accountId, t.id);
   if (!res.ok) {
-    if (res.reason === "closed") await clearMixCupIntent(); // событие закрылось, пока шли — ждать больше нечего
+    if (res.reason === "closed") await clearJoinIntent(); // приём закрылся, пока шли — ждать нечего
     return null; // no-profile: попробуем снова после анкеты
   }
-  await clearMixCupIntent();
-  return `/mixcup/${slug}`;
+  await clearJoinIntent();
+  return `/join/${slug}`;
 }

@@ -15,15 +15,24 @@ export const WIZARD_STEPS = [
 
 export type StepKey = (typeof WIZARD_STEPS)[number]["key"];
 export const isStep = (v: unknown): v is StepKey => WIZARD_STEPS.some((s) => s.key === v);
-export const stepIndex = (key: StepKey) => WIZARD_STEPS.findIndex((s) => s.key === key);
+
+/**
+ * Шаги ЭТОГО турнира: у индивидуального формата (ТЗ 37) их два — «Описание · Готово». Дивизионы,
+ * импорт составов и жеребьёвка у него не значат ничего, а серый шаг, на который нельзя перейти,
+ * читается как незакрытая работа.
+ */
+export const stepsOf = (kind: string) =>
+  kind === "season" ? WIZARD_STEPS : WIZARD_STEPS.filter((s) => s.key === "describe" || s.key === "done");
+
+export const stepIndex = (key: StepKey, kind = "season") => stepsOf(kind).findIndex((s) => s.key === key);
 
 /**
  * Шаги для `Stepper`. Адрес даём только пройденным — вернуться и поправить можно,
  * а пока черновика нет, цеплять к нему дивизионы и составы не к чему. Степпер сам
  * вешает нажатие лишь на пройденные, но и адрес без черновика не имеет смысла.
  */
-export const wizardSteps = (slug: string | null): Step[] =>
-  WIZARD_STEPS.map((s) => ({
+export const wizardSteps = (slug: string | null, kind = "season"): Step[] =>
+  stepsOf(kind).map((s) => ({
     label: s.label,
     href: slug ? `/admin/tournaments/new/${s.key}?t=${slug}` : undefined,
   }));

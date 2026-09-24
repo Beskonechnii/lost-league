@@ -45,6 +45,9 @@ export type ToolSession = {
    *  (Mix Cup, ТЗ 33: приём открыт/закрыт/сыгран). `done` тогда только решает, куда попала
    *  карточка по смыслу вызова, саму пилюлю рисует это поле. */
   status?: { tone: AlertTone | "neutral"; label: string };
+  /** Свой адрес карточки — когда экран сессии адресуется не её id (турнир открывается по слагу,
+   *  ТЗ 37). Не задан — как раньше, `${hrefBase}/${id}`. */
+  href?: string;
 };
 
 export function SessionList({
@@ -104,7 +107,7 @@ export function SessionList({
       {items.map((s) => (
         <li key={s.id} className="group relative">
           <Link
-            href={`${hrefBase}/${s.id}`}
+            href={s.href ?? `${hrefBase}/${s.id}`}
             className="block rounded-card bg-surface p-4 cushion-card transition-transform duration-200 hover:-translate-y-1"
           >
             <div className="flex items-center justify-between gap-2 pr-12">

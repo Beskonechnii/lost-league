@@ -147,6 +147,9 @@ export const listTournaments = () =>
     orderBy: [{ startAt: "desc" }, { id: "desc" }],
     include: {
       divisions: { orderBy: [{ orderNo: "asc" }, { id: "asc" }], include: { _count: { select: { entries: true } } } },
+      // Индивидуальный формат считает не команды по дивизионам, а записавшихся игроков (ТЗ 37):
+      // карточке нужен счётчик участников, и второй заход в базу за ним стоил бы запроса на турнир.
+      _count: { select: { registrations: true } },
     },
   });
 
@@ -161,6 +164,7 @@ export const tournamentBySlug = cache((slug: string) =>
 
 export type TournamentInput = {
   name: string;
+  kind?: string | null;
   slug?: string | null;
   short?: string | null;
   description?: string | null;
@@ -185,6 +189,37 @@ export const TOURNAMENT_STATUS_LABELS: Record<TournamentStatus, string> = {
   running: "Идёт",
   finished: "Сыгран",
 };
+
+/**
+ * Формат турнира (ТЗ 37) — кто регистрируется. `season` — команды (сезон лиги, всё сегодняшнее
+ * поведение), `mixcup` и `underbeer` — игроки поодиночке: у них нет дивизионов и заявок команд,
+ * зато есть записи игроков и драфт. Список здесь, а не в схеме: sqlite не умеет enum, а каждое
+ * значение всё равно требует своей ветки кода.
+ */
+const TOURNAMENT_KINDS = ["season", "mixcup", "underbeer"] as const;
+export type TournamentKind = (typeof TOURNAMENT_KINDS)[number];
+export const isTournamentKind = (v: string): v is TournamentKind =>
+  (TOURNAMENT_KINDS as readonly string[]).includes(v);
+
+export const TOURNAMENT_KIND_LABELS: Record<TournamentKind, string> = {
+  season: "Сезонный (команды)",
+  mixcup: "Mix Cup (игроки)",
+  underbeer: "UNDERBEER (игроки)",
+};
+
+/** Короткое имя формата — чипом на карточке и надбровьем на странице записи. */
+export const TOURNAMENT_KIND_SHORT: Record<TournamentKind, string> = {
+  season: "Сезон",
+  mixcup: "Mix Cup",
+  underbeer: "UNDERBEER",
+};
+
+/** Регистрируются ли на турнир игроки поодиночке (а не команды). */
+export const isIndividual = (t: { kind: string }): boolean => t.kind !== "season";
+
+/** Лицо турнира для игрока: у индивидуального формата это страница записи, а не сетка дивизионов. */
+export const tournamentHref = (t: { slug: string; kind: string }): string =>
+  isIndividual(t) ? `/join/${t.slug}` : `/tournaments/${t.slug}`;
 
 /** Пустая строка и null — одно и то же: «поля нет». undefined оставляет значение как было. */
 const clean = (v: string | null | undefined) => {
@@ -229,7 +264,21 @@ export async function createTournament(input: TournamentInput) {
   const slug = (clean(input.slug) ?? slugify(name)) || `t-${Date.now()}`;
   if (await prisma.tournament.findUnique({ where: { slug } }))
     throw new Error(`Турнир со слагом «${slug}» уже есть`);
-  return prisma.tournament.create({ data: { ...tournamentData(input), slug } });
+  const kindRaw = clean(input.kind) ?? "season";
+  if (!isTournamentKind(kindRaw)) throw new Error(`Неизвестный формат турнира: ${kindRaw}`);
+  // Формат ставится один раз, при заведении: менять его у турнира, на который уже записались,
+  // не значит ничего (ТЗ 37, DESIGN §1) — `updateTournament` его не трогает.
+  return prisma.tournament.create({
+    data: {
+      ...tournamentData(input),
+      slug,
+      kind: kindRaw,
+      // Спутник индивидуального формата заводится сразу и пустым: тумблеры правил нужны раньше,
+      // чем оператор впервые откроет драфт, и «настроек ещё нет» — состояние, которого лучше не
+      // иметь вовсе.
+      ...(kindRaw === "season" ? {} : { draftSettings: { create: {} } }),
+    },
+  });
 }
 
 export async function updateTournament(id: number, input: TournamentInput) {
@@ -255,13 +304,17 @@ export const registrationOpen = (t: { status: string; regCloseAt: Date | null })
   t.status === "registration" && (!t.regCloseAt || t.regCloseAt.getTime() > Date.now());
 
 /**
- * Все турниры, в которые прямо сейчас можно заявиться, от самого раннего. Открытых наборов в лиге
- * бывает несколько (два сезона рядом), и «какие открыты» — один список на весь продукт: витрина
- * главной, сборный `/apply` и кабинет новичка спрашивают его, а не копируют правило приёма себе.
+ * Все турниры, в которые прямо сейчас можно **заявиться командой**, от самого раннего. Открытых
+ * наборов в лиге бывает несколько (два сезона рядом), и «какие открыты» — один список на весь
+ * продукт: витрина главной, сборный `/apply` и кабинет новичка спрашивают его, а не копируют
+ * правило приёма себе.
+ *
+ * Только `kind: "season"` (ТЗ 37): у индивидуального формата записывается игрок поодиночке, и
+ * призыв «Заявить команду» вёл бы на форму заявки, которой у такого турнира нет вовсе.
  */
 export async function openForRegistrationAll() {
   const open = await prisma.tournament.findMany({
-    where: { status: "registration" },
+    where: { status: "registration", kind: "season" },
     orderBy: [{ startAt: "asc" }, { id: "asc" }],
   });
   return open.filter(registrationOpen);

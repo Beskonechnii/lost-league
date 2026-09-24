@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { playerPath } from "@/lib/profiles";
 import { currentAccount, accountStatus } from "@/lib/account";
-import { readMixCupIntentSlug } from "@/lib/mixcup";
+import { readJoinIntentSlug } from "@/lib/mixcup";
 import { Alert } from "@/components/pouf/feedback";
 import { AuthCard } from "@/components/pouf/auth";
 import { Door } from "./door";
@@ -39,7 +39,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
   // Mix Cup (ТЗ 34): намерение читаем ДО обычного редиректа активного игрока на его профиль —
   // иначе вернувшийся через дверь Mix Cup участник соскакивал бы на карточку раньше, чем успевал
   // записаться. Чтение куки безопасно и в плейн-компоненте (только set/delete требуют action).
-  const mixCupIntent = account ? await readMixCupIntentSlug() : null;
+  const mixCupIntent = account ? await readJoinIntentSlug() : null;
 
   // У одобренного игрока кабинет и профиль — одна и та же страница (решение 04.09.2026): всё, что
   // кабинет показывал про него самого, лежит на его странице в лиге, а служебное про аккаунт —

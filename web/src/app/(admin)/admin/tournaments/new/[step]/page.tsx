@@ -1,6 +1,14 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { divisionTeams, tournamentBySlug } from "@/lib/tournaments";
+import {
+  divisionTeams,
+  isIndividual,
+  tournamentBySlug,
+  tournamentHref,
+  TOURNAMENT_KIND_LABELS,
+  type TournamentKind,
+} from "@/lib/tournaments";
+import { prisma } from "@/lib/prisma";
 import { teamTag } from "@/lib/profiles";
 import { Button } from "@/components/pouf/Button";
 import { FormInput, Label } from "@/components/pouf/Input";
@@ -15,12 +23,14 @@ import { Field } from "../../_components/fields";
 import { addDivision, autoDraw, removeDivision, saveDivision, saveDraw } from "../../actions";
 import { finishWizard, goToStep, saveDraft } from "../actions";
 import { ImportForm } from "../../../roster/import/import-form";
-import { isStep, stepIndex, wizardSteps, WIZARD_STEPS, type StepKey } from "../_components/steps";
+import { isStep, stepIndex, stepsOf, wizardSteps, type StepKey } from "../_components/steps";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Новый турнир" };
 
 // Мастер создания турнира: Описание → Дивизионы → Импорт составов → Жеребьёвка → Готово.
+// У индивидуального формата (ТЗ 37) шага два: Описание → Готово — дивизионов, импорта составов
+// и жеребьёвки у него не бывает.
 // Каждый шаг — свой экран со своим смыслом, вместо одной длинной карточки, где непонятно, что уже
 // сделано. Черновик заводится на первом шаге и живёт в БД: прогресс не теряется при закрытой вкладке,
 // а номер шага виден в адресе. Заявок команд в цепочке нет — это отдельная логика, не создание.
@@ -74,9 +84,19 @@ export default async function WizardStep({
   const tournament = slug ? await tournamentBySlug(slug) : null;
   if (step !== "describe" && !tournament) redirect("/admin/tournaments/new/describe");
 
+  const kind = tournament?.kind ?? "season";
+  const steps = stepsOf(kind);
+  const individual = !!tournament && isIndividual(tournament);
+  // Шаг не из набора этого формата (руками набранный адрес) — уводим на «Готово»: у турнира
+  // без дивизионов на «Жеребьёвке» нечего показать.
+  if (tournament && !steps.some((x) => x.key === step)) redirect(`/admin/tournaments/new/done?t=${tournament.slug}`);
+
   const rosters = tournament ? await Promise.all(tournament.divisions.map((d) => divisionTeams(d.id))) : [];
   const teamsTotal = rosters.reduce((n, r) => n + r.length, 0);
   const drawn = rosters.flat().filter((e) => e.group).length;
+  const registered = tournament
+    ? await prisma.tournamentRegistration.count({ where: { tournamentId: tournament.id } })
+    : 0;
 
   return (
     <main className={`mx-auto w-full ${FORM_MAX_W} flex-1 px-4 py-8 md:px-6`}>
@@ -84,11 +104,11 @@ export default async function WizardStep({
         crumbs={[{ href: "/admin/tournaments", label: "Турниры" }]}
         eyebrow="Новый турнир"
         title={tournament ? tournament.name : "Новый турнир"}
-        aside={<Chip>шаг {stepIndex(step) + 1} из {WIZARD_STEPS.length}</Chip>}
+        aside={<Chip>шаг {stepIndex(step, kind) + 1} из {steps.length}</Chip>}
       />
 
       <div className="mt-6">
-        <Stepper steps={wizardSteps(tournament?.slug ?? null)} current={stepIndex(step)} />
+        <Stepper steps={wizardSteps(tournament?.slug ?? null, kind)} current={stepIndex(step, kind)} />
       </div>
 
       <div className="space-y-4">
@@ -101,10 +121,28 @@ export default async function WizardStep({
             <form action={saveDraft} className="grid gap-4 sm:grid-cols-2">
               {tournament && <input type="hidden" name="id" value={tournament.id} />}
               <input type="hidden" name="current" value={tournament?.slug ?? ""} />
+              {/* Формат решает, что будет дальше в мастере, поэтому стоит до «Названия».
+                  После создания не меняется: смена формата у турнира, на который уже
+                  записались, не значит ничего (ТЗ 37, DESIGN §1). */}
+              <Field
+                name="kind"
+                label="Формат"
+                value={kind}
+                span={2}
+                hint="Кто регистрируется — команды или игроки поодиночке. После создания не меняется."
+              >
+                {(Object.keys(TOURNAMENT_KIND_LABELS) as TournamentKind[]).map((k) => (
+                  <option key={k} value={k} disabled={!!tournament && k !== kind}>
+                    {TOURNAMENT_KIND_LABELS[k]}
+                  </option>
+                ))}
+              </Field>
               <Field name="name" label="Название" value={tournament?.name} required placeholder="LOST Season 3" />
               <Field name="slug" label="Слаг" value={tournament?.slug} placeholder="s3" hint="Живёт в адресе: /tournaments/s3" />
               <Field name="short" label="Короткое имя" value={tournament?.short} placeholder="S3" />
-              <Field name="format" label="Формат" value={tournament?.format} placeholder="2 дивизиона, группа + плей-офф" />
+              {/* Не «Формат»: этим словом с ТЗ 37 подписан `kind` выше. Здесь — регламент
+                  свободной строкой, поле и его данные не менялись. */}
+              <Field name="format" label="Регламент строкой" value={tournament?.format} placeholder="2 дивизиона, группа + плей-офф" />
               <Field name="prize" label="Призовой фонд" value={tournament?.prize} />
               <Field name="startAt" label="Старт" type="date" value={forInput(tournament?.startAt ?? null)} />
               <Field name="endAt" label="Финиш" type="date" value={forInput(tournament?.endAt ?? null)} />
@@ -323,11 +361,18 @@ export default async function WizardStep({
               «Приём заявок» или «Идёт» — это делается на карточке турнира.
             </Alert>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              <StatTile label="Дивизионов" value={tournament.divisions.length} />
-              <StatTile label="Команд заявлено" value={teamsTotal} />
-              <StatTile label="Разведено по группам" value={drawn} hint={`из ${teamsTotal}`} />
-            </div>
+            {individual ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <StatTile label="Записалось" value={registered} />
+                <StatTile label="Формат" value={TOURNAMENT_KIND_LABELS[kind as TournamentKind] ?? kind} />
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-3">
+                <StatTile label="Дивизионов" value={tournament.divisions.length} />
+                <StatTile label="Команд заявлено" value={teamsTotal} />
+                <StatTile label="Разведено по группам" value={drawn} hint={`из ${teamsTotal}`} />
+              </div>
+            )}
 
             <Panel title="Куда дальше">
               <nav className="flex flex-wrap gap-3 font-pouf text-sm font-bold">
@@ -339,13 +384,15 @@ export default async function WizardStep({
                     Переключить статус на карточке
                   </Link>
                 ) : (
-                  <Link href={`/tournaments/${tournament.slug}`} className="text-[var(--accent-ink)] hover:underline">
-                    Публичная страница турнира
+                  <Link href={tournamentHref(tournament)} className="text-[var(--accent-ink)] hover:underline">
+                    {individual ? "Страница записи" : "Публичная страница турнира"}
                   </Link>
                 )}
-                <Link href={`/admin/series/${tournament.slug}`} className="text-[var(--accent-ink)] hover:underline">
-                  Архив серий турнира
-                </Link>
+                {!individual && (
+                  <Link href={`/admin/series/${tournament.slug}`} className="text-[var(--accent-ink)] hover:underline">
+                    Архив серий турнира
+                  </Link>
+                )}
               </nav>
             </Panel>
           </>
@@ -355,8 +402,8 @@ export default async function WizardStep({
       {/* ── Навигация мастера ─────────────────────────────────────────────── */}
       {tournament && (
         <div className="mt-6 flex flex-wrap items-center gap-2">
-          {stepIndex(step) > 0 && (
-            <StepLink step={WIZARD_STEPS[stepIndex(step) - 1].key} slug={tournament.slug}>
+          {stepIndex(step, kind) > 0 && (
+            <StepLink step={steps[stepIndex(step, kind) - 1].key} slug={tournament.slug}>
               Назад
             </StepLink>
           )}
@@ -364,12 +411,12 @@ export default async function WizardStep({
           {step === "done" ? (
             <form action={finishWizard}>
               <input type="hidden" name="t" value={tournament.slug} />
-              <Button type="submit" size="sm">Открыть карточку турнира</Button>
+              <Button type="submit" size="sm">{individual ? "Открыть консоль турнира" : "Открыть карточку турнира"}</Button>
             </form>
           ) : (
             step !== "describe" && (
               <StepLink
-                step={WIZARD_STEPS[stepIndex(step) + 1].key}
+                step={steps[stepIndex(step, kind) + 1].key}
                 slug={tournament.slug}
                 variant="solid"
                 // Дальше не пускаем только там, где следующий шаг осмысленно невозможен: без

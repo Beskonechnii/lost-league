@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { registrationOpen, tournamentSeats, type listTournaments } from "@/lib/tournaments";
+import {
+  isIndividual,
+  registrationOpen,
+  tournamentHref,
+  tournamentSeats,
+  TOURNAMENT_KIND_SHORT,
+  type listTournaments,
+  type TournamentKind,
+} from "@/lib/tournaments";
 import { withPlural } from "@/lib/plural";
 import { buttonClasses } from "@/components/pouf/Button";
 import { Capacity } from "@/components/pouf/capacity";
@@ -96,6 +104,23 @@ function Actions({ t, block }: { t: TournamentRow; block: boolean }) {
   // До 640 кнопка во всю ширину: в две колонки они там не встают, а половинная кнопка под пальцем
   // читается как неактивная.
   const wide = "w-full justify-center sm:w-auto";
+
+  // Индивидуальный формат — одна кнопка: заявки командой у него не бывает, а «Открыть турнир»
+  // и «Записаться» ведут на один и тот же адрес, и две кнопки рядом были бы одним входом дважды.
+  if (isIndividual(t)) {
+    const open = registrationOpen(t);
+    return (
+      <div className="flex flex-wrap gap-2">
+        <Link
+          href={tournamentHref(t)}
+          className={buttonClasses({ size, variant: open ? "solid" : "quiet", className: wide })}
+        >
+          {open ? "Записаться" : "Открыть"}
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-wrap gap-2">
       <Link href={`/tournaments/${t.slug}`} className={buttonClasses({ size, className: wide })}>
@@ -122,26 +147,37 @@ function Actions({ t, block }: { t: TournamentRow; block: boolean }) {
  */
 export function TournamentCard({ t, face = false }: { t: TournamentRow; face?: boolean }) {
   const seats = tournamentSeats(t.divisions);
+  // Индивидуальный формат считает записавшихся игроков, а не команды по дивизионам (ТЗ 37):
+  // дивизионов у него нет вовсе, и блок «Дивизионы ещё не заведены» врал бы обещанием.
+  const individual = isIndividual(t);
   // В лице призовой вынесен плиткой вправо — в строке фактов его не повторяем. Формат остаётся
   // в строке: это фраза («2 дивизиона, группа + плей-офф»), а не показатель, и в плитке он
   // набирается крупным жирным в шесть строк.
   const facts = [period(t), t.format, !face && t.prize && `призовой ${t.prize}`].filter(Boolean);
-  const hasSeats = t.divisions.length > 0 && t.divisions.length <= MAX_DIVISION_CARDS;
+  const hasSeats = !individual && t.divisions.length > 0 && t.divisions.length <= MAX_DIVISION_CARDS;
 
   const head = (
     <>
       <div className="flex flex-wrap items-center gap-2">
         <TournamentStatus status={t.status} />
-        {face && t.series && (
-          <Chip className="max-w-[12rem] truncate" title={t.series}>
-            {t.series}
-          </Chip>
+        {/* Слот чипа один: у сезонного турнира в нём серия, у индивидуального — имя формата.
+            Серии у форматов нет, поэтому они не конкурируют. Формат показываем и в ленте, не
+            только в лице: это единственное, чем карточка отличается от сезонной. */}
+        {individual ? (
+          <Chip>{TOURNAMENT_KIND_SHORT[t.kind as TournamentKind] ?? t.kind}</Chip>
+        ) : (
+          face &&
+          t.series && (
+            <Chip className="max-w-[12rem] truncate" title={t.series}>
+              {t.series}
+            </Chip>
+          )
         )}
       </div>
 
       <div className="mt-3">
         <Heading level={3}>
-          <Link href={`/tournaments/${t.slug}`} className="break-words hover:text-[var(--accent-ink)]">
+          <Link href={tournamentHref(t)} className="break-words hover:text-[var(--accent-ink)]">
             {t.name}
           </Link>
         </Heading>
@@ -169,12 +205,17 @@ export function TournamentCard({ t, face = false }: { t: TournamentRow; face?: b
                 <Capacity taken={seats.taken} limit={seats.limit} />
               </div>
             )}
-            <div className="mt-4">
-              <Divisions t={t} />
-            </div>
+            {!individual && (
+              <div className="mt-4">
+                <Divisions t={t} />
+              </div>
+            )}
           </div>
 
           <div className="flex min-w-0 flex-col gap-3">
+            {/* У индивидуального формата колонка не пустует: вместо мест по дивизионам — счётчик
+                записавшихся (лимит появится в ТЗ 39). */}
+            {individual && <Capacity taken={t._count.registrations} limit={null} unit="players" />}
             {t.prize && <StatTile label="Призовой" value={t.prize} />}
             <Actions t={t} block />
           </div>
@@ -196,9 +237,16 @@ export function TournamentCard({ t, face = false }: { t: TournamentRow; face?: b
             <Capacity taken={seats.taken} limit={seats.limit} />
           </div>
         )}
-        <div className="mt-4">
-          <Divisions t={t} />
-        </div>
+        {individual && (
+          <div className="mt-4">
+            <Capacity taken={t._count.registrations} limit={null} unit="players" />
+          </div>
+        )}
+        {!individual && (
+          <div className="mt-4">
+            <Divisions t={t} />
+          </div>
+        )}
         <div className="mt-auto pt-4">
           <Actions t={t} block={false} />
         </div>
@@ -217,7 +265,7 @@ export function TournamentRowCard({ t }: { t: TournamentRow }) {
 
   return (
     <Link
-      href={`/tournaments/${t.slug}`}
+      href={tournamentHref(t)}
       className="block rounded-control focus-visible:outline-none focus-visible:[box-shadow:var(--sh-focus)]"
     >
       <RowCard>
@@ -225,16 +273,24 @@ export function TournamentRowCard({ t }: { t: TournamentRow }) {
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             {dates && <Text muted size="sm" num>{dates}</Text>}
             <span className="font-pouf font-black text-ink">{t.name}</span>
-            {t.series && (
-              <Chip className="max-w-[12rem] truncate" title={t.series}>
-                {t.series}
-              </Chip>
+            {isIndividual(t) ? (
+              <Chip>{TOURNAMENT_KIND_SHORT[t.kind as TournamentKind] ?? t.kind}</Chip>
+            ) : (
+              t.series && (
+                <Chip className="max-w-[12rem] truncate" title={t.series}>
+                  {t.series}
+                </Chip>
+              )
             )}
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-3">
             <TournamentStatus status={t.status} />
-            {t.divisions.length > 0 && (
-              <Capacity taken={seats.taken} limit={seats.limit} size="sm" meter={false} />
+            {/* Считает тот, кому есть что считать: у сезона — команды по дивизионам,
+                у индивидуального формата — записавшихся. */}
+            {isIndividual(t) ? (
+              <Capacity taken={t._count.registrations} limit={null} unit="players" size="sm" meter={false} />
+            ) : (
+              t.divisions.length > 0 && <Capacity taken={seats.taken} limit={seats.limit} size="sm" meter={false} />
             )}
           </div>
         </div>

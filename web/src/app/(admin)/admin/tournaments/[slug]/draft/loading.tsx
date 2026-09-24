@@ -1,10 +1,11 @@
 import { Skeleton, SkeletonHeader } from "@/components/pouf/skeleton";
+import { SITE_MAX_W } from "@/components/pouf/blocks";
 
 // Скелет борда: шапка, полоса тулбара, сетка команд и полоса пула — форма готового экрана.
 
-export default function MixCupDraftLoading() {
+export default function TournamentDraftLoading() {
   return (
-    <div className="space-y-6 font-pouf">
+    <div className={`mx-auto w-full ${SITE_MAX_W} flex-1 space-y-6 px-4 py-8 font-pouf md:px-6`}>
       <SkeletonHeader />
       <div role="status" aria-label="Загружаем драфт" className="space-y-4">
         <Skeleton variant="card" className="h-[56px]" />

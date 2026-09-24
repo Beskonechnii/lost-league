@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { currentTournament, listTournaments } from "@/lib/tournaments";
+import { currentTournament, isIndividual, listTournaments, TOURNAMENT_KIND_SHORT, type TournamentKind } from "@/lib/tournaments";
 import { Button } from "@/components/pouf/Button";
 import { denyUnlessPermission } from "../../_components/permission-gate";
 import { AdminHeader } from "../../_components/admin-header";
@@ -65,10 +65,21 @@ export default async function TournamentsPage() {
                       {/* Какой турнир открывают витрины — видно сразу: при двух-трёх сразу
                           непонятно, чьи таблицы показывает сайт. */}
                       {t.id === current?.id && <Chip accent>текущий на сайте</Chip>}
+                      {isIndividual(t) && <Chip>{TOURNAMENT_KIND_SHORT[t.kind as TournamentKind] ?? t.kind}</Chip>}
                     </div>
+                    {/* У индивидуального формата дивизионов не бывает — «дивизионов: 0» читалось
+                        бы как незаконченная работа. Вместо них — записавшиеся (ТЗ 37). */}
                     <p className="mt-1.5 font-pouf text-xs font-bold text-muted">
-                      {range(t.startAt, t.endAt)} · дивизионов: {t.divisions.length}
-                      {t.divisions.length > 0 && ` (${t.divisions.map((d) => d.short ?? d.slug).join(", ")})`}
+                      {isIndividual(t) ? (
+                        <>
+                          {range(t.startAt, t.endAt)} · записалось: {t._count.registrations}
+                        </>
+                      ) : (
+                        <>
+                          {range(t.startAt, t.endAt)} · дивизионов: {t.divisions.length}
+                          {t.divisions.length > 0 && ` (${t.divisions.map((d) => d.short ?? d.slug).join(", ")})`}
+                        </>
+                      )}
                     </p>
                     {t.description && (
                       <p className="mt-1.5 line-clamp-2 font-pouf text-sm font-bold text-ink-muted">

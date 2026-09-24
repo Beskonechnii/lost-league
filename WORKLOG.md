@@ -9,6 +9,15 @@
 
 ---
 
+## 2026-09-23 — ТЗ 37: турнир получает формат (Mix Cup и UNDERBEER — `Tournament.kind`)
+
+`MixCupEvent` удалена, `mixcup-6` (2 команды, 10 пиков, `DraftSession#27`) перенесён миграцией `20260923150000_tournament_kind`; спутники `TournamentDraftSettings`/`TournamentRegistration`, `Player.sourceTournamentId`, снимок v17. Консоль обоих форматов — карточка турнира `/admin/tournaments/<slug>` (+`/draft`), публичная запись — `/join/<slug>`; `/admin/mixcup/<id>`, `/mixcup/<slug>` и `/tournaments/<slug>` при kind≠season редиректят. Право `mixcup` → `tournaments.edit`, `mixcup-section.tsx` удалена, `pouf/capacity.tsx` получил `unit`.
+Файлы: `prisma/**`, `lib/{tournaments,mixcup,account,permissions,auth}.ts`, `admin/{tournaments,mixcup}/**`, `(public)/{join,mixcup,me}/**`, `api/{tournaments,join,underbeer}/**`, `tournament-card.tsx`, `(home)/**`, `scripts/{export,import}-db.ts`, `sitemap.ts`, `docs/{MAP,ARCHITECTURE}.md`, `DECISIONS.md`, `BACKLOG.md`.
+Проверено: `tsc`/`lint`/`build` чисто; в браузере на 1024 и 390 — мастер с полем «Формат» в два шага, консоль UNDERBEER-турнира, запись и отмена на `/join/<slug>`, обе карточки на `/tournaments` и главной, результат `mixcup-6`; `db:export` → `db:import` на чистой базе восстановил турнир с результатом. Тестовый турнир и запись удалены, база как была.
+Правки после `qa` (той же датой): плита главной у индивидуального формата не рисует «Призовой —», `openForRegistrationAll()` отдаёт только `kind: season` (баннер, `/apply` и кабинет новичка больше не зовут «Заявить команду» на UNDERBEER-турнир), `TournamentRegistration` вошла в снимок отдельным списком (турнир и игрок слагами, аккаунт по почте/tgId — round-trip проверен на временной записи), `/admin/tournaments` печатает у таких турниров «записалось: N» вместо «дивизионов: 0». `/join/<несуществующий>` → 200 не чинил: причина унаследованная (`loading.tsx` + стриминг), строка в `BACKLOG.md`.
+Принято `qa` со второго захода, статус `done`; не проверена только гостевая ветка AC №6 (нужна учётка). Решения Стаса по DESIGN: `/join/<slug>`, «Формат»/«Регламент строкой», право `tournaments.edit`.
+Дальше: `design` на 38 (`ChoiceChips` в Ките), затем `stage` 38 и 39; 35 ждёт приёмки `qa`, 33 закрыть как поглощённое 37.
+
 ## 2026-09-23 — ТЗ 37-39: формат турнира, роли в заявке, лимит регистрации
 
 Стас переиграл устройство событий: турнир заводится с выбором формата, регистрация — на команды
@@ -154,24 +163,5 @@ dotabuff.com/players/123456»); MMR буквами на шаге 3 — пози�
 На 390 фокус уходит в MMR, переполнения нет (0px). Временный аккаунт удалён, `DEV_LOGIN_EMAIL`
 возвращён в комментарий.
 **Дальше** — приёмка `qa` по ТЗ 29 и 30.
-
----
-
-## 2026-09-18 — ТЗ 29: предрелизная чистка публички
-
-Настоящее имя ушло с трёх публичных поверхностей: строка под ником у игрока, поиск лиги (`realName`
-больше не выбирается из базы — ни в подписи находки, ни в ранжировании) и оверлей UNDERBEER (пул
-публичной страницы отдаётся с `realName: null`; в админском драфте имя осталось). Заодно финал мастера
-турнира не ведёт в 404 (у черновика вместо публичной ссылки — «Переключить статус на карточке»), шапка
-заявленных команд берёт статус турнира вместо константы «приём заявок», счётчик группы серии считает
-видимые карточки, у страницы статистики дивизиона появились свои title, description и канон.
-**Файлы.** `lib/search.ts`, `(public)/players/[key]/page.tsx`, `(bare)/overlay/underbeer/[id]/{page,_components/overlay-live}.tsx`,
-`(public)/tournaments/{(index)/page,[slug]/entrants/page,[slug]/[div]/stats/page}.tsx`, `(admin)/admin/tournaments/new/[step]/page.tsx`.
-**Проверено.** tsc/lint/build чисто (прежний warning `pouf/media.tsx`). На dev: `/api/search` по
-«Ларин»/«Дмитрий» — пусто, по «sett» — игрок без подписи; в HTML оверлея все `realName` = null;
-`s2/entrants` — «LOST Season 2 · идёт», `s4` — «приём заявок»; «Прочие турниры 2 турнира» над двумя
-карточками; титул «LOST D1 — статистика»; мастер на черновике — обе ссылки 200, публичной нет.
-390/1280/1440 — переполнения нет. Временный админ и черновик `zz-tz29` удалены, в `dev.db` остались
-только сдвинутые счётчики autoincrement. **Дальше** — приёмка `qa` по ТЗ 29.
 
 ---

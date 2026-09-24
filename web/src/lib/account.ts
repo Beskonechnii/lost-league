@@ -415,12 +415,12 @@ export type PendingRegistration = Awaited<ReturnType<typeof pendingRegistrations
  *  RosterSpot и появляется вместе с командой, поэтому заявленная позиция остаётся в анкете.
  *
  *  `extra` — исключение Mix Cup (ТЗ 34, экспортируется ради lib/mixcup.ts): профиль там заводится
- *  ДО апрува, поэтому `verified: false` и отметка события-источника; обычный путь (апрув анкеты)
+ *  ДО апрува, поэтому `verified: false` и отметка турнира-источника; обычный путь (апрув анкеты)
  *  извне extra не передаёт, и профиль сразу верифицирован (дефолт схемы). */
 export async function createPlayerFromApplication(
   app: Application,
   mmr: number | null,
-  extra?: { verified?: boolean; mixCupSourceEventId?: number },
+  extra?: { verified?: boolean; sourceTournamentId?: number },
 ): Promise<number> {
   const slug = await uniqueSlug(slugify(app.nickname));
   const player = await prisma.player.create({
@@ -439,7 +439,7 @@ export async function createPlayerFromApplication(
       accountId: applicationAccountId(app),
       mmr,
       ...(extra?.verified === false ? { verified: false } : {}),
-      ...(extra?.mixCupSourceEventId ? { mixCupSourceEventId: extra.mixCupSourceEventId } : {}),
+      ...(extra?.sourceTournamentId ? { sourceTournamentId: extra.sourceTournamentId } : {}),
     },
   });
   return player.id;
@@ -461,10 +461,10 @@ export async function approveRegistration(accountId: number, mmr: number | null)
       if (taken && taken.id !== accountId) return { ok: false, error: "Игрок уже привязан к другому аккаунту" };
       playerId = account.claimId;
     } else {
-      // Mix Cup (ТЗ 34): если человек уже записался на событие до апрува, профиль для него
-      // заведён заранее (`registerForMixCup` в lib/mixcup.ts, verified: false) — здесь его
-      // переиспользуем, а не заводим дубль, и снимаем пометку «не проверен».
-      const shadow = await prisma.mixCupRegistration.findFirst({ where: { accountId }, select: { playerId: true } });
+      // Запись на индивидуальный турнир (ТЗ 34/37): если человек уже записался до апрува,
+      // профиль для него заведён заранее (`registerForTournament` в lib/mixcup.ts,
+      // verified: false) — здесь его переиспользуем, а не заводим дубль, и снимаем пометку.
+      const shadow = await prisma.tournamentRegistration.findFirst({ where: { accountId }, select: { playerId: true } });
       if (shadow) {
         playerId = shadow.playerId;
         await prisma.player.update({ where: { id: playerId }, data: { verified: true } });

@@ -7,7 +7,7 @@ import { TOURNAMENT_STATUS_LABELS, type TournamentStatus } from "@/lib/tournamen
 //
 // Тона: приём заявок — info (действие возможно прямо сейчас), идёт — ok (живое),
 // завершён — warn (итог подведён, но турнир уже история), черновик — нейтральный.
-const TONE: Record<TournamentStatus, "ok" | "warn" | "info" | "neutral"> = {
+export const STATUS_TONE: Record<TournamentStatus, "ok" | "warn" | "info" | "neutral"> = {
   draft: "neutral",
   registration: "info",
   running: "ok",
@@ -16,5 +16,5 @@ const TONE: Record<TournamentStatus, "ok" | "warn" | "info" | "neutral"> = {
 
 export function TournamentStatus({ status }: { status: string }) {
   const key = (status in TOURNAMENT_STATUS_LABELS ? status : "draft") as TournamentStatus;
-  return <StatusPill tone={TONE[key]}>{TOURNAMENT_STATUS_LABELS[key] ?? status}</StatusPill>;
+  return <StatusPill tone={STATUS_TONE[key]}>{TOURNAMENT_STATUS_LABELS[key] ?? status}</StatusPill>;
 }

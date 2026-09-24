@@ -13,6 +13,7 @@ const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim()
 /** Поля описания — те же, что в карточке турнира; статус черновика мастер ставит сам. */
 const describeInput = (form: FormData) => ({
   name: text(form, "name"),
+  kind: text(form, "kind"),
   slug: text(form, "slug"),
   short: text(form, "short"),
   description: text(form, "description"),
@@ -40,7 +41,10 @@ export async function saveDraft(form: FormData): Promise<void> {
     : await createTournament(input);
 
   revalidatePath("/admin/tournaments");
-  redirect(`/admin/tournaments/new/divisions?t=${tournament.slug}`);
+  // Индивидуальному формату дивизионы, импорт составов и жеребьёвка не нужны — с описания сразу
+  // на «Готово», откуда «Открыть консоль» ведёт к правилам драфта и списку записавшихся (ТЗ 37).
+  const next = tournament.kind === "season" ? "divisions" : "done";
+  redirect(`/admin/tournaments/new/${next}?t=${tournament.slug}`);
 }
 
 /** Переход между шагами без записи: «назад», «дальше», выход в карточку. */
@@ -57,7 +61,8 @@ export async function goToStep(form: FormData): Promise<void> {
 
 /**
  * Финиш мастера: турнир заведён. Статус не трогаем — «Приём заявок» или «Идёт» оператор включает
- * осознанно на карточке; мастер только доводит до состояния «всё заполнено».
+ * осознанно на карточке; мастер только доводит до состояния «всё заполнено». Карточка одна на
+ * все форматы: у индивидуального на её месте стоит операторская консоль (ТЗ 37).
  */
 export async function finishWizard(form: FormData): Promise<void> {
   await requirePermission("tournaments.edit");

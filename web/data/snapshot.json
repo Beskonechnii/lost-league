@@ -1,6 +1,6 @@
 {
-  "version": 16,
-  "exportedAt": "2026-09-23T11:40:05.458Z",
+  "version": 17,
+  "exportedAt": "2026-09-23T16:06:06.684Z",
   "teams": [
     {
       "slug": "123-gaming",
@@ -669,7 +669,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.440Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "113",
@@ -699,7 +699,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.278Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "44",
@@ -729,7 +729,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.531Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "abstract1on",
@@ -759,7 +759,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.473Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "admin",
@@ -789,7 +789,7 @@
       "tags": null,
       "createdAt": "2026-09-03T21:11:03.454Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "akama",
@@ -819,7 +819,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.908Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "alokin",
@@ -849,7 +849,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.583Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "amok",
@@ -879,7 +879,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.830Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "andryusha",
@@ -909,7 +909,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.253Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "ark",
@@ -939,7 +939,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.899Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "armyanman",
@@ -969,7 +969,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.229Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "ash",
@@ -999,7 +999,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.232Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "askme",
@@ -1029,7 +1029,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.885Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "astarotzio",
@@ -1059,7 +1059,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.914Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "ayori",
@@ -1089,7 +1089,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.693Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "b-u-r-i-z-a",
@@ -1119,7 +1119,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.931Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "bann",
@@ -1149,7 +1149,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.847Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "beda",
@@ -1179,7 +1179,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.512Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "benzo",
@@ -1209,7 +1209,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.849Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "blas",
@@ -1239,7 +1239,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.738Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "borts",
@@ -1269,7 +1269,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.543Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "boytikki",
@@ -1299,7 +1299,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.439Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "brazil",
@@ -1329,7 +1329,7 @@
       "tags": null,
       "createdAt": "2026-07-22T20:14:26.930Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "breaoutlik",
@@ -1359,7 +1359,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.922Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "brokeboi",
@@ -1389,7 +1389,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.551Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "bronepoezd",
@@ -1419,7 +1419,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.479Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "bsk",
@@ -1449,7 +1449,7 @@
       "tags": "organizer",
       "createdAt": "2026-08-12T00:04:07.584Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "burlesk",
@@ -1479,7 +1479,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.859Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "chervyak",
@@ -1509,7 +1509,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.213Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "chiga",
@@ -1539,7 +1539,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.489Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "chipollino",
@@ -1569,7 +1569,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.238Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "chomoske",
@@ -1599,7 +1599,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.471Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "cookei-1",
@@ -1629,7 +1629,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.467Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "da-eto-zhestko",
@@ -1659,7 +1659,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.528Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "dafutka",
@@ -1689,7 +1689,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.841Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "danya-ze-faker",
@@ -1719,7 +1719,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.891Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "delovo1",
@@ -1749,7 +1749,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.499Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "despair",
@@ -1779,7 +1779,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.749Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "destro",
@@ -1809,7 +1809,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.713Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "devileye",
@@ -1839,7 +1839,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.244Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "dezesmol",
@@ -1869,7 +1869,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.728Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "dezzare",
@@ -1899,7 +1899,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.541Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "dieanna",
@@ -1929,7 +1929,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.470Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "dmetrodiy",
@@ -1959,7 +1959,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.646Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "dslkfdslkf",
@@ -1989,7 +1989,7 @@
       "tags": null,
       "createdAt": "2026-08-23T17:42:08.019Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "dslkfdslkfdslkf",
@@ -2019,7 +2019,7 @@
       "tags": null,
       "createdAt": "2026-08-23T17:42:08.022Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "dslkfdslkfdslkfdslkf",
@@ -2049,7 +2049,7 @@
       "tags": null,
       "createdAt": "2026-08-23T17:42:08.026Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "e-sim",
@@ -2079,7 +2079,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.223Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "egorkanoobas",
@@ -2109,7 +2109,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.465Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "ehot",
@@ -2139,7 +2139,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.207Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "elamashka",
@@ -2169,7 +2169,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.801Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "estacada",
@@ -2199,7 +2199,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.446Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "fallen",
@@ -2229,7 +2229,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.686Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "falsh",
@@ -2259,7 +2259,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.539Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "fedoter",
@@ -2289,7 +2289,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.580Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "fernando-nagibini",
@@ -2319,7 +2319,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.100Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "flint-lockwood",
@@ -2349,7 +2349,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.710Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "flour-blr",
@@ -2379,7 +2379,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.562Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "fmy",
@@ -2409,7 +2409,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.905Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "foolovskiy",
@@ -2439,7 +2439,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.707Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "foxxxyyy",
@@ -2469,7 +2469,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.844Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "frizzing",
@@ -2499,7 +2499,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.941Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "frvr",
@@ -2529,7 +2529,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.716Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "gata-me-liga",
@@ -2559,7 +2559,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.523Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "gerein3008",
@@ -2589,7 +2589,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.758Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "glebasta-cmstorm",
@@ -2619,7 +2619,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.487Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "glhf",
@@ -2649,7 +2649,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.495Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "gommage",
@@ -2679,7 +2679,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.554Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "grinch",
@@ -2709,7 +2709,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.289Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "guzya",
@@ -2739,7 +2739,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.256Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "happysadman",
@@ -2769,7 +2769,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.458Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "heaven",
@@ -2799,7 +2799,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.533Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "hhastr",
@@ -2829,7 +2829,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.381Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "highlight-provider",
@@ -2859,7 +2859,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.444Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "hobbits",
@@ -2889,7 +2889,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:44.974Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "ilyinprime",
@@ -2919,7 +2919,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.048Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "ilyushka",
@@ -2949,7 +2949,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.798Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "irishtea",
@@ -2979,7 +2979,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.187Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "kefteme23",
@@ -3009,7 +3009,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.056Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "ket4oop",
@@ -3039,7 +3039,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.356Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "kislomolochnyy",
@@ -3069,7 +3069,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.469Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "kislyy",
@@ -3099,7 +3099,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.525Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "kit-ano",
@@ -3129,7 +3129,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.509Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "kolpaks",
@@ -3159,7 +3159,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.256Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "kowkodevo4ka",
@@ -3189,7 +3189,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.481Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "kungfury",
@@ -3219,7 +3219,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.506Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "kurame",
@@ -3249,7 +3249,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.777Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "kxkxkx",
@@ -3279,7 +3279,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.522Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "l-bionix-l",
@@ -3309,7 +3309,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.459Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "let-s-dance",
@@ -3339,7 +3339,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.501Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "light",
@@ -3369,7 +3369,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.548Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "lonely",
@@ -3399,7 +3399,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.216Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "maksimka",
@@ -3429,7 +3429,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.804Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "mangekyou6o",
@@ -3459,7 +3459,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.249Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "manjalord",
@@ -3489,7 +3489,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.929Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "marcivlone",
@@ -3519,7 +3519,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.031Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "masterokxd",
@@ -3549,7 +3549,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.559Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "maxina",
@@ -3579,7 +3579,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.651Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "maxtree",
@@ -3609,7 +3609,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.769Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "mayonez1s",
@@ -3639,7 +3639,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.273Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "mazda",
@@ -3669,7 +3669,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.442Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "mel",
@@ -3699,7 +3699,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.463Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "mini-bayk",
@@ -3729,7 +3729,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.277Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "miracle",
@@ -3759,7 +3759,7 @@
       "tags": null,
       "createdAt": "2026-08-20T21:43:06.510Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "mirakl",
@@ -3789,7 +3789,7 @@
       "tags": null,
       "createdAt": "2026-08-27T13:42:41.787Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "moiofc",
@@ -3819,7 +3819,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.555Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "moody",
@@ -3849,7 +3849,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.911Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "moonrise",
@@ -3879,7 +3879,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.689Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "morda",
@@ -3909,7 +3909,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.547Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "morgan",
@@ -3939,7 +3939,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.199Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "morkovan",
@@ -3969,7 +3969,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.447Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "morphine",
@@ -3999,7 +3999,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.266Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "mr-daddy",
@@ -4029,7 +4029,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.538Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "mrkekman",
@@ -4059,7 +4059,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.742Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "neverland",
@@ -4089,7 +4089,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.762Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "nico",
@@ -4119,7 +4119,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.917Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "nicolas-sarcozy",
@@ -4149,7 +4149,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.517Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "nikita",
@@ -4179,7 +4179,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.893Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "nimpo",
@@ -4209,7 +4209,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.486Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "nohara",
@@ -4239,7 +4239,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.702Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "nosferatu",
@@ -4269,7 +4269,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.279Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "npq",
@@ -4299,7 +4299,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.195Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "osumayosu",
@@ -4329,7 +4329,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.919Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "p-sune",
@@ -4359,7 +4359,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.421Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "p1rat",
@@ -4389,7 +4389,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.682Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "pashcock",
@@ -4419,7 +4419,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.783Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "pasteroni-ja",
@@ -4449,7 +4449,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.935Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "petka",
@@ -4479,7 +4479,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.795Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "pizzacodeine",
@@ -4509,7 +4509,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.752Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "player",
@@ -4539,7 +4539,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.043Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "po-restoranam",
@@ -4569,7 +4569,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.476Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "posle-fantbi",
@@ -4599,7 +4599,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.565Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "pozik",
@@ -4629,7 +4629,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.567Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "pugovichka-otorvalasya",
@@ -4659,7 +4659,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.669Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "q-w-e",
@@ -4689,7 +4689,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.506Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "qsarigama",
@@ -4719,7 +4719,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.823Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "quasar",
@@ -4749,7 +4749,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.450Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "qwick",
@@ -4779,7 +4779,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.656Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "renaissance",
@@ -4809,7 +4809,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.946Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "rom-o-ne",
@@ -4839,7 +4839,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.943Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "roma-shkereberd",
@@ -4869,7 +4869,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.560Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "rost1k",
@@ -4899,7 +4899,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.853Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "rox",
@@ -4929,7 +4929,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.731Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "rth",
@@ -4959,7 +4959,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.130Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "rty",
@@ -4989,7 +4989,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.786Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "sachamun",
@@ -5019,7 +5019,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.261Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "saldatau",
@@ -5049,7 +5049,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.202Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "sanek",
@@ -5079,7 +5079,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.833Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "sashka",
@@ -5109,7 +5109,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.807Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "savety",
@@ -5139,7 +5139,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.660Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "sayonara",
@@ -5169,7 +5169,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.083Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "sdd",
@@ -5199,7 +5199,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.724Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "seraphim",
@@ -5229,7 +5229,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.734Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "serhio",
@@ -5259,7 +5259,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.453Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "sett",
@@ -5289,7 +5289,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.472Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "sex",
@@ -5319,7 +5319,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.202Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "sexmachine",
@@ -5349,7 +5349,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.780Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "sh1za-qb",
@@ -5379,7 +5379,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.235Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "shastik",
@@ -5409,7 +5409,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.527Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "sky",
@@ -5439,7 +5439,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.039Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "smn",
@@ -5469,7 +5469,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.476Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "snorlax212",
@@ -5499,7 +5499,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.515Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "someday",
@@ -5529,7 +5529,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.465Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "staryy-ezh",
@@ -5559,7 +5559,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.270Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "sunlive",
@@ -5589,7 +5589,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.789Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "svinovizhimalka",
@@ -5619,7 +5619,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.896Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "swag-owner",
@@ -5649,7 +5649,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.559Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "tampon228",
@@ -5679,7 +5679,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.525Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "the-one",
@@ -5709,7 +5709,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.485Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "timurka",
@@ -5739,7 +5739,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.812Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "tokyomane",
@@ -5769,7 +5769,7 @@
       "tags": null,
       "createdAt": "2026-07-22T18:52:37.259Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "toxik",
@@ -5799,7 +5799,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.190Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "tpabka",
@@ -5829,7 +5829,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.521Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "treshzor",
@@ -5859,7 +5859,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.826Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "turtle",
@@ -5889,7 +5889,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.673Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "tvoya-byvshaya",
@@ -5919,7 +5919,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.174Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "twilightnest",
@@ -5949,7 +5949,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.494Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "v1ole",
@@ -5979,7 +5979,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.677Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "vargos",
@@ -6009,7 +6009,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.535Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "veles",
@@ -6039,7 +6039,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.052Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "wilkinson",
@@ -6069,7 +6069,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.511Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "xlalli",
@@ -6099,7 +6099,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.536Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "xrumiks",
@@ -6129,7 +6129,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.503Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "xus",
@@ -6159,7 +6159,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.755Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "ya-geniy",
@@ -6189,7 +6189,7 @@
       "tags": null,
       "createdAt": "2026-08-22T17:12:45.462Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "ya-pinayu-eti-dengi",
@@ -6219,7 +6219,7 @@
       "tags": null,
       "createdAt": "2026-07-28T14:35:32.518Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "yatoro-bot",
@@ -6249,7 +6249,7 @@
       "tags": null,
       "createdAt": "2026-09-03T21:54:15.570Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "yng",
@@ -6279,7 +6279,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.888Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "zagada",
@@ -6309,7 +6309,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.640Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "zhozik",
@@ -6339,7 +6339,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.819Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     },
     {
       "slug": "zodiak",
@@ -6369,7 +6369,7 @@
       "tags": null,
       "createdAt": "2026-07-22T23:58:23.765Z",
       "verified": true,
-      "mixCupSourceEventSlug": null
+      "sourceTournamentSlug": null
     }
   ],
   "rosterSpots": [
@@ -13367,6 +13367,7 @@
       "short": "S5",
       "description": "123",
       "format": "2 div",
+      "kind": "season",
       "prize": "10000$",
       "logo": null,
       "banner": null,
@@ -13391,6 +13392,109 @@
           "teamLimit": null,
           "relegation": true
         }
+      ],
+      "draftSettings": null,
+      "mixCupTeams": []
+    },
+    {
+      "slug": "mixcup-6",
+      "name": "Mix Cup #6",
+      "short": null,
+      "description": null,
+      "format": null,
+      "kind": "mixcup",
+      "prize": null,
+      "logo": null,
+      "banner": null,
+      "matchesUrl": null,
+      "leagueId": null,
+      "status": "finished",
+      "series": null,
+      "startAt": null,
+      "endAt": null,
+      "regOpenAt": null,
+      "regCloseAt": null,
+      "createdAt": "2026-09-23T07:22:58.121Z",
+      "divisions": [],
+      "draftSettings": {
+        "stealEnabled": false,
+        "lockEnabled": false
+      },
+      "mixCupTeams": [
+        {
+          "name": "Команда 1",
+          "color": "#f59e0b",
+          "orderNo": 0,
+          "picks": [
+            {
+              "playerSlug": "sdd",
+              "nickname": "sdd",
+              "isCaptain": true,
+              "orderNo": 0
+            },
+            {
+              "playerSlug": "pizzacodeine",
+              "nickname": "pizzacodeine",
+              "isCaptain": false,
+              "orderNo": 1
+            },
+            {
+              "playerSlug": "qsarigama",
+              "nickname": "qsarigama",
+              "isCaptain": false,
+              "orderNo": 2
+            },
+            {
+              "playerSlug": "mangekyou6o",
+              "nickname": "mangekyou6o$$",
+              "isCaptain": false,
+              "orderNo": 3
+            },
+            {
+              "playerSlug": "manjalord",
+              "nickname": "ManjaLord-",
+              "isCaptain": false,
+              "orderNo": 4
+            }
+          ]
+        },
+        {
+          "name": "Команда 2",
+          "color": "#8b5cf6",
+          "orderNo": 1,
+          "picks": [
+            {
+              "playerSlug": "yng",
+              "nickname": "Yng",
+              "isCaptain": true,
+              "orderNo": 0
+            },
+            {
+              "playerSlug": "nohara",
+              "nickname": "nohara",
+              "isCaptain": false,
+              "orderNo": 1
+            },
+            {
+              "playerSlug": "kurame",
+              "nickname": "kurame",
+              "isCaptain": false,
+              "orderNo": 2
+            },
+            {
+              "playerSlug": "morphine",
+              "nickname": "morphine ($)",
+              "isCaptain": false,
+              "orderNo": 3
+            },
+            {
+              "playerSlug": "zagada",
+              "nickname": "Zagada",
+              "isCaptain": false,
+              "orderNo": 4
+            }
+          ]
+        }
       ]
     },
     {
@@ -13399,6 +13503,7 @@
       "short": "LOST S2",
       "description": null,
       "format": "2 дивизион(а), групповая стадия + плей-офф",
+      "kind": "season",
       "prize": null,
       "logo": null,
       "banner": null,
@@ -13434,7 +13539,9 @@
           "teamLimit": null,
           "relegation": false
         }
-      ]
+      ],
+      "draftSettings": null,
+      "mixCupTeams": []
     },
     {
       "slug": "s4",
@@ -13442,6 +13549,7 @@
       "short": "S4",
       "description": "asdfasfasd",
       "format": "2 div play off",
+      "kind": "season",
       "prize": "400$",
       "logo": null,
       "banner": null,
@@ -13466,7 +13574,9 @@
           "teamLimit": null,
           "relegation": true
         }
-      ]
+      ],
+      "draftSettings": null,
+      "mixCupTeams": []
     }
   ],
   "tournamentEntries": [
@@ -332631,16 +332741,5 @@
       "claimSlug": null
     }
   ],
-  "mixCupEvents": [
-    {
-      "slug": "mixcup-6",
-      "title": null,
-      "status": "open",
-      "stealEnabled": false,
-      "lockEnabled": false,
-      "playedAt": null,
-      "createdAt": "2026-09-23T07:22:58.121Z",
-      "teams": []
-    }
-  ]
+  "tournamentRegistrations": []
 }

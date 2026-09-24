@@ -1,5 +1,5 @@
 import type { PoolPlayer } from "@/lib/draft";
-import { DraftPlayerLine } from "../../../../underbeer/[id]/_components/player-line";
+import { DraftPlayerLine } from "../../../underbeer/[id]/_components/player-line";
 
 type Pick = { id: number; playerId: number | null; nickname: string; isCaptain: boolean; orderNo: number };
 type Team = { id: number; name: string; color: string; orderNo: number; picks: Pick[] };

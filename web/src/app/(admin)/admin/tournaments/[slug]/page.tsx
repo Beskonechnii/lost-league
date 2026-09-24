@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { teamTag } from "@/lib/profiles";
 import {
   divisionTeams,
+  isIndividual,
   listSeries,
   overflowWarning,
   tournamentBySlug,
@@ -26,6 +27,7 @@ import { Panel } from "../../../_components/panel";
 import { Field } from "../_components/fields";
 import { DeleteTournament } from "../_components/delete-tournament";
 import { SaveForm } from "../_components/save-form";
+import { DraftConsole } from "../_components/draft-console";
 import { ConfirmOverflow } from "../_components/confirm-overflow";
 import { addDivision, assignTeam, autoDraw, changeStatus, removeDivision, removeTournament, saveDivision, saveDraw, saveTournament } from "../actions";
 
@@ -55,6 +57,10 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
   const { slug } = await params;
   const tournament = await tournamentBySlug(slug);
   if (!tournament) notFound();
+
+  // Индивидуальный формат (ТЗ 37) — другая служебная карточка: дивизионов и заявок команд у него
+  // нет вовсе, зато есть правила драфта и список записавшихся. Право то же, `tournaments.edit`.
+  if (isIndividual(tournament)) return <DraftConsole slug={slug} />;
 
   const [rosters, teams, usage, series] = await Promise.all([
     Promise.all(tournament.divisions.map((d) => divisionTeams(d.id))),
@@ -123,7 +129,10 @@ export default async function TournamentPage({ params }: { params: Promise<{ slu
               options={series}
               hint="Свободное поле: раздел «Турниры» соберёт группу по этому значению. Пусто — «Прочие турниры»."
             />
-            <Field name="format" label="Формат" value={tournament.format} />
+            {/* «Регламент строкой», а не «Формат»: словом «Формат» с ТЗ 37 подписан `kind`
+                (кто регистрируется), и два «Формата» в одной форме — разные вещи под одним
+                словом. Само поле и его данные не менялись. */}
+            <Field name="format" label="Регламент строкой" value={tournament.format} placeholder="2 дивизиона, группа + плей-офф" />
             <Field name="prize" label="Призовой фонд" value={tournament.prize} />
             <Field name="startAt" label="Старт" type="date" value={forInput(tournament.startAt)} />
             <Field name="endAt" label="Финиш" type="date" value={forInput(tournament.endAt)} />
