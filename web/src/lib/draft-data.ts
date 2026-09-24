@@ -9,16 +9,22 @@ import { parseRoleKeys } from "@/lib/roles";
 import type { PoolPlayer } from "@/lib/draft";
 
 /**
- * Плоский пул: каждый игрок один раз, позиция и цвет — по основному месту в ростере
- * (listPlayers уже кладёт его в `main`).
+ * Плоский пул: каждый игрок один раз, цвет — по основному месту в ростере (listPlayers уже кладёт
+ * его в `main`).
  *
- * `tournamentId` — турнир индивидуального формата, из которого собирается драфт: тем, у кого
- * ростерного места нет, роли берутся из их записи на этот турнир (ТЗ 38). Место в составе
- * сильнее желания: у ростерного игрока роль одна и она из `RosterSpot`, как и была.
- * Ad hoc-UNDERBEER турнира не имеет — там `desiredRoles` взять неоткуда и не нужно.
+ * Роль берётся из одного места и в одном порядке (ТЗ 41), а не пересчитывается консолью и оверлеем:
+ *   1) место в составе дивизиона ЭТОГО турнира — оно назначено оператором и сильнее всего;
+ *   2) роли, отмеченные при записи на ЭТОТ турнир (`desiredRoles`, ТЗ 38);
+ *   3) основные роли игрока (`mainRoles`) — что человек сам о себе заявил.
+ * Место прошлого сезона на роль в драфте индивидуального турнира не влияет: там другой турнир,
+ * другая команда и, как правило, другая позиция.
+ *
+ * Ad hoc-UNDERBEER турнира не имеет: записи нет, дивизиона нет — остаются основные роли, а при
+ * их отсутствии свежайшее место ростера (`p.main`), иначе весь импортированный ростер осел бы
+ * в «Без позиции».
  */
 export async function draftPool(tournamentId?: number): Promise<PoolPlayer[]> {
-  const [players, registrations] = await Promise.all([
+  const [players, registrations, spots] = await Promise.all([
     listPlayers(),
     tournamentId == null
       ? []
@@ -26,19 +32,33 @@ export async function draftPool(tournamentId?: number): Promise<PoolPlayer[]> {
           where: { tournamentId },
           select: { playerId: true, desiredRoles: true },
         }),
+    tournamentId == null
+      ? []
+      : prisma.rosterSpot.findMany({
+          where: { division: { tournamentId } },
+          select: { playerId: true, role: true },
+        }),
   ]);
   const desired = new Map(registrations.map((r) => [r.playerId, parseRoleKeys(r.desiredRoles)]));
+  const placed = new Map(spots.filter((s) => s.role).map((s) => [s.playerId, [s.role as string]]));
 
   return players.map((p): PoolPlayer => {
-    const spot = p.main;
-    const team = spot?.team ?? null;
+    const team = p.main?.team ?? null;
+    const own = parseRoleKeys(p.mainRoles);
     return {
       id: p.id,
       nickname: p.nickname,
       realName: p.realName,
       photo: p.photo,
       mmr: p.mmr,
-      roles: spot?.role ? [spot.role] : desired.get(p.id) ?? [],
+      roles:
+        tournamentId == null
+          ? own.length
+            ? own
+            : p.main?.role
+              ? [p.main.role]
+              : []
+          : placed.get(p.id) ?? desired.get(p.id) ?? own,
       // акцент ростерной команды для аватарки-заглушки; без команды — тон из слага игрока
       teamColor: team ? teamAccent(team) : teamAccent({ slug: p.slug, name: p.nickname }),
     };

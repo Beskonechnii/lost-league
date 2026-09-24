@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { accountApplication, type Account } from "@/lib/account";
 import { openForRegistrationAll } from "@/lib/tournaments";
-import { roleLabel } from "@/lib/roles";
+import { parseRoleKeys, roleShort } from "@/lib/roles";
 import { Alert, StatusPill } from "@/components/pouf/feedback";
 import { ApplicationSummary } from "@/app/_components/application-summary";
 
@@ -121,7 +121,7 @@ export async function Welcome({ account }: { account: Account }) {
 
   // Факты мини-профиля — только заполненные: пустые плашки «— позиция» ничего не сообщают.
   const facts = [
-    roleLabel(app?.position),
+    parseRoleKeys(app?.position).map((r) => roleShort(r)).join(", ") || null,
     [claimed?.city ?? app?.city, claimed?.country ?? app?.country].filter(Boolean).join(", ") || null,
     (claimed?.mmr ?? app?.mmr) != null ? `${claimed?.mmr ?? app?.mmr} MMR` : null,
   ].filter((f): f is string => !!f);

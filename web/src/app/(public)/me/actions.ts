@@ -136,7 +136,9 @@ function readApplicationInput(form: FormData): ApplicationInput {
     profileUrl: text("profileUrl"),
     telegram: text("telegram"),
     phone: text("phone"),
-    position: text("position"),
+    // Роли отмечаются чипами — значений у поля несколько, и в анкете они живут одной строкой
+    // (ТЗ 41). `get` вернул бы только первое отмеченное.
+    position: form.getAll("position").map(String).join(","),
     mmr: text("mmr"),
   };
 }

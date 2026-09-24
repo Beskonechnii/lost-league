@@ -19,11 +19,12 @@ import {
   type ApplicationProblems,
 } from "@/lib/application";
 import { accountIdFromUrl, dotabuffOf, splitFullName } from "@/lib/profiles";
-import { ROLES } from "@/lib/roles";
+import { MAIN_ROLES_MAX, ROLES, joinRoleKeys, parseRoleKeys } from "@/lib/roles";
 import { Button } from "@/components/pouf/Button";
 import { Checkbox } from "@/components/pouf/checkbox";
 import { Alert } from "@/components/pouf/feedback";
 import { DateField } from "@/components/pouf/date-field";
+import { ChoiceChips } from "@/components/pouf/choice-chips";
 import { Field, FieldError, FormInput, FormSelect } from "@/components/pouf/Input";
 import { Stepper } from "@/components/pouf/stepper";
 import { RowCard } from "@/components/pouf/surface";
@@ -48,7 +49,7 @@ import { RowCard } from "@/components/pouf/surface";
 // выглядела сломанной. Теперь шаг проверяет тот же `applicationProblems`, которым анкету
 // проверяет сервер: один словарь, разъехаться текстам негде.
 
-const STEPS = ["Контактная информация", "Киберспортивный профиль", "Рейтинг и позиция"];
+const STEPS = ["Контактная информация", "Киберспортивный профиль", "Рейтинг и роли"];
 
 /** Страны, между которыми выбирает игрок лиги. Остальное — «Другая» с ручным вводом. */
 const COUNTRIES = ["Россия", "Беларусь", "Казахстан", "Украина"];
@@ -89,7 +90,8 @@ const NOTHING_SHOWN: Shown = { problems: {}, summary: null, focus: null };
 function readInput(form: HTMLFormElement): ApplicationInput {
   const data = new FormData(form);
   const pairs = (Object.keys(EMPTY_INPUT) as (keyof ApplicationInput)[]).map((k) => [k, String(data.get(k) ?? "")]);
-  return Object.fromEntries(pairs) as ApplicationInput;
+  // У ролей значений несколько (чипы) — собираем их той же строкой, что соберёт сервер.
+  return { ...Object.fromEntries(pairs), position: data.getAll("position").map(String).join(",") } as ApplicationInput;
 }
 
 /**
@@ -562,7 +564,7 @@ function ProfileStep({
   );
 }
 
-/** Третий шаг: заявленный рейтинг и позиция. */
+/** Третий шаг: заявленный рейтинг и роли. */
 function RatingStep({
   v,
   problems,
@@ -571,17 +573,18 @@ function RatingStep({
 }: {
   v: ApplicationInput;
   problems: ApplicationProblems;
-  /** Позиция УПРАВЛЯЕМАЯ и живёт в форме: React не переустанавливает `defaultValue` у `<select>`
-   *  на перерисовке, и после отказа сервера выбор сбрасывался на «не выбрана» (ТЗ 30). */
+  /** Роли УПРАВЛЯЕМЫЕ и живут в форме (CSV ключей): после отказа сервера React возвращает
+   *  флажки к разметке, и отмеченное слетало бы вместе с ними (ТЗ 30, теперь чипы). */
   position: string;
   onPosition: (value: string) => void;
 }) {
-  const box = useRef<HTMLSelectElement>(null);
-  // После серверного действия React делает форме `reset()`. У `<input>` он безвреден — React держит
-  // его `defaultValue` в синхроне со значением; у `<select>` такой синхронизации нет, и выбор
-  // слетал на «не выбрана» уже после того, как React отрисовал правильный. Возвращаем на место.
+  const box = useRef<HTMLDivElement>(null);
+  const chips = () => [...(box.current?.querySelectorAll<HTMLInputElement>('input[name="position"]') ?? [])];
+  // После серверного действия React делает форме `reset()`, и флажки возвращаются к defaultChecked
+  // разметки — то же место, на котором раньше сбрасывался `<select>`. Возвращаем отмеченное.
   useEffect(() => {
-    if (box.current && box.current.value !== position) box.current.value = position;
+    const keys = new Set<string>(parseRoleKeys(position));
+    for (const el of chips()) if (el.checked !== keys.has(el.value)) el.checked = keys.has(el.value);
   });
 
   return (
@@ -601,27 +604,19 @@ function RatingStep({
         )}
       </Field>
 
-      <Field label="Позиция" required error={problems.position}>
-        {(id, describedBy) => (
-          <FormSelect
-            ref={box}
-            id={id}
-            name="position"
-            aria-describedby={describedBy}
-            invalid={!!problems.position}
-            value={position}
-            onChange={(e) => onPosition(e.target.value)}
-            aria-label="Позиция"
-          >
-            <option value="">не выбрана</option>
-            {ROLES.map((r) => (
-              <option key={r.key} value={r.key}>
-                {r.position ? `${r.position} — ${r.short}` : r.short}
-              </option>
-            ))}
-          </FormSelect>
-        )}
-      </Field>
+      {/* Подпись «Роли», а не «Позиция»: выбор перестал быть одним (ТЗ 41). */}
+      <div ref={box} onChange={() => onPosition(joinRoleKeys(chips().filter((el) => el.checked).map((el) => el.value)))}>
+        <ChoiceChips
+          name="position"
+          label="Роли"
+          required
+          max={MAIN_ROLES_MAX}
+          hint="На чём играете. Одна или две."
+          error={problems.position}
+          defaultValue={parseRoleKeys(position)}
+          options={ROLES.map((r) => ({ value: r.key, label: r.short }))}
+        />
+      </div>
     </>
   );
 }

@@ -125,6 +125,7 @@ export default async function JoinPage({
           full={full}
           account={account}
           roles={registration ? parseRoleKeys(registration.desiredRoles) : null}
+          mainRoles={parseRoleKeys(account?.player?.mainRoles)}
           rolesError={err === "roles" ? "Отметьте хотя бы одну роль" : undefined}
           pendingApplication={pendingApplication}
         />
@@ -143,6 +144,7 @@ function ActionPanel({
   full,
   account,
   roles,
+  mainRoles,
   rolesError,
   pendingApplication,
 }: {
@@ -154,6 +156,8 @@ function ActionPanel({
   account: Awaited<ReturnType<typeof currentAccount>>;
   /** Отмеченные роли записи; null — аккаунт не записан. */
   roles: RoleKey[] | null;
+  /** Основные роли игрока (ТЗ 41) — ими предзаполняется форма записи, пока записи нет. */
+  mainRoles: RoleKey[];
   rolesError?: string;
   pendingApplication: boolean;
 }) {
@@ -215,12 +219,19 @@ function ActionPanel({
   return (
     <Stack gap={2}>
       <form action={joinTournament.bind(null, slug)} className="space-y-4">
+        {/* `max` здесь нет намеренно: на записи ролей сколько угодно (ТЗ 38), лимит анкеты
+            сюда не протекает. Предзаполнение — основные роли игрока, если он их называл. */}
         <ChoiceChips
           name="roles"
           label="В каких ролях готовы играть"
           required
-          hint="Можно отметить несколько — капитаны увидят все"
+          hint={
+            mainRoles.length
+              ? "Отмечены ваши основные роли — поправьте, если на этом турнире играете иначе"
+              : "Можно отметить несколько — капитаны увидят все"
+          }
           error={rolesError}
+          defaultValue={mainRoles}
           options={ROLES.map((r) => ({ value: r.key, label: r.short }))}
         />
         <Button type="submit" size="lg" className={wide}>

@@ -3,6 +3,7 @@ import { playerPath } from "@/lib/profiles";
 import { redirect } from "next/navigation";
 import { currentAccount } from "@/lib/account";
 import { lastProfileEdits, type EditField } from "@/lib/profile-edit";
+import { mainRolesRefusal, parseRoleKeys } from "@/lib/roles";
 import { AUTH_MAX_W } from "@/components/pouf/blocks";
 import { Eyebrow } from "@/components/pouf/text";
 import { Breadcrumbs } from "@/components/pouf/breadcrumbs";
@@ -37,7 +38,12 @@ export default async function EditProfilePage() {
     // Какая из трёх заполнена — та и показывается: поле одно.
     profileUrl: p.dotabuffUrl ?? p.stratzUrl ?? p.steamUrl ?? "",
     mmr: p.mmr != null ? String(p.mmr) : "",
+    mainRoles: parseRoleKeys(p.mainRoles),
   };
+
+  // Суточный лимит правки ролей виден ДО клика: группа выключена и под ней написано, когда можно
+  // снова (ТЗ 41). Отказ после заполнения — это зря потраченный заход.
+  const rolesLocked = mainRolesRefusal(p.mainRolesAt) ?? undefined;
 
   // Заявка в работе перекрывает своё поле: вторая на то же поле всё равно не примется
   // (submitProfileEdit её отобьёт), и лучше сказать об этом до отправки, чем после.
@@ -79,7 +85,7 @@ export default async function EditProfilePage() {
         </p>
 
         <div className="rounded-card bg-surface p-5 cushion-card sm:p-6">
-          <ProfileForm values={values} reviews={reviews} />
+          <ProfileForm values={values} reviews={reviews} rolesLocked={rolesLocked} />
         </div>
       </div>
     </main>

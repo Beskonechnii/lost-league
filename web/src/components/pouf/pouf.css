@@ -1559,21 +1559,36 @@
  * скрытый рядом нативный флажок. Отмеченный — приподнятая мятная подушка, как
  * текущая пилюля; неотмеченный остаётся плоским полем.
  * ========================================================================= */
-input:checked + .pouf-choice-chip {
+input:checked + label .pouf-choice-chip {
   background: var(--accent-fill);
   color: var(--on-accent);
   box-shadow: var(--pouf-control);
 }
 /* Кольцо рисуем на чипе: сам флажок sr-only, и фокус на нём не виден вовсе. */
-input:focus-visible + .pouf-choice-chip {
+input:focus-visible + label .pouf-choice-chip {
   box-shadow: var(--pouf-field-focus);
 }
-input:checked:focus-visible + .pouf-choice-chip {
+input:checked:focus-visible + label .pouf-choice-chip {
   box-shadow: var(--pouf-control), var(--sh-focus);
 }
-input:disabled + .pouf-choice-chip {
+input:disabled + label .pouf-choice-chip,
+/* Лимит выбора (`max` у атома): неотмеченные чипы принимают вид выключенного — второго рисунка
+   «погасшего чипа» в системе не заводим. Условие одно на все три правила: у отмеченного флажка
+   есть отмеченный сосед, то есть в ряду их два. Поддержан ровно лимит 2 — другого в проекте нет,
+   и он потребует своей строки: счётчика в CSS не существует. */
+.pouf-chips[data-max='2']:has(input:checked ~ input:checked) input:not(:checked) + label .pouf-choice-chip {
   opacity: 0.5;
   cursor: not-allowed;
+}
+/* Отмеченные при этом живые: снять можно всегда, иначе выбор запирается. */
+.pouf-chips[data-max='2']:has(input:checked ~ input:checked) input:not(:checked) + label {
+  pointer-events: none;
+}
+.pouf-chips-limit {
+  display: none;
+}
+.pouf-chips[data-max='2']:has(input:checked ~ input:checked) .pouf-chips-limit {
+  display: block;
 }
 
 /* ============================================================================

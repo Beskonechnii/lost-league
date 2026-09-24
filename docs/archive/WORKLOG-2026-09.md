@@ -7,6 +7,48 @@
 
 ---
 
+## 2026-09-22 — ТЗ 34: Mix Cup — регистрация, страница события, секция на главной
+
+Дверь в пул игроков: `/mixcup/<slug>` (правила + «Участвовать», без витрины участников), голый
+`/mixcup` — редирект на текущее событие. Операторский Mix Cup **переехал `/mixcup` → `/admin/mixcup`**
+(адрес освободился под публичную страницу). Новое: `MixCupRegistration`, `Player.verified`/
+`mixCupSourceEventId` (исключение «в пул — до апрува», теневой профиль вместо раннего `playerId`),
+кука-намерение `lost_mixcup_intent` (гость → `/me` → анкета → сам записывается и уводит на событие),
+секция `(home)/mixcup-section.tsx`, панель «Участники»/«взять в драфт» в `/admin/mixcup/<id>`.
+**Файлы.** `prisma/schema.prisma`+миграция, `lib/{mixcup,account,roster-data,search}.ts`, `lib/auth.ts`,
+`app/(public)/mixcup/**`, `app/(public)/me/{page,actions,mixcup-intent}.tsx`, `app/(home)/{page,mixcup-section}.tsx`,
+`app/(admin)/admin/mixcup/**` (перенос из `(admin)/mixcup`), `app/api/mixcup/**`, `app/sitemap.ts`,
+`tournaments/[slug]/apply/pool.ts`, `scripts/{export-db,import-db}.ts` (снимок v16).
+**Проверено.** tsc/lint/build чисто; браузером (DEV_LOGIN_EMAIL, временно) — создание события,
+запись/отмена, разрез «новичок» в админке, закрытый приём блокирует кнопку, 390/1280/1440 без
+переполнения; видимость `verified:false` скриптом (скрыт с /roster/players, карточки, поиска —
+виден в draftPool). Тестовые событие/аккаунты убраны, `.env` возвращён как был.
+**Дальше.** Ассетов Eclipse нет (баннер/OG не заводили — по SEO решению); qa — приёмка по критериям.
+
+## 2026-09-22 — ТЗ 33: Mix Cup by Eclipse — тумблеры правил драфта и хранимый результат
+
+Один движок, два входа: `/mixcup` заводит `MixCupEvent` (слаг, статус, тумблеры «Украсть»/
+«Закрепить»), живой борд — тот же `draft-board.tsx`, та же `DraftSession`, тот же `PATCH
+/api/underbeer/[id]` (гейт по праву динамический — `mixcup` или `underbeer`). `DraftState` получил
+`stealEnabled?`/`lockEnabled?` (undefined = разрешено, старые сессии не ломаются), единственная
+проверка — в `canLock`/`canSteal`. По `phase: "done"` результат уезжает durable-строками
+(`MixCupTeam`/`MixCupPick`, FK на `Player` + снимок ника, `lib/mixcup.ts`) — только они в снимке
+БД (версия 15), сама сессия остаётся эфемерной, как у UNDERBEER. Знак Eclipse — `PartnerMark`
+(`pouf/media.tsx`) с запасной пилюлей: ассетов ещё нет (`MANUAL-TASKS.md` §7).
+**Файлы.** `prisma/schema.prisma` (+миграции), `lib/{draft,mixcup,partners}.ts`, `lib/{permissions,auth}.ts`,
+`app/(admin)/mixcup/**`, `app/api/mixcup/**`, `app/api/underbeer/[id]/route.ts`,
+`app/(admin)/underbeer/[id]/_components/{draft-board,team-column,player-line}.tsx`,
+`app/(bare)/overlay/underbeer/[id]/**`, `pouf/media.tsx`, `_components/{session-list,tools}`,
+`scripts/{export-db,import-db}.ts`, `data/snapshot.json`.
+**Проверено.** tsc/lint/build чисто. Бизнес-логика — временным скриптом (в БД не осталось следов):
+тумблеры гейтят canSteal/canLock, драфт доходит до done, результат переживает отвязку игрока
+(SetNull + снимок ника), export→import на копии базы поднимает то же событие по слагам. Браузером
+экран не проверил — вход требует реального логина, `.env`/DEV_LOGIN_EMAIL не трогал.
+**Дальше.** qa: приёмка по acceptance, включая прогон в браузере (390/1280/1440, права доступа).
+Не входит в этот этап: числа краж/локов (33б), вид борда (35), регистрация (34).
+
+---
+
 ## 2026-09-22 — ТЗ 32: приватность витрины — телеграм и MMR гасятся тумблером лиги
 
 Два флага на лигу (`PrivacySetting`, строка `id=1`, дефолт «скрыто») решают, видит ли публика

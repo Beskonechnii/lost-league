@@ -6,6 +6,8 @@ import { Button } from "@/components/pouf/Button";
 import { Alert } from "@/components/pouf/feedback";
 import { DateField } from "@/components/pouf/date-field";
 import { FormInput, Label } from "@/components/pouf/Input";
+import { ChoiceChips } from "@/components/pouf/choice-chips";
+import { MAIN_ROLES_MAX, ROLES } from "@/lib/roles";
 
 // Форма правки своей анкеты.
 //
@@ -27,6 +29,8 @@ export type ProfileValues = {
   telegram: string;
   profileUrl: string;
   mmr: string;
+  /** Основные роли — до двух, со слов игрока (ТЗ 41). */
+  mainRoles: string[];
 };
 
 /** Чем кончилась последняя заявка по полю: ждёт решения или вернули с причиной. */
@@ -83,7 +87,17 @@ function QueuedField({
   );
 }
 
-export function ProfileForm({ values, reviews }: { values: ProfileValues; reviews: Reviews }) {
+export function ProfileForm({
+  values,
+  reviews,
+  rolesLocked,
+}: {
+  values: ProfileValues;
+  reviews: Reviews;
+  /** Сутки с прошлой правки ролей ещё не вышли — текст отказа, посчитанный на момент открытия
+   *  страницы. Говорим до клика, а не после: группа выключена и рядом написано, почему. */
+  rolesLocked?: string;
+}) {
   const [state, action, pending] = useActionState<SaveState, FormData>(saveProfile, null);
 
   return (
@@ -131,9 +145,31 @@ export function ProfileForm({ values, reviews }: { values: ProfileValues; review
         hint="Со слов игрока — новое значение проверяет организатор."
       />
 
+      <div className="space-y-2">
+        {/* Выключенная группа не шлёт ничего — без метки сервер принял бы это за «все роли сняты». */}
+        {!rolesLocked && <input type="hidden" name="mainRolesSent" value="1" />}
+        <ChoiceChips
+          name="mainRoles"
+          label="Основные роли"
+          max={MAIN_ROLES_MAX}
+          disabled={!!rolesLocked}
+          hint="На чём играете. Место в составе ставит организатор — на него это не влияет. Менять можно раз в сутки."
+          defaultValue={values.mainRoles}
+          options={ROLES.map((r) => ({ value: r.key, label: r.short }))}
+        />
+        {/* Отказ стоит под своим полем — там же, где его ставит QueuedField, а не шапкой страницы.
+            Ответ на только что нажатое «Сохранить» важнее заметки, посчитанной при открытии. */}
+        {(state?.roles?.note || rolesLocked) && (
+          <Alert tone="warn" block>
+            {state?.roles?.note ?? rolesLocked}
+          </Alert>
+        )}
+      </div>
+
       <Alert tone="info" block>
         Ник, город, ссылку и MMR подтверждает организатор — они появятся в профиле после его решения.
-        Роль в составе, TP, номер и фото ведёт он же, этих полей здесь нет.
+        Основные роли — ваше поле, они сохраняются сразу. Роль в составе, TP, номер и фото ведёт
+        организатор, этих полей здесь нет.
       </Alert>
 
       <Button type="submit" disabled={pending} block>
@@ -150,6 +186,9 @@ export function ProfileForm({ values, reviews }: { values: ProfileValues; review
           {state.sent?.length
             ? `Анкета сохранена. На проверку ушло: ${state.sent.join(", ")}.`
             : "Анкета сохранена."}
+          {/* Роли отбил лимит, а форма сохранена — молчать об этом нельзя: человек решит, что
+              сохранилось всё. Причина стоит плашкой у самого поля. */}
+          {state.roles?.note && !state.roles.saved ? " Роли не изменены." : ""}
         </Alert>
       )}
     </form>

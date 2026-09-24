@@ -66,3 +66,32 @@ export const joinRoleKeys = (keys: readonly (string | null | undefined)[]): stri
 
 const sortRoles = (keys: readonly (string | null | undefined)[]): RoleKey[] =>
   [...new Set(keys.map((k) => k?.trim()).filter(isRole))].sort((a, b) => roleOrder(a) - roleOrder(b));
+
+// ── основные роли игрока (Player.mainRoles, ТЗ 41) ────────────────────────────
+//
+// То же хранение (CSV ключей), но своё правило: их не больше двух и правит их сам игрок.
+
+/** Сколько ролей человек может назвать основными. */
+export const MAIN_ROLES_MAX = 2;
+
+/** Отмеченное в форме (`formData.getAll`) → роли: мусор отброшен, порядок канонический.
+ *  Пара к `parseRoleKeys`, которая делает то же самое из строки хранения. */
+export const roleKeys = (keys: readonly (string | null | undefined)[]): RoleKey[] => sortRoles(keys);
+
+/** Один текст на анкету, кабинет и сервер: лишнее не сохраняется молча. */
+export const TOO_MANY_ROLES = "Не больше двух ролей — лишние не сохранены";
+
+/** Сутки между правками ролей в кабинете. Первое заполнение (анкета, апрув, бот) не в счёт. */
+const MAIN_ROLES_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Почему править роли сейчас нельзя — текстом, либо null. Время в часах и с округлением вверх
+ * (решение Стаса 24.09.2026): «через 6 ч.» человек читает сразу, а точную дату всё равно
+ * пересчитывает. Меньше часа осталось — «через 1 ч.», ноль часов ждать не просят.
+ */
+export function mainRolesRefusal(changedAt: Date | null | undefined, now: Date = new Date()): string | null {
+  if (!changedAt) return null;
+  const left = MAIN_ROLES_COOLDOWN_MS - (now.getTime() - changedAt.getTime());
+  if (left <= 0) return null;
+  return `Роли уже менялись сегодня. Следующая правка — через ${Math.max(1, Math.ceil(left / 3_600_000))} ч.`;
+}

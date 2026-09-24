@@ -22,7 +22,7 @@ import {
   type Application,
   type ApplicationInput,
 } from "./application";
-import { ROLES, roleByAnswer, roleShort } from "./roles";
+import { MAIN_ROLES_MAX, ROLES, joinRoleKeys, parseRoleKeys, roleByAnswer, roleShort } from "./roles";
 import { parseBirthday, formatBirthday, normalizeTelegram } from "./profiles";
 
 /** Шаг регистрации. Хранится в том же `BotSession.step`, что и шаги заявки — префикс их разводит. */
@@ -46,9 +46,11 @@ export const REGISTER_BUTTON = "Зарегистрироваться в лиге
 
 const SEND = "Отправить";
 const RESTART = "Заполнить заново";
+/** Ответ «второй роли не будет» — в телеграме отмеченности нет, и закрыть выбор нечем больше. */
+const ENOUGH = "Достаточно";
 
 /** Служебные ответы этого сценария — ими нельзя случайно назваться на шаге со свободным текстом. */
-export const REG_SERVICE = [SEND, RESTART, REGISTER_BUTTON];
+export const REG_SERVICE = [SEND, RESTART, ENOUGH, REGISTER_BUTTON];
 
 /** Порядок вопросов. Сводка (`reg_confirm`) идёт после последнего и в этот список не входит. */
 const FLOW: RegStep[] = [
@@ -70,12 +72,16 @@ export const emptyRegistration = (): RegState => ({ ...EMPTY_INPUT });
 // вопросы не заглядывает. Отдать их оператору — это разложить регистрацию нодами `ask`, а не завести
 // рядом второй реестр текстов: ровно от такого второго реестра Э6 и избавился.
 
-/** Кнопки позиции: пятёрка ролей по две в ряд плюс тренер — он тоже человек лиги. */
-function positionButtons(): string[][] {
-  const core = ROLES.filter((r) => r.position !== null).map((r) => r.short);
+/** Кнопки ролей: по две в ряд, тренер отдельной строкой — он тоже человек лиги.
+ *  `picked` — уже отмеченное: эти роли из клавиатуры уходят, а снизу появляется «Достаточно». */
+function positionButtons(picked: readonly string[] = []): string[][] {
+  const left = ROLES.filter((r) => !picked.includes(r.key));
+  const core = left.filter((r) => r.position !== null).map((r) => r.short);
   const rows: string[][] = [];
   for (let i = 0; i < core.length; i += 2) rows.push(core.slice(i, i + 2));
-  rows.push([roleShort("coach")!]);
+  const extra = left.filter((r) => r.position === null).map((r) => r.short);
+  if (extra.length > 0) rows.push(extra);
+  if (picked.length > 0) rows.push([ENOUGH]);
   return rows;
 }
 
@@ -102,8 +108,17 @@ export function askReg(step: RegStep, state: RegState): Reply {
       };
     case "reg_mmr":
       return { text: "<b>MMR</b> — числом. Он заявленный, его проверит организатор:", keyboard: null };
-    case "reg_position":
-      return { text: "<b>Основная позиция</b>:", keyboard: positionButtons() };
+    case "reg_position": {
+      // Шаг один, а проходов по нему до двух (ТЗ 41): отмеченности в reply-клавиатуре нет,
+      // поэтому вторую роль спрашиваем вопросом. Новый шаг не заводим — «Назад» и возврат
+      // из меню квиза (`askCurrent`) считают шаги, и они разъехались бы.
+      const picked = parseRoleKeys(state.position);
+      if (picked.length === 0) return { text: "<b>Основная роль</b>:", keyboard: positionButtons() };
+      return {
+        text: `Отмечено: <b>${roleShort(picked[0])}</b>. Вторая роль — или «${ENOUGH}»:`,
+        keyboard: positionButtons(picked),
+      };
+    }
     case "reg_confirm":
       return summary(state);
   }
@@ -113,14 +128,14 @@ export function askReg(step: RegStep, state: RegState): Reply {
 function summary(state: RegState): Reply {
   const rows: [string, string][] = [
     ["Ник", state.nickname],
-    ["Имя", state.realName],
+    ["Имя", [state.realName, state.realSurname].filter(Boolean).join(" ")],
     ["Город", [state.city, state.country].filter(Boolean).join(", ")],
     // В состоянии дата лежит как yyyy-mm-dd (её понимает <input type=date> на сайте), а человеку
     // показываем в том же виде, в каком спрашивали.
     ["Дата рождения", state.birthday ? formatBirthday(parseBirthday(state.birthday)!) : ""],
     ["Профиль", state.profileUrl],
     ["MMR", state.mmr],
-    ["Позиция", roleShort(state.position) ?? state.position],
+    ["Роли", parseRoleKeys(state.position).map((r) => roleShort(r)).join(", ")],
     ["Телеграм", state.telegram ? `@${state.telegram}` : ""],
   ];
   return {
@@ -142,12 +157,12 @@ function summary(state: RegState): Reply {
 // сводки с заведомо негодным ответом.
 
 /** Претензия к ответу либо null. Ответ уже записан в состояние вызывающим. */
-function problem(step: RegStep, text: string): string | null {
+function problem(step: RegStep, text: string, state: RegState): string | null {
   switch (step) {
     case "reg_nick":
       return text ? null : "Ник пустой. Как вас звать в лиге?";
     case "reg_name":
-      return text ? null : "Напишите имя и фамилию.";
+      return text.split(/\s+/).filter(Boolean).length >= 2 ? null : "Напишите имя и фамилию через пробел.";
     case "reg_city":
       return text ? null : "Напишите город.";
     case "reg_country":
@@ -161,7 +176,9 @@ function problem(step: RegStep, text: string): string | null {
       return Number.isInteger(n) && n >= 0 ? null : "MMR — целое число, например 4200.";
     }
     case "reg_position":
-      return roleByAnswer(text) ? null : "Не разобрал позицию — выберите кнопкой.";
+      // На втором проходе закрыть выбор можно и «Достаточно» — роль тогда останется одна.
+      if (parseRoleKeys(state.position).length > 0 && text === ENOUGH) return null;
+      return roleByAnswer(text) ? null : "Не разобрал роль — выберите кнопкой.";
     default:
       return null;
   }
@@ -171,13 +188,24 @@ function problem(step: RegStep, text: string): string | null {
 function remember(step: RegStep, text: string, state: RegState): void {
   switch (step) {
     case "reg_nick": state.nickname = text; break;
-    case "reg_name": state.realName = text; break;
+    // Анкета требует фамилию отдельным полем: первое слово — имя, остальное — фамилия.
+    case "reg_name": {
+      const [first, ...rest] = text.split(/\s+/).filter(Boolean);
+      state.realName = first;
+      state.realSurname = rest.join(" ");
+      break;
+    }
     case "reg_city": state.city = text; break;
     case "reg_country": state.country = text; break;
     case "reg_birthday": state.birthday = parseBirthday(text)!.toISOString().slice(0, 10); break;
     case "reg_profile": state.profileUrl = text; break;
     case "reg_mmr": state.mmr = text.replace(/\s+/g, ""); break;
-    case "reg_position": state.position = roleByAnswer(text)!; break;
+    // Роли накапливаются строкой, как в анкете на сайте: порядок канонический, повтор не удваивается.
+    case "reg_position": {
+      const role = roleByAnswer(text);
+      if (role) state.position = joinRoleKeys([...parseRoleKeys(state.position), role]);
+      break;
+    }
     default: break;
   }
 }
@@ -298,9 +326,17 @@ export async function handleRegister(
   }
 
   // Необязательных шагов в анкете не осталось: пустой или негодный ответ — повод переспросить.
-  const claim = problem(step, text);
+  const claim = problem(step, text, state);
   if (claim) return { replies: [{ text: claim }, askReg(step, state)], step, state };
+  const had = parseRoleKeys(state.position).length;
   remember(step, text, state);
+
+  // Первая роль шаг не закрывает — спрашиваем вторую тем же вопросом (ТЗ 41). Второй проход
+  // закрывает его в любом случае: и ролью, и «Достаточно», и повтором уже отмеченной — промах
+  // по кнопке не повод переспрашивать.
+  if (step === "reg_position" && had === 0 && parseRoleKeys(state.position).length < MAIN_ROLES_MAX) {
+    return { replies: [askReg(step, state)], step, state };
+  }
 
   const next = FLOW[FLOW.indexOf(step) + 1] ?? "reg_confirm";
   return { replies: [askReg(next, state)], step: next, state };

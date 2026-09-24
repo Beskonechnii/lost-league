@@ -101,7 +101,7 @@ async function main() {
   const tournamentSlugById = new Map(tournaments.map((t) => [t.id, t.slug]));
 
   const snapshot = {
-    version: 19, // 19 — лимит мест у турнира индивидуального формата (ТЗ 39)
+    version: 20, // 20 — основные роли игрока (ТЗ 41)
     exportedAt: new Date().toISOString(),
 
     teams: teams.map((t) => omit(t, "id")),

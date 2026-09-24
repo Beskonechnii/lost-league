@@ -11,7 +11,7 @@
 // Какая площадка досталась, видно по хосту — оператору этого хватает.
 
 import { accountIdFromUrl, parseBirthday, normalizeTelegram, playerAccountId } from "./profiles";
-import { isRole } from "./roles";
+import { MAIN_ROLES_MAX, TOO_MANY_ROLES, joinRoleKeys, parseRoleKeys } from "./roles";
 
 export type Application = {
   nickname: string;
@@ -24,7 +24,9 @@ export type Application = {
   profileUrl: string;
   telegram: string; // хендл без «@» (как в Player.telegram)
   phone: string;
-  position: string; // ключ из roles.ts либо пусто
+  /** Роли игрока — одна или две, CSV ключей roles.ts (ТЗ 41). Имя поля прежнее: у уже поданных
+   *  анкет здесь лежит один ключ строкой, и он читается как одна отмеченная роль. */
+  position: string;
   mmr: number | null; // ЗАЯВЛЕННЫЙ игроком; в Player.mmr его переносит оператор при апруве
 };
 
@@ -292,7 +294,9 @@ export function applicationProblems(input: ApplicationInput, policyAccepted = tr
     else if (n > MMR_MAX) p.mmr = "Столько MMR не бывает — проверьте число";
   }
 
-  if (!isRole(input.position.trim())) p.position = "Выберите позицию";
+  const roles = parseRoleKeys(input.position);
+  if (roles.length === 0) p.position = "Отметьте хотя бы одну роль";
+  else if (roles.length > MAIN_ROLES_MAX) p.position = TOO_MANY_ROLES;
 
   return p;
 }
@@ -315,7 +319,7 @@ export function normalizeApplication(input: ApplicationInput): ApplicationResult
       profileUrl: normalizeLink(input.profileUrl),
       telegram: normalizeTelegram(input.telegram)!,
       phone: input.phone.trim() ? normalizePhone(input.phone) : "",
-      position: input.position.trim(),
+      position: joinRoleKeys(parseRoleKeys(input.position)),
       mmr: Number(input.mmr.replace(/\s+/g, "")),
     },
   };

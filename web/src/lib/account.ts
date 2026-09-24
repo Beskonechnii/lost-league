@@ -8,6 +8,7 @@ import { prisma } from "./prisma";
 import { currentAccountId, setSessionCookie } from "./player-session";
 import type { Role } from "./player-auth";
 import { slugify, normalizeTelegram, parseBirthday } from "./profiles";
+import { MAIN_ROLES_MAX, TOO_MANY_ROLES, joinRoleKeys, mainRolesRefusal, parseRoleKeys, roleKeys } from "./roles";
 import { hashPassword, verifyPassword, passwordProblem } from "./password";
 import { clientIpFromHeaders, takeLoginAttempt, clearLoginAttempts } from "./rate-limit";
 import { formatPermissions, hasPermission, permissionsOf, type PermissionKey } from "./permissions";
@@ -203,6 +204,45 @@ export async function updateOwnProfile(accountId: number, input: OwnProfileInput
   return null;
 }
 
+/**
+ * Основные роли — своё поле игрока (ТЗ 41): пишутся сразу, как страна и телеграм, но не чаще
+ * раза в сутки. Лимит именно здесь, а не в очереди модерации: роль на спорт не влияет (место в
+ * составе ставит оператор), проверить её нельзя, а сутки держат её от превращения в переключатель.
+ *
+ * Отметку времени ставит только эта правка: первое заполнение приезжает анкетой, апрувом или
+ * ботом, и наказывать человека сутками за первый же выбор не за что.
+ *
+ * Возвращает, записаны ли роли, и что сказать человеку. Отказ не роняет остальную форму — она
+ * сохраняется своим путём (`updateOwnProfile`), а человеку остаётся одна строка объяснения.
+ */
+export type MainRolesResult = { saved: boolean; note?: string };
+
+export async function updateMainRoles(accountId: number, picked: string[]): Promise<MainRolesResult> {
+  const account = await prisma.userAccount.findUnique({ where: { id: accountId }, select: { playerId: true } });
+  if (!account?.playerId) return { saved: false, note: "Профиль не привязан" };
+  const player = await prisma.player.findUnique({
+    where: { id: account.playerId },
+    select: { mainRoles: true, mainRolesAt: true },
+  });
+  if (!player) return { saved: false, note: "Профиль не привязан" };
+
+  const keys = roleKeys(picked);
+  const value = joinRoleKeys(keys.slice(0, MAIN_ROLES_MAX));
+  // Лишнее сверх двух срезано — но не молча: форму обошли, и человеку об этом говорим.
+  const note = keys.length > MAIN_ROLES_MAX ? TOO_MANY_ROLES : undefined;
+  // Ничего не поменялось — ни записи, ни отказа: человек сохранил форму ради другого поля.
+  if (value === (player.mainRoles ?? "")) return { saved: false, note };
+
+  const refusal = mainRolesRefusal(player.mainRolesAt);
+  if (refusal) return { saved: false, note: refusal };
+
+  await prisma.player.update({
+    where: { id: account.playerId },
+    data: { mainRoles: value || null, mainRolesAt: new Date() },
+  });
+  return { saved: true, note };
+}
+
 /** Заявка на существующего игрока — ждёт подтверждения оператора. Занятого игрока заявить нельзя. */
 export async function claimExisting(accountId: number, playerId: number): Promise<void> {
   const taken = await prisma.userAccount.findUnique({ where: { playerId }, select: { id: true } });
@@ -338,6 +378,8 @@ export async function submitClaimWithApplication(
     if (!player.country && app.country) fill.country = app.country;
     if (!player.birthday && app.birthday) fill.birthday = parseBirthday(app.birthday);
     if (!player.mmr && app.mmr != null) fill.mmr = app.mmr;
+    // Роли из анкеты — только в пустое поле: свой выбор в кабинете анкета не перетирает.
+    if (!player.mainRoles && app.position) fill.mainRoles = joinRoleKeys(parseRoleKeys(app.position));
     if (!player.accountId) {
       const accId = applicationAccountId(app);
       if (accId) fill.accountId = accId;
@@ -438,6 +480,9 @@ export async function createPlayerFromApplication(
       // Без account_id игрок не находится ни в одном матче (§7 CLAUDE.md) — выводим из ссылок сразу.
       accountId: applicationAccountId(app),
       mmr,
+      // Заявленные роли доезжают до профиля (ТЗ 41) — до этого позиция умирала в анкете.
+      // Отметку времени не ставим: первое заполнение суточный лимит не запускает.
+      mainRoles: joinRoleKeys(parseRoleKeys(app.position)) || null,
       ...(extra?.verified === false ? { verified: false } : {}),
       ...(extra?.sourceTournamentId ? { sourceTournamentId: extra.sourceTournamentId } : {}),
     },

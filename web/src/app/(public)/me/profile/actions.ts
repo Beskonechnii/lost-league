@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { currentAccount, updateOwnProfile, type OwnProfileInput } from "@/lib/account";
+import { currentAccount, updateMainRoles, updateOwnProfile, type MainRolesResult, type OwnProfileInput } from "@/lib/account";
 import { anyProfileLinkProblem, profileLinkKind } from "@/lib/application";
 import { checkValue, currentValue, submitProfileEdit, type EditField } from "@/lib/profile-edit";
 import { noticeProfileEdit } from "@/lib/queue-notify";
@@ -15,7 +15,9 @@ import { noticeProfileEdit } from "@/lib/queue-notify";
 // До этого сайт писал напрямую всё: «ник и ссылку проверяет оператор» было правдой ровно для тех,
 // кто пришёл из телеграма.
 
-export type SaveState = { error?: string; ok?: boolean; sent?: string[] } | null;
+/** `roles` — отказ по основным ролям (суточный лимит или лишнее сверх двух). Отдельно от `error`:
+ *  остальная форма при нём сохранена, и терять из-за ролей введённый город нельзя (ТЗ 41). */
+export type SaveState = { error?: string; ok?: boolean; sent?: string[]; roles?: MainRolesResult } | null;
 
 /** Поле формы → поле очереди. Ссылка одна, а колонок под неё три — какая, решает хост. */
 function linkField(raw: string): EditField | null {
@@ -40,6 +42,11 @@ export async function saveProfile(_state: SaveState, form: FormData): Promise<Sa
 
   const error = await updateOwnProfile(account.id, input);
   if (error) return { error };
+
+  // Роли — своё поле игрока: пишутся сразу, но не чаще раза в сутки. Отказ не роняет форму.
+  const roles = form.has("mainRolesSent")
+    ? await updateMainRoles(account.id, form.getAll("mainRoles").map(String))
+    : undefined;
 
   // Заявки — после прямых полей: если очередь что-то отобьёт, анкета уже сохранена, и человеку
   // остаётся поправить одну строку, а не заполнять форму заново.
@@ -84,5 +91,5 @@ export async function saveProfile(_state: SaveState, form: FormData): Promise<Sa
 
   revalidatePath("/me/profile");
   revalidatePath("/me");
-  return { ok: true, sent };
+  return { ok: true, sent, roles };
 }

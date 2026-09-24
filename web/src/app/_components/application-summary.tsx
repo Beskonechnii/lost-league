@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { profileLinkKind, type Application } from "@/lib/application";
-import { roleLabel } from "@/lib/roles";
+import { parseRoleKeys, roleShort } from "@/lib/roles";
 
 // Анкета-заявка в читаемом виде. Одна разметка на две стороны: карточку в очереди модерации
 // («что человек о себе написал») и кабинет («вот что вы отправили»). Разъехавшись, эти два экрана
@@ -48,7 +48,8 @@ export function ApplicationSummary({ application: app }: { application: Applicat
       {app.realName && <Row label="Имя">{[app.realName, app.realSurname].filter(Boolean).join(" ")}</Row>}
       {app.birthday && <Row label="Дата рождения">{humanBirthday(app.birthday)}</Row>}
       {place && <Row label="Откуда">{place}</Row>}
-      {app.position && <Row label="Позиция">{roleLabel(app.position) ?? app.position}</Row>}
+      {/* Ролей в анкете может быть две (ТЗ 41) — подпись во множественном числе, значение списком. */}
+      {app.position && <Row label="Роли">{parseRoleKeys(app.position).map((r) => roleShort(r)).join(", ")}</Row>}
       {app.mmr != null && (
         <Row label="MMR">
           {app.mmr} <span className="text-xs text-ink-subtle">со слов игрока</span>
