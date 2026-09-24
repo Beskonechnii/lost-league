@@ -75,6 +75,9 @@ export default async function JoinPage({
 
   const open = joinOpen(t);
   const status = (t.status in TOURNAMENT_STATUS_LABELS ? t.status : "draft") as TournamentStatus;
+  // Мест не осталось (ТЗ 39). Считаем здесь, а не на сервере записи: форму, которая заведомо
+  // ответит отказом, лучше не показывать вовсе — отказ после заполнения это зря потраченный заход.
+  const full = t.registrationLimit != null && t._count.registrations >= t.registrationLimit;
 
   const account = await currentAccount();
   const registration =
@@ -103,8 +106,9 @@ export default async function JoinPage({
         <Chip>Закрепить — {t.draftSettings?.lockEnabled ?? true ? "да" : "нет"}</Chip>
       </div>
 
-      {/* Лимит мест — ТЗ 39; до него знаменателя нет, и счётчик печатает просто число записавшихся. */}
-      <Capacity taken={t._count.registrations} limit={null} unit="players" />
+      {/* Лимит мест (ТЗ 39): задан — «X из N» с полоской и подписью «Мест нет», пусто — просто
+          число записавшихся. Тем же атомом, что считает команды в дивизионе. */}
+      <Capacity taken={t._count.registrations} limit={t.registrationLimit} unit="players" />
 
       {/* Знак партнёра — только у формата, у которого он есть. «Организатор: —» не пишем. */}
       {t.kind === "mixcup" && (
@@ -118,6 +122,7 @@ export default async function JoinPage({
         <ActionPanel
           slug={t.slug}
           open={open}
+          full={full}
           account={account}
           roles={registration ? parseRoleKeys(registration.desiredRoles) : null}
           rolesError={err === "roles" ? "Отметьте хотя бы одну роль" : undefined}
@@ -135,6 +140,7 @@ export default async function JoinPage({
 function ActionPanel({
   slug,
   open,
+  full,
   account,
   roles,
   rolesError,
@@ -142,6 +148,9 @@ function ActionPanel({
 }: {
   slug: string;
   open: boolean;
+  /** Лимит турнира выбран до конца (ТЗ 39) — записаться больше нельзя, но уже записанный
+   *  остаётся записанным и кнопку отмены видит. */
+  full: boolean;
   account: Awaited<ReturnType<typeof currentAccount>>;
   /** Отмеченные роли записи; null — аккаунт не записан. */
   roles: RoleKey[] | null;
@@ -151,17 +160,24 @@ function ActionPanel({
   // До 640 кнопка во всю ширину: половинная кнопка под пальцем читается как неактивная.
   const wide = "w-full justify-center sm:w-auto";
 
+  // Почему записаться нельзя — одним текстом на все ветки: закрытый приём и выбранный лимит
+  // различаются словами, а не поведением.
+  const refusal = !open ? "Запись закрыта" : full ? "Мест не осталось" : null;
+  const refusalAlert = (
+    <Alert tone="warn" block>
+      {refusal}
+    </Alert>
+  );
+
   if (!account) {
-    return open ? (
+    return refusal ? (
+      refusalAlert
+    ) : (
       <a href={`/api/join/${slug}/intent`} className="block sm:inline-flex">
         <Button size="lg" className={wide}>
           Участвовать
         </Button>
       </a>
-    ) : (
-      <Alert tone="warn" block>
-        Запись закрыта
-      </Alert>
     );
   }
 
@@ -194,13 +210,7 @@ function ActionPanel({
     );
   }
 
-  if (!open) {
-    return (
-      <Alert tone="warn" block>
-        Запись закрыта
-      </Alert>
-    );
-  }
+  if (refusal) return refusalAlert;
 
   return (
     <Stack gap={2}>

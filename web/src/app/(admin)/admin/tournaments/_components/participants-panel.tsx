@@ -39,7 +39,7 @@ export function ParticipantsPanel({
   tournamentId: number;
   slug: string;
   items: Registrant[];
-  /** Лимит мест — до ТЗ 39 всегда null, счётчик тогда печатает просто число участников. */
+  /** Лимит мест турнира (ТЗ 39); null — приём без ограничения, счётчик печатает просто число. */
   limit?: number | null;
 }) {
   const [onlyNew, setOnlyNew] = useState(false);

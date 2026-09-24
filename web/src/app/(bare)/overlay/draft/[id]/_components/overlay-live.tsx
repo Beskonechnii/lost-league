@@ -138,7 +138,7 @@ export function OverlayLive({
                           isLastPick ? "outline outline-1 outline-offset-1 outline-[color:var(--accent-fill)]" : ""
                         }`}
                       >
-                        <DraftPlayerLine player={p} hideValue={!showMmr} />
+                        <DraftPlayerLine player={p} hideValue={!showMmr} roleWords />
                         {(team.captainId === p.id || team.locked.includes(p.id)) && (
                           <div className="flex items-center gap-1.5 px-2 pb-1">
                             {team.captainId === p.id && (

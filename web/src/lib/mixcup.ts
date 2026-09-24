@@ -85,8 +85,9 @@ export async function clearJoinIntent(): Promise<void> {
 export type JoinResult =
   | { ok: true }
   // closed — приёма уже нет (турнир закрыли/сыграли, пока человек проходил анкету или логин);
-  // no-profile — записывать пока нечем: ни готового профиля, ни отправленной анкеты.
-  | { ok: false; reason: "closed" | "no-profile" };
+  // no-profile — записывать пока нечем: ни готового профиля, ни отправленной анкеты;
+  // full — мест по лимиту турнира больше нет (ТЗ 39).
+  | { ok: false; reason: "closed" | "no-profile" | "full" };
 
 /** Приём записи открыт: у индивидуального формата это ровно «Приём заявок» у турнира. Одно место
  *  правды — его спрашивают и страница записи, и сама запись, и разбор куки-намерения. */
@@ -130,11 +131,28 @@ export async function registerForTournament(
   desiredRoles: readonly string[] = [],
 ): Promise<JoinResult> {
   const [tournament, account] = await Promise.all([
-    prisma.tournament.findUnique({ where: { id: tournamentId }, select: { kind: true, status: true } }),
+    prisma.tournament.findUnique({
+      where: { id: tournamentId },
+      select: { kind: true, status: true, registrationLimit: true },
+    }),
     prisma.userAccount.findUnique({ where: { id: accountId } }),
   ]);
   if (!tournament || !joinOpen(tournament)) return { ok: false, reason: "closed" };
   if (!account) return { ok: false, reason: "no-profile" };
+
+  // Лимит мест (ТЗ 39) — считаем строки, а не ведём счётчик: отмена записи должна освобождать
+  // место сама собой, а с денормализованным числом её пришлось бы помнить отдельно.
+  // Уже записанному лимит не мешает: повторный вызов (после апрува анкеты) новой строки не создаёт.
+  if (tournament.registrationLimit != null) {
+    const [taken, mine] = await Promise.all([
+      prisma.tournamentRegistration.count({ where: { tournamentId } }),
+      prisma.tournamentRegistration.findUnique({
+        where: { tournamentId_accountId: { tournamentId, accountId } },
+        select: { id: true },
+      }),
+    ]);
+    if (!mine && taken >= tournament.registrationLimit) return { ok: false, reason: "full" };
+  }
 
   let playerId = account.playerId ?? account.claimId ?? null;
   if (playerId == null) {

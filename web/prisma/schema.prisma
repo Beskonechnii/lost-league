@@ -15,40 +15,44 @@ datasource db {
 /// же именами дивизионов слился бы с первым. Теперь турнир — сущность, дивизион — его часть.
 /// Разбор решений — ../../TOURNAMENTS-PLAN.md.
 model Tournament {
-  id          Int       @id @default(autoincrement())
-  slug        String    @unique // s2, winter-cup — живёт в URL
-  name        String // «LOST Season 2»
-  short       String? // «S2» — для навигации, где длинное имя не влезает
-  description String? // регламент и описание, длинный текст
-  format      String? // «2 дивизиона, группа + плей-офф» — регламент строкой, не формат регистрации
+  id                Int       @id @default(autoincrement())
+  slug              String    @unique // s2, winter-cup — живёт в URL
+  name              String // «LOST Season 2»
+  short             String? // «S2» — для навигации, где длинное имя не влезает
+  description       String? // регламент и описание, длинный текст
+  format            String? // «2 дивизиона, группа + плей-офф» — регламент строкой, не формат регистрации
   /// Формат турнира (ТЗ 37): season (регистрируются команды, сезон лиги) | mixcup | underbeer
   /// (регистрируются игроки поодиночке). Решает, кто и как записывается, — и потому у каждого
   /// значения своя ветка кода, а не свободная строка, как `series`. Список допустимых значений
   /// живёт в коде (src/lib/tournaments.ts → TOURNAMENT_KINDS), как у `status`: sqlite не умеет
   /// enum, а четвёртый формат не должен требовать миграции ядра.
-  kind        String    @default("season")
-  prize       String?
-  logo        String?
-  banner      String?
+  kind              String    @default("season")
+  /// Сколько игроков принимает турнир индивидуального формата; пусто — без ограничения (ТЗ 39).
+  /// Лимит живёт у турнира, а не у дивизиона (как `Division.teamLimit`), потому что дивизионов
+  /// у mixcup/underbeer нет вовсе: человек записывается прямо на турнир.
+  registrationLimit Int?
+  prize             String?
+  logo              String?
+  banner            String?
   /// Внешний источник id матчей турнира (Liquipedia/Dotabuff и т.п.): откуда оператор берёт номера
   /// карт для привязки в архиве. Живёт у турнира, а не у встречи — список матчей общий на сезон.
-  matchesUrl  String?
+  matchesUrl        String?
   /// league_id тикета лиги в Dota 2 (у каждого дивизиона свой): единственный ключ, по которому
   /// матчи сезона связаны программно. По нему тянется список матчей и проверяется, что
   /// привязываемая карта — из этой лиги, а не опечатка в id (src/lib/league-matches.ts).
-  leagueId    Int?
+  leagueId          Int?
   /// draft (заводят) | registration (приём заявок) | running (идёт) | finished (сыгран).
   /// «Текущий» турнир для публичных витрин — running, иначе последний по startAt (src/lib/tournaments.ts).
-  status      String    @default("draft")
+  status            String    @default("draft")
   /// Серия турниров свободной строкой («LOST», «LOST Minor») — раздел /tournaments группирует по
   /// ней. Не enum и не справочник (решение Стаса 13.09.2026): новая серия заводится вводом
   /// названия в редактировании турнира, без правки кода и миграции. Пусто — «Прочие турниры».
-  series      String?
-  startAt     DateTime?
-  endAt       DateTime?
-  regOpenAt   DateTime?
-  regCloseAt  DateTime?
-  createdAt   DateTime  @default(now())
+  series            String?
+  startAt           DateTime?
+  endAt             DateTime?
+  regOpenAt         DateTime?
+  regCloseAt        DateTime?
+  createdAt         DateTime  @default(now())
 
   divisions    Division[]
   applications TeamApplication[]

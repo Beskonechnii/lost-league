@@ -1,6 +1,6 @@
 {
-  "version": 18,
-  "exportedAt": "2026-09-24T08:31:46.165Z",
+  "version": 19,
+  "exportedAt": "2026-09-24T16:16:40.312Z",
   "teams": [
     {
       "slug": "123-gaming",
@@ -13368,6 +13368,7 @@
       "description": "123",
       "format": "2 div",
       "kind": "season",
+      "registrationLimit": null,
       "prize": "10000$",
       "logo": null,
       "banner": null,
@@ -13403,6 +13404,7 @@
       "description": null,
       "format": null,
       "kind": "mixcup",
+      "registrationLimit": null,
       "prize": null,
       "logo": null,
       "banner": null,
@@ -13504,6 +13506,7 @@
       "description": null,
       "format": "2 дивизион(а), групповая стадия + плей-офф",
       "kind": "season",
+      "registrationLimit": null,
       "prize": null,
       "logo": null,
       "banner": null,
@@ -13550,6 +13553,7 @@
       "description": "asdfasfasd",
       "format": "2 div play off",
       "kind": "season",
+      "registrationLimit": null,
       "prize": "400$",
       "logo": null,
       "banner": null,

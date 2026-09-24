@@ -39,6 +39,8 @@ export async function joinTournament(slug: string, form: FormData): Promise<void
       await setJoinIntent(slug);
       redirect("/me");
     }
+    // closed/full — состояние изменилось, пока человек заполнял форму: перерисованный экран
+    // сам скажет «Запись закрыта» или «Мест не осталось», отдельного текста отказа не нужно.
     revalidatePath(`/join/${slug}`);
     return;
   }

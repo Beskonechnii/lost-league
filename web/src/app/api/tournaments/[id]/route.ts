@@ -5,7 +5,7 @@ import { guard } from "@/lib/api-guard";
 import { isTournamentStatus } from "@/lib/tournaments";
 import type { DraftState } from "@/lib/draft";
 
-// Турнир индивидуального формата: название, статус, тумблеры правил драфта.
+// Турнир индивидуального формата: название, статус, тумблеры правил драфта, лимит мест.
 //
 // Тумблеры «Украсть»/«Закрепить» — свойство турнира (значения по умолчанию для нового драфта),
 // но пока живая сессия ещё не дошла до фазы draft, правки синхронно уезжают и в её DraftState —
@@ -21,6 +21,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     status?: string;
     stealEnabled?: boolean;
     lockEnabled?: boolean;
+    registrationLimit?: number | null;
   };
 
   if (body.status !== undefined && !isTournamentStatus(body.status)) return bad("Неизвестный статус турнира");
@@ -29,9 +30,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!tournament) return bad("Турнир не найден", 404);
   if (tournament.kind === "season") return bad("У сезонного турнира нет правил драфта", 400);
 
-  const data: { name?: string; status?: string } = {};
+  const data: { name?: string; status?: string; registrationLimit?: number | null } = {};
   if (body.name !== undefined && body.name.trim()) data.name = body.name.trim();
   if (body.status !== undefined) data.status = body.status;
+  // Лимит мест (ТЗ 39): null снимает ограничение. Меньше уже записанных не ставим — иначе турнир
+  // оказался бы «сверх лимита» задним числом, а выгонять кого-то по такому нажатию мы не станем.
+  if (body.registrationLimit !== undefined) {
+    const limit = body.registrationLimit;
+    if (limit !== null && (!Number.isInteger(limit) || limit < 1)) return bad("Лимит мест: ожидалось целое число от 1");
+    if (limit !== null) {
+      const taken = await prisma.tournamentRegistration.count({ where: { tournamentId: id } });
+      if (limit < taken) return bad(`Уже записано ${taken} — лимит меньше поставить нельзя`);
+    }
+    data.registrationLimit = limit;
+  }
   if (Object.keys(data).length > 0) await prisma.tournament.update({ where: { id }, data });
 
   const rules: { stealEnabled?: boolean; lockEnabled?: boolean } = {};

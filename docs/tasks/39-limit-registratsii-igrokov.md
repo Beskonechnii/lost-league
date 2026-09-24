@@ -1,7 +1,6 @@
 # ТЗ 39: Лимит записи на индивидуальный турнир — оператор задаёт число мест
 
-**Статус:** ready · зависит от `docs/tasks/37-turnir-format.md` (нужен `Tournament.kind` и
-`TournamentRegistration`), `stage` не стартует раньше него
+**Статус:** done · принято 24.09.2026
 **Входит в MVP:** нет — Mix Cup и UNDERBEER целиком later (`MVP.md`)
 
 Заголовок обобщён с «Mix Cup» на «индивидуальный турнир»: по ответу Стаса 23.09.2026 UNDERBEER

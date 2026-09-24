@@ -107,6 +107,8 @@ export async function DraftConsole({ slug }: { slug: string }) {
               tournamentId={tournament.id}
               stealEnabled={settings?.stealEnabled ?? true}
               lockEnabled={settings?.lockEnabled ?? true}
+              registrationLimit={tournament.registrationLimit}
+              taken={tournament.registrations.length}
               // До старта драфта (сессии ещё нет, либо она в roster/config) тумблеры доступны;
               // с фазы draft — заблокированы, но видны (оператор должен видеть, что включено).
               locked={phase === "draft" || phase === "done"}
@@ -120,6 +122,7 @@ export async function DraftConsole({ slug }: { slug: string }) {
               tournamentId={tournament.id}
               slug={tournament.slug}
               items={tournament.registrations.map((r) => ({ ...r.player, roles: parseRoleKeys(r.desiredRoles) }))}
+              limit={tournament.registrationLimit}
             />
           </>
         )}
