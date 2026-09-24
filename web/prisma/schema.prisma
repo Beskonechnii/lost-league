@@ -636,6 +636,12 @@ model TournamentRegistration {
   /// апрува анкеты (исключение ТЗ 34, см. lib/mixcup.ts → registerForTournament).
   player       Player      @relation(fields: [playerId], references: [id], onDelete: Cascade)
   playerId     Int
+  /// Желаемые роли участника НА ЭТОТ турнир (ТЗ 38): CSV ключей из src/lib/roles.ts
+  /// («carry,mid»), тем же приёмом, что `series` у турнира, — значений мало и они из
+  /// фиксированного словаря, связь и JSON тут дороже строки. Живут у записи, а не у игрока:
+  /// роль игрока в проекте — это место в конкретном составе (RosterSpot), а здесь набор
+  /// желаемого на одно событие. Пусто — запись сделана до ТЗ 38.
+  desiredRoles String?
   createdAt    DateTime    @default(now())
 
   @@unique([tournamentId, accountId])

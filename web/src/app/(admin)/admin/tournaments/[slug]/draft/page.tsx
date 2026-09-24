@@ -20,11 +20,14 @@ export default async function TournamentDraftPage({ params }: { params: Promise<
   if (denied) return denied;
 
   const { slug } = await params;
-  const [tournament, pool] = await Promise.all([
-    prisma.tournament.findUnique({ where: { slug }, include: { draftSettings: { include: { draftSession: true } } } }),
-    draftPool(),
-  ]);
+  const tournament = await prisma.tournament.findUnique({
+    where: { slug },
+    include: { draftSettings: { include: { draftSession: true } } },
+  });
   if (!tournament || tournament.kind === "season") notFound();
+  // Пул после турнира, а не параллельно: желаемые роли одиночных участников (ТЗ 38) лежат у
+  // записей ЭТОГО турнира, и без его id их не подмешать.
+  const pool = await draftPool(tournament.id);
 
   const settings = tournament.draftSettings;
   // Сессию заводит «К драфту» POST'ом до перехода сюда — если её всё же нет (прямой заход по

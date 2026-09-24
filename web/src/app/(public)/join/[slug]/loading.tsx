@@ -9,6 +9,8 @@ export default function JoinLoading() {
       <SkeletonHeader />
       <div role="status" aria-label="Загружаем турнир" className="space-y-4">
         <Skeleton variant="card" className="h-8" />
+        {/* Ряд чипов выбора ролей (ТЗ 38) — 44px, ровно высота чипа, чтобы панель не прыгала. */}
+        <Skeleton variant="card" className="h-11" />
         <Skeleton variant="card" className="h-[72px]" />
       </div>
     </div>

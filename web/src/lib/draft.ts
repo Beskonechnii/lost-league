@@ -11,6 +11,8 @@
 //     от кражи и не тратит ход (защитное действие); Steal ход тратит.
 //   • Драфт завершён, когда все команды набрали targetSize (капитан в счёт входит).
 
+import { rolePosition } from "./roles";
+
 export const DRAFT_VERSION = 1 as const;
 
 /** Карточка игрока для пула — резолвится из ростера при чтении (draft-data.ts). В payload только id. */
@@ -20,8 +22,13 @@ export type PoolPlayer = {
   realName: string | null;
   photo: string | null;
   mmr: number | null;
-  position: number | null; // 1..5 по основному месту; null — замена/тренер/без места
-  role: string | null; // ключ роли (roles.ts) — для подписи позиции
+  /**
+   * Ключи ролей (roles.ts). У игрока с местом в ростере — ровно одна (его позиция в составе),
+   * у записавшегося на индивидуальный турнир поодиночке — сколько отметил на форме (ТЗ 38),
+   * пусто — данных нет вовсе. Список, а не одно значение: множественность — свойство именно
+   * одиночной записи, и разводить из-за неё два вида карточки незачем.
+   */
+  roles: string[];
   teamColor: string | null; // акцент ростерной команды — для аватарки-заглушки
 };
 
@@ -59,8 +66,8 @@ export type DraftState = {
   lockEnabled?: boolean;
 };
 
-/** Сегмент пула по позиции: керри…хард, затем «без позиции» (замены/тренеры). */
-export type PoolSegment = { position: number | null; label: string; players: PoolPlayer[] };
+/** Сегмент пула: «несколько ролей», затем керри…хард, затем «без позиции» (замены/тренеры). */
+export type PoolSegment = { key: string; label: string; players: PoolPlayer[] };
 
 const POSITION_LABELS: Record<number, string> = {
   1: "Керри (поз. 1)",
@@ -70,18 +77,28 @@ const POSITION_LABELS: Record<number, string> = {
   5: "Хард-саппорт (поз. 5)",
 };
 
-/** Пул, разбитый по позициям — чтобы капитану было удобно выбирать. Пустые сегменты отброшены. */
+/**
+ * Пул, разбитый по позициям — чтобы капитану было удобно выбирать. Пустые сегменты отброшены.
+ *
+ * Гибкие участники (несколько желаемых ролей, ТЗ 38) идут ОДНОЙ строкой в свой сегмент первым
+ * слева, а не размножаются по колонкам: капитан разбирает их осознанно, а не натыкается на
+ * одного человека в четырёх местах.
+ */
 export function segmentPool(players: PoolPlayer[]): PoolSegment[] {
-  const order = [1, 2, 3, 4, 5, null] as const;
-  return order
-    .map((position) => ({
-      position,
+  const byMmr = (a: PoolPlayer, b: PoolPlayer) =>
+    (b.mmr ?? 0) - (a.mmr ?? 0) || a.nickname.localeCompare(b.nickname);
+  const flexible = players.filter((p) => p.roles.length > 1);
+  const single = players.filter((p) => p.roles.length <= 1);
+
+  const segments: PoolSegment[] = [{ key: "multi", label: "Несколько ролей", players: flexible.sort(byMmr) }];
+  for (const position of [1, 2, 3, 4, 5, null] as const) {
+    segments.push({
+      key: String(position),
       label: position === null ? "Без позиции" : POSITION_LABELS[position],
-      players: players
-        .filter((p) => p.position === position)
-        .sort((a, b) => (b.mmr ?? 0) - (a.mmr ?? 0) || a.nickname.localeCompare(b.nickname)),
-    }))
-    .filter((s) => s.players.length > 0);
+      players: single.filter((p) => rolePosition(p.roles[0]) === position).sort(byMmr),
+    });
+  }
+  return segments.filter((s) => s.players.length > 0);
 }
 
 // ── Фабрики ───────────────────────────────────────────────────────────────────

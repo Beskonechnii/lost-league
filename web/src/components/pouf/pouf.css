@@ -1551,6 +1551,32 @@
 }
 
 /* ============================================================================
+ * CHOICE CHIPS — ряд чипов множественного выбора (pouf/choice-chips.tsx).
+ *
+ * Вид чипа целиком берётся у пилюли (`pillClasses` в tabs.tsx) — второго «почти
+ * такого же» рисунка в системе не заводим. Здесь живёт ровно то, чего строитель
+ * классов дать не может: отмеченность и фокус приходят не на сам чип, а на
+ * скрытый рядом нативный флажок. Отмеченный — приподнятая мятная подушка, как
+ * текущая пилюля; неотмеченный остаётся плоским полем.
+ * ========================================================================= */
+input:checked + .pouf-choice-chip {
+  background: var(--accent-fill);
+  color: var(--on-accent);
+  box-shadow: var(--pouf-control);
+}
+/* Кольцо рисуем на чипе: сам флажок sr-only, и фокус на нём не виден вовсе. */
+input:focus-visible + .pouf-choice-chip {
+  box-shadow: var(--pouf-field-focus);
+}
+input:checked:focus-visible + .pouf-choice-chip {
+  box-shadow: var(--pouf-control), var(--sh-focus);
+}
+input:disabled + .pouf-choice-chip {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================================================
  * TABS
  * ========================================================================= */
 /* NOT the browser-tab idiom (underline rail, square bottom corners). That

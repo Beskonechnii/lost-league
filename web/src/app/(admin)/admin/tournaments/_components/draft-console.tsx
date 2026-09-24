@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { draftPool } from "@/lib/draft-data";
 import type { DraftState } from "@/lib/draft";
+import { parseRoleKeys } from "@/lib/roles";
 import { ECLIPSE_PARTNER } from "@/lib/partners";
 import {
   TOURNAMENT_KIND_SHORT,
@@ -99,7 +100,7 @@ export async function DraftConsole({ slug }: { slug: string }) {
         </Panel>
 
         {showResult ? (
-          <ResultGrid teams={tournament.mixCupTeams} pool={await draftPool()} />
+          <ResultGrid teams={tournament.mixCupTeams} pool={await draftPool(tournament.id)} />
         ) : (
           <>
             <RulesPanel
@@ -118,7 +119,7 @@ export async function DraftConsole({ slug }: { slug: string }) {
             <ParticipantsPanel
               tournamentId={tournament.id}
               slug={tournament.slug}
-              items={tournament.registrations.map((r) => r.player)}
+              items={tournament.registrations.map((r) => ({ ...r.player, roles: parseRoleKeys(r.desiredRoles) }))}
             />
           </>
         )}

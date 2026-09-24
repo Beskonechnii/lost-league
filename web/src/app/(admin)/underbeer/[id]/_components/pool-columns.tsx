@@ -6,7 +6,9 @@ import { Eyebrow } from "@/components/pouf/text";
 import type { PoolSegment } from "@/lib/draft";
 
 /**
- * Пул игроков колонками по позициям: керри, мид, оффлейн, поддержки, «без позиции».
+ * Пул игроков колонками: «несколько ролей» (ТЗ 38), керри, мид, оффлейн, поддержки, «без
+ * позиции». Сегментов до семи — седьмой переносится на вторую строку на 2xl, и это нормально:
+ * пустые сегменты отброшены, а «Без позиции» после 38 почти всегда пуст.
  *
  * Одна раскладка на две фазы — отбор участников и сам драфт: колонки, счётчик в шапке и
  * вдавленная дорожка со списком у них общие, различаются только карточки внутри (там —
@@ -31,7 +33,7 @@ export function PoolColumns({
     // и на 1280px шестая доля колонки оставляла нику сорок пикселей — от него был виден инициал.
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
       {segments.map((seg) => (
-        <section key={String(seg.position)} className="min-w-0">
+        <section key={seg.key} className="min-w-0">
           <div className="mb-1.5 flex items-baseline justify-between gap-2 px-1">
             <Eyebrow>{seg.label}</Eyebrow>
             <span className="shrink-0 text-[11px] font-extrabold tabular-nums text-muted">{badge(seg)}</span>

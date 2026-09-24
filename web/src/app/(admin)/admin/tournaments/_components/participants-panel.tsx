@@ -9,6 +9,7 @@ import { Button } from "@/components/pouf/Button";
 import { EmptyState } from "@/components/pouf/feedback";
 import { Capacity } from "@/components/pouf/capacity";
 import { PillButton, PillTrack } from "@/components/pouf/tabs";
+import { roleShort } from "@/lib/roles";
 import { Panel } from "../../../_components/panel";
 
 export type Registrant = {
@@ -18,6 +19,8 @@ export type Registrant = {
   /** Не прошёл модерацию (запись до апрува, ТЗ 34) — подпись «новичок, не проверен» и в
    *  этом списке, и в пуле драфта: оператор обязан отличать их с первого взгляда. */
   verified: boolean;
+  /** Желаемые роли записи (ТЗ 38) — ключи roles.ts. Пусто у записей до 38. */
+  roles: string[];
 };
 
 /**
@@ -92,6 +95,10 @@ export function ParticipantsPanel({
                 key={p.id}
                 thumb={<PlayerAvatar photo={p.photo} nickname={p.nickname} color={null} size={32} className="!rounded-[12px]" />}
                 nickname={p.nickname}
+                // Роли — во вторую строку, отдельно от `note`: модерация и роли это разные
+                // факты. Ролей нет (запись до ТЗ 38) — строки не рисуем вовсе: пустая подпись
+                // честнее ложного «без ролей».
+                sub={p.roles.map(roleShort).filter(Boolean).join(" · ") || undefined}
                 note={p.verified ? undefined : "новичок, не проверен"}
                 hideValue
               />

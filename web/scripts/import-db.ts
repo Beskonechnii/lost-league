@@ -28,9 +28,9 @@ const d = (v: string | Date | null | undefined) => (v ? new Date(v) : null);
 
 async function main() {
   const snap = JSON.parse(readFileSync(input, "utf8"));
-  if (snap.version !== 17) {
+  if (snap.version !== 18) {
     throw new Error(
-      `Снимок версии ${snap.version}, а нужен 17. Снимки не мигрируются: пересними базу свежим ` +
+      `Снимок версии ${snap.version}, а нужен 18. Снимки не мигрируются: пересними базу свежим ` +
         `scripts/export-db.ts на той машине, где данные актуальны.`,
     );
   }
@@ -334,7 +334,13 @@ async function main() {
     const player = playerId.get(r.playerSlug);
     if (account === undefined || tournament === undefined || player === undefined) continue;
     await prisma.tournamentRegistration.create({
-      data: { tournamentId: tournament, accountId: account, playerId: player, createdAt: d(r.createdAt) ?? new Date() },
+      data: {
+        tournamentId: tournament,
+        accountId: account,
+        playerId: player,
+        desiredRoles: r.desiredRoles ?? null,
+        createdAt: d(r.createdAt) ?? new Date(),
+      },
     });
   }
 

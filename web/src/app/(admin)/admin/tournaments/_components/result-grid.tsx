@@ -39,8 +39,7 @@ export function ResultGrid({ teams, pool }: { teams: Team[]; pool: PoolPlayer[] 
                   realName: null,
                   photo: null,
                   mmr: null,
-                  position: null,
-                  role: null,
+                  roles: [],
                   teamColor: team.color,
                 }), nickname: pick.nickname };
                 return (

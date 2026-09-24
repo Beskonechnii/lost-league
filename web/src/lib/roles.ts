@@ -49,3 +49,20 @@ export const roleOrder = (v: string | null | undefined) => {
   const i = ROLES.findIndex((r) => r.key === v);
   return i === -1 ? ROLES.length : i;
 };
+
+/**
+ * Несколько ролей одной строкой — так они лежат у записи на индивидуальный турнир
+ * (`TournamentRegistration.desiredRoles`, ТЗ 38): CSV ключей, а не связь и не JSON.
+ * Разбор и сборка живут здесь по той же причине, что и `roleByAnswer`, — второго разбора
+ * одного и того же быть не должно.
+ *
+ * Мусор молча отбрасывается: строку пишет форма, а не код, и падать из-за чужого ключа
+ * записи нельзя. Порядок всегда канонический (керри → … → тренер), чтобы подпись читалась
+ * одинаково, как бы человек ни щёлкал чипы.
+ */
+export const parseRoleKeys = (csv: string | null | undefined): RoleKey[] => sortRoles((csv ?? "").split(","));
+
+export const joinRoleKeys = (keys: readonly (string | null | undefined)[]): string => sortRoles(keys).join(",");
+
+const sortRoles = (keys: readonly (string | null | undefined)[]): RoleKey[] =>
+  [...new Set(keys.map((k) => k?.trim()).filter(isRole))].sort((a, b) => roleOrder(a) - roleOrder(b));

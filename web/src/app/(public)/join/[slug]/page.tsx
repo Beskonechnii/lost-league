@@ -10,6 +10,7 @@ import {
   type TournamentStatus,
 } from "@/lib/tournaments";
 import { ECLIPSE_PARTNER } from "@/lib/partners";
+import { ROLES, parseRoleKeys, roleShort, type RoleKey } from "@/lib/roles";
 import { Breadcrumbs } from "@/components/pouf/breadcrumbs";
 import { SectionHeader, Chip, FORM_MAX_W } from "@/components/pouf/blocks";
 import { Capacity } from "@/components/pouf/capacity";
@@ -18,6 +19,7 @@ import { Card } from "@/components/pouf/surface";
 import { Alert, StatusPill } from "@/components/pouf/feedback";
 import { PartnerMark } from "@/components/pouf/media";
 import { Button } from "@/components/pouf/Button";
+import { ChoiceChips } from "@/components/pouf/choice-chips";
 import { STATUS_TONE } from "@/app/_components/tournament-status";
 import { joinTournament, leaveTournament } from "./actions";
 
@@ -57,8 +59,17 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return { title: t.name, description, alternates: { canonical: `/join/${t.slug}` } };
 }
 
-export default async function JoinPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function JoinPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  // err=roles — отказ записи из-за неотмеченных ролей (ТЗ 38). В адресе, а не в состоянии:
+  // панель действия серверная, и заводить клиентскую обёртку ради одной строки ошибки незачем.
+  searchParams: Promise<{ err?: string }>;
+}) {
   const { slug } = await params;
+  const { err } = await searchParams;
   const t = await loadTournament(slug);
   if (!t || t.kind === "season") notFound();
 
@@ -70,7 +81,7 @@ export default async function JoinPage({ params }: { params: Promise<{ slug: str
     account &&
     (await prisma.tournamentRegistration.findUnique({
       where: { tournamentId_accountId: { tournamentId: t.id, accountId: account.id } },
-      select: { id: true },
+      select: { id: true, desiredRoles: true },
     }));
   const pendingApplication = account ? accountStatus(account) === "pending" : false;
 
@@ -104,7 +115,14 @@ export default async function JoinPage({ params }: { params: Promise<{ slug: str
       )}
 
       <Card variant="tight">
-        <ActionPanel slug={t.slug} open={open} account={account} registered={!!registration} pendingApplication={pendingApplication} />
+        <ActionPanel
+          slug={t.slug}
+          open={open}
+          account={account}
+          roles={registration ? parseRoleKeys(registration.desiredRoles) : null}
+          rolesError={err === "roles" ? "Отметьте хотя бы одну роль" : undefined}
+          pendingApplication={pendingApplication}
+        />
       </Card>
     </div>
   );
@@ -112,20 +130,22 @@ export default async function JoinPage({ params }: { params: Promise<{ slug: str
 
 /**
  * Панель действия — состояния по таблице DESIGN §3 ТЗ 34: гость/вошедший × открыт/закрыт приём.
- * Собрана стопкой, а не одинокой кнопкой: поля желаемых ролей (ТЗ 38) встанут строками выше
- * кнопки, не перестраивая экран.
+ * Собрана стопкой: желаемые роли (ТЗ 38) встали строкой выше кнопки, экран не перестраивался.
  */
 function ActionPanel({
   slug,
   open,
   account,
-  registered,
+  roles,
+  rolesError,
   pendingApplication,
 }: {
   slug: string;
   open: boolean;
   account: Awaited<ReturnType<typeof currentAccount>>;
-  registered: boolean;
+  /** Отмеченные роли записи; null — аккаунт не записан. */
+  roles: RoleKey[] | null;
+  rolesError?: string;
   pendingApplication: boolean;
 }) {
   // До 640 кнопка во всю ширину: половинная кнопка под пальцем читается как неактивная.
@@ -145,7 +165,7 @@ function ActionPanel({
     );
   }
 
-  if (registered) {
+  if (roles) {
     return (
       <Stack gap={2}>
         <div className="flex flex-wrap items-center gap-3">
@@ -158,6 +178,15 @@ function ActionPanel({
             </form>
           )}
         </div>
+        {/* Роли только чтением: отдельного режима правки в 38 нет — поменять значит отменить
+            запись и записаться заново, кнопка отмены стоит рядом. */}
+        {roles.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {roles.map((r) => (
+              <Chip key={r}>{roleShort(r)}</Chip>
+            ))}
+          </div>
+        )}
         {pendingApplication && (
           <p className="text-xs font-bold text-muted">Анкета на модерации — на участие это не влияет</p>
         )}
@@ -175,7 +204,15 @@ function ActionPanel({
 
   return (
     <Stack gap={2}>
-      <form action={joinTournament.bind(null, slug)}>
+      <form action={joinTournament.bind(null, slug)} className="space-y-4">
+        <ChoiceChips
+          name="roles"
+          label="В каких ролях готовы играть"
+          required
+          hint="Можно отметить несколько — капитаны увидят все"
+          error={rolesError}
+          options={ROLES.map((r) => ({ value: r.key, label: r.short }))}
+        />
         <Button type="submit" size="lg" className={wide}>
           Участвовать
         </Button>

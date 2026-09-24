@@ -13,7 +13,7 @@ import {
   storeApplicationDraft,
   type AuthField,
 } from "@/lib/account";
-import { readJoinIntentSlug, clearJoinIntent, registerForTournament } from "@/lib/mixcup";
+import { readJoinIntentSlug, clearJoinIntent, canRegister, joinOpen } from "@/lib/mixcup";
 import { noticeNewProfile, noticeProfileClaim } from "@/lib/queue-notify";
 import type { ApplicationField, ApplicationInput } from "@/lib/application";
 
@@ -85,19 +85,19 @@ export async function sendApplication(_state: ApplyState, form: FormData): Promi
 }
 
 /**
- * Общий хвост обеих форм анкеты: анкета отправлена — самое время реализовать исключение записи
- * (ТЗ 34, «в пул до апрува») и увести человека обратно на турнир, если он шёл сюда через его
- * дверь (кука-намерение). Обычный путь (без намерения) не меняется — только revalidatePath.
+ * Общий хвост обеих форм анкеты: анкета отправлена — самое время вернуть человека на турнир,
+ * если он шёл сюда через его дверь (кука-намерение). Обычный путь (без намерения) не меняется —
+ * только revalidatePath.
+ *
+ * Возвращает, а не записывает: с ТЗ 38 запись обязана нести желаемые роли, а спрашивают их
+ * только на самой странице записи. Записаться там теперь стоит один клик — тот же, за которым
+ * человек сюда и пришёл.
  */
 async function finishAfterApplication(accountId: number): Promise<void> {
   const slug = await readJoinIntentSlug();
-  if (slug) {
-    const t = await prisma.tournament.findUnique({ where: { slug }, select: { id: true } });
-    const res = t ? await registerForTournament(accountId, t.id) : null;
-    if (res?.ok) {
-      await clearJoinIntent();
-      redirect(`/join/${slug}`);
-    }
+  if (slug && (await canRegister(accountId))) {
+    await clearJoinIntent();
+    redirect(`/join/${slug}`);
   }
   revalidatePath("/me");
 }
@@ -165,9 +165,12 @@ export async function sendClaimWithApplication(_state: ApplyState, form: FormDat
 
 /**
  * Разобрать куку-намерение с /join/<slug> (см. lib/mixcup.ts): если вошедшему аккаунту уже
- * хватает профиля для записи — записывает и возвращает путь на турнир, кука гасится. Не хватает
- * (анкеты ещё нет) — молчит и оставляет куку: вызовут снова, когда анкета будет отправлена
- * (see MixCupIntentConsumer, retryKey = submittedAt).
+ * хватает профиля для записи — возвращает путь на турнир, кука гасится. Не хватает (анкеты ещё
+ * нет) — молчит и оставляет куку: вызовут снова, когда анкета будет отправлена (see
+ * MixCupIntentConsumer, retryKey = submittedAt).
+ *
+ * Сам не записывает (ТЗ 38): запись обязана нести желаемые роли, а чипы стоят на странице
+ * записи — туда человека и возвращаем, уже вошедшим и в один клик от участия.
  */
 export async function consumeMixCupIntent(): Promise<string | null> {
   const accountId = await currentAccountId();
@@ -175,17 +178,13 @@ export async function consumeMixCupIntent(): Promise<string | null> {
   const slug = await readJoinIntentSlug();
   if (!slug) return null;
 
-  const t = await prisma.tournament.findUnique({ where: { slug }, select: { id: true } });
-  if (!t) {
-    await clearJoinIntent();
+  const t = await prisma.tournament.findUnique({ where: { slug }, select: { id: true, kind: true, status: true } });
+  if (!t || !joinOpen(t)) {
+    await clearJoinIntent(); // турнира нет или приём закрылся, пока шли — ждать нечего
     return null;
   }
+  if (!(await canRegister(accountId))) return null; // анкеты ещё нет — попробуем снова после неё
 
-  const res = await registerForTournament(accountId, t.id);
-  if (!res.ok) {
-    if (res.reason === "closed") await clearJoinIntent(); // приём закрылся, пока шли — ждать нечего
-    return null; // no-profile: попробуем снова после анкеты
-  }
   await clearJoinIntent();
   return `/join/${slug}`;
 }

@@ -14,11 +14,12 @@ export const dynamic = "force-dynamic";
 
 export default async function OverlayPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [session, full, showMmr] = await Promise.all([
-    prisma.draftSession.findUnique({ where: { id: Number(id) }, include: { draftSettings: { select: { tournament: { select: { kind: true } } } } } }),
-    draftPool(),
+  const [session, showMmr] = await Promise.all([
+    prisma.draftSession.findUnique({ where: { id: Number(id) }, include: { draftSettings: { select: { tournament: { select: { id: true, kind: true } } } } } }),
     mmrShown(),
   ]);
+  // Роли одиночных участников (ТЗ 38) живут у записей турнира — пул собираем, зная его.
+  const full = await draftPool(session?.draftSettings?.tournament?.id);
   // Оверлей открыт без входа (OBS ходит сюда без куки), поэтому закрытые поля снимаем до рендера:
   // иначе они уезжают и в эфир, и в payload страницы (DECISIONS 18.09.2026). В админском драфте
   // тот же пул остаётся полным — там по нему ищут человека.

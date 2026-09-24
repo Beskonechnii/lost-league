@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { currentAccountId } from "@/lib/player-session";
 import { registerForTournament, unregisterFromTournament, setJoinIntent, joinOpen } from "@/lib/mixcup";
+import { parseRoleKeys } from "@/lib/roles";
 
 // Server actions страницы записи (ТЗ 34, DESIGN §3) — «Участвовать»/«Отменить запись» одним
 // действием, без формы с полями. Турнир резолвится заново по slug на сервере, а не берётся из
@@ -15,8 +16,11 @@ async function loadTournament(slug: string) {
 }
 
 /** Вошедший жмёт «Участвовать». Профиля не хватает (анкеты ещё нет) — уводим на /me её заполнить,
- *  намерение переживает переход (кука) и довершит запись само (см. actions.ts кабинета). */
-export async function joinTournament(slug: string): Promise<void> {
+ *  намерение переживает переход (кука) и вернёт человека сюда (см. actions.ts кабинета).
+ *
+ *  Роли обязательны (ТЗ 38). Ни одной не отмечено — возвращаем тот же экран с `?err=roles`:
+ *  ошибка поля рисуется у поля, а не тостом, и клиентского состояния ради неё форма не заводит. */
+export async function joinTournament(slug: string, form: FormData): Promise<void> {
   const accountId = await currentAccountId();
   if (accountId == null) redirect("/me");
 
@@ -26,7 +30,10 @@ export async function joinTournament(slug: string): Promise<void> {
     return;
   }
 
-  const res = await registerForTournament(accountId, t.id);
+  const roles = parseRoleKeys(form.getAll("roles").join(","));
+  if (roles.length === 0) redirect(`/join/${slug}?err=roles`);
+
+  const res = await registerForTournament(accountId, t.id, roles);
   if (!res.ok) {
     if (res.reason === "no-profile") {
       await setJoinIntent(slug);

@@ -13,6 +13,7 @@ import { prisma } from "./prisma";
 import { draftPool } from "./draft-data";
 import { memberIds, type DraftState } from "./draft";
 import { parseApplication } from "./application";
+import { joinRoleKeys } from "./roles";
 import { createPlayerFromApplication } from "./account";
 
 /**
@@ -59,7 +60,8 @@ export async function persistMixCupResult(tournamentId: number, state: DraftStat
  *  /api/join/[slug]/intent) и переживает весь путь входа/анкеты, включая внешний редирект на
  *  Google — кука не завязана на query-параметры, поэтому не теряется. Разбирается на /me (см.
  *  MixCupIntentConsumer): как только профиля хватает для записи, человека уводит обратно на
- *  турнир уже записанным, без второго клика «Участвовать» (acceptance ТЗ 34). */
+ *  турнир НЕ записанным — роли обязательны и отмечаются на месте (ТЗ 38 отменил «без второго
+ *  клика» из ТЗ 34). */
 const INTENT_COOKIE = "lost_mixcup_intent";
 
 export async function setJoinIntent(slug: string): Promise<void> {
@@ -92,14 +94,41 @@ export const joinOpen = (t: { kind: string; status: string }): boolean =>
   t.kind !== "season" && t.status === "registration";
 
 /**
+ * Хватает ли аккаунту профиля (или отправленной анкеты), чтобы записаться. Повторяет лестницу
+ * `registerForTournament` ниже, но ничего не заводит и не пишет.
+ *
+ * Нужна кукой-намерением: с ТЗ 38 запись обязана нести желаемые роли, а их спрашивают только на
+ * самой странице записи — значит вернувшегося со входа надо туда вернуть, а не записать за него
+ * молча и без ролей.
+ */
+export async function canRegister(accountId: number): Promise<boolean> {
+  const account = await prisma.userAccount.findUnique({
+    where: { id: accountId },
+    select: { playerId: true, claimId: true, application: true },
+  });
+  if (!account) return false;
+  if (account.playerId != null || account.claimId != null) return true;
+  if (parseApplication(account.application)) return true;
+  return !!(await prisma.tournamentRegistration.findFirst({ where: { accountId }, select: { id: true } }));
+}
+
+/**
  * Записать аккаунт на турнир индивидуального формата. Порядок поиска профиля: уже привязанный
  * игрок (playerId) → заявка на привязку к существующему (claimId, тоже реальный игрок) → уже
  * заведённый ранее теневой профиль этого же аккаунта (повторная запись/повторный заход) → новый
  * теневой профиль из анкеты (verified: false — до публичных витрин он не доходит).
  *
+ * `desiredRoles` — что человек отметил на форме (ТЗ 38): CSV ложится строкой на саму запись, не
+ * на игрока. Список пуст — вызывающая сторона до этого места доходить не должна, но модель
+ * нулевое поле допускает: записи, сделанные до 38, ролей не имеют вовсе.
+ *
  * Идемпотентно: повторный вызов для уже записанного аккаунта ничего не ломает.
  */
-export async function registerForTournament(accountId: number, tournamentId: number): Promise<JoinResult> {
+export async function registerForTournament(
+  accountId: number,
+  tournamentId: number,
+  desiredRoles: readonly string[] = [],
+): Promise<JoinResult> {
   const [tournament, account] = await Promise.all([
     prisma.tournament.findUnique({ where: { id: tournamentId }, select: { kind: true, status: true } }),
     prisma.userAccount.findUnique({ where: { id: accountId } }),
@@ -119,10 +148,13 @@ export async function registerForTournament(accountId: number, tournamentId: num
     }
   }
 
+  const roles = joinRoleKeys(desiredRoles);
   await prisma.tournamentRegistration.upsert({
     where: { tournamentId_accountId: { tournamentId, accountId } },
-    create: { tournamentId, accountId, playerId },
-    update: { playerId }, // на случай повторной записи после апрува — подтягиваем актуальный id
+    create: { tournamentId, accountId, playerId, desiredRoles: roles || null },
+    // на случай повторной записи после апрува — подтягиваем актуальный id; роли перезаписываем
+    // только когда их прислали, иначе повтор без формы стёр бы уже выбранное
+    update: { playerId, ...(roles ? { desiredRoles: roles } : {}) },
   });
   return { ok: true };
 }

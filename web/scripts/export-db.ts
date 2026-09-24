@@ -101,7 +101,7 @@ async function main() {
   const tournamentSlugById = new Map(tournaments.map((t) => [t.id, t.slug]));
 
   const snapshot = {
-    version: 17, // 17 — формат турнира (Tournament.kind + спутники вместо MixCupEvent, ТЗ 37)
+    version: 18, // 18 — желаемые роли у записи на индивидуальный турнир (ТЗ 38)
     exportedAt: new Date().toISOString(),
 
     teams: teams.map((t) => omit(t, "id")),
@@ -268,6 +268,7 @@ async function main() {
         playerSlug: r.player.slug,
         accountEmail: r.account.email,
         accountTgId: r.account.tgId,
+        desiredRoles: r.desiredRoles, // CSV ключей ролей (ТЗ 38) — строка, переносится как есть
         createdAt: r.createdAt,
       }))
       .sort((a, b) => `${a.tournamentSlug}${a.playerSlug}`.localeCompare(`${b.tournamentSlug}${b.playerSlug}`)),
