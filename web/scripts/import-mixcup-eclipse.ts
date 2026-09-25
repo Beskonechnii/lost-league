@@ -7,11 +7,13 @@
 // Игрок сводится сперва по tgId (UserAccount.tgId, unique), потом по Player.telegram (многие в
 // анкете — уже реальные verified-игроки лиги без аккаунта на сайте: у них есть Player.telegram, но
 // нет UserAccount) — НИКОГДА по нику: совпадение ников в Dota обычное дело. Найден игрок —
-// заводим ему только теневой UserAccount(source: telegram, status: draft) для связи, сам Player
-// (ник, MMR) не трогаем — ростер лиги сильнее внешней формы. Не нашли вовсе — заводим и Player
-// (verified: false, sourceTournamentId, MMR из анкеты — по умолчанию его ставит оператор при
-// апруве, здесь исключение: без MMR микс не отбалансировать), и UserAccount.
-// Идемпотентно по (tournamentId, accountId): TournamentRegistration.upsert.
+// заводим ему только теневой UserAccount(source: telegram, status: draft) для связи; если это
+// РЕАЛЬНЫЙ игрок лиги (не наш теневой профиль) — ник и MMR не трогаем, ростер сильнее внешней
+// формы; если это наш же теневой профиль с прошлого запуска (verified: false,
+// sourceTournamentId = этот турнир) — обновляем MMR/роли из анкеты, таблица источник правды для
+// своих. Не нашли вовсе — заводим и Player, и UserAccount.
+// Таблица — источник правды по составу: кого в ней больше нет — снимаем с турнира (регистрацию, не
+// профиль). Идемпотентно по (tournamentId, accountId): TournamentRegistration.upsert.
 
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -104,6 +106,14 @@ async function main() {
     if (account?.playerId ?? account?.claimId) {
       playerId = (account.playerId ?? account.claimId)!;
       reused++;
+
+      const player = await db.player.findUnique({ where: { id: playerId }, select: { verified: true, sourceTournamentId: true } });
+      const ourShadow = player && !player.verified && player.sourceTournamentId === tournament!.id;
+      if (ourShadow && !dry) {
+        await db.player.update({ where: { id: playerId }, data: { nickname: r.nickname, mmr: r.mmr, mainRoles: desiredRoles } });
+      } else if (ourShadow && dry) {
+        console.log(`[dry] обновлён (наш теневой): ${r.nickname}, mmr=${r.mmr ?? "—"}, роли=${desiredRoles ?? "—"}`);
+      }
     } else {
       const byTelegram = r.username
         ? await db.player.findFirst({ where: { telegram: { equals: r.username } }, select: { id: true, nickname: true } })
@@ -162,6 +172,20 @@ async function main() {
       update: { playerId, ...(desiredRoles ? { desiredRoles } : {}) },
     });
     registered++;
+  }
+
+  if (tournament) {
+    const currentUserIds = new Set(rows.map((r) => r.userId));
+    const existing = await db.tournamentRegistration.findMany({
+      where: { tournamentId: tournament.id },
+      select: { id: true, account: { select: { tgId: true } }, player: { select: { nickname: true } } },
+    });
+    const stale = existing.filter((e) => !e.account.tgId || !currentUserIds.has(e.account.tgId));
+    if (stale.length) {
+      console.log(`\n${dry ? "[dry] будут сняты" : "Сняты"} с турнира (нет в актуальном списке): ${stale.length}`);
+      for (const e of stale) console.log(" -", e.player.nickname);
+      if (!dry) await db.tournamentRegistration.deleteMany({ where: { id: { in: stale.map((e) => e.id) } } });
+    }
   }
 
   console.log(`\nГотово: новых профилей ${created}, сведено по tgId ${reused}, записей на турнир ${registered}${dry ? " (dry — ничего не записано)" : ""}`);
