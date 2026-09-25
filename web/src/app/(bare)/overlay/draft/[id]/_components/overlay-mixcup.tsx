@@ -1,10 +1,11 @@
 "use client";
 
+import { Fragment } from "react";
 import { currentTurn, memberIds, segmentPool, takenIds, type DraftState, type PoolPlayer } from "@/lib/draft";
 import { StatusPill } from "@/components/pouf/feedback";
 import { Icon } from "@/components/pouf/Icon";
 import { Eyebrow } from "@/components/pouf/text";
-import { OVERLAY_MARKS, OVERLAY_PLATFORM, type OverlayMark } from "@/lib/partners";
+import { OVERLAY_ORGANIZERS, OVERLAY_PARTNERS, OVERLAY_PLATFORM, type OverlayMark } from "@/lib/partners";
 import { roleShort } from "@/lib/roles";
 import { useLiveDraft } from "./use-live-draft";
 import { OVERLAY_DARK_SKIN } from "./skin";
@@ -72,8 +73,17 @@ export function OverlayMixCup({
       style={background ? { backgroundImage: `url(${background})`, ...OVERLAY_DARK_SKIN } : OVERLAY_DARK_SKIN}
     >
       {/* Платформа — отдельно от партнёров, в углу, где зритель начинает читать кадр. */}
-      <header className="flex shrink-0 items-center">
+      <header className="flex shrink-0 items-center justify-between">
         <Mark mark={OVERLAY_PLATFORM} className="h-12" />
+        {/* Организаторы — неподвижно и крупнее партнёров: «×» читается как «проводят вместе». */}
+        <div className="flex items-center gap-6">
+          {OVERLAY_ORGANIZERS.map((m, i) => (
+            <Fragment key={m.src}>
+              {i > 0 && <span className="text-[28px] font-black text-white/60">×</span>}
+              <Mark mark={m} className="h-[72px]" />
+            </Fragment>
+          ))}
+        </div>
       </header>
 
       <div className="flex min-h-0 flex-1 gap-4">
@@ -201,10 +211,10 @@ export function OverlayMixCup({
         <style>{`@keyframes overlay-marquee { to { transform: translateX(-50%); } }`}</style>
         <div
           className="flex w-max items-center"
-          style={{ animation: `overlay-marquee ${OVERLAY_MARKS.length * 10}s linear infinite` }}
+          style={{ animation: `overlay-marquee ${OVERLAY_PARTNERS.length * 9}s linear infinite` }}
         >
-          {[...OVERLAY_MARKS, ...OVERLAY_MARKS, ...OVERLAY_MARKS, ...OVERLAY_MARKS].map((m, i) => (
-            <Mark key={i} mark={m} className="mx-12 h-16" />
+          {[...OVERLAY_PARTNERS, ...OVERLAY_PARTNERS, ...OVERLAY_PARTNERS, ...OVERLAY_PARTNERS].map((m, i) => (
+            <Mark key={i} mark={m} className="mx-12 h-14" />
           ))}
         </div>
       </footer>
@@ -221,7 +231,12 @@ function Mark({ mark, className }: { mark: OverlayMark; className: string }) {
     <img
       src={mark.src}
       alt={mark.name}
-      className={`w-auto shrink-0 object-contain brightness-125 drop-shadow-[0_0_14px_rgba(255,255,255,0.28)] ${className}`}
+      className={`w-auto shrink-0 object-contain ${className}`}
+      style={{
+        filter: mark.glow
+          ? `brightness(1.25) drop-shadow(0 0 3px ${mark.glow}) drop-shadow(0 0 12px ${mark.glow}) drop-shadow(0 0 28px ${mark.glow})`
+          : "brightness(1.25) drop-shadow(0 0 14px rgba(255, 255, 255, 0.28))",
+      }}
     />
   );
 }
