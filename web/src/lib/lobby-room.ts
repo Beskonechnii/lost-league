@@ -21,7 +21,9 @@ export const SIDE_READY_MIN = 5;
 
 export type LobbyStatus = "gather" | "coin" | "draft" | "done";
 
-export type LobbySide = { teamId: number; name: string; color: string; logo: string | null };
+/** Сторона комнаты: имя свободным текстом (его пишет админ) и цвет. Лого и карточки команды здесь
+ *  больше нет — с 42б лобби не привязано к `Team` ростера, оформление даёт кожа. */
+export type LobbySide = { name: string; color: string };
 
 export type LobbyMemberView = {
   id: number;

@@ -21,13 +21,41 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   return NextResponse.json(room);
 }
 
-type Body = { intent?: string; side?: number; value?: unknown; block?: string; heroId?: unknown; at?: unknown };
+type Body = {
+  intent?: string;
+  side?: number;
+  value?: unknown;
+  block?: string;
+  heroId?: unknown;
+  at?: unknown;
+  password?: unknown;
+  title?: unknown;
+  sideAName?: unknown;
+  sideBName?: unknown;
+  playerId?: unknown;
+};
+
+const str = (raw: unknown): string => (typeof raw === "string" ? raw.trim() : "");
 
 const asSide = (raw: unknown): TeamIdx | null => (raw === 0 || raw === 1 ? (raw as TeamIdx) : null);
 
 /** Тело запроса → намерение. Незнакомое — null, то есть 400, а не молчаливое ничего. */
 function toIntent(body: Body): Intent | null {
   switch (body.intent) {
+    case "enter": {
+      const password = str(body.password);
+      return password ? { kind: "enter", password } : null;
+    }
+    case "settings": {
+      const title = str(body.title);
+      const password = str(body.password);
+      if (!title || !password) return null;
+      return { kind: "settings", title, password, sideAName: str(body.sideAName), sideBName: str(body.sideBName) };
+    }
+    case "invite": {
+      const playerId = parseId(body.playerId as number);
+      return playerId === null ? null : { kind: "invite", playerId };
+    }
     case "join":
       return { kind: "join" };
     case "captain":

@@ -5,7 +5,6 @@ import type { TeamIdx } from "@/lib/fearless";
 import type { LobbyBoard } from "@/lib/lobby-room";
 import { FearlessRun, type LiveTurn } from "@/app/(admin)/admin/fearless-draft/_components/fearless-run";
 import type { HeroRef, TeamRef } from "@/app/(admin)/admin/fearless-draft/_components/types";
-import { TeamLogo } from "@/app/(public)/roster/_components/avatar";
 
 /**
  * Борд комнаты для сцены OBS (ТЗ 22в §4): весь драфт и ничего больше — ни чата, ни состава
@@ -56,10 +55,11 @@ export function ObsBoard({
   const teamRefs: TeamRef[] = useMemo(
     () =>
       board.sides.map((s, i) => ({
-        id: s.teamId,
+        // Сторона адресуется своим номером: команды ростера за ней с 42б нет, лого даёт кожа.
+        id: i,
         name: s.name,
         color: s.color,
-        logo: s.logo,
+        logo: null,
         captain: board.captains[i] ? { ...board.captains[i]!, mmr: null } : null,
       })),
     [board],
@@ -112,7 +112,6 @@ function Waiting({ board }: { board: LobbyBoard }) {
           {([0, 1] as TeamIdx[]).map((i) => (
             <div key={i} className="flex items-center gap-3">
               {i === 1 && <span className="text-2xl font-black text-muted">—</span>}
-              <TeamLogo team={{ name: board.sides[i].name, logo: board.sides[i].logo }} size={64} />
               <span className="text-3xl font-black text-ink">{board.sides[i].name}</span>
             </div>
           ))}

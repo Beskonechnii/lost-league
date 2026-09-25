@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { heroImg } from "@/lib/assets";
 import { localHeroes } from "@/lib/dota-constants";
-import { currentViewer, mayEnter, obsKeyOf, readRoom, touchLobby } from "@/lib/lobby";
+import { prisma } from "@/lib/prisma";
+import { currentViewer, mayEnter, readRoom, roomSecrets, touchLobby } from "@/lib/lobby";
 import { lobbyMessages } from "@/lib/lobby-chat";
 import type { HeroRef } from "../../../(admin)/admin/fearless-draft/_components/types";
 import { LobbyView } from "../_components/room";
@@ -28,9 +29,26 @@ export default async function LobbyPage({ params }: { params: Promise<{ id: stri
   if (!room || !mayEnter(room, viewer)) notFound();
 
   // Справочник героев нужен борду 15а — он же собирается на админском экране драфта.
-  // Историю чата и ключ эфира читаем ЗДЕСЬ, а не в снимке комнаты: снимок один на всех и уходит
-  // по живому каналу каждому участнику, а ключ ОБС-вида полагается не каждому (ТЗ 22в §6).
-  const [chat, obsKey] = await Promise.all([lobbyMessages(id), obsKeyOf(room, viewer!)]);
+  // Историю чата и секреты комнаты читаем ЗДЕСЬ, а не в снимке: снимок один на всех и уходит по
+  // живому каналу каждому участнику, а ключ эфира и пароль двери полагаются не каждому.
+  const [chat, secrets] = await Promise.all([lobbyMessages(id), roomSecrets(room, viewer!)]);
+
+  // Кого админ комнаты может позвать: все, у кого есть аккаунт и профиль, кроме уже вошедших.
+  // Одобренность анкеты не фильтруем: приглашение и есть путь для того, кому список не показан.
+  // Список грузим только админу — остальным он не нужен и уезжать в их вкладки не должен.
+  const isRoomAdmin = viewer!.admin || room.ownerAccountId === viewer!.accountId;
+  const inRoom = new Set(room.members.map((m) => m.playerId));
+  const people = isRoomAdmin
+    ? (
+        await prisma.userAccount.findMany({
+          where: { playerId: { not: null } },
+          select: { playerId: true, player: { select: { nickname: true } } },
+        })
+      )
+        .filter((a) => !inRoom.has(a.playerId))
+        .map((a) => ({ id: a.playerId!, nickname: a.player?.nickname ?? `#${a.playerId}` }))
+        .sort((x, y) => x.nickname.localeCompare(y.nickname))
+    : [];
 
   const heroes: HeroRef[] = localHeroes()
     .map((h) => {
@@ -46,7 +64,9 @@ export default async function LobbyPage({ params }: { params: Promise<{ id: stri
       admin={viewer!.admin}
       heroes={heroes}
       chat={chat}
-      obsKey={obsKey}
+      obsKey={secrets.obsKey}
+      password={secrets.password}
+      people={people}
     />
   );
 }

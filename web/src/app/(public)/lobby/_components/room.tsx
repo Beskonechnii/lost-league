@@ -5,7 +5,7 @@ import { Button } from "@/components/pouf/Button";
 import { Icon } from "@/components/pouf/Icon";
 import { SectionHeader } from "@/components/pouf/blocks";
 import { Alert, StatusPill } from "@/components/pouf/feedback";
-import { FormInput } from "@/components/pouf/Input";
+import { Field, FormInput, FormSelect } from "@/components/pouf/Input";
 import { Card } from "@/components/pouf/surface";
 import { Eyebrow } from "@/components/pouf/text";
 import { useChatEvents, useLive } from "@/app/_components/chat-live";
@@ -22,7 +22,7 @@ import {
   type LobbyMemberView,
   type LobbyRoom,
 } from "@/lib/lobby-room";
-import { PlayerAvatar, TeamLogo } from "../../roster/_components/avatar";
+import { PlayerAvatar } from "../../roster/_components/avatar";
 import { FearlessRun, type LiveTurn } from "../../../(admin)/admin/fearless-draft/_components/fearless-run";
 import { fmtTime, type HeroRef, type TeamRef } from "../../../(admin)/admin/fearless-draft/_components/types";
 import { LobbyChat } from "./chat";
@@ -48,6 +48,13 @@ import { PHASE } from "./phase";
 type Send = {
   intent: string;
   side?: TeamIdx;
+  /** Настройки двери (42б): название, пароль и имена сторон едут одним намерением. */
+  title?: string;
+  password?: string;
+  sideAName?: string;
+  sideBName?: string;
+  /** Кого зовём в комнату — приглашение адресуется игроком, а пускается аккаунт. */
+  playerId?: number;
   value?: unknown;
   block?: "side" | "order";
   heroId?: number;
@@ -62,6 +69,8 @@ export function LobbyView({
   heroes,
   chat,
   obsKey,
+  password,
+  people,
 }: {
   initial: LobbyRoom;
   me: number;
@@ -73,6 +82,12 @@ export function LobbyView({
   /** Ключ ОБС-вида — только админу комнаты и ОБС. В снимке комнаты его нет намеренно: снимок
    *  один на всех участников, а ключ открывает борд без входа. */
   obsKey: string | null;
+  /** Пароль двери — только админу комнаты: он его диктует и меняет. В снимке его нет по той же
+   *  причине, что и ключа эфира. */
+  password: string | null;
+  /** Кого можно позвать: игроки лиги с аккаунтом, которых в комнате ещё нет. Пусто у всех, кроме
+   *  админа комнаты. */
+  people: { id: number; nickname: string }[];
 }) {
   // Снимок держим вместе с моментом его получения: часы хода считает сервер, и разницу между
   // его часами и часами этой машины надо снять один раз на снимок — иначе экран с убежавшими
@@ -81,6 +96,9 @@ export function LobbyView({
   const setRoom = useCallback((r: LobbyRoom) => setSnap({ room: r, recv: Date.now() }), []);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  // Пароль двери не ездит в снимке (он не для всех), поэтому свежее значение после правки помнит
+  // сама вкладка: иначе форма перемонтировалась бы серверным — то есть уже устаревшим — паролем.
+  const [pass, setPass] = useState(password ?? "");
   const { players: online } = useLive();
 
   const refresh = useCallback(async () => {
@@ -150,10 +168,12 @@ export function LobbyView({
       room.sides.map((s, i) => {
         const cap = captainOf(room, i as TeamIdx);
         return {
-          id: s.teamId,
+          // Сторона адресуется своим номером: команды ростера за ней больше нет (42б), а борду
+          // нужен лишь ключ пары «сторона A / сторона B».
+          id: i,
           name: s.name,
           color: s.color,
-          logo: s.logo,
+          logo: null,
           captain: cap ? { nickname: cap.nickname, photo: cap.photo, mmr: null } : null,
         };
       }),
@@ -243,6 +263,17 @@ export function LobbyView({
         </div>
         <div className="order-1 min-w-0 space-y-4 lg:order-2">
           <InRoom room={room} online={online} />
+          {isRoomAdmin && password !== null && (
+            <Door
+              key={`${room.title}|${room.sides[0].name}|${room.sides[1].name}|${pass}`}
+              room={room}
+              password={pass}
+              onSaved={setPass}
+              people={people}
+              busy={busy}
+              onSend={send}
+            />
+          )}
           {obsKey && <ObsLink obsKey={obsKey} />}
         </div>
       </div>
@@ -270,6 +301,129 @@ function InRoom({ room, online }: { room: LobbyRoom; online: Set<number> }) {
           ) : (
             people.map((m) => <Line key={m.id} m={m} online={online} />)
           )}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * Дверь комнаты глазами админа (ТЗ 42б): название, пароль, имена сторон и приглашение.
+ *
+ * Пароль показан открытым — его диктуют голосом, и админ обязан его видеть. Смена пароля никого
+ * не выбрасывает: внутри держит членство, пароль — только дверь. Имена сторон правятся до старта
+ * драфта: дальше они уже уехали в эфир.
+ *
+ * Поля засеиваются серверными значениями через `key` снаружи: чужая правка перемонтирует форму
+ * свежими значениями, а не оставит на экране мою устаревшую строку.
+ */
+function Door({
+  room,
+  password,
+  people,
+  busy,
+  onSend,
+  onSaved,
+}: {
+  room: LobbyRoom;
+  password: string;
+  people: { id: number; nickname: string }[];
+  busy: string | null;
+  onSend: (body: Send) => void;
+  /** Новый пароль — наверх: в снимке комнаты его нет, и помнить его может только эта вкладка. */
+  onSaved: (password: string) => void;
+}) {
+  const [title, setTitle] = useState(room.title);
+  const [pass, setPass] = useState(password);
+  const [sideAName, setA] = useState(room.sides[0].name);
+  const [sideBName, setB] = useState(room.sides[1].name);
+  const [who, setWho] = useState("");
+  const gathering = room.status === "gather";
+
+  return (
+    <Card variant="tight">
+      <div className="space-y-3 font-pouf">
+        <div>
+          <Eyebrow>Дверь комнаты</Eyebrow>
+          <p className="mt-1 text-[11px] font-bold leading-[1.5] text-muted">
+            Пароль диктуется игрокам: по нему они находят комнату в списке и заходят. Смена пароля
+            никого из комнаты не выбрасывает.
+          </p>
+        </div>
+
+        <Field label="Название">
+          {(id) => <FormInput id={id} size="sm" value={title} onChange={(e) => setTitle(e.target.value)} />}
+        </Field>
+        <Field label="Пароль">
+          {(id) => <FormInput id={id} size="sm" mono value={pass} onChange={(e) => setPass(e.target.value)} />}
+        </Field>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+          <Field label="Сторона A">
+            {(id) => (
+              <FormInput id={id} size="sm" value={sideAName} disabled={!gathering} onChange={(e) => setA(e.target.value)} />
+            )}
+          </Field>
+          <Field label="Сторона B">
+            {(id) => (
+              <FormInput id={id} size="sm" value={sideBName} disabled={!gathering} onChange={(e) => setB(e.target.value)} />
+            )}
+          </Field>
+        </div>
+        {!gathering && (
+          <p className="text-[11px] font-bold text-muted">Имена сторон меняются до начала драфта.</p>
+        )}
+
+        <Button
+          size="sm"
+          disabled={!title.trim() || !pass.trim()}
+          loading={busy === "settings"}
+          onClick={() => {
+            onSaved(pass.trim());
+            onSend({
+              intent: "settings",
+              title: title.trim(),
+              password: pass.trim(),
+              sideAName: sideAName.trim(),
+              sideBName: sideBName.trim(),
+            });
+          }}
+        >
+          Сохранить
+        </Button>
+
+        <div className="border-t border-hairline pt-3">
+          <Eyebrow>Пригласить</Eyebrow>
+          <p className="mt-1 text-[11px] font-bold leading-[1.5] text-muted">
+            Придёт сообщением от Spirit CTRL с кнопкой входа — пароль спрашивать не будут.
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <FormSelect
+              size="sm"
+              className="min-w-[10rem] flex-1"
+              aria-label="Кого позвать"
+              value={who}
+              onChange={(e) => setWho(e.target.value)}
+            >
+              <option value="">Кого позвать…</option>
+              {people.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nickname}
+                </option>
+              ))}
+            </FormSelect>
+            <Button
+              size="sm"
+              variant="quiet"
+              disabled={!who}
+              loading={busy === "invite"}
+              onClick={() => {
+                onSend({ intent: "invite", playerId: Number(who) });
+                setWho("");
+              }}
+            >
+              Позвать
+            </Button>
+          </div>
         </div>
       </div>
     </Card>
@@ -359,7 +513,6 @@ function Side({
     <Card variant="tight">
       <div className="font-pouf">
         <div className="flex items-center gap-2">
-          <TeamLogo team={{ name: team.name, logo: team.logo }} size={28} />
           <span className="h-3 w-3 shrink-0 rounded-pill" style={{ background: team.color }} />
           <h2 className="min-w-0 flex-1 truncate text-[17px] font-black text-ink">{team.name}</h2>
           <StatusPill tone={ready ? "ok" : "neutral"}>{ready ? "сторона готова" : (blocker ?? "ждём")}</StatusPill>

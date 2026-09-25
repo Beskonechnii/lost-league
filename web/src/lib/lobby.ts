@@ -2,10 +2,10 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { prisma } from "./prisma";
 import { can, currentAccount, isActiveAccount, type Account } from "./account";
-import { withPlayerUploads, withTeamUploads } from "./uploads";
+import { withPlayerUploads } from "./uploads";
 import { teamAccent } from "./profiles";
 import { pushTo } from "./presence";
-import { tellPlayer } from "./system-chat";
+import { tellAccount } from "./system-chat";
 import { localHeroes } from "./dota-constants";
 import {
   buildPool,
@@ -26,6 +26,7 @@ import {
   type LobbyCaptain,
   type LobbyMemberView,
   type LobbyRole,
+  type LobbySide,
   type LobbyRoom,
   type LobbyStatus,
 } from "./lobby-room";
@@ -39,42 +40,49 @@ import {
 // payload драфта: по ним сервер отвечает на «пускать ли в комнату» и — с 22б — «его ли это ход»,
 // а ответ внутри JSON проверять на сервере дорого, а на клиенте нельзя.
 
-/** Кто открывает комнату: аккаунт плюс признак админа лиги (право `tools`). */
-export type LobbyViewer = { accountId: number; playerId: number | null; admin: boolean };
+/** Кто открывает комнату: аккаунт, признак админа лиги (право `tools`) и признак игрока лиги —
+ *  по второму решается, видит ли он список открытых комнат и пускают ли его по паролю. */
+export type LobbyViewer = { accountId: number; playerId: number | null; admin: boolean; league: boolean };
 
 export async function currentViewer(): Promise<LobbyViewer | null> {
   const account = await currentAccount();
   if (!account) return null;
-  return { accountId: account.id, playerId: account.player?.id ?? null, admin: await can("tools") };
+  return {
+    accountId: account.id,
+    playerId: account.player?.id ?? null,
+    admin: await can("tools"),
+    league: isLeaguePlayer(account),
+  };
 }
 
-/** Игрок лиги — одобренный аккаунт с профилем. Он и админ с `tools` могут заводить лобби. */
+/** Игрок лиги — одобренный аккаунт с профилем. Он видит список комнат и входит в них по паролю. */
 const isLeaguePlayer = (account: Account | null): boolean => !!account?.player && isActiveAccount(account);
 
+/** Заводит комнату ТОЛЬКО админ с правом `tools` (ТЗ 42б): комната с паролем — инструмент
+ *  организатора встречи, а не кнопка игрока. */
 export async function canCreateLobby(): Promise<boolean> {
-  return isLeaguePlayer(await currentAccount()) || (await can("tools"));
+  return can("tools");
 }
 
 const ROLES: LobbyRole[] = ["player", "coach", "caster", "admin"];
 const asRole = (raw: string): LobbyRole => (ROLES.includes(raw as LobbyRole) ? (raw as LobbyRole) : "player");
 const asSide = (raw: number | null): TeamIdx | null => (raw === 0 || raw === 1 ? raw : null);
 
+/** Стороны комнаты: имя из самого лобби, цвет — из имени (`teamAccent` считает его по строке,
+ *  пока кожа 42е не даст свой). Карточки команды ростера здесь больше нет: привязка к `Team`
+ *  отменена решением 24.09.2026. */
+const sidesOf = (row: { sideAName: string; sideBName: string }): [LobbySide, LobbySide] => [
+  { name: row.sideAName, color: teamAccent({ name: row.sideAName }) },
+  { name: row.sideBName, color: teamAccent({ name: row.sideBName }) },
+];
+
 /** Снимок комнаты — один на всех: «моё ли это» клиент считает сам по своему accountId. */
 export async function readRoom(id: number): Promise<LobbyRoom | null> {
   const row = await prisma.lobby.findUnique({
     where: { id },
-    include: {
-      sideA: true,
-      sideB: true,
-      members: { include: { player: true }, orderBy: { id: "asc" } },
-    },
+    include: { members: { include: { player: true }, orderBy: { id: "asc" } } },
   });
   if (!row) return null;
-
-  const side = async (t: typeof row.sideA) => {
-    const withLogo = await withTeamUploads(t);
-    return { teamId: t.id, name: t.name, color: teamAccent(t), logo: withLogo.logo };
-  };
 
   const members: LobbyMemberView[] = await Promise.all(
     row.members.map(async (m) => {
@@ -102,7 +110,7 @@ export async function readRoom(id: number): Promise<LobbyRoom | null> {
     id: row.id,
     title: row.title,
     status: row.status as LobbyStatus,
-    sides: [await side(row.sideA), await side(row.sideB)],
+    sides: sidesOf(row),
     mainSec: row.mainSec,
     reserveSec: row.reserveSec,
     bestOf: row.bestOf,
@@ -135,14 +143,24 @@ export async function readRoom(id: number): Promise<LobbyRoom | null> {
  */
 const newObsKey = (): string => randomUUID().replace(/-/g, "") + randomUUID().replace(/-/g, "");
 
-/** Ключ ОБС-вида комнаты — только тому, кто им пользуется: админу комнаты и участнику с ролью ОБС.
- *  Не в снимке `readRoom`: снимок один на всех и уходит всем участникам, а ключ — не всем. */
-export async function obsKeyOf(room: LobbyRoom, viewer: LobbyViewer): Promise<string | null> {
+/**
+ * Секреты комнаты — ключ ОБС-вида и пароль двери. Не в снимке `readRoom`: снимок один на всех и
+ * уходит всем участникам, а эти две строки полагаются не всем. Ключ видит тот, кто им пользуется
+ * (админ комнаты и ОБС), пароль — только админ комнаты: он его диктует и меняет.
+ */
+export async function roomSecrets(
+  room: LobbyRoom,
+  viewer: LobbyViewer,
+): Promise<{ obsKey: string | null; password: string | null }> {
   const me = room.members.find((m) => m.accountId === viewer.accountId) ?? null;
-  const maySee = viewer.admin || room.ownerAccountId === viewer.accountId || me?.role === "admin" || me?.role === "caster";
-  if (!maySee) return null;
-  const row = await prisma.lobby.findUnique({ where: { id: room.id }, select: { obsKey: true } });
-  return row?.obsKey ?? null;
+  const isRoomAdmin = viewer.admin || room.ownerAccountId === viewer.accountId;
+  const maySeeKey = isRoomAdmin || me?.role === "admin" || me?.role === "caster";
+  if (!maySeeKey && !isRoomAdmin) return { obsKey: null, password: null };
+  const row = await prisma.lobby.findUnique({ where: { id: room.id }, select: { obsKey: true, password: true } });
+  return {
+    obsKey: maySeeKey ? (row?.obsKey ?? null) : null,
+    password: isRoomAdmin ? (row?.password ?? null) : null,
+  };
 }
 
 /**
@@ -153,18 +171,9 @@ export async function obsKeyOf(room: LobbyRoom, viewer: LobbyViewer): Promise<st
 export async function readBoard(key: string): Promise<{ id: number; board: LobbyBoard } | null> {
   const row = await prisma.lobby.findUnique({
     where: { obsKey: key },
-    include: {
-      sideA: true,
-      sideB: true,
-      members: { where: { captain: true }, include: { player: true } },
-    },
+    include: { members: { where: { captain: true }, include: { player: true } } },
   });
   if (!row) return null;
-
-  const side = async (t: typeof row.sideA) => {
-    const withLogo = await withTeamUploads(t);
-    return { teamId: t.id, name: t.name, color: teamAccent(t), logo: withLogo.logo };
-  };
 
   const captain = async (idx: TeamIdx): Promise<LobbyCaptain | null> => {
     const m = row.members.find((x) => x.side === idx && x.role === "player");
@@ -178,7 +187,7 @@ export async function readBoard(key: string): Promise<{ id: number; board: Lobby
     board: {
       title: row.title,
       status: row.status as LobbyStatus,
-      sides: [await side(row.sideA), await side(row.sideB)],
+      sides: sidesOf(row),
       bestOf: row.bestOf,
       captains: [await captain(0), await captain(1)],
       state: parseState(row.payload),
@@ -256,85 +265,60 @@ export async function armLobbyTimers(): Promise<void> {
   for (const r of rows) await touchLobby(r.id);
 }
 
-export type LobbyInvite = { playerId: number; side: TeamIdx | null; role: LobbyRole };
-
 export type CreateLobbyInput = {
   title: string;
-  sideATeamId: number;
-  sideBTeamId: number;
+  password: string;
+  sideAName: string;
+  sideBName: string;
   mainSec: number;
   reserveSec: number;
   bestOf: number;
   seriesId: number | null;
-  invites: LobbyInvite[];
 };
 
 export type CreateResult = { ok: true; id: number } | { ok: false; error: string };
 
+/**
+ * Создание комнаты (ТЗ 42б): название, пароль и имена сторон. Составов здесь нет — люди заходят
+ * сами по паролю или по приглашению уже ИЗ комнаты: до входа неизвестно, кто вообще придёт, а
+ * список приглашённых в форме заставлял админа собирать встречу до встречи.
+ */
 export async function createLobby(input: CreateLobbyInput): Promise<CreateResult> {
   const account = await currentAccount();
   if (!account) return { ok: false, error: "Нужно войти" };
-  if (!(await canCreateLobby())) return { ok: false, error: "Лобби заводят игроки лиги и админы" };
-  if (input.sideATeamId === input.sideBTeamId) return { ok: false, error: "Стороны должны быть разными" };
-
-  const teams = await prisma.team.findMany({
-    where: { id: { in: [input.sideATeamId, input.sideBTeamId] } },
-    select: { id: true },
-  });
-  if (teams.length !== 2) return { ok: false, error: "Команда не найдена" };
-
-  // Приглашённые адресуются игроком, а в комнату пускается аккаунт: без привязанного аккаунта
-  // человеку некуда прислать приглашение и нечем войти (решение 12 — регистрация обязательна).
-  const accounts = await prisma.userAccount.findMany({
-    where: { playerId: { in: input.invites.map((i) => i.playerId) }, status: "active" },
-    select: { id: true, playerId: true },
-  });
-  const accountByPlayer = new Map(accounts.map((a) => [a.playerId!, a.id]));
-
-  const seen = new Set<number>();
-  type Row = { accountId: number; playerId: number | null; side: TeamIdx | null; role: LobbyRole };
-  const members: Row[] = input.invites.flatMap((i) => {
-    const accountId = accountByPlayer.get(i.playerId);
-    if (!accountId || seen.has(accountId)) return [];
-    seen.add(accountId);
-    return [{ accountId, playerId: i.playerId, side: i.side, role: i.role }];
-  });
-  // Создатель всегда в комнате — иначе завёл бы её и не смог войти. Если он уже в списке
-  // приглашённых своей стороной, второй строкой не дублируем.
-  if (!seen.has(account.id)) {
-    members.push({ accountId: account.id, playerId: account.player?.id ?? null, side: null, role: "admin" });
-  }
+  if (!(await canCreateLobby())) return { ok: false, error: "Комнату заводит админ лиги" };
+  if (!input.password.trim()) return { ok: false, error: "Задайте пароль комнаты" };
 
   const lobby = await prisma.lobby.create({
     data: {
       title: input.title,
+      password: input.password,
+      sideAName: input.sideAName,
+      sideBName: input.sideBName,
       obsKey: newObsKey(),
-      sideATeamId: input.sideATeamId,
-      sideBTeamId: input.sideBTeamId,
       mainSec: input.mainSec,
       reserveSec: input.reserveSec,
       bestOf: input.bestOf,
       seriesId: input.seriesId,
       ownerAccountId: account.id,
-      members: { create: members },
+      // Создатель всегда в комнате — иначе завёл бы её и не смог войти.
+      members: {
+        create: [{ accountId: account.id, playerId: account.player?.id ?? null, side: null, role: "admin" }],
+      },
     },
     select: { id: true },
   });
-
-  // Приглашение — существующим каналом: системное сообщение от «Spirit CTRL» с кнопкой. Своего
-  // механизма уведомлений не заводим; состояние кнопки читается из самого лобби (chat-actions.ts).
-  for (const i of input.invites) {
-    if (!accountByPlayer.has(i.playerId)) continue;
-    await tellPlayer(i.playerId, `Вас зовут в лобби «${input.title}». Комната открыта — заходите.`, {
-      kind: "lobby-invite",
-      payload: { lobbyId: lobby.id },
-    });
-  }
 
   return { ok: true, id: lobby.id };
 }
 
 export type Intent =
+  /** Вход по паролю: единственное намерение, которое шлёт ещё НЕ участник комнаты. */
+  | { kind: "enter"; password: string }
+  /** Настройки двери: название, пароль и имена сторон. Правит админ комнаты. */
+  | { kind: "settings"; title: string; password: string; sideAName: string; sideBName: string }
+  /** Позвать человека в комнату личным сообщением — второй путь внутрь, мимо пароля. */
+  | { kind: "invite"; playerId: number }
   | { kind: "join" }
   | { kind: "captain" }
   | { kind: "resign" }
@@ -357,6 +341,15 @@ export async function applyIntent(id: number, viewer: LobbyViewer, intent: Inten
   await settle(id);
   const room = await readRoom(id);
   if (!room) return { ok: false, error: "Лобби не найдено" };
+
+  // Вход по паролю — ДО проверки членства: его шлёт ровно тот, кого в комнате ещё нет.
+  if (intent.kind === "enter") {
+    const failed = await enterByPassword(room, viewer, intent.password);
+    if (failed) return { ok: false, error: failed };
+    const entered = await broadcast(id);
+    return entered ? { ok: true, room: entered } : { ok: false, error: "Лобби не найдено" };
+  }
+
   if (!mayEnter(room, viewer)) return { ok: false, error: "Лобби не найдено" };
 
   const me = room.members.find((m) => m.accountId === viewer.accountId) ?? null;
@@ -365,6 +358,32 @@ export async function applyIntent(id: number, viewer: LobbyViewer, intent: Inten
   const isRoomAdmin = viewer.admin || room.ownerAccountId === viewer.accountId;
 
   switch (intent.kind) {
+    case "settings": {
+      if (!isRoomAdmin) return { ok: false, error: "Настройки комнаты меняет её админ" };
+      const names = intent.sideAName !== room.sides[0].name || intent.sideBName !== room.sides[1].name;
+      // Имена сторон после старта драфта не меняются: они уже уехали в эфир и в состояние драфта.
+      // Название и пароль меняются всегда — пароль это дверь, а не часть картинки встречи.
+      if (names && room.status !== "gather") return { ok: false, error: "Имена сторон меняются до начала драфта" };
+      if (!intent.password.trim()) return { ok: false, error: "Пароль не может быть пустым" };
+      await prisma.lobby.update({
+        where: { id },
+        data: {
+          title: intent.title,
+          password: intent.password,
+          ...(names ? { sideAName: intent.sideAName, sideBName: intent.sideBName } : {}),
+        },
+      });
+      // Смена пароля никого не выбрасывает: внутри держит `LobbyMember`, а пароль — только дверь.
+      break;
+    }
+
+    case "invite": {
+      if (!isRoomAdmin) return { ok: false, error: "Приглашает админ комнаты" };
+      const invited = await invitePlayer(room, intent.playerId);
+      if (invited) return { ok: false, error: invited };
+      break;
+    }
+
     case "join": {
       if (!me) {
         // Админ пришёл в чужую комнату: заводим ему строку «админ комнаты» — иначе он не получал
@@ -466,6 +485,83 @@ export async function applyIntent(id: number, viewer: LobbyViewer, intent: Inten
   return room2 ? { ok: true, room: room2 } : { ok: false, error: "Лобби не найдено" };
 }
 
+// ── дверь комнаты (ТЗ 42б) ────────────────────────────────────────────────────
+//
+// Пароль лежит открытым текстом, и это осознанно (решение 24.09.2026): это код доступа на вечер,
+// который админ диктует голосом, а не секрет аккаунта. Зато открытый пароль обязан быть защищён
+// от ПЕРЕБОРА — иначе комната открывается скриптом за минуту. Счётчик неудач держим в памяти
+// процесса, как будильники ходов: нода одна (DEPLOY.md), а переживать перезапуск ему незачем —
+// после рестарта начинает заново и перебор.
+
+const FAIL_MAX = 5;
+const FAIL_PAUSE_MS = 60_000;
+
+type Tries = { fails: number; until: number };
+const gTries = globalThis as unknown as { lostLobbyTries?: Map<number, Tries> };
+const tries: Map<number, Tries> = (gTries.lostLobbyTries ??= new Map());
+
+/** Вход по паролю. Возвращает текст отказа или null, если человек теперь в комнате. */
+async function enterByPassword(room: LobbyRoom, viewer: LobbyViewer, password: string): Promise<string | null> {
+  if (room.members.some((m) => m.accountId === viewer.accountId)) return null; // уже внутри
+  if (!viewer.league && !viewer.admin) return "Комнаты открыты игрокам лиги с одобренной анкетой";
+
+  const now = Date.now();
+  const prev = tries.get(viewer.accountId);
+  if (prev && prev.until > now) return `Слишком много попыток. Подождите ${Math.ceil((prev.until - now) / 1000)} с.`;
+  // Пауза вышла — счёт начинается заново, иначе одна давняя серия ошибок наказывала бы навсегда.
+  const fails = prev && prev.until ? 0 : (prev?.fails ?? 0);
+
+  const row = await prisma.lobby.findUnique({ where: { id: room.id }, select: { password: true } });
+  if (!row || !row.password || row.password !== password.trim()) {
+    const next = fails + 1;
+    tries.set(viewer.accountId, { fails: next, until: next >= FAIL_MAX ? now + FAIL_PAUSE_MS : 0 });
+    return "Пароль не подошёл";
+  }
+  tries.delete(viewer.accountId);
+
+  // Сторону и роль вошедший выбирает сам уже внутри (42в): дверь ставит его «вне сторон».
+  await prisma.lobbyMember.upsert({
+    where: { lobbyId_accountId: { lobbyId: room.id, accountId: viewer.accountId } },
+    update: { joinedAt: new Date() },
+    create: {
+      lobbyId: room.id,
+      accountId: viewer.accountId,
+      playerId: viewer.playerId,
+      side: null,
+      role: "player",
+      joinedAt: new Date(),
+    },
+  });
+  return null;
+}
+
+/**
+ * Приглашение — второй путь внутрь, мимо пароля: админ комнаты заводит человеку членство и шлёт
+ * личное сообщение от «Spirit CTRL» с кнопкой. Своего механизма уведомлений не заводим; состояние
+ * кнопки читается из самого лобби (`chat-actions.ts`).
+ */
+async function invitePlayer(room: LobbyRoom, playerId: number): Promise<string | null> {
+  // Одобренность анкеты здесь НЕ проверяется, и это весь смысл приглашения: список комнат открыт
+  // только игроку лиги, а позвать админ может кого угодно с аккаунтом — в том числе того, чья
+  // анкета ещё висит. Без аккаунта звать некуда: приглашение приходит сообщением, а в комнату
+  // пускается аккаунт.
+  const account = await prisma.userAccount.findFirst({ where: { playerId }, select: { id: true } });
+  if (!account) return "У игрока нет аккаунта в лиге — позвать некуда";
+
+  await prisma.lobbyMember.upsert({
+    where: { lobbyId_accountId: { lobbyId: room.id, accountId: account.id } },
+    update: {},
+    create: { lobbyId: room.id, accountId: account.id, playerId, side: null, role: "player" },
+  });
+  // Пишем АККАУНТУ, а не игроку: `tellPlayer` молчит, если анкета ещё не одобрена, — а это ровно
+  // тот человек, ради которого приглашение и заведено.
+  await tellAccount(account.id, `Вас зовут в лобби «${room.title}». Комната открыта — заходите.`, {
+    kind: "lobby-invite",
+    payload: { lobbyId: room.id },
+  });
+  return null;
+}
+
 /**
  * Следующая карта серии: новый пул БЕЗ уже взятых героев, обнулённая отметка хода и полные банки
  * обеим сторонам — то же, что делает `doNext` на админском борде, только на сервере.
@@ -542,19 +638,36 @@ async function decideCoin(room: LobbyRoom, viewer: LobbyViewer, intent: { block:
   return null;
 }
 
-/** Лобби, которые видит этот человек: свои комнаты, а админу с `tools` — все. */
+/**
+ * Открытые комнаты — ОДОБРЕННОМУ игроку лиги и админу (ТЗ 42б §5): список и есть дверь, через
+ * которую заходят по паролю. Вошедшему без одобренной анкеты списка нет вовсе — его зовут
+ * приглашением. Сыгранные комнаты (`done`) не показываем: заходить в них уже незачем.
+ */
 export async function listLobbies(viewer: LobbyViewer) {
+  if (!viewer.league && !viewer.admin) return [];
   const rows = await prisma.lobby.findMany({
-    where: viewer.admin ? undefined : { members: { some: { accountId: viewer.accountId } } },
+    where: { status: { not: "done" } },
     orderBy: { updatedAt: "desc" },
     take: 50,
-    include: { sideA: { select: { name: true } }, sideB: { select: { name: true } } },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      sideAName: true,
+      sideBName: true,
+      updatedAt: true,
+      _count: { select: { members: true } },
+      members: { where: { accountId: viewer.accountId }, select: { id: true } },
+    },
   });
   return rows.map((r) => ({
     id: r.id,
     title: r.title,
     status: r.status as LobbyStatus,
-    sides: `${r.sideA.name} — ${r.sideB.name}`,
+    sides: `${r.sideAName} — ${r.sideBName}`,
+    people: r._count.members,
+    /** Уже внутри — пароль спрашивать не за что, кнопка ведёт прямо в комнату. */
+    mine: r.members.length > 0,
     updated: r.updatedAt,
   }));
 }

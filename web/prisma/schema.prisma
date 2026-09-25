@@ -685,11 +685,23 @@ model Lobby {
   /// gather (собираемся) | coin (монетка брошена, стороны выбирают блоки) | draft | done
   status String @default("gather")
 
-  /// Стороны — команды ростера: имя, цвет и лого берутся из карточки, а не копируются сюда.
-  sideA       Team @relation("LobbySideA", fields: [sideATeamId], references: [id], onDelete: Cascade)
-  sideATeamId Int
-  sideB       Team @relation("LobbySideB", fields: [sideBTeamId], references: [id], onDelete: Cascade)
-  sideBTeamId Int
+  /// Имена сторон — свободный текст (ТЗ 42б): их пишет админ комнаты, а не карточка команды.
+  /// Привязка к `Team` отменена решением 24.09.2026 — встречу проводят и те, кого в ростере нет;
+  /// цвет и лого стороны даёт кожа лобби, а не ростер.
+  sideAName String @default("Сторона A")
+  sideBName String @default("Сторона B")
+  /// Команды ростера остались НЕОБЯЗАТЕЛЬНОЙ привязкой: уже заведённые комнаты её не теряют, но
+  /// ничего, кроме истории, она не решает — экран читает имена выше.
+  sideA       Team? @relation("LobbySideA", fields: [sideATeamId], references: [id], onDelete: SetNull)
+  sideATeamId Int?
+  sideB       Team? @relation("LobbySideB", fields: [sideBTeamId], references: [id], onDelete: SetNull)
+  sideBTeamId Int?
+
+  /// Пароль комнаты — код доступа на вечер, ОТКРЫТЫМ текстом (решение 24.09.2026): админ его
+  /// диктует в голосовом чате, а хеш лишил бы его возможности назвать пароль. Секретом аккаунта
+  /// он не является: доступ внутрь держит `LobbyMember`, пароль — только дверь, и его смена
+  /// никого из комнаты не выбрасывает.
+  password String @default("")
 
   /// Тайминги лобби — НАСТРОЙКА встречи, а не константа: к команде могут применяться пенальти.
   /// Дефолты берутся из DEFAULT_MAIN_SEC / DEFAULT_RESERVE_SEC (src/lib/fearless.ts).
