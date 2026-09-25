@@ -371,6 +371,29 @@
 }
 
 /* ============================================================================
+ * ДВИЖЕНИЕ — один глобальный отказ (ТЗ 42г, DESIGN-2)
+ * ============================================================================
+ * Комментарий ниже про «neutralised globally» до 42г был неправдой: глобального
+ * блока в проекте не было вовсе. Драфт — первый экран с ЗАЦИКЛЕННОЙ анимацией
+ * (пульс слота текущего хода), и крутить её тому, кто попросил систему ничего не
+ * двигать, нельзя. Правило одно на весь Кит: переход становится мгновенным,
+ * цикл проигрывается один раз.
+ *
+ * Компонент, которому нужен свой короткий ответ на reduce (монетка — 300 мс
+ * проявления готового результата), переопределяет это у себя через !important:
+ * блок не в слое, и важное правило слоя его перебьёт. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ============================================================================
  * Overlay components (dialog, side sheet, popovers, menus, tooltip, scroll
  * area). Multi-rule chrome with data-state animations and media-query
  * reshaping — the honest Tailwind idiom here is @layer components, not
@@ -2143,7 +2166,9 @@ th[aria-sort='descending'] .pouf-table__caret {
   }
 }
 
-/* Без вращения: 300ms проявления готовой плашки результата. */
+/* Без вращения: 300ms проявления готовой плашки результата. `!important` — чтобы
+ * глобальный отказ от движения (он не в слое) не срезал и это проявление: там
+ * монетка просто моргнула бы, а плашка результата обязана появиться читаемо. */
 @media (prefers-reduced-motion: reduce) {
   .pouf-coin--play .pouf-coin__toss,
   .pouf-coin--play .pouf-coin__disc {
@@ -2151,8 +2176,526 @@ th[aria-sort='descending'] .pouf-table__caret {
   }
   .pouf-coin--play .pouf-coin__plate {
     animation-name: pouf-fade;
-    animation-duration: 300ms;
+    animation-duration: 300ms !important;
     animation-delay: 0ms;
     animation-timing-function: ease;
   }
+}
+
+/* ============================================================================
+ * DRAFT — борд лобби (ТЗ 42г, DESIGN-1…3)
+ * ============================================================================
+ * Одна сетка на три колонки: сторона · пул · сторона. Ширины — ТОКЕНАМИ борда
+ * (--draft-rail, --draft-tile), а не литералами по месту: те же числа держат
+ * комнату и ОБС-вид, и подбирать их дважды нельзя.
+ *
+ * Ниже 1024 колонок нет вовсе — стек: рабочее место капитана это компьютер
+ * (Scope), телефон обязан ЧИТАТЬСЯ. Поэтому на узком сверху липкая строка хода
+ * («кто ходит · сколько времени · моя ли очередь» без скролла), а пул уезжает
+ * в Sheet — в потоке страницы он съел бы экран и вытолкнул слоты. */
+.pouf-draft {
+  --draft-rail: 100%;
+  --draft-tile: 60px;
+  display: grid;
+  gap: var(--s4);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'turn'
+    'a'
+    'b'
+    'foot';
+}
+.pouf-draft__turn {
+  grid-area: turn;
+  position: sticky;
+  top: 64px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 56px;
+  padding: 0 var(--s3);
+  border-radius: var(--r-card);
+  background: var(--grad-board);
+  box-shadow: var(--pouf-card);
+}
+.pouf-draft__rail-a {
+  grid-area: a;
+}
+.pouf-draft__rail-b {
+  grid-area: b;
+}
+.pouf-draft__center {
+  grid-area: pool;
+  display: none;
+}
+.pouf-draft__foot {
+  grid-area: foot;
+  display: grid;
+  gap: var(--s3);
+  grid-template-columns: minmax(0, 1fr);
+}
+.pouf-draft__foot-side {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .pouf-draft {
+    --draft-tile: 56px;
+  }
+}
+@media (min-width: 1024px) {
+  .pouf-draft {
+    --draft-rail: 148px;
+    --draft-tile: 56px;
+    gap: var(--s2);
+    grid-template-columns: var(--draft-rail) minmax(0, 1fr) var(--draft-rail);
+    /* Ряды считаются по содержимому, а не делят высоту колонок поровну: колонка
+     * слотов занимает оба верхних ряда, и без этого её высота растягивала ряд
+     * часов — под циферблатом зияла дыра в полколонки. */
+    grid-template-rows: min-content 1fr min-content;
+    grid-template-areas:
+      'a turn b'
+      'a pool b'
+      'foot foot foot';
+  }
+  /* Липкая строка — приём узкого экрана: на борде ход виден слотом и колонкой. */
+  .pouf-draft__turn {
+    position: static;
+    display: block;
+    min-height: 0;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .pouf-draft__center {
+    display: block;
+  }
+  .pouf-draft__foot {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .pouf-draft__foot-side[data-align='right'] {
+    flex-direction: row-reverse;
+  }
+}
+@media (min-width: 1280px) {
+  .pouf-draft {
+    --draft-rail: 176px;
+    --draft-tile: 68px;
+    gap: var(--s3);
+  }
+}
+@media (min-width: 1440px) {
+  .pouf-draft {
+    --draft-rail: 216px;
+    --draft-tile: 80px;
+    gap: var(--s4);
+  }
+}
+@media (min-width: 1920px) {
+  .pouf-draft {
+    --draft-rail: 240px;
+    --draft-tile: 92px;
+  }
+}
+
+/* -- Колонка стороны ------------------------------------------------------ */
+.pouf-rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  min-width: 0;
+  padding: var(--s3);
+  border-radius: var(--r-card);
+  background: var(--grad-board);
+  box-shadow: var(--pouf-card);
+}
+/* «Сейчас ходит эта сторона» — обводка на всю колонку; внутри пульсирует ровно
+ * один слот. Два разных приёма про одно и то же читались бы как рябь. */
+.pouf-rail[data-active] {
+  outline: 2px solid var(--pouf-slot-color, var(--accent-ink));
+  outline-offset: 2px;
+}
+.pouf-rail__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+}
+.pouf-rail__dot {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--r-pill);
+  background: var(--pouf-slot-color, var(--accent-fill));
+}
+.pouf-rail__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--ink);
+}
+.pouf-rail__sub {
+  margin-left: auto;
+  flex: none;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.pouf-rail__label {
+  margin-top: var(--s2);
+}
+.pouf-rail__bans {
+  display: grid;
+  gap: var(--s1);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.pouf-rail__picks {
+  display: grid;
+  gap: var(--s2);
+  grid-template-columns: repeat(auto-fill, minmax(var(--draft-tile, 60px), 1fr));
+}
+@media (min-width: 1024px) {
+  .pouf-rail__bans {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  /* Пик занимает колонку целиком: пять крупных портретов подряд — и есть
+   * картинка референса, ради которой колонки разнесены по краям пула. */
+  .pouf-rail__picks {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pouf-rail--right .pouf-rail__head {
+    flex-direction: row-reverse;
+  }
+  .pouf-rail--right .pouf-rail__sub {
+    margin-left: 0;
+    margin-right: auto;
+  }
+}
+
+/* -- Слот пика/бана (DESIGN-2) -------------------------------------------- */
+.pouf-slot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--color-surface-2);
+  box-shadow: var(--pouf-field);
+  transition:
+    transform 120ms cubic-bezier(0.2, 0.8, 0.3, 1),
+    box-shadow 120ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+/* Наведение и нажатие — только у заполненного: пустая лунка ничего не обещает,
+ * а у заполненной под курсором выезжает имя героя, которое в слот не влезло. */
+.pouf-slot[data-filled] {
+  background: var(--surface);
+  box-shadow: var(--pouf-row);
+  animation: pouf-slot-flash 400ms ease-out both;
+}
+.pouf-slot[data-filled]:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--pouf-row-hover);
+}
+.pouf-slot[data-filled]:active {
+  transform: translateY(2px);
+  box-shadow: var(--pouf-control-active);
+  transition-duration: 90ms;
+}
+.pouf-slot__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: pouf-slot-in 220ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+/* Прошлая карта не «происходит» — она уже сыграна: ни появления, ни вспышки. */
+.pouf-slot--static,
+.pouf-slot--static .pouf-slot__img {
+  animation: none;
+}
+.pouf-slot__n {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--muted);
+}
+.pouf-slot[data-filled] .pouf-slot__n {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 1;
+  padding: 0 4px;
+  border-top-right-radius: 8px;
+  background: var(--surface);
+  font-size: 11px;
+}
+.pouf-rail--right .pouf-slot[data-filled] .pouf-slot__n {
+  left: auto;
+  right: 0;
+  border-top-right-radius: 0;
+  border-top-left-radius: 8px;
+}
+.pouf-slot__name {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 1;
+  padding: 2px 4px;
+  opacity: 0;
+  background: rgba(24, 22, 18, 0.72);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: opacity 120ms ease;
+}
+.pouf-slot:hover .pouf-slot__name {
+  opacity: 1;
+}
+/* Пульс — ТОЛЬКО непрозрачность обводки: шестнадцать дышащих прямоугольников на
+ * эфирном борде читаются как рябь. */
+.pouf-slot[data-current] {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 2px;
+  animation: pouf-slot-pulse 1600ms ease-in-out infinite;
+}
+.pouf-slot[data-last] {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 2px;
+  box-shadow: var(--pouf-blob);
+}
+.pouf-slot--ban[data-filled] .pouf-slot__img {
+  filter: grayscale(1) brightness(0.55);
+}
+/* Диагональ через кадр — третий носитель «это бан» рядом с обесцвечиванием и
+ * подписью: на стопкадре трансляции бан обязан отличаться от пика без цвета. */
+.pouf-slot--ban[data-filled]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    45deg,
+    transparent calc(50% - 1px),
+    var(--color-err) calc(50% - 1px),
+    var(--color-err) calc(50% + 1px),
+    transparent calc(50% + 1px)
+  );
+}
+.pouf-slot__ban {
+  position: absolute;
+  top: 1px;
+  right: 3px;
+  z-index: 1;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--color-err-ink);
+}
+
+@keyframes pouf-slot-in {
+  from {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+}
+@keyframes pouf-slot-flash {
+  0% {
+    box-shadow: var(--sh-accent-sm);
+  }
+  100% {
+    box-shadow: var(--pouf-row);
+  }
+}
+@keyframes pouf-slot-pulse {
+  0%,
+  100% {
+    outline-color: var(--accent-ink);
+  }
+  50% {
+    outline-color: color-mix(in srgb, var(--accent-ink) 40%, transparent);
+  }
+}
+
+/* -- Основной таймер (DESIGN-10.4) ---------------------------------------- */
+.pouf-clock {
+  width: max-content;
+}
+.pouf-clock__value {
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.pouf-clock[data-mode='reserve'] .pouf-clock__value {
+  color: var(--accent-ink);
+}
+.pouf-clock[data-urgent] .pouf-clock__value {
+  color: var(--color-err-ink);
+}
+.pouf-clock__label {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+@media (min-width: 1024px) {
+  .pouf-clock__value {
+    font-size: 34px;
+  }
+  /* Переезд к стороне хода: `justify-self` не анимируется, а margin — да.
+   * 100% отступа ставит левый край на правый край дорожки, а translateX(-100%)
+   * возвращает циферблат на его собственную ширину — и он прижат вправо. */
+  .pouf-clock {
+    transition: margin-left 240ms cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  .pouf-clock[data-align='end'] {
+    margin-left: 100%;
+    transform: translateX(-100%);
+  }
+}
+
+/* -- Плашка капитана (DESIGN-10.5) ---------------------------------------- */
+.pouf-captain {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+  flex: 1;
+  padding: var(--s2) var(--s3);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  box-shadow: var(--pouf-row);
+}
+.pouf-captain[data-align='right'] {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+.pouf-captain__body {
+  min-width: 0;
+  flex: 1;
+}
+.pouf-captain__who {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.pouf-captain__nick {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--ink);
+}
+.pouf-captain__meter {
+  margin-top: 4px;
+}
+.pouf-captain__bank {
+  flex: none;
+  font-size: 15px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.pouf-captain--compact .pouf-captain__who {
+  display: none;
+}
+/* До 1280 полоска банка уходит, остаётся число: в колонке 148px она съедает
+ * ник, а банк читается цифрой. */
+@media (max-width: 1279px) {
+  .pouf-captain__meter {
+    display: none;
+  }
+}
+
+/* -- Пул и плитка героя (DESIGN-3) ---------------------------------------- */
+.pouf-pool {
+  display: grid;
+  gap: var(--s1);
+  grid-template-columns: repeat(auto-fill, minmax(var(--draft-tile, 60px), 1fr));
+}
+.pouf-hero {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: var(--color-surface-2);
+  box-shadow: var(--pouf-row);
+  outline: none;
+  cursor: pointer;
+  transition:
+    transform 120ms cubic-bezier(0.2, 0.8, 0.3, 1),
+    box-shadow 120ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.pouf-hero__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* Пока ролик едет, на экране стоит PNG — момента загрузки не видно вовсе,
+ * поэтому ни спиннера, ни «битой» рамки здесь нет. */
+.pouf-hero__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.pouf-hero[data-state='free']:hover,
+.pouf-hero[data-state='free']:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: var(--pouf-row-hover);
+}
+.pouf-hero:focus-visible {
+  box-shadow: var(--pouf-row), var(--sh-focus);
+}
+.pouf-hero[data-state='chosen'] {
+  outline: 3px solid var(--accent-ink);
+  outline-offset: 2px;
+}
+.pouf-hero[data-state='view'] {
+  cursor: default;
+}
+.pouf-hero[data-state='gone'] {
+  opacity: 0.3;
+  filter: grayscale(1);
+  cursor: not-allowed;
+}
+.pouf-hero--big {
+  border-radius: 12px;
+}
+.pouf-hero__note {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(236, 231, 221, 0.7);
+  font-size: 8px;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: var(--color-err-ink);
 }

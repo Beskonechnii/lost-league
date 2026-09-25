@@ -1,10 +1,8 @@
 import { notFound } from "next/navigation";
-import { heroImg } from "@/lib/assets";
-import { localHeroes } from "@/lib/dota-constants";
+import { draftHeroes } from "@/lib/draft-heroes";
 import { prisma } from "@/lib/prisma";
 import { currentViewer, mayEnter, readRoom, roomSecrets, touchLobby } from "@/lib/lobby";
 import { lobbyMessages } from "@/lib/lobby-chat";
-import type { HeroRef } from "../../../(admin)/admin/fearless-draft/_components/types";
 import { LobbyView } from "../_components/room";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +26,6 @@ export default async function LobbyPage({ params }: { params: Promise<{ id: stri
   const room = await readRoom(id);
   if (!room || !mayEnter(room, viewer)) notFound();
 
-  // Справочник героев нужен борду 15а — он же собирается на админском экране драфта.
   // Историю чата и секреты комнаты читаем ЗДЕСЬ, а не в снимке: снимок один на всех и уходит по
   // живому каналу каждому участнику, а ключ эфира и пароль двери полагаются не каждому.
   const [chat, secrets] = await Promise.all([lobbyMessages(id), roomSecrets(room, viewer!)]);
@@ -50,19 +47,12 @@ export default async function LobbyPage({ params }: { params: Promise<{ id: stri
         .sort((x, y) => x.nickname.localeCompare(y.nickname))
     : [];
 
-  const heroes: HeroRef[] = localHeroes()
-    .map((h) => {
-      const slug = h.name.replace(/^npc_dota_hero_/, "");
-      return { id: h.id, name: h.localized_name, slug, img: heroImg(slug), attr: h.primary_attr };
-    })
-    .sort((a, b) => a.name.localeCompare(b.name));
-
   return (
     <LobbyView
       initial={room}
       me={viewer!.accountId}
       admin={viewer!.admin}
-      heroes={heroes}
+      heroes={draftHeroes()}
       chat={chat}
       obsKey={secrets.obsKey}
       password={secrets.password}

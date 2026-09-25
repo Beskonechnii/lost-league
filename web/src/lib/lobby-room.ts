@@ -106,6 +106,10 @@ export type LobbyBoard = {
   bestOf: number;
   /** Капитаны сторон — карточкам колонок борда. null, пока сторона его не выбрала. */
   captains: [LobbyCaptain | null, LobbyCaptain | null];
+  /** Итог монетки — ради той же анимации в эфире (ТЗ 42г): в OBS её видят зрители, и играть её
+   *  она обязана одновременно с комнатой, от той же серверной отметки. Кнопок выбора блока здесь
+   *  нет — только результат. */
+  coin: LobbyRoom["coin"];
   state: FearlessState | null;
   turn: LobbyTurn;
 };

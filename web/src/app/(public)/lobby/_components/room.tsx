@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/pouf/Button";
 import { Icon } from "@/components/pouf/Icon";
 import { SectionHeader } from "@/components/pouf/blocks";
+import { Breadcrumbs } from "@/components/pouf/breadcrumbs";
 import { Alert, StatusPill } from "@/components/pouf/feedback";
 import { Field, FormInput, FormSelect } from "@/components/pouf/Input";
 import { Card } from "@/components/pouf/surface";
@@ -19,16 +20,16 @@ import {
   sidePlayers,
   sideReady,
   staffIn,
+  type LobbyCaptain,
   type LobbyLine,
   type LobbyMemberView,
   type LobbyRole,
   type LobbyRoom,
 } from "@/lib/lobby-room";
-import { CoinFlip } from "@/components/pouf/draft";
+import { CoinFlip, fmtClock, type DraftHero } from "@/components/pouf/draft";
 import { PlayerAvatar } from "../../roster/_components/avatar";
 import { Gather, GatherHint } from "./gather";
-import { FearlessRun, type LiveTurn } from "../../../(admin)/admin/fearless-draft/_components/fearless-run";
-import { fmtTime, type HeroRef, type TeamRef } from "../../../(admin)/admin/fearless-draft/_components/types";
+import { DraftBoard } from "./draft-board";
 import { LobbyChat } from "./chat";
 import { PHASE } from "./phase";
 
@@ -84,7 +85,7 @@ export function LobbyView({
   me: number;
   /** Админ лиги (право `tools`) — админ комнаты, но не игрок: кнопок стороны у него нет. */
   admin: boolean;
-  heroes: HeroRef[];
+  heroes: DraftHero[];
   /** История чата комнаты: читается из БД при рендере, дальше лента живёт живым каналом. */
   chat: LobbyLine[];
   /** Ключ ОБС-вида — только админу комнаты и ОБС. В снимке комнаты его нет намеренно: снимок
@@ -185,22 +186,14 @@ export function LobbyView({
 
   const mine = meIn(room, me);
   const heroById = useMemo(() => new Map(heroes.map((h) => [h.id, h])), [heroes]);
-  // Карточка команды борду нужна за лого и капитаном; капитана берём из комнаты, а не из ростера:
-  // в лобби капитан тот, кого выбрала сторона, а не тот, у кого галочка в составе.
-  const teamRefs: TeamRef[] = useMemo(
+  // Капитанов борду даёт комната, а не ростер: в лобби капитан тот, кого выбрала сторона, а не
+  // тот, у кого галочка в составе.
+  const captains = useMemo(
     () =>
-      room.sides.map((s, i) => {
-        const cap = captainOf(room, i as TeamIdx);
-        return {
-          // Сторона адресуется своим номером: команды ростера за ней больше нет (42б), а борду
-          // нужен лишь ключ пары «сторона A / сторона B».
-          id: i,
-          name: s.name,
-          color: s.color,
-          logo: null,
-          captain: cap ? { nickname: cap.nickname, photo: cap.photo, mmr: null } : null,
-        };
-      }),
+      ([0, 1] as TeamIdx[]).map((i) => {
+        const cap = captainOf(room, i);
+        return cap ? { nickname: cap.nickname, photo: cap.photo } : null;
+      }) as [LobbyCaptain | null, LobbyCaptain | null],
     [room],
   );
 
@@ -212,24 +205,26 @@ export function LobbyView({
     !!room.state && !!mine?.captain && mine.side !== null && currentTeam(room.state) === mine.side;
   const moves = room.state ? (room.state.games[room.state.current]?.moves.length ?? 0) : 0;
 
-  const live: LiveTurn | undefined = room.state
-    ? {
-        clock: {
-          // Сдвигаем серверную отметку в часы этой вкладки: показание обязано совпадать с тем,
-          // по чему сервер считает истечение, а не с системными часами машины.
-          startedAt: room.turn.startedAt === null ? null : room.turn.startedAt - (room.turn.now - recv),
-          reserve: room.turn.reserve,
-        },
-        myTurn,
-        busy: busy === "pick",
-        onPick: (heroId) => send({ intent: "pick", heroId, at: moves }),
-        onNext: isRoomAdmin && canNextGame(room.state) ? () => send({ intent: "next" }) : null,
-        autoFrom: room.turn.autoFrom,
-      }
-    : undefined;
+  // Сдвигаем серверные отметки в часы этой вкладки: показание обязано совпадать с тем, по чему
+  // сервер считает истечение, а не с системными часами машины.
+  const boardTurn = {
+    startedAt: room.turn.startedAt === null ? null : room.turn.startedAt - (room.turn.now - recv),
+    reserve: room.turn.reserve,
+    autoFrom: room.turn.autoFrom,
+  };
+  // Пул закрыт, пока не готовы обе стороны: причина — строкой стороны, которая ещё не готова.
+  const lockReason = ([0, 1] as TeamIdx[])
+    .flatMap((s) => {
+      const blocker = sideBlocker(room, s);
+      return blocker ? [`${room.sides[s].name}: ${blocker}`] : [];
+    })
+    .join(" · ");
 
   return (
     <div className="space-y-6 font-pouf">
+      {/* Крошки, а не «← Назад» (UI-GUIDELINES §3): комната — лист раздела, и путь к списку
+          обязан читаться, а не угадываться. */}
+      <Breadcrumbs items={[{ href: "/lobby", label: "Лобби" }]} />
       <SectionHeader
         eyebrow="Лига · комната встречи"
         title={room.title}
@@ -237,7 +232,7 @@ export function LobbyView({
           <span className="flex flex-wrap items-center gap-2">
             <StatusPill tone={PHASE[room.status].tone}>{PHASE[room.status].label}</StatusPill>
             <span className="text-[11px] font-bold text-muted">
-              ход {fmtTime(room.mainSec)} · банк {fmtTime(room.reserveSec)} · Bo{room.bestOf}
+              ход {fmtClock(room.mainSec)} · банк {fmtClock(room.reserveSec)} · Bo{room.bestOf}
             </span>
           </span>
         }
@@ -257,16 +252,28 @@ export function LobbyView({
         />
       )}
 
-      {room.state && (
-        <FearlessRun
-          state={room.state}
-          setState={() => {}}
-          heroById={heroById}
-          teams={teamRefs}
-          readOnly
-          live={live}
-        />
+      {/* Борд стоит на экране и до драфта: слоты пустые, а на месте пула — замок с причиной,
+          чего ждём. Иначе «что вообще будет дальше» пришлось бы угадывать (DESIGN-1). */}
+      {room.status === "done" && (
+        <Alert tone="info" block>
+          Серия завершена. Комната открыта на чтение.
+        </Alert>
       )}
+      <DraftBoard
+        state={room.state}
+        heroById={heroById}
+        sides={room.sides}
+        captains={captains}
+        turn={boardTurn}
+        mainSec={room.mainSec}
+        reserveSec={room.reserveSec}
+        myCaptainSide={mine?.captain ? mine.side : null}
+        myTurn={myTurn}
+        busy={busy === "pick"}
+        onPick={(heroId) => send({ intent: "pick", heroId, at: moves })}
+        onNext={isRoomAdmin && room.state && canNextGame(room.state) ? () => send({ intent: "next" }) : null}
+        lockReason={lockReason || null}
+      />
 
       {/* Сбор — доска трёх лунок (42в); дальше состав уже не меняется, и две карточки сторон
           читаются лучше доски: кнопок на них нет, а вопрос «кто за кого» остался. */}

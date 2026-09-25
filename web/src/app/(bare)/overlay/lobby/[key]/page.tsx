@@ -1,9 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { heroImg } from "@/lib/assets";
-import { localHeroes } from "@/lib/dota-constants";
+import { draftHeroes } from "@/lib/draft-heroes";
 import { readBoard } from "@/lib/lobby";
-import type { HeroRef } from "@/app/(admin)/admin/fearless-draft/_components/types";
 import { ObsBoard } from "./_components/obs-board";
 
 export const dynamic = "force-dynamic";
@@ -30,12 +28,5 @@ export default async function LobbyObsPage({ params }: { params: Promise<{ key: 
   if (!found) notFound();
 
   // Справочник героев тот же, что на борде капитанов: картинка обязана совпадать с комнатой.
-  const heroes: HeroRef[] = localHeroes()
-    .map((h) => {
-      const slug = h.name.replace(/^npc_dota_hero_/, "");
-      return { id: h.id, name: h.localized_name, slug, img: heroImg(slug), attr: h.primary_attr };
-    })
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  return <ObsBoard obsKey={key} initial={found.board} heroes={heroes} />;
+  return <ObsBoard obsKey={key} initial={found.board} heroes={draftHeroes()} />;
 }

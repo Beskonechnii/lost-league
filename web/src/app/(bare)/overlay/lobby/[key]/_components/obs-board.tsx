@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import type { TeamIdx } from "@/lib/fearless";
 import type { LobbyBoard } from "@/lib/lobby-room";
-import { FearlessRun, type LiveTurn } from "@/app/(admin)/admin/fearless-draft/_components/fearless-run";
-import type { HeroRef, TeamRef } from "@/app/(admin)/admin/fearless-draft/_components/types";
+import { CoinFlip, type DraftHero } from "@/components/pouf/draft";
+import { DraftBoard } from "@/app/(public)/lobby/_components/draft-board";
 
 /**
  * Борд комнаты для сцены OBS (ТЗ 22в §4): весь драфт и ничего больше — ни чата, ни состава
@@ -26,7 +26,7 @@ export function ObsBoard({
 }: {
   obsKey: string;
   initial: LobbyBoard;
-  heroes: HeroRef[];
+  heroes: DraftHero[];
 }) {
   // Снимок вместе с моментом получения — как в комнате: часы считает сервер, и разницу с часами
   // машины, на которой стоит OBS, надо снять один раз на снимок.
@@ -52,47 +52,41 @@ export function ObsBoard({
   }, [obsKey]);
 
   const heroById = useMemo(() => new Map(heroes.map((h) => [h.id, h])), [heroes]);
-  const teamRefs: TeamRef[] = useMemo(
-    () =>
-      board.sides.map((s, i) => ({
-        // Сторона адресуется своим номером: команды ростера за ней с 42б нет, лого даёт кожа.
-        id: i,
-        name: s.name,
-        color: s.color,
-        logo: null,
-        captain: board.captains[i] ? { ...board.captains[i]!, mmr: null } : null,
-      })),
-    [board],
-  );
 
-  // Ходить отсюда нельзя вовсе: `myTurn` всегда false, `onNext` всегда null. Объект `live` нужен
-  // ради ОДНОГО — часов сервера: без него борд завёл бы собственный секундомер и врал бы в эфир.
-  const live: LiveTurn = {
-    clock: {
-      startedAt: board.turn.startedAt === null ? null : board.turn.startedAt - (board.turn.now - recv),
-      reserve: board.turn.reserve,
-    },
-    myTurn: false,
-    busy: false,
-    onPick: () => {},
-    onNext: null,
+  // Ходить отсюда нельзя вовсе: права хода борду не передаём, и ни одна плитка не кликается.
+  // Часы приходят с сервера — без них борд завёл бы собственный секундомер и врал бы в эфир.
+  const turn = {
+    startedAt: board.turn.startedAt === null ? null : board.turn.startedAt - (board.turn.now - recv),
+    reserve: board.turn.reserve,
     autoFrom: board.turn.autoFrom,
   };
 
   return (
     <div className="min-h-screen bg-canvas p-4 font-pouf">
+      {/* Монетка в эфире — та же анимация и та же серверная отметка, что в комнате: зритель
+          видит бросок одновременно с капитанами, а не готовый результат (ТЗ 42г). */}
+      {board.status === "coin" && board.coin && (
+        <div className="mx-auto max-w-[640px]">
+          <CoinFlip
+            names={[board.sides[0].name, board.sides[1].name]}
+            colors={[board.sides[0].color, board.sides[1].color]}
+            winner={board.coin.winner}
+            at={board.coin.at === null ? null : board.coin.at - (board.turn.now - recv)}
+          />
+        </div>
+      )}
       {board.state ? (
-        <FearlessRun
+        <DraftBoard
           state={board.state}
-          setState={() => {}}
           heroById={heroById}
-          teams={teamRefs}
-          readOnly
-          pinCurrent
-          live={live}
+          sides={board.sides}
+          captains={board.captains}
+          turn={turn}
+          mainSec={board.state.mainSec}
+          reserveSec={board.state.reserveSec}
         />
       ) : (
-        <Waiting board={board} />
+        board.status !== "coin" && <Waiting board={board} />
       )}
     </div>
   );

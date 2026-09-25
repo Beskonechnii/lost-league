@@ -194,6 +194,16 @@ export async function readBoard(key: string): Promise<{ id: number; board: Lobby
       sides: sidesOf(row),
       bestOf: row.bestOf,
       captains: [await captain(0), await captain(1)],
+      coin:
+        row.coinWinner === null
+          ? null
+          : {
+              winner: row.coinWinner as TeamIdx,
+              at: row.coinAt?.getTime() ?? null,
+              block: (row.coinBlock as "side" | "order" | null) ?? null,
+              firstPick: asSide(row.firstPick),
+              radiant: asSide(row.radiant),
+            },
       state: parseState(row.payload),
       turn: {
         startedAt: row.turnStartedAt?.getTime() ?? null,
