@@ -24,6 +24,7 @@ export function RosterSelect({
   selected,
   blocker,
   onToggle,
+  onClear,
   onNext,
 }: {
   pool: PoolPlayer[];
@@ -31,6 +32,7 @@ export function RosterSelect({
   /** Почему нельзя идти дальше; `null` — можно. */
   blocker: string | null;
   onToggle: (pid: number) => void;
+  onClear: () => void;
   onNext: () => void;
 }) {
   const [query, setQuery] = useState("");
@@ -67,6 +69,9 @@ export function RosterSelect({
           отмечено <b className="text-ink">{count}</b>
         </ToolbarCount>
         <ToolbarActions>
+          <Button size="sm" variant="quiet" onClick={onClear} disabled={count === 0}>
+            Убрать выделение
+          </Button>
           <Button size="sm" onClick={onNext} disabled={!!blocker} title={blocker ?? "Перейти к командам"}>
             Далее к командам
           </Button>

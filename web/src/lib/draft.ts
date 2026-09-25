@@ -328,6 +328,12 @@ export function toggleParticipant(state: DraftState, playerId: number): DraftSta
   return { ...state, participants: [...set] };
 }
 
+/** Снять отметку со всех — та же зачистка команд, что и у поштучного снятия в `toggleParticipant`. */
+export function clearParticipants(state: DraftState): DraftState {
+  const teams = state.teams.map((t) => ({ ...t, captainId: null, picks: [], locked: [] }));
+  return { ...state, participants: [], teams };
+}
+
 /** Что мешает перейти к командам (null — можно). */
 export function participantsBlocker(state: DraftState): string | null {
   if ((state.participants?.length ?? 0) < 2) return "Выберите хотя бы двух игроков";

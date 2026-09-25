@@ -13,6 +13,7 @@ import { Toolbar, ToolbarActions, ToolbarCount, ToolbarSearch } from "@/componen
 import { Eyebrow } from "@/components/pouf/text";
 import {
   addTeam,
+  clearParticipants,
   currentTurn,
   draftBlocker,
   goToConfig,
@@ -275,6 +276,7 @@ export function DraftBoard({
             selected={participantSet}
             blocker={participantsBlocker(state)}
             onToggle={(pid) => run((s) => toggleParticipant(s, pid))}
+            onClear={() => run((s) => clearParticipants(s))}
             onNext={() => run((s) => goToConfig(s))}
           />
         </div>
