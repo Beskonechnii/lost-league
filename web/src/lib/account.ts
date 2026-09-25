@@ -238,7 +238,8 @@ export async function updateMainRoles(accountId: number, picked: string[]): Prom
 
   await prisma.player.update({
     where: { id: account.playerId },
-    data: { mainRoles: value || null, mainRolesAt: new Date() },
+    // Первое заполнение — не правка: лимит запускает только смена уже указанных ролей (решение Стаса 25.09).
+    data: { mainRoles: value || null, mainRolesAt: player.mainRoles ? new Date() : null },
   });
   return { saved: true, note };
 }
