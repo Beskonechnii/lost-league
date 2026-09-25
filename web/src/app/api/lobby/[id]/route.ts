@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { bad, parseId } from "@/lib/api";
-import { applyIntent, currentViewer, mayEnter, readRoom, touchLobby, type Intent } from "@/lib/lobby";
+import { applyIntent, currentViewer, deleteLobby, mayEnter, readRoom, touchLobby, type Intent } from "@/lib/lobby";
 import type { TeamIdx } from "@/lib/fearless";
 import type { LobbyRole } from "@/lib/lobby-room";
 
@@ -111,6 +111,8 @@ function toIntent(body: Body): Intent | null {
     }
     case "next":
       return { kind: "next" };
+    case "fill":
+      return { kind: "fill" };
     default:
       return null;
   }
@@ -128,4 +130,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const result = await applyIntent(id, viewer, intent);
   if (!result.ok) return bad(result.error, result.error === "Лобби не найдено" ? 404 : 400);
   return NextResponse.json(result.room);
+}
+
+/**
+ * Удаление комнаты (ТЗ 42ж §1) — не намерение: после него снимка не существует, а PATCH обязан
+ * вернуть снимок. Право проверяет `deleteLobby`: `tools` или создатель комнаты.
+ */
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const id = parseId((await params).id);
+  if (!id) return bad("id: ожидался числовой id");
+  const viewer = await currentViewer();
+  if (!viewer) return bad("Лобби не найдено", 404);
+
+  const result = await deleteLobby(id, viewer);
+  if (!result.ok) return bad(result.error, result.error === "Лобби не найдено" ? 404 : 400);
+  return NextResponse.json({ ok: true });
 }

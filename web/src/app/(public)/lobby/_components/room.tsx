@@ -7,6 +7,17 @@ import { Icon } from "@/components/pouf/Icon";
 import { SectionHeader } from "@/components/pouf/blocks";
 import { Breadcrumbs } from "@/components/pouf/breadcrumbs";
 import { Alert, StatusPill } from "@/components/pouf/feedback";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/pouf/alert-dialog";
 import { Field, FormInput, FormSelect } from "@/components/pouf/Input";
 import { Card } from "@/components/pouf/surface";
 import { Eyebrow } from "@/components/pouf/text";
@@ -86,6 +97,7 @@ export function LobbyView({
   password,
   people,
   game = null,
+  stand = false,
 }: {
   initial: LobbyRoom;
   me: number;
@@ -105,6 +117,9 @@ export function LobbyView({
   people: { id: number; nickname: string }[];
   /** Какую карту открыть сразу — `?game=N` из адреса, 1-based. null — текущую. */
   game?: number | null;
+  /** Стенд включён (`LOBBY_STAND=1`) и я админ лиги — тогда есть «Заполнить стенд» (ТЗ 42ж §4).
+   *  Решает сервер: флаг окружения в браузер не уезжает. */
+  stand?: boolean;
 }) {
   // Снимок держим вместе с моментом его получения: часы хода считает сервер, и разницу между
   // его часами и часами этой машины надо снять один раз на снимок — иначе экран с убежавшими
@@ -177,6 +192,16 @@ export function LobbyView({
     else setError("Не получилось выйти из комнаты");
   }, [initial.id, router]);
 
+  // Удаление — тоже не `send`: снимка после него не существует, и отвечает на него DELETE, а не
+  // намерение. Событие живого канала придёт и мне, но ждать его незачем — я и есть тот, кто нажал.
+  const remove = useCallback(async () => {
+    setBusy("delete");
+    const res = await fetch(`/api/lobby/${initial.id}`, { method: "DELETE" }).catch(() => null);
+    setBusy(null);
+    if (res?.ok) router.replace("/lobby?gone=1");
+    else setError("Не получилось удалить комнату");
+  }, [initial.id, router]);
+
   // «Я зашёл» — факт комнаты, а не присутствия вкладки: приглашённый, не открывавший комнату,
   // и человек, закрывший её на минуту, — разные истории, и вторую в списке гасить нельзя.
   useEffect(() => {
@@ -192,8 +217,13 @@ export function LobbyView({
       .catch(() => {});
   }, [initial.id, setRoom]);
 
+  // Удаление комнаты — единственное событие, после которого этой страницы больше нет: уводим на
+  // список, а сообщение о том, что случилось, показывает он (ТЗ 42ж §1).
+  const gone = useCallback(() => router.replace("/lobby?gone=1"), [router]);
+
   useChatEvents((event) => {
     if (event.type === "lobby" && event.room.id === initial.id) setRoom(event.room);
+    if (event.type === "lobby-gone" && event.lobbyId === initial.id) gone();
   });
 
   // Живой канал рвётся (сон вкладки, мобильная сеть) и чинится сам, но пропущенные события
@@ -372,6 +402,19 @@ export function LobbyView({
             onSend={send}
             onLeave={leave}
           />
+          {/* Стенд (ТЗ 42ж §2): одним нажатием — я капитан стороны A, остальные места у ботов.
+              Кнопки нет вовсе, пока не включён `LOBBY_STAND=1` и я не админ лиги. */}
+          {stand && isRoomAdmin && (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" variant="quiet" loading={busy === "fill"} onClick={() => send({ intent: "fill" })}>
+                Заполнить стенд
+              </Button>
+              <span className="text-[11px] font-bold text-muted">
+                Вы — капитан «{room.sides[0].name}», остальные места займут боты стенда и будут
+                ходить сами.
+              </span>
+            </div>
+          )}
           <GatherHint />
         </div>
       ) : (
@@ -403,6 +446,7 @@ export function LobbyView({
               people={people}
               busy={busy}
               onSend={send}
+              onDelete={remove}
             />
           )}
           {obsKey && <ObsLink obsKey={obsKey} />}
@@ -455,6 +499,7 @@ function Door({
   busy,
   onSend,
   onSaved,
+  onDelete,
 }: {
   room: LobbyRoom;
   password: string;
@@ -463,6 +508,8 @@ function Door({
   onSend: (body: Send) => void;
   /** Новый пароль — наверх: в снимке комнаты его нет, и помнить его может только эта вкладка. */
   onSaved: (password: string) => void;
+  /** Снести комнату целиком (ТЗ 42ж §1). Подтверждение — диалогом Кита, а не `window.confirm`. */
+  onDelete: () => void;
 }) {
   const [title, setTitle] = useState(room.title);
   const [pass, setPass] = useState(password);
@@ -556,8 +603,55 @@ function Door({
             </Button>
           </div>
         </div>
+
+        {/* Удаление — в самом низу двери и за подтверждением: комната уносит с собой состав,
+            переписку и ссылку эфира, а стоит она одно нажатие. */}
+        <div className="border-t border-hairline pt-3">
+          <DeleteRoom title={room.title} people={room.members.length} busy={busy === "delete"} onDelete={onDelete} />
+        </div>
       </div>
     </Card>
+  );
+}
+
+/** «Точно удалить?» — диалог Кита: нативный `confirm` глохнет во встроенном браузере телеграма,
+ *  а комнату сносят в том числе с телефона. */
+function DeleteRoom({
+  title,
+  people,
+  busy,
+  onDelete,
+}: {
+  title: string;
+  people: number;
+  busy: boolean;
+  onDelete: () => void;
+}) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button type="button" size="sm" variant="quiet" tone="down">
+          Удалить лобби
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Удалить «{title}»?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Вместе с комнатой уедут состав ({people}), переписка и ссылка эфира — она перестанет
+            открываться. Все, кто сейчас в комнате, увидят список лобби. Восстановить нельзя.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel type="button" disabled={busy}>
+            Отмена
+          </AlertDialogCancel>
+          <AlertDialogAction type="button" disabled={busy} tone="down" onClick={onDelete}>
+            {busy ? "…" : "Удалить"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 

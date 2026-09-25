@@ -3,6 +3,7 @@ import { draftHeroes } from "@/lib/draft-heroes";
 import { prisma } from "@/lib/prisma";
 import { currentViewer, mayEnter, readRoom, roomSecrets, touchLobby } from "@/lib/lobby";
 import { lobbyMessages } from "@/lib/lobby-chat";
+import { standOn } from "@/lib/lobby-stand";
 import { LobbyView } from "../_components/room";
 
 export const dynamic = "force-dynamic";
@@ -68,6 +69,8 @@ export default async function LobbyPage({
       password={secrets.password}
       people={people}
       game={openGame}
+      // Флаг окружения в браузер не уезжает: сервер решает, есть ли у этого человека стенд.
+      stand={standOn() && viewer!.admin}
     />
   );
 }

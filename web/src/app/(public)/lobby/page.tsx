@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { buttonClasses } from "@/components/pouf/Button";
 import { SectionHeader } from "@/components/pouf/blocks";
-import { EmptyState } from "@/components/pouf/feedback";
+import { Alert, EmptyState } from "@/components/pouf/feedback";
 import { canCreateLobby, currentViewer, listLobbies } from "@/lib/lobby";
 import { Rooms } from "./_components/rooms";
 
@@ -11,7 +11,10 @@ export const dynamic = "force-dynamic";
 // входит в любую по паролю (ТЗ 42б). Вошедший без одобренной анкеты списка не видит вовсе — его
 // зовут приглашением от Spirit CTRL, и кнопка входа живёт в его переписке.
 
-export default async function LobbyIndexPage() {
+export default async function LobbyIndexPage({ searchParams }: { searchParams: Promise<{ gone?: string }> }) {
+  // `?gone=1` — сюда уводит комната, которую только что удалили (ТЗ 42ж §1): объяснить исчезновение
+  // должен список, потому что страницы комнаты уже нет.
+  const gone = (await searchParams).gone === "1";
   const viewer = await currentViewer();
   if (!viewer) return <Gate />;
 
@@ -33,6 +36,12 @@ export default async function LobbyIndexPage() {
           )
         }
       />
+
+      {gone && (
+        <Alert tone="info" block>
+          Комната удалена.
+        </Alert>
+      )}
 
       {!listed ? (
         <EmptyState icon="lock" title="Комнаты не видны">

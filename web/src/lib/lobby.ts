@@ -19,6 +19,8 @@ import {
   type TeamIdx,
 } from "./fearless";
 import { commitAssign, commitPick, parseState, settleTurn } from "./lobby-turn";
+import { fillStand, nextBotMove } from "./lobby-bots";
+import { standAccounts, standOn } from "./lobby-stand";
 import {
   SIDE_COACHES,
   SIDE_PLAYERS,
@@ -229,7 +231,53 @@ async function broadcast(id: number): Promise<LobbyRoom | null> {
   const room = await readRoom(id);
   if (!room) return null;
   for (const m of room.members) pushTo(m.accountId, { type: "lobby", room });
+  // Комната изменилась — возможно, теперь ход бота (ТЗ 42ж §3). Своего опроса у ботов нет: они
+  // просыпаются ровно на те же события, что рассылаются людям.
+  kickBots(id);
   return room;
+}
+
+// ── боты стенда (ТЗ 42ж) ──────────────────────────────────────────────────────
+//
+// Планировщик здесь, а решение — в `lobby-bots.ts`: ход бота проходит через тот же `applyIntent`,
+// что и ход человека, и держать его рядом с ним дешевле, чем заводить боту отдельный путь в БД.
+// Один будильник на комнату, как и у часов хода: цепочка «походил → снимок → снова ход» обрывается
+// сама, когда ботам делать нечего.
+
+const gBots = globalThis as unknown as { lostLobbyBots?: Map<number, NodeJS.Timeout> };
+const botTimers: Map<number, NodeJS.Timeout> = (gBots.lostLobbyBots ??= new Map());
+
+/** Разбудить ботов комнаты через 1–2 с: мгновенный ход читался бы как сбой, а не как соперник. */
+function kickBots(id: number): void {
+  if (!standOn() || botTimers.has(id)) return;
+  const t = setTimeout(
+    () => {
+      botTimers.delete(id);
+      void runBot(id).catch(() => {});
+    },
+    1000 + Math.random() * 1000,
+  );
+  t.unref?.(); // бот не должен сам по себе держать процесс живым
+  botTimers.set(id, t);
+}
+
+function clearBots(id: number): void {
+  const t = botTimers.get(id);
+  if (t) clearTimeout(t);
+  botTimers.delete(id);
+}
+
+async function runBot(id: number): Promise<void> {
+  const room = await readRoom(id);
+  if (!room) return;
+  const stand = await standAccounts();
+  const move = nextBotMove(room, (accountId) => stand.has(accountId));
+  if (!move) return;
+  const member = room.members.find((m) => m.accountId === move.accountId);
+  if (!member) return;
+  // Бот ходит ОТ СЕБЯ и без права `tools`: всё, что ему нельзя, сервер откажет ему так же, как
+  // человеку. Следующий ход заведёт рассылка снимка из самого `applyIntent`.
+  await applyIntent(id, { accountId: move.accountId, playerId: member.playerId, admin: false, league: true }, move.intent);
 }
 
 // ── часы хода ─────────────────────────────────────────────────────────────────
@@ -327,6 +375,33 @@ export async function createLobby(input: CreateLobbyInput): Promise<CreateResult
   return { ok: true, id: lobby.id };
 }
 
+/**
+ * Удалить комнату (ТЗ 42ж §1). Право — `tools` или создатель, в любом статусе: комната живёт
+ * вечер, и убирать за собой должен тот, кто её завёл.
+ *
+ * Состав и переписку уносит каскад схемы (`LobbyMember`, `LobbyMessage`), ОБС-ключ перестаёт
+ * открываться вместе со строкой. Будильники гасим руками: они живут в памяти процесса, и
+ * сработавший на удалённую комнату таймер искал бы её в базе каждую минуту.
+ */
+export async function deleteLobby(id: number, viewer: LobbyViewer): Promise<{ ok: true } | { ok: false; error: string }> {
+  const row = await prisma.lobby.findUnique({
+    where: { id },
+    select: { ownerAccountId: true, members: { select: { accountId: true } } },
+  });
+  if (!row) return { ok: false, error: "Лобби не найдено" };
+  if (!viewer.admin && row.ownerAccountId !== viewer.accountId)
+    return { ok: false, error: "Комнату удаляет её создатель или админ лиги" };
+
+  const people = row.members.map((m) => m.accountId);
+  await prisma.lobby.delete({ where: { id } });
+  arm(id, null);
+  clearBots(id);
+  // Открытые вкладки узнают об удалении тем же живым каналом, что и обо всём остальном: иначе
+  // участник остался бы на странице, которой больше нет, и узнал бы об этом от 404.
+  for (const accountId of people) pushTo(accountId, { type: "lobby-gone", lobbyId: id });
+  return { ok: true };
+}
+
 export type Intent =
   /** Вход по паролю: единственное намерение, которое шлёт ещё НЕ участник комнаты. */
   | { kind: "enter"; password: string }
@@ -353,7 +428,9 @@ export type Intent =
   /** После драфта карты: «играю этим героем». `memberId` — только у админа комнаты: он же
    *  разруливает спор, если игроки договорились иначе (ТЗ 42д §3). */
   | { kind: "assign"; heroId: number; memberId: number | null }
-  | { kind: "next" };
+  | { kind: "next" }
+  /** Стенд: посадить нажавшего капитаном стороны A, остальные места отдать ботам (ТЗ 42ж §2). */
+  | { kind: "fill" };
 
 export type IntentResult = { ok: true; room: LobbyRoom } | { ok: false; error: string };
 
@@ -561,6 +638,17 @@ export async function applyIntent(id: number, viewer: LobbyViewer, intent: Inten
       if (!isGameAssigned(room.state, room.state.current))
         return { ok: false, error: "Сначала все десять игроков берут своих героев" };
       await startNextGame(id, room);
+      break;
+    }
+
+    case "fill": {
+      // Замка два, и оба обязательны (ТЗ 42ж §4): флаг окружения — чтобы стенда не было на
+      // обычном запуске вовсе, право `tools` — чтобы его не звал случайный участник комнаты.
+      if (!standOn()) return { ok: false, error: "Стенд выключен" };
+      if (!viewer.admin) return { ok: false, error: "Стенд заполняет админ лиги" };
+      if (room.status !== "gather") return { ok: false, error: "Стенд заполняется до начала драфта" };
+      const filled = await fillStand(id, viewer);
+      if (filled) return { ok: false, error: filled };
       break;
     }
   }

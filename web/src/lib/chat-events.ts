@@ -36,6 +36,8 @@ export type LiveEvent =
   /** Реплика в чате комнаты — тем же каналом, что и всё остальное живое (ТЗ 22в §2).
    *  Второго механизма переписки не появляется: это событие, а не свой поток. */
   | { type: "lobby-chat"; lobbyId: number; line: LobbyLine }
+  /** Комнату удалили (ТЗ 42ж §1). Снимка больше нет — вкладке остаётся уйти на список комнат. */
+  | { type: "lobby-gone"; lobbyId: number }
   | { type: "message"; conversationId: number; peerPlayerId: number | null; message: ChatEventMessage }
   | { type: "read"; conversationId: number; at: string }
   | { type: "ping" };
