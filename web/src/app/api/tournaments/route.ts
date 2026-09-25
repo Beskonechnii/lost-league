@@ -9,6 +9,24 @@ import { isTournamentKind } from "@/lib/tournaments";
 //
 // Слаг зависит от id (конвенция проекта: ставится один раз и не меняется), а id известен только
 // после вставки — поэтому строка правится вторым запросом.
+//
+// Mix Cup — один бренд-партнёр (Eclipse, src/lib/partners.ts), один пул игроков на все события:
+// новый mixcup наследует регистрации турнира-эталона `eclipse` (ТЗ 43), а не начинается пустым —
+// оператору не нужно каждый раз звать скрипт импорта заново. UNDERBEER своего пула не имеет.
+const ECLIPSE_POOL_SLUG = "eclipse";
+
+async function copyEclipsePool(tournamentId: number) {
+  const eclipse = await prisma.tournament.findUnique({ where: { slug: ECLIPSE_POOL_SLUG }, select: { id: true } });
+  if (!eclipse || eclipse.id === tournamentId) return;
+  const registrations = await prisma.tournamentRegistration.findMany({
+    where: { tournamentId: eclipse.id },
+    select: { accountId: true, playerId: true, desiredRoles: true },
+  });
+  if (!registrations.length) return;
+  await prisma.tournamentRegistration.createMany({
+    data: registrations.map((r) => ({ ...r, tournamentId })),
+  });
+}
 
 export async function POST(req: Request) {
   const denied = await guard("tournaments.edit");
@@ -31,5 +49,6 @@ export async function POST(req: Request) {
       name: `${kind === "mixcup" ? "Mix Cup" : "UNDERBEER"} #${created.id}`,
     },
   });
+  if (kind === "mixcup") await copyEclipsePool(tournament.id);
   return NextResponse.json(tournament, { status: 201 });
 }
