@@ -16,8 +16,15 @@ export const ROLE_LABEL: Record<LobbyRole, string> = {
   admin: "админ комнаты",
 };
 
-/** Сколько игроков минимум должно подтвердить готовность, чтобы сторона считалась собранной. */
-export const SIDE_READY_MIN = 5;
+/** Администрация комнаты: смотрит, переносит людей, но места в составе не занимает и лимита не
+ *  имеет. Отличать её от «ещё не определился» обязательно — иначе админ комнаты стоит в очереди
+ *  ожидающих, а вошедший по паролю считается администрацией (ТЗ 42в §1). */
+export const isStaff = (role: LobbyRole): boolean => role === "admin" || role === "caster";
+
+/** Пятёрка — и нижняя граница готовности, и верхний предел состава: сторона играет ровно впятером.
+ *  Тренер шестой и один: он не ходит и в готовность не считается (ТЗ 42в §3). */
+export const SIDE_PLAYERS = 5;
+export const SIDE_COACHES = 1;
 
 export type LobbyStatus = "gather" | "coin" | "draft" | "done";
 
@@ -50,8 +57,16 @@ export type LobbyRoom = {
   bestOf: number;
   seriesId: number | null;
   ownerAccountId: number;
-  /** Итог монетки. `block` — что выбрал победитель; второй блок достаётся сопернику. */
-  coin: { winner: TeamIdx; block: "side" | "order" | null; firstPick: TeamIdx | null; radiant: TeamIdx | null } | null;
+  /** Итог монетки. `block` — что выбрал победитель; второй блок достаётся сопернику. `at` — когда
+   *  сервер бросил монетку: по нему все вкладки играют анимацию В ОДНУ секунду, а опоздавшая
+   *  показывает готовый результат без вращения (DESIGN-4). Часы те же, что у `turn`. */
+  coin: {
+    winner: TeamIdx;
+    at: number | null;
+    block: "side" | "order" | null;
+    firstPick: TeamIdx | null;
+    radiant: TeamIdx | null;
+  } | null;
   members: LobbyMemberView[];
   /** Состояние драфта — появляется после монетки. В 22а борд показывается только на просмотр. */
   state: FearlessState | null;
@@ -97,38 +112,42 @@ export type LobbyBoard = {
 
 export type LobbyCaptain = { nickname: string; photo: string | null };
 
-/** Участники вне сторон: админ комнаты и ОБС. Места в составе не занимают, готовность не блокируют,
+/** Администрация комнаты: админ и ОБС. Места в составе не занимают, готовность не блокируют,
  *  но в комнате они есть — и до 22в не были видны ни в одном списке экрана. */
-export const roomOnly = (room: LobbyRoom): LobbyMemberView[] => room.members.filter((m) => m.side === null);
+export const staffIn = (room: LobbyRoom): LobbyMemberView[] => room.members.filter((m) => isStaff(m.role));
+
+/** «Неопределившиеся» — вошли в комнату, но ещё не встали за сторону. От администрации отличаются
+ *  ролью: у тех «вне сторон» — это их место, а здесь это очередь на выбор (ТЗ 42в §1). */
+export const undecided = (room: LobbyRoom): LobbyMemberView[] =>
+  room.members.filter((m) => m.side === null && !isStaff(m.role));
 
 /** Игроки стороны — те, кто в ней ходит. Тренер и ОБС стоят за той же стороной, но это не места
  *  в составе: зашедший за сторону тренер готовность не блокирует и в пятёрку не считается. */
 export const sidePlayers = (room: LobbyRoom, side: TeamIdx): LobbyMemberView[] =>
   room.members.filter((m) => m.side === side && m.role === "player");
 
+/** Тренеры стороны: за стороной стоят, но не ходят и в пятёрку не считаются. */
+export const sideCoaches = (room: LobbyRoom, side: TeamIdx): LobbyMemberView[] =>
+  room.members.filter((m) => m.side === side && m.role === "coach");
+
 export const captainOf = (room: LobbyRoom, side: TeamIdx): LobbyMemberView | null =>
   sidePlayers(room, side).find((m) => m.captain) ?? null;
 
 /**
- * Готова ли сторона: капитан выбран, ВСЕ её игроки нажали «Готов», и их не меньше пятёрки.
- * Пятёрка — нижняя граница (иначе можно начать втроём), верхней нет: кроме основы за стороной
- * могут стоять запасные.
+ * Чего стороне не хватает — одной строкой для подписи под кнопкой. С 42в готовность жмёт ОДИН
+ * человек, капитан: собирать пять нажатий на каждую карту серии — работа, которой встреча не
+ * требует, а ответственность за сторону и так на капитане. Тренер в готовность не входит вовсе —
+ * сторона стартует и без него.
  */
-export function sideReady(room: LobbyRoom, side: TeamIdx): boolean {
-  const players = sidePlayers(room, side);
-  if (players.length < SIDE_READY_MIN) return false;
-  if (!players.some((m) => m.captain)) return false;
-  return players.every((m) => m.ready);
-}
-
-/** Чего стороне не хватает — одной строкой для подписи под кнопками. */
 export function sideBlocker(room: LobbyRoom, side: TeamIdx): string | null {
   const players = sidePlayers(room, side);
-  if (players.length < SIDE_READY_MIN) return `нужно ещё игроков: ${SIDE_READY_MIN - players.length}`;
-  if (!players.some((m) => m.captain)) return "нет капитана";
-  const waiting = players.filter((m) => !m.ready).length;
-  return waiting ? `не готовы: ${waiting}` : null;
+  if (players.length < SIDE_PLAYERS) return `нужно ещё игроков: ${SIDE_PLAYERS - players.length}`;
+  const cap = players.find((m) => m.captain);
+  if (!cap) return "нет капитана";
+  return cap.ready ? null : "ждём капитана";
 }
+
+export const sideReady = (room: LobbyRoom, side: TeamIdx): boolean => sideBlocker(room, side) === null;
 
 /** Мой участник в комнате — по нему решается, что мне вообще можно нажать. */
 export const meIn = (room: LobbyRoom, accountId: number | null): LobbyMemberView | null =>

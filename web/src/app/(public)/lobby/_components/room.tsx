@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/pouf/Button";
 import { Icon } from "@/components/pouf/Icon";
 import { SectionHeader } from "@/components/pouf/blocks";
@@ -14,15 +15,18 @@ import {
   ROLE_LABEL,
   captainOf,
   meIn,
-  roomOnly,
   sideBlocker,
   sidePlayers,
   sideReady,
+  staffIn,
   type LobbyLine,
   type LobbyMemberView,
+  type LobbyRole,
   type LobbyRoom,
 } from "@/lib/lobby-room";
+import { CoinFlip } from "@/components/pouf/draft";
 import { PlayerAvatar } from "../../roster/_components/avatar";
+import { Gather, GatherHint } from "./gather";
 import { FearlessRun, type LiveTurn } from "../../../(admin)/admin/fearless-draft/_components/fearless-run";
 import { fmtTime, type HeroRef, type TeamRef } from "../../../(admin)/admin/fearless-draft/_components/types";
 import { LobbyChat } from "./chat";
@@ -45,9 +49,13 @@ import { PHASE } from "./phase";
  * не останавливает время.
  */
 
-type Send = {
+export type Send = {
   intent: string;
-  side?: TeamIdx;
+  /** Сторона: 0 · 1 · null — «Неопределившиеся» (намерения `sit` и `seat`). */
+  side?: TeamIdx | null;
+  /** Кого переносит админ комнаты и кого назначает капитаном. */
+  memberId?: number | null;
+  role?: LobbyRole;
   /** Настройки двери (42б): название, пароль и имена сторон едут одним намерением. */
   title?: string;
   password?: string;
@@ -100,6 +108,7 @@ export function LobbyView({
   // сама вкладка: иначе форма перемонтировалась бы серверным — то есть уже устаревшим — паролем.
   const [pass, setPass] = useState(password ?? "");
   const { players: online } = useLive();
+  const router = useRouter();
 
   const refresh = useCallback(async () => {
     const res = await fetch(`/api/lobby/${initial.id}`);
@@ -130,6 +139,21 @@ export function LobbyView({
     },
     [initial.id, setRoom],
   );
+
+  // Уход из комнаты — единственное намерение, после которого снимок уже не мой: членство
+  // удалено, и следующее же чтение страницы ответит 404. Поэтому не `send`, а запрос с уходом
+  // на список комнат — иначе вкладка осталась бы на странице, которой у неё больше нет.
+  const leave = useCallback(async () => {
+    setBusy("leave");
+    const res = await fetch(`/api/lobby/${initial.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ intent: "leave" }),
+    }).catch(() => null);
+    setBusy(null);
+    if (res?.ok) router.replace("/lobby");
+    else setError("Не получилось выйти из комнаты");
+  }, [initial.id, router]);
 
   // «Я зашёл» — факт комнаты, а не присутствия вкладки: приглашённый, не открывавший комнату,
   // и человек, закрывший её на минуту, — разные истории, и вторую в списке гасить нельзя.
@@ -222,7 +246,15 @@ export function LobbyView({
       {error && <Alert tone="err">{error}</Alert>}
 
       {room.status === "coin" && room.coin && (
-        <Coin room={room} me={me} busy={busy} onPick={(block, value) => send({ intent: "coin", block, value })} />
+        <Coin
+          room={room}
+          me={me}
+          busy={busy}
+          // Отметку броска сдвигаем в часы этой вкладки тем же способом, что и часы хода: иначе
+          // машина с убежавшими системными часами играла бы анимацию не вместе со всеми.
+          coinAt={room.coin.at === null ? null : room.coin.at - (room.turn.now - recv)}
+          onPick={(block, value) => send({ intent: "coin", block, value })}
+        />
       )}
 
       {room.state && (
@@ -236,20 +268,28 @@ export function LobbyView({
         />
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {([0, 1] as TeamIdx[]).map((side) => (
-          <Side
-            key={side}
+      {/* Сбор — доска трёх лунок (42в); дальше состав уже не меняется, и две карточки сторон
+          читаются лучше доски: кнопок на них нет, а вопрос «кто за кого» остался. */}
+      {room.status === "gather" ? (
+        <div className="space-y-3">
+          <Gather
             room={room}
-            side={side}
             mine={mine}
             admin={isRoomAdmin}
             online={online}
             busy={busy}
             onSend={send}
+            onLeave={leave}
           />
-        ))}
-      </div>
+          <GatherHint />
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {([0, 1] as TeamIdx[]).map((side) => (
+            <Side key={side} room={room} side={side} mine={mine} online={online} />
+          ))}
+        </div>
+      )}
 
       {/* Чат и «кто в комнате» — один ряд под сторонами: разговор относится ко всей комнате, а не
           к стороне. В один столбец (390) «В комнате» идёт ПЕРВЫМ: это короткая справка, а чат —
@@ -282,22 +322,22 @@ export function LobbyView({
 }
 
 /**
- * «В комнате» — участники ВНЕ сторон: админ комнаты и ОБС. До 22в их не было ни в одном списке
- * экрана (`Side` рисует только членов со `side === 0|1`), то есть создатель комнаты был в ней
- * невидим, а приглашённый ОБС был бы невидим так же.
+ * «Администрация» — админ комнаты и ОБС. До 22в их не было ни в одном списке экрана (`Side`
+ * рисует только членов со `side === 0|1`), то есть создатель комнаты был в ней невидим.
  *
- * Отдельной карточкой, а не подвалом под сторонами: эти люди не принадлежат ни одной из них, и
- * подвал стороны сообщал бы обратное. Готовность они не блокируют — счёта здесь нет вовсе.
+ * С 42в это уже НЕ «все, кто вне сторон»: вошедший по паролю тоже стоит вне сторон, но он
+ * «неопределившийся» и живёт в своей лунке доски сбора. Здесь — только те, кто комнату ведёт:
+ * мест в составе они не занимают, готовность не блокируют, лимита у них нет.
  */
 function InRoom({ room, online }: { room: LobbyRoom; online: Set<number> }) {
-  const people = roomOnly(room);
+  const people = staffIn(room);
   return (
     <Card variant="tight">
       <div className="font-pouf">
-        <Eyebrow>В комнате · {people.length}</Eyebrow>
+        <Eyebrow>Администрация · {people.length}</Eyebrow>
         <div className="mt-2 space-y-1">
           {people.length === 0 ? (
-            <p className="text-[13px] font-bold text-muted">Вне сторон никого.</p>
+            <p className="text-[13px] font-bold text-muted">Администрации в комнате нет.</p>
           ) : (
             people.map((m) => <Line key={m.id} m={m} online={online} />)
           )}
@@ -481,33 +521,28 @@ function ObsLink({ obsKey }: { obsKey: string }) {
   );
 }
 
-/** Одна сторона: кто в ней, кто капитан, кто готов — и мои кнопки, если сторона моя. */
+/**
+ * Одна сторона после сбора: кто в ней и кто капитан. Кнопок здесь с 42в нет — состав и готовность
+ * живут на доске сбора (`gather.tsx`), а эта карточка показывается уже на монетке и драфте, когда
+ * менять нечего.
+ */
 function Side({
   room,
   side,
   mine,
-  admin,
   online,
-  busy,
-  onSend,
 }: {
   room: LobbyRoom;
   side: TeamIdx;
   mine: LobbyMemberView | null;
-  admin: boolean;
   online: Set<number>;
-  busy: string | null;
-  onSend: (body: Send) => void;
 }) {
   const team = room.sides[side];
   const players = sidePlayers(room, side);
   const others = room.members.filter((m) => m.side === side && m.role !== "player");
-  const cap = captainOf(room, side);
   const ready = sideReady(room, side);
   const blocker = sideBlocker(room, side);
-  const gathering = room.status === "gather";
-  // Кнопки — только у игрока ЭТОЙ стороны. Админ комнаты и тренер смотрят (решение 3).
-  const isMySide = mine?.side === side && mine.role === "player";
+  const isMySide = mine?.side === side;
 
   return (
     <Card variant="tight">
@@ -536,51 +571,7 @@ function Side({
           </>
         )}
 
-        {(isMySide || (admin && cap)) && gathering && (
-          <div className="mt-4 flex flex-wrap gap-2 border-t border-hairline pt-3">
-            {isMySide && !cap && (
-              <Button size="sm" loading={busy === "captain"} onClick={() => onSend({ intent: "captain" })}>
-                Стать капитаном
-              </Button>
-            )}
-            {/* Перехвата нет: капитан — первый нажавший, у остальных кнопка гаснет и показывает,
-                кто им стал. Иначе гонку за кнопку решала бы скорость руки. */}
-            {isMySide && cap && !mine?.captain && (
-              <Button size="sm" variant="quiet" disabled>
-                капитан: {cap.nickname}
-              </Button>
-            )}
-            {isMySide && mine?.captain && (
-              <Button size="sm" variant="quiet" loading={busy === "resign"} onClick={() => onSend({ intent: "resign" })}>
-                Отдать капитанство
-              </Button>
-            )}
-            {isMySide && (
-              <Button
-                size="sm"
-                variant={mine?.ready ? "quiet" : "solid"}
-                tone={mine?.ready ? "purple" : "orange"}
-                loading={busy === "ready"}
-                onClick={() => onSend({ intent: "ready", value: !mine?.ready })}
-              >
-                {mine?.ready ? "Я не готов" : "Готов"}
-              </Button>
-            )}
-            {/* Выход из тупика «капитан отвалился»: отмены и подмены хода в лобби нет, и без этой
-                кнопки комната встала бы навсегда. Дальше сторона выбирает капитана заново. */}
-            {admin && cap && (
-              <Button
-                size="sm"
-                variant="quiet"
-                tone="down"
-                loading={busy === "unseat"}
-                onClick={() => onSend({ intent: "unseat", side })}
-              >
-                Снять капитана
-              </Button>
-            )}
-          </div>
-        )}
+        {isMySide && <p className="mt-3 text-[11px] font-bold text-muted">Ваша сторона.</p>}
       </div>
     </Card>
   );
@@ -606,7 +597,9 @@ function Line({ m, online }: { m: LobbyMemberView; online: Set<number> }) {
           {!m.joined && " · не заходил"}
         </span>
       </span>
-      {m.role === "player" && (
+      {/* Готовность показываем только у КАПИТАНА: с 42в жмёт её он один, и «ждём» напротив
+          четверых остальных сообщало бы, что от них чего-то ещё ждут. */}
+      {m.captain && (
         <span className={`shrink-0 text-[11px] font-black ${m.ready ? "text-[var(--accent-ink)]" : "text-muted"}`}>
           {m.ready ? <Icon name="ok" size="sm" /> : "ждём"}
         </span>
@@ -624,11 +617,14 @@ function Coin({
   room,
   me,
   busy,
+  coinAt,
   onPick,
 }: {
   room: LobbyRoom;
   me: number;
   busy: string | null;
+  /** Когда бросили, в часах этой вкладки. */
+  coinAt: number | null;
   onPick: (block: "side" | "order", value: TeamIdx) => void;
 }) {
   const coin = room.coin!;
@@ -636,13 +632,24 @@ function Coin({
   const turn: TeamIdx = first ? coin.winner : ((1 - coin.winner) as TeamIdx);
   const cap = captainOf(room, turn);
   const myTurn = cap?.accountId === me;
-  const names = [room.sides[0].name, room.sides[1].name] as const;
+  const names: [string, string] = [room.sides[0].name, room.sides[1].name];
   // Свободен тот блок, который ещё не разыгран: первым выбирает победитель, второй достаётся сопернику.
   const blocks: ("side" | "order")[] = first ? ["side", "order"] : coin.block === "side" ? ["order"] : ["side"];
 
   return (
     <Card variant="tight">
       <div className="space-y-3 font-pouf">
+        {/* Сам бросок показываем только пока разыгрывается первый блок: дальше монетка уже
+            история, а на экране важен выбор. */}
+        {first && (
+          <CoinFlip
+            names={names}
+            colors={[room.sides[0].color, room.sides[1].color]}
+            winner={coin.winner}
+            at={coinAt}
+          />
+        )}
+
         <Alert tone="info" block>
           Монетку выиграла <b>{names[coin.winner]}</b>.{" "}
           {first

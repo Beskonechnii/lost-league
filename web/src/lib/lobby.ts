@@ -19,7 +19,10 @@ import {
 } from "./fearless";
 import { commitPick, parseState, settleTurn } from "./lobby-turn";
 import {
+  SIDE_COACHES,
+  SIDE_PLAYERS,
   captainOf,
+  isStaff,
   sidePlayers,
   sideReady,
   type LobbyBoard,
@@ -121,6 +124,7 @@ export async function readRoom(id: number): Promise<LobbyRoom | null> {
         ? null
         : {
             winner: row.coinWinner as TeamIdx,
+            at: row.coinAt?.getTime() ?? null,
             block: (row.coinBlock as "side" | "order" | null) ?? null,
             firstPick: asSide(row.firstPick),
             radiant: asSide(row.radiant),
@@ -320,9 +324,17 @@ export type Intent =
   /** Позвать человека в комнату личным сообщением — второй путь внутрь, мимо пароля. */
   | { kind: "invite"; playerId: number }
   | { kind: "join" }
+  /** «Встаю за сторону» — выбор места самим человеком: сторона и роль (игрок · тренер).
+   *  `side: null` — обратно в «Неопределившиеся». */
+  | { kind: "sit"; side: TeamIdx | null; role: LobbyRole }
+  /** Тот же перенос, но чужой: админ комнаты двигает любого — включая снятие в «Неопределившиеся». */
+  | { kind: "seat"; memberId: number; side: TeamIdx | null; role: LobbyRole }
+  /** Покинуть комнату (решение 25.09.2026): членство удаляется, вернуться — по паролю заново. */
+  | { kind: "leave" }
   | { kind: "captain" }
   | { kind: "resign" }
-  | { kind: "unseat"; side: TeamIdx }
+  /** Капитан стороны глазами админа комнаты: `memberId` — назначить этого, `null` — просто снять. */
+  | { kind: "unseat"; side: TeamIdx; memberId: number | null }
   | { kind: "ready"; value: boolean }
   | { kind: "coin"; block: "side" | "order"; value: TeamIdx }
   /** Ход капитана: «хочу этого героя», `at` — номер хода на карте в момент нажатия. */
@@ -398,6 +410,36 @@ export async function applyIntent(id: number, viewer: LobbyViewer, intent: Inten
       break;
     }
 
+    case "sit": {
+      if (!me) return { ok: false, error: "Вас нет в этой комнате" };
+      // Администрацией человек себя не назначает (решение 24.09.2026): право `tools` — или его
+      // ставит туда админ комнаты намерением `seat`.
+      if (isStaff(intent.role) && !viewer.admin) return { ok: false, error: "В администрацию ставит админ комнаты" };
+      const no = seatRefusal(room, me, intent.side, intent.role);
+      if (no) return { ok: false, error: no };
+      await seatMember(me, intent.side, intent.role);
+      break;
+    }
+
+    case "seat": {
+      if (!isRoomAdmin) return { ok: false, error: "Людей переносит админ комнаты" };
+      const target = room.members.find((m) => m.id === intent.memberId);
+      if (!target) return { ok: false, error: "Такого участника в комнате нет" };
+      const no = seatRefusal(room, target, intent.side, intent.role);
+      if (no) return { ok: false, error: no };
+      await seatMember(target, intent.side, intent.role);
+      break;
+    }
+
+    case "leave": {
+      if (!me) return { ok: false, error: "Вас нет в этой комнате" };
+      // После старта драфта выхода нет: сторона не разваливается посреди ходов, а капитан,
+      // который «вышел», оставил бы комнату без ходящего вовсе.
+      if (room.status !== "gather") return { ok: false, error: "Комнату покидают до начала драфта" };
+      await prisma.lobbyMember.delete({ where: { id: me.id } });
+      break;
+    }
+
     case "captain": {
       if (!me || me.side === null || me.role !== "player") return { ok: false, error: "Капитана выбирают игроки стороны" };
       if (room.status !== "gather") return { ok: false, error: "Сбор уже закончен" };
@@ -418,22 +460,34 @@ export async function applyIntent(id: number, viewer: LobbyViewer, intent: Inten
     case "resign": {
       if (!me?.captain) return { ok: false, error: "Вы не капитан" };
       if (room.status !== "gather") return { ok: false, error: "Драфт уже начался" };
-      await prisma.lobbyMember.update({ where: { id: me.id }, data: { captain: false } });
+      await prisma.lobbyMember.update({ where: { id: me.id }, data: { captain: false, ready: false } });
       break;
     }
 
     case "unseat": {
-      if (!isRoomAdmin) return { ok: false, error: "Снять капитана может админ комнаты" };
+      if (!isRoomAdmin) return { ok: false, error: "Капитана назначает админ комнаты" };
       if (room.status !== "gather") return { ok: false, error: "Драфт уже начался" };
       const cap = captainOf(room, intent.side);
-      if (!cap) return { ok: false, error: "Капитан не выбран" };
-      await prisma.lobbyMember.update({ where: { id: cap.id }, data: { captain: false } });
+      const next = intent.memberId === null ? null : (room.members.find((m) => m.id === intent.memberId) ?? null);
+      if (intent.memberId !== null && (next?.side !== intent.side || next.role !== "player"))
+        return { ok: false, error: "Капитаном становится игрок этой стороны" };
+      if (!cap && !next) return { ok: false, error: "Капитан не выбран" };
+      // Снятие и назначение одной транзакцией: «два капитана у стороны» не должно существовать
+      // даже на миллисекунду — по капитану сервер решает, чей ход и кто жмёт «Готов».
+      await prisma.$transaction(async (tx) => {
+        if (cap) await tx.lobbyMember.update({ where: { id: cap.id }, data: { captain: false, ready: false } });
+        if (next) await tx.lobbyMember.update({ where: { id: next.id }, data: { captain: true, ready: false } });
+      });
       break;
     }
 
     case "ready": {
-      if (!me || me.side === null || me.role !== "player") return { ok: false, error: "Готовность подтверждают игроки стороны" };
+      // Готовность стороны жмёт КАПИТАН (ТЗ 42в §5), а не каждый из пятерых: собирать пять
+      // нажатий на каждую карту серии — работа, которой встреча не требует.
+      if (!me?.captain || me.side === null) return { ok: false, error: "Готовность подтверждает капитан стороны" };
       if (room.status !== "gather") return { ok: false, error: "Сбор уже закончен" };
+      if (intent.value && sidePlayers(room, me.side).length < SIDE_PLAYERS)
+        return { ok: false, error: `В составе меньше ${SIDE_PLAYERS} игроков` };
       await prisma.lobbyMember.update({ where: { id: me.id }, data: { ready: intent.value } });
       break;
     }
@@ -474,7 +528,9 @@ export async function applyIntent(id: number, viewer: LobbyViewer, intent: Inten
   // кто-то должен догадаться нажать.
   const after = await readRoom(id);
   if (after && after.status === "gather" && sideReady(after, 0) && sideReady(after, 1)) {
-    await prisma.lobby.update({ where: { id }, data: { status: "coin", coinWinner: tossCoin() } });
+    // Отметку броска пишем вместе с исходом: от неё все вкладки отсчитывают анимацию монетки,
+    // и без неё каждая играла бы её в свой момент (DESIGN-4).
+    await prisma.lobby.update({ where: { id }, data: { status: "coin", coinWinner: tossCoin(), coinAt: new Date() } });
   }
 
   // Ещё раз часы: ход мог закрыть карту, а переход на следующую — открыть новый ход. Отметку
@@ -483,6 +539,35 @@ export async function applyIntent(id: number, viewer: LobbyViewer, intent: Inten
 
   const room2 = await broadcast(id);
   return room2 ? { ok: true, room: room2 } : { ok: false, error: "Лобби не найдено" };
+}
+
+// ── состав сторон (ТЗ 42в) ────────────────────────────────────────────────────
+//
+// Лимит держит СЕРВЕР, а не погашенная кнопка: отказ приходит текстом и называет причину.
+// Погашенная кнопка объясняет «почему нельзя» только тому, кто и так видит весь состав, а
+// вкладка шестого игрока могла узнать о пятом секунду назад.
+
+/** Можно ли поставить человека на это место. Возвращает текст отказа или null. */
+function seatRefusal(room: LobbyRoom, member: LobbyMemberView, side: TeamIdx | null, role: LobbyRole): string | null {
+  if (room.status !== "gather") return "Состав меняется до начала драфта";
+  // Администрация стоит вне сторон и лимита не имеет: она не играет, а ведёт комнату.
+  if (isStaff(role)) return side === null ? null : "Администрация стоит вне сторон";
+  if (side === null) return null;
+
+  const limit = role === "coach" ? SIDE_COACHES : SIDE_PLAYERS;
+  const taken = room.members.filter((m) => m.side === side && m.role === role && m.id !== member.id).length;
+  if (taken < limit) return null;
+  const name = room.sides[side].name;
+  return role === "coach" ? `У стороны «${name}» уже есть тренер` : `В составе «${name}» уже ${SIDE_PLAYERS} игроков`;
+}
+
+/** Переставить человека. Капитанство и готовность принадлежат МЕСТУ, а не человеку: уходя со
+ *  стороны (или из игроков в тренеры), он складывает и то и другое. */
+async function seatMember(member: LobbyMemberView, side: TeamIdx | null, role: LobbyRole): Promise<void> {
+  await prisma.lobbyMember.update({
+    where: { id: member.id },
+    data: { side, role, captain: member.captain && side === member.side && role === "player", ready: false },
+  });
 }
 
 // ── дверь комнаты (ТЗ 42б) ────────────────────────────────────────────────────
