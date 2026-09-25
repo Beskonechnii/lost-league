@@ -44,6 +44,7 @@ export const TOOL_GROUPS: ToolGroup[] = [
       { href: "/admin/mixcup", perm: "tournaments.edit", label: "Mix Cup by Eclipse", icon: "flame", desc: "Турниры формата Mix Cup: правила драфта (украсть/закрепить), записи, сохранённый результат." },
       { href: "/admin/single-draft", perm: "tools", label: "single draft", icon: "wand", desc: "Случайный герой по каждой характеристике." },
       { href: "/admin/1x1", perm: "tools", label: "1х1", icon: "sword", desc: "Турнир 1х1.", soon: true },
+      { href: "/lobby", perm: "tools", label: "Лобби встречи", icon: "draft", desc: "Комната, где капитаны сами играют драфт: пароль, стороны, монетка, часы на сервере." },
       { href: "/admin/fearless-draft", perm: "tools", label: "fearless draft", icon: "off", desc: "Драфт героев без повторов по серии: баны, пики, fearless-пул." },
     ],
   },

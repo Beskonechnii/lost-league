@@ -122,6 +122,8 @@ export async function accountNav(account: Account | null): Promise<AccountNav> {
       hint: "Переписка с игроками лиги",
       badge: unread,
     });
+  // Лобби — тому же кругу, что и личка: список комнат видит только одобренный игрок лиги (ТЗ 42б).
+  if (chat) cabinet.push({ href: "/lobby", label: "Лобби", icon: "draft", hint: "Комнаты драфта встречи" });
   cabinet.push({ href: "/me/settings", label: "Настройки", icon: "settings", hint: "Вход, пароль, аккаунт" });
   if (spot) cabinet.push({ href: `/roster/teams/${spot.team.id}`, label: "Моя команда", icon: "shield" });
 
