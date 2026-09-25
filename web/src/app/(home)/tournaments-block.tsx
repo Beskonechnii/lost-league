@@ -40,7 +40,11 @@ function isOneDay(t: Row): boolean {
 /** Подпись под именем турнира: сроки приёма у набора, промежуток у остальных. */
 function subtitle(t: Row): string | null {
   if (t.status === "registration")
-    return t.regCloseAt ? `Приём заявок до ${shortDate.format(t.regCloseAt)}` : "Приём заявок открыт";
+    return !t.regCloseAt
+      ? "Приём заявок открыт"
+      : t.regCloseAt.getTime() > Date.now()
+        ? `Приём заявок до ${shortDate.format(t.regCloseAt)}`
+        : `Приём закрыт ${shortDate.format(t.regCloseAt)}`;
   if (t.startAt && t.endAt) return `${date.format(t.startAt)} — ${date.format(t.endAt)}`;
   if (t.startAt) return `с ${date.format(t.startAt)}`;
   if (t.endAt) return `до ${date.format(t.endAt)}`;
@@ -55,7 +59,7 @@ function Card({ t }: { t: Row }) {
   return (
     <article className="flex flex-1 flex-col gap-4 rounded-card bg-surface p-[22px] cushion-card">
       <div className="flex items-center gap-2">
-        <TournamentStatus status={t.status} />
+        <TournamentStatus status={t.status} regCloseAt={t.regCloseAt} />
         {individual && <Badge tone="mint">{TOURNAMENT_KIND_SHORT[t.kind as TournamentKind] ?? t.kind}</Badge>}
         {!individual && isOneDay(t) && <Badge tone="mint">1 день</Badge>}
       </div>

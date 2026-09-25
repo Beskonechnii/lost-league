@@ -67,7 +67,7 @@ export default async function TournamentAbout({ params }: { params: Promise<{ sl
       <SectionHeader
         eyebrow="Турнир"
         title={tournament.name}
-        aside={<TournamentStatus status={tournament.status} />}
+        aside={<TournamentStatus status={tournament.status} regCloseAt={tournament.regCloseAt} />}
       />
 
       {registrationOpen(tournament) && (

@@ -14,7 +14,11 @@ export const STATUS_TONE: Record<TournamentStatus, "ok" | "warn" | "info" | "neu
   finished: "warn",
 };
 
-export function TournamentStatus({ status }: { status: string }) {
+export function TournamentStatus({ status, regCloseAt }: { status: string; regCloseAt?: Date | null }) {
   const key = (status in TOURNAMENT_STATUS_LABELS ? status : "draft") as TournamentStatus;
+  // Статус «приём» живёт, пока админ его не сменит, а дата закрытия уже прошла — кнопки заявки
+  // нет (`registrationOpen`), и плашка обязана говорить то же, а не «Приём заявок».
+  if (key === "registration" && regCloseAt && regCloseAt.getTime() <= Date.now())
+    return <StatusPill tone="neutral">Приём закрыт</StatusPill>;
   return <StatusPill tone={STATUS_TONE[key]}>{TOURNAMENT_STATUS_LABELS[key] ?? status}</StatusPill>;
 }

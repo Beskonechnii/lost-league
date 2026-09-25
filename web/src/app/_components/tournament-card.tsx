@@ -159,7 +159,7 @@ export function TournamentCard({ t, face = false }: { t: TournamentRow; face?: b
   const head = (
     <>
       <div className="flex flex-wrap items-center gap-2">
-        <TournamentStatus status={t.status} />
+        <TournamentStatus status={t.status} regCloseAt={t.regCloseAt} />
         {/* Слот чипа один: у сезонного турнира в нём серия, у индивидуального — имя формата.
             Серии у форматов нет, поэтому они не конкурируют. Формат показываем и в ленте, не
             только в лице: это единственное, чем карточка отличается от сезонной. */}
@@ -284,7 +284,7 @@ export function TournamentRowCard({ t }: { t: TournamentRow }) {
             )}
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-3">
-            <TournamentStatus status={t.status} />
+            <TournamentStatus status={t.status} regCloseAt={t.regCloseAt} />
             {/* Считает тот, кому есть что считать: у сезона — команды по дивизионам,
                 у индивидуального формата — записавшихся. */}
             {isIndividual(t) ? (
