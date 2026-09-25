@@ -294,7 +294,11 @@ function Undecided({
             )}
           </div>
 
-          {iAmWaiting && <MySeat room={room} mine={mine} busy={busy} onSend={onSend} />}
+          {/* Админ комнаты стоит в администрации (создатель, вход с `tools`), но сыграть сам тоже может:
+              без этого место ему давал только перезаход по паролю, где он входит уже игроком. */}
+          {(iAmWaiting || (mine?.side === null && mine.role === "admin")) && (
+            <MySeat room={room} mine={mine!} busy={busy} onSend={onSend} />
+          )}
 
           {mine && (
             <div className="border-t border-hairline pt-3">
