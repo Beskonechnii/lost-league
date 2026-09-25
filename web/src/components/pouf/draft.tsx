@@ -300,8 +300,9 @@ export function DraftHeroButton({
 }: {
   hero: DraftHero;
   /** `free` — можно взять · `chosen` — выбран, ждёт подтверждения · `view` — доступен, но нажать
-   *  нельзя (смотрим) · `gone` — недоступен: забанен, взят, выбыл по fearless. */
-  state: "free" | "chosen" | "view" | "gone";
+   *  нельзя (смотрим) · `gone` — недоступен: забанен, взят, выбыл по fearless · `taken` — занят
+   *  другим игроком на стадии назначения (42д): гасить его нельзя — на нём читают ник занявшего. */
+  state: "free" | "chosen" | "view" | "gone" | "taken";
   /** Подпись поверх недоступного: «в серии» / «занят». */
   note?: string;
   /** Крупная плитка — стадия назначения своего героя (42д). */
@@ -349,7 +350,7 @@ export function DraftHeroButton({
       type="button"
       className={`pouf-hero${big ? " pouf-hero--big" : ""}`}
       data-state={state}
-      disabled={dead || state === "view"}
+      disabled={dead || state === "view" || state === "taken"}
       aria-label={hero.name}
       title={note ? `${hero.name} — ${note}` : hero.name}
       onMouseEnter={enter}
@@ -380,6 +381,9 @@ export function DraftHeroButton({
             // политика автовоспроизведения), а отказ здесь — не ошибка: остаётся первый кадр.
             void e.currentTarget.play().catch(() => {});
           }}
+          // Ролика у Valve нет или сеть не дала — попытку прекращаем, на плитке остаётся PNG.
+          // Без этого «горячим» остаётся герой, у которого видео никогда не приедет.
+          onError={() => onHot?.(null)}
         />
       )}
       {note && <span className="pouf-hero__note">{note}</span>}

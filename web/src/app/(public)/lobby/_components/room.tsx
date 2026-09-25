@@ -11,7 +11,7 @@ import { Field, FormInput, FormSelect } from "@/components/pouf/Input";
 import { Card } from "@/components/pouf/surface";
 import { Eyebrow } from "@/components/pouf/text";
 import { useChatEvents, useLive } from "@/app/_components/chat-live";
-import { canNextGame, currentTeam, type TeamIdx } from "@/lib/fearless";
+import { canNextGame, currentTeam, isGameAssigned, type TeamIdx } from "@/lib/fearless";
 import {
   ROLE_LABEL,
   captainOf,
@@ -26,10 +26,12 @@ import {
   type LobbyRole,
   type LobbyRoom,
 } from "@/lib/lobby-room";
+import { PillButton, PillCount, PillTrack } from "@/components/pouf/tabs";
 import { CoinFlip, fmtClock, type DraftHero } from "@/components/pouf/draft";
 import { PlayerAvatar } from "../../roster/_components/avatar";
 import { Gather, GatherHint } from "./gather";
 import { DraftBoard } from "./draft-board";
+import { AssignPanel } from "./assign";
 import { LobbyChat } from "./chat";
 import { PHASE } from "./phase";
 
@@ -71,6 +73,9 @@ export type Send = {
   at?: number;
 };
 
+/** Параметр адреса с номером карты: ссылку на прошлую карту кидают в чат комнаты (DESIGN-6). */
+const GAME_PARAM = "game";
+
 export function LobbyView({
   initial,
   me,
@@ -80,6 +85,7 @@ export function LobbyView({
   obsKey,
   password,
   people,
+  game = null,
 }: {
   initial: LobbyRoom;
   me: number;
@@ -97,6 +103,8 @@ export function LobbyView({
   /** Кого можно позвать: игроки лиги с аккаунтом, которых в комнате ещё нет. Пусто у всех, кроме
    *  админа комнаты. */
   people: { id: number; nickname: string }[];
+  /** Какую карту открыть сразу — `?game=N` из адреса, 1-based. null — текущую. */
+  game?: number | null;
 }) {
   // Снимок держим вместе с моментом его получения: часы хода считает сервер, и разницу между
   // его часами и часами этой машины надо снять один раз на снимок — иначе экран с убежавшими
@@ -108,8 +116,21 @@ export function LobbyView({
   // Пароль двери не ездит в снимке (он не для всех), поэтому свежее значение после правки помнит
   // сама вкладка: иначе форма перемонтировалась бы серверным — то есть уже устаревшим — паролем.
   const [pass, setPass] = useState(password ?? "");
+  // Какую карту серии смотрим (0-based). null — текущую; она обязана оставаться рабочей, пока
+  // кто-то разглядывает прошлую.
+  const [view, setView] = useState<number | null>(game === null ? null : game - 1);
   const { players: online } = useLive();
   const router = useRouter();
+
+  // Адрес правим историей браузера, а не роутером: `router.replace` перерисовал бы серверную
+  // страницу целиком ради одного параметра, а ссылку на карту надо всего лишь дать скопировать.
+  const openGame = useCallback((idx: number | null) => {
+    setView(idx);
+    const url = new URL(window.location.href);
+    if (idx === null) url.searchParams.delete(GAME_PARAM);
+    else url.searchParams.set(GAME_PARAM, String(idx + 1));
+    window.history.replaceState(null, "", url);
+  }, []);
 
   const refresh = useCallback(async () => {
     const res = await fetch(`/api/lobby/${initial.id}`);
@@ -220,6 +241,14 @@ export function LobbyView({
     })
     .join(" · ");
 
+  // В переключателе только сыгранные и текущая (решение 24.09.2026): пустая вкладка будущей карты
+  // обещала бы то, чего может не случиться. Карта из адреса могла и не начаться — тогда текущая.
+  const games = room.state?.games.length ?? 0;
+  const viewIdx = view !== null && view >= 0 && view < games ? view : null;
+  const shownGame = viewIdx ?? room.state?.current ?? 0;
+  const past = room.state !== null && shownGame !== room.state.current;
+  const mapDone = !!room.state && currentTeam(room.state) === null;
+
   return (
     <div className="space-y-6 font-pouf">
       {/* Крошки, а не «← Назад» (UI-GUIDELINES §3): комната — лист раздела, и путь к списку
@@ -259,6 +288,39 @@ export function LobbyView({
           Серия завершена. Комната открыта на чтение.
         </Alert>
       )}
+      {/* Переключатель карт — над бордом и виден ВСЕМ участникам. Дорожка скроллится внутри
+          себя: на 390 три карты в ряд шире экрана, а страница вбок ехать не должна. */}
+      {games > 1 && (
+        <div className="overflow-x-auto">
+          <PillTrack label="Карты серии">
+            {Array.from({ length: games }, (_, i) => (
+              <PillButton
+                key={i}
+                variant="quiet"
+                active={shownGame === i}
+                onClick={() => openGame(i === (room.state?.current ?? 0) ? null : i)}
+              >
+                Карта {i + 1}
+                {/* «LIVE» — только пока по комнате идут ходы: в сыгранной серии живого нет. */}
+                {i === room.state?.current && room.status === "draft" && (
+                  <PillCount active={shownGame === i}>LIVE</PillCount>
+                )}
+              </PillButton>
+            ))}
+          </PillTrack>
+        </div>
+      )}
+
+      {past && (
+        <Alert tone="info" block>
+          Смотрите карту {shownGame + 1}. Идёт карта {(room.state?.current ?? 0) + 1} —{" "}
+          <button type="button" className="underline underline-offset-2" onClick={() => openGame(null)}>
+            вернуться
+          </button>
+          .
+        </Alert>
+      )}
+
       <DraftBoard
         state={room.state}
         heroById={heroById}
@@ -268,11 +330,33 @@ export function LobbyView({
         mainSec={room.mainSec}
         reserveSec={room.reserveSec}
         myCaptainSide={mine?.captain ? mine.side : null}
-        myTurn={myTurn}
+        myTurn={myTurn && !past}
         busy={busy === "pick"}
         onPick={(heroId) => send({ intent: "pick", heroId, at: moves })}
-        onNext={isRoomAdmin && room.state && canNextGame(room.state) ? () => send({ intent: "next" }) : null}
+        // Карту переводит админ, и только когда все десять героев разобраны (ТЗ 42д §4).
+        onNext={
+          isRoomAdmin && !past && room.state && canNextGame(room.state) && isGameAssigned(room.state, room.state.current)
+            ? () => send({ intent: "next" })
+            : null
+        }
         lockReason={lockReason || null}
+        view={viewIdx}
+        ready={[sideReady(room, 0), sideReady(room, 1)]}
+        afterDraft={
+          room.state && (past || mapDone) ? (
+            <AssignPanel
+              room={room}
+              state={room.state}
+              gameIdx={shownGame}
+              heroById={heroById}
+              mine={mine}
+              admin={isRoomAdmin}
+              busy={busy}
+              onSend={send}
+              past={past}
+            />
+          ) : undefined
+        }
       />
 
       {/* Сбор — доска трёх лунок (42в); дальше состав уже не меняется, и две карточки сторон

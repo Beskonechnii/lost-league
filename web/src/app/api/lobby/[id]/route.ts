@@ -102,6 +102,13 @@ function toIntent(body: Body): Intent | null {
       if (heroId === null || !Number.isInteger(at) || at < 0) return null;
       return { kind: "pick", heroId, at };
     }
+    case "assign": {
+      const heroId = parseId(body.heroId as number);
+      // `memberId` нет — беру себе; есть — админ переставляет назначение этому участнику.
+      const memberId = body.memberId == null ? null : parseId(body.memberId as number);
+      if (heroId === null || (body.memberId != null && memberId === null)) return null;
+      return { kind: "assign", heroId, memberId };
+    }
     case "next":
       return { kind: "next" };
     default:

@@ -5,7 +5,7 @@ import { listTeamRosters } from "@/lib/roster-data";
 import { localHeroes } from "@/lib/dota-constants";
 import { heroImg } from "@/lib/assets";
 import { teamAccent } from "@/lib/profiles";
-import { FEARLESS_VERSION, type FearlessState } from "@/lib/fearless";
+import { FEARLESS_VERSION, readableVersion, type FearlessState } from "@/lib/fearless";
 import { AdminHeader } from "../../../_components/admin-header";
 import { FearlessBoard } from "../_components/fearless-board";
 import type { HeroRef, TeamRef } from "../_components/types";
@@ -37,7 +37,9 @@ export default async function FearlessSessionPage({ params }: { params: Promise<
   let initialState: FearlessState | null = null;
   try {
     const parsed = JSON.parse(session.payload) as FearlessState;
-    if (parsed?.version === FEARLESS_VERSION) initialState = parsed;
+    // Версию нормализуем на чтении: с 42д в состоянии есть необязательное `assigns`,
+    // и уже сохранённый драфт прошлой версии — это то же состояние без него.
+    if (readableVersion(parsed?.version)) initialState = { ...parsed, version: FEARLESS_VERSION };
   } catch {
     initialState = null; // пустой или битый payload — начинаем с настройки
   }

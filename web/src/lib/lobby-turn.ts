@@ -6,6 +6,9 @@ import {
   currentStep,
   currentTeam,
   isSelectable,
+  applyAssign,
+  assignsOf,
+  readableVersion,
   FEARLESS_VERSION,
   type FearlessState,
   type TeamIdx,
@@ -40,7 +43,9 @@ type TurnRow = { payload: string; mainSec: number; turnStartedAt: Date | null; r
 export function parseState(payload: string): FearlessState | null {
   try {
     const parsed = JSON.parse(payload) as FearlessState;
-    return parsed?.version === FEARLESS_VERSION ? parsed : null;
+    // Версию нормализуем на чтении: идущий драфт версии 3 отличается от 4 только отсутствием
+    // необязательного `assigns` (ТЗ 42д §2), и ронять его ради нового поля нельзя.
+    return readableVersion(parsed?.version) ? { ...parsed, version: FEARLESS_VERSION } : null;
   } catch {
     return null; // пусто до монетки — это норма, а не поломка
   }
@@ -186,4 +191,34 @@ export async function commitPick(id: number, side: TeamIdx, heroId: number, at: 
     },
   });
   return hit.count ? { ok: true } : { ok: false, error: "Ход уже сделан" };
+}
+
+/**
+ * Назначение героя игроку после драфта карты (ТЗ 42д). Стоит рядом с ходом по той же причине:
+ * состояние читается и пишется одним местом, а гонку за героя решает то же сравнение-и-запись по
+ * payload, что и гонку за ход. Таймера здесь нет — организатор подгоняет голосом (решение Стаса).
+ */
+export async function commitAssign(
+  id: number,
+  a: { memberId: number; team: TeamIdx; heroId: number; byAdmin?: boolean },
+): Promise<PickResult> {
+  const row = await prisma.lobby.findUnique({ where: { id }, select: TURN_SELECT });
+  if (!row || row.status !== "draft") return { ok: false, error: "Драфт ещё не начался" };
+  const state = parseState(row.payload);
+  if (!state) return { ok: false, error: "Драфт ещё не начался" };
+  if (currentStep(state) !== null) return { ok: false, error: "Карта ещё не задрафчена" };
+
+  const gameIdx = state.current;
+  const next = applyAssign(state, gameIdx, a);
+  // Ссылка не сменилась — ход не прошёл. Причины ровно две, и различает их занятость героя.
+  if (next === state) {
+    const taken = assignsOf(state, gameIdx).some((x) => x.heroId === a.heroId && x.memberId !== a.memberId);
+    return { ok: false, error: taken ? "Этого героя уже взяли" : "Герой не из пиков вашей стороны" };
+  }
+
+  const hit = await prisma.lobby.updateMany({
+    where: { id, payload: row.payload },
+    data: { payload: JSON.stringify(next) },
+  });
+  return hit.count ? { ok: true } : { ok: false, error: "Этого героя уже взяли" };
 }

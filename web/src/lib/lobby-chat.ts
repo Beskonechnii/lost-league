@@ -56,10 +56,13 @@ export type LobbySendResult = { ok: true; line: LobbyLine } | { ok: false; error
 
 /** Реплика в комнату: проверки, запись, живое событие ВСЕМ участникам — включая самого автора. */
 export async function sendLobbyMessage(lobbyId: number, viewer: LobbyViewer, raw: string): Promise<LobbySendResult> {
-  const members = await membersOf(lobbyId, viewer);
+  const room = await readRoom(lobbyId);
   // Не член комнаты — тот же ответ, что у самой комнаты: «404», а не «403». Иначе отказ сообщал
   // бы, что комната с таким номером существует (решение 9).
-  if (!members) return { ok: false, error: "Лобби не найдено", status: 404 };
+  if (!room || !mayEnter(room, viewer)) return { ok: false, error: "Лобби не найдено", status: 404 };
+  // Сыгранная комната читается, но не пишется (ТЗ 42д §5): разговор в ней уже история.
+  if (room.status === "done") return { ok: false, error: "Серия завершена — комната только на чтение", status: 400 };
+  const members = room.members.map((m) => m.accountId);
 
   const text = raw.trim();
   if (!text) return { ok: false, error: "Пустое сообщение", status: 400 };

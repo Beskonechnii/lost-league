@@ -156,8 +156,13 @@ function SideLane({
           <div className="flex items-center gap-2">
             <span className="h-3 w-3 shrink-0 rounded-pill" style={{ background: team.color }} />
             <h2 className="min-w-0 flex-1 truncate text-[17px] font-black text-ink">{team.name}</h2>
-            <StatusPill tone={ready ? "ok" : "neutral"}>{ready ? "готова" : (blocker ?? "ждём")}</StatusPill>
+            {/* «ГОТОВ» / «ЖДЁМ» — один и тот же ответ на доске сбора и в строке статусов борда
+                (DESIGN-1): жмёт его капитан, а видят обе стороны. Чего именно не хватает —
+                строкой ниже: в пилюлю это не влезает, а без неё «ЖДЁМ» ничего не объясняет. */}
+            <StatusPill tone={ready ? "ok" : "neutral"}>{ready ? "ГОТОВ" : "ЖДЁМ"}</StatusPill>
           </div>
+
+          {blocker && <p className="text-[11px] font-bold text-muted">{blocker}</p>}
 
           <Capacity taken={players.length} limit={SIDE_PLAYERS} unit="players" size="sm" />
 

@@ -2205,6 +2205,19 @@ th[aria-sort='descending'] .pouf-table__caret {
     'b'
     'foot';
 }
+/* Карта задрафчена: центр — уже не пул, а панель назначения героев (42д), и
+ * на узком её прячут те же правила, что прячут пул. Поэтому у стадии свой ряд. */
+.pouf-draft[data-after] {
+  grid-template-areas:
+    'turn'
+    'pool'
+    'a'
+    'b'
+    'foot';
+}
+.pouf-draft[data-after] .pouf-draft__center {
+  display: block;
+}
 .pouf-draft__turn {
   grid-area: turn;
   position: sticky;
@@ -2257,6 +2270,14 @@ th[aria-sort='descending'] .pouf-table__caret {
      * слотов занимает оба верхних ряда, и без этого её высота растягивала ряд
      * часов — под циферблатом зияла дыра в полколонки. */
     grid-template-rows: min-content 1fr min-content;
+    grid-template-areas:
+      'a turn b'
+      'a pool b'
+      'foot foot foot';
+  }
+  /* Колонки от 1024 те же и на стадии назначения: правило выше сильнее этой
+   * медиа-группы, и без повтора борд свернулся бы в стек. */
+  .pouf-draft[data-after] {
     grid-template-areas:
       'a turn b'
       'a pool b'
@@ -2685,8 +2706,70 @@ th[aria-sort='descending'] .pouf-table__caret {
   filter: grayscale(1);
   cursor: not-allowed;
 }
+.pouf-hero[data-state='taken'] {
+  cursor: not-allowed;
+}
 .pouf-hero--big {
   border-radius: 12px;
+}
+
+/* -- Назначение своего героя после драфта карты (DESIGN-5) ---------------- */
+/* Одна разметка на две раскладки: на узком — список «плитка 96px + ник справа»
+ * (DESIGN-8), от 768 — сетка плиток 144px с ником поверх нижнего края. Ник
+ * живёт в двух узлах, а не в одном: поверх 96-пиксельной плитки его не прочесть,
+ * а рядом с плиткой в сетке он ломает ряд. Лишний узел дешевле двух вёрсток. */
+.pouf-assign {
+  display: grid;
+  gap: var(--s2);
+  grid-template-columns: minmax(0, 1fr);
+}
+.pouf-assign__item {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0;
+}
+.pouf-assign__item > .pouf-hero {
+  width: 96px;
+  flex: none;
+}
+.pouf-assign__aside {
+  min-width: 0;
+  flex: 1;
+}
+.pouf-assign__badge {
+  position: absolute;
+  inset: auto 4px 4px;
+  display: none;
+  justify-content: center;
+  overflow: hidden;
+}
+/* Плитка узкая, а ники длинные: на ней бейдж мельче и режется многоточием —
+ * иначе он вылезает за край и спорит с соседом. */
+.pouf-assign__badge > .pouf-badge {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10px;
+  padding-inline: 8px;
+}
+@media (min-width: 768px) {
+  .pouf-assign {
+    grid-template-columns: repeat(auto-fill, minmax(144px, 1fr));
+  }
+  .pouf-assign__item {
+    display: block;
+  }
+  .pouf-assign__item > .pouf-hero {
+    width: 100%;
+  }
+  .pouf-assign__aside {
+    display: none;
+  }
+  .pouf-assign__badge {
+    display: flex;
+  }
 }
 .pouf-hero__note {
   position: absolute;

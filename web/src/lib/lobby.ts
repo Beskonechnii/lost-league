@@ -11,13 +11,14 @@ import {
   buildPool,
   canNextGame,
   currentTeam,
+  isGameAssigned,
   newFearless,
   nextGame,
   tossCoin,
   type FearlessState,
   type TeamIdx,
 } from "./fearless";
-import { commitPick, parseState, settleTurn } from "./lobby-turn";
+import { commitAssign, commitPick, parseState, settleTurn } from "./lobby-turn";
 import {
   SIDE_COACHES,
   SIDE_PLAYERS,
@@ -349,6 +350,9 @@ export type Intent =
   | { kind: "coin"; block: "side" | "order"; value: TeamIdx }
   /** Ход капитана: «хочу этого героя», `at` — номер хода на карте в момент нажатия. */
   | { kind: "pick"; heroId: number; at: number }
+  /** После драфта карты: «играю этим героем». `memberId` — только у админа комнаты: он же
+   *  разруливает спор, если игроки договорились иначе (ТЗ 42д §3). */
+  | { kind: "assign"; heroId: number; memberId: number | null }
   | { kind: "next" };
 
 export type IntentResult = { ok: true; room: LobbyRoom } | { ok: false; error: string };
@@ -378,6 +382,9 @@ export async function applyIntent(id: number, viewer: LobbyViewer, intent: Inten
   // Админ комнаты — не игрок (решение 3): он смотрит и может снять капитана, но не становится им
   // и не подтверждает готовность за сторону.
   const isRoomAdmin = viewer.admin || room.ownerAccountId === viewer.accountId;
+  // Сыгранная комната читается, но не пишется (ТЗ 42д §5). Отдельный текст, потому что «драфт
+  // ещё не начался» про неё — вранье наоборот: он давно кончился.
+  const notDrafting = room.status === "done" ? "Серия завершена — комната только на чтение" : "Драфт ещё не начался";
 
   switch (intent.kind) {
     case "settings": {
@@ -512,7 +519,7 @@ export async function applyIntent(id: number, viewer: LobbyViewer, intent: Inten
     case "pick": {
       // Четыре проверки подряд, отказ по каждой — своей причиной. Право `tools` здесь ни при чём:
       // админ лиги в чужой ход не ходит, ход вносит только капитан своей стороны (решение 3).
-      if (room.status !== "draft" || !room.state) return { ok: false, error: "Драфт ещё не начался" };
+      if (room.status !== "draft" || !room.state) return { ok: false, error: notDrafting };
       if (!me) return { ok: false, error: "Вас нет в этой комнате" };
       if (!me.captain || me.side === null) return { ok: false, error: "Ход вносит капитан стороны" };
       // Сторона лобби и индекс команды в драфте — одно и то же число: состояние собирается из
@@ -523,12 +530,36 @@ export async function applyIntent(id: number, viewer: LobbyViewer, intent: Inten
       break;
     }
 
+    case "assign": {
+      if (room.status !== "draft" || !room.state) return { ok: false, error: notDrafting };
+      // Себе — сам, любому — админ комнаты. Больше некому: тренер и ОБС за игрока не решают.
+      const target = intent.memberId === null ? me : room.members.find((m) => m.id === intent.memberId) ?? null;
+      if (!target) return { ok: false, error: "Вас нет в этой комнате" };
+      if (intent.memberId !== null && target.accountId !== viewer.accountId && !isRoomAdmin)
+        return { ok: false, error: "Чужого героя переставляет админ комнаты" };
+      if (target.role !== "player" || target.side === null)
+        return { ok: false, error: "Героя берут игроки сторон" };
+      const assigned = await commitAssign(id, {
+        memberId: target.id,
+        team: target.side,
+        heroId: intent.heroId,
+        byAdmin: target.accountId !== viewer.accountId,
+      });
+      if (!assigned.ok) return { ok: false, error: assigned.error };
+      await closeIfAssigned(id, room.bestOf);
+      break;
+    }
+
     case "next": {
       // Переход на карту — намерение АДМИНА комнаты, а не капитана: момент перехода определяется
       // сыгранной картой, о которой лобби не знает. Капитану такой кнопки не даём.
       if (!isRoomAdmin) return { ok: false, error: "Карту переводит админ комнаты" };
-      if (room.status !== "draft" || !room.state) return { ok: false, error: "Драфт ещё не начался" };
+      if (room.status !== "draft" || !room.state) return { ok: false, error: notDrafting };
       if (!canNextGame(room.state)) return { ok: false, error: "Карта ещё не задрафчена" };
+      // Карта закрывается ДЕСЯТЬЮ назначениями, а не шестнадцатым ходом (ТЗ 42д §4): уйти с неё,
+      // пока половина стороны не знает, кем играет, значит потерять это знание насовсем.
+      if (!isGameAssigned(room.state, room.state.current))
+        return { ok: false, error: "Сначала все десять игроков берут своих героев" };
       await startNextGame(id, room);
       break;
     }
@@ -655,6 +686,19 @@ async function invitePlayer(room: LobbyRoom, playerId: number): Promise<string |
     payload: { lobbyId: room.id },
   });
   return null;
+}
+
+/**
+ * Последняя карта серии разобрана — комната сыграна (ТЗ 42д §4). Это единственный путь в `done`:
+ * до 42д статус был недостижим вовсе. Не последняя — комната ждёт `next` от админа: момент, когда
+ * команды готовы к следующей карте, знает он, а не счётчик назначений.
+ */
+async function closeIfAssigned(id: number, bestOf: number): Promise<void> {
+  const row = await prisma.lobby.findUnique({ where: { id }, select: { payload: true, status: true } });
+  const state = row?.status === "draft" ? parseState(row.payload) : null;
+  if (!state || !isGameAssigned(state, state.current)) return;
+  if (state.games.length < bestOf) return;
+  await prisma.lobby.update({ where: { id }, data: { status: "done", turnStartedAt: null } });
 }
 
 /**

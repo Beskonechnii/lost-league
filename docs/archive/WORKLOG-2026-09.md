@@ -7,6 +7,17 @@
 
 ---
 
+## 2026-09-23 — ТЗ 40: адрес оверлея драфта без «underbeer»
+
+Новый маршрут `overlay/draft/[id]` (бывший `overlay/underbeer/[id]`, перенесён `git mv`), старый
+адрес — редирект на новый с тем же `id`. Ссылка на борде (`draft-board.tsx:252`) генерирует
+`/overlay/draft/${sessionId}` для обоих инструментов.
+Файлы: `web/src/app/(bare)/overlay/draft/[id]/*`, `web/src/app/(bare)/overlay/underbeer/[id]/page.tsx`,
+`web/src/app/(admin)/underbeer/[id]/_components/draft-board.tsx`.
+Проверено: tsc/lint/build чисто; в браузере на реальной сессии #27 (mixcup-6) — новый адрес
+рендерит оверлей с фоном Eclipse, старый редиректит на новый с тем же экраном. БД не трогал.
+Дальше: `qa` принимает по acceptance criteria ТЗ 40.
+
 ## 2026-09-23 — процесс: state.sh, канон статуса ТЗ, порты 3000/3001
 
 Разбор логов за 09–23.09 → `docs/PROCESS-REVIEW.md` (что перечитывалось по кругу, с цифрами).

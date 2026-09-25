@@ -15,9 +15,19 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: `Лобби #${(await params).id}` };
 }
 
-export default async function LobbyPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function LobbyPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ game?: string }>;
+}) {
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
+  // Какую карту серии открыть сразу (ТЗ 42д §6). Мусор в параметре — текущая карта, а не 404:
+  // адрес из чата комнаты переживает и опечатку, и удалённую карту.
+  const game = Number((await searchParams).game);
+  const openGame = Number.isInteger(game) && game > 0 ? game : null;
 
   const viewer = await currentViewer();
   // Часы досчитываются ДО чтения: страница, открытая после простоя, обязана показать уже
@@ -57,6 +67,7 @@ export default async function LobbyPage({ params }: { params: Promise<{ id: stri
       obsKey={secrets.obsKey}
       password={secrets.password}
       people={people}
+      game={openGame}
     />
   );
 }

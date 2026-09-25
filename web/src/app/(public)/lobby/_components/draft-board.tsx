@@ -67,6 +67,9 @@ export function DraftBoard({
   onPick,
   onNext,
   lockReason,
+  view = null,
+  ready = null,
+  afterDraft,
 }: {
   /** null — драфта ещё нет (сбор, монетка): слоты пустые, пул закрыт. */
   state: FearlessState | null;
@@ -86,11 +89,20 @@ export function DraftBoard({
   onNext?: (() => void) | null;
   /** Почему пул закрыт — строкой из `sideBlocker`. */
   lockReason?: string | null;
+  /** Какую карту серии показываем. null — текущую; прошлая идёт только на чтение (ТЗ 42д §6). */
+  view?: number | null;
+  /** Готовность сторон до старта драфта: «ГОТОВ» / «ЖДЁМ» (DESIGN-1). В эфире её нет — там до
+   *  монетки борда не видно вовсе. */
+  ready?: [boolean, boolean] | null;
+  /** Что стоит в центре, когда карта задрафчена: назначение героев (42д) или запись прошлой. */
+  afterDraft?: ReactNode;
 }) {
-  const step = state ? currentStep(state) : null;
-  const active = state ? currentTeam(state) : null;
-  const moves = state ? (state.games[state.current]?.moves ?? []) : [];
-  const gameIdx = state?.current ?? 0;
+  // Прошлая карта не происходит — она уже сыграна: ни хода, ни часов, ни пула у неё нет.
+  const gameIdx = view ?? state?.current ?? 0;
+  const past = state !== null && gameIdx !== state.current;
+  const step = state && !past ? currentStep(state) : null;
+  const active = state && !past ? currentTeam(state) : null;
+  const moves = state ? (state.games[gameIdx]?.moves ?? []) : [];
 
   // Выбранный, но не отправленный герой (приём 22б): ход уходит вторым действием, отмены после
   // него нет. Номер хода лежит в самой отметке — приехал чужой ход, номер разошёлся, выбор погас.
@@ -135,7 +147,8 @@ export function DraftBoard({
           hero={move ? heroById.get(move.heroId) : undefined}
           color={sides[team].color}
           current={state !== null && i === moves.length && hasStep}
-          last={i === lastPick}
+          last={!past && i === lastPick}
+          past={past}
         />
       );
     };
@@ -207,10 +220,12 @@ export function DraftBoard({
       {lockReason ?? "Стороны собираются: нужны пятёрки и капитаны."}
     </EmptyState>
   ) : !hasStep ? (
-    <Alert tone="ok" block>
-      Карта задрафчена.{" "}
-      {onNext ? "Жмите «Следующая карта»." : "Следующую карту откроет админ комнаты."}
-    </Alert>
+    (afterDraft ?? (
+      <Alert tone="ok" block>
+        Карта задрафчена.{" "}
+        {onNext ? "Жмите «Следующая карта»." : "Следующую карту откроет админ комнаты."}
+      </Alert>
+    ))
   ) : (
     <>
       {/* «Время вышло — сходили за тебя»: в состоянии драфта такой пометки нет, она живёт
@@ -250,7 +265,13 @@ export function DraftBoard({
     const cap = captains[team];
     return (
       <div className="pouf-draft__foot-side" data-align={side === "right" ? "right" : undefined}>
-        <StatusPill tone={active === team ? "ok" : "neutral"}>{active === team ? "ходит" : "ждёт"}</StatusPill>
+        {/* До драфта строка статусов отвечает на «собрались ли» — «ГОТОВ» / «ЖДЁМ» по кнопке
+            капитана (DESIGN-1). Дальше тот же пилюль отвечает на «чей ход». */}
+        {state === null && ready ? (
+          <StatusPill tone={ready[team] ? "ok" : "neutral"}>{ready[team] ? "ГОТОВ" : "ЖДЁМ"}</StatusPill>
+        ) : (
+          <StatusPill tone={active === team ? "ok" : "neutral"}>{active === team ? "ходит" : "ждёт"}</StatusPill>
+        )}
         <CaptainPlate
           avatar={<PlayerAvatar photo={cap?.photo ?? null} nickname={cap?.nickname ?? "?"} size={28} shape="circle" />}
           nickname={cap?.nickname ?? null}
@@ -266,9 +287,17 @@ export function DraftBoard({
 
   return (
     <div className="space-y-4">
-      <section className="pouf-draft">
+      {/* Карта задрафчена — центр перестаёт быть пулом и становится панелью назначения. На узком
+          пул спрятан намеренно (он съел бы экран), а панель обязана быть видна: она и есть
+          действие этой стадии, поэтому центр включается флагом. */}
+      <section className="pouf-draft" data-after={!hasStep && afterDraft ? "" : undefined}>
         <div className="pouf-draft__turn">
-          {state ? (
+          {past ? (
+            <div className="font-pouf">
+              <Eyebrow>Карта {gameIdx + 1}</Eyebrow>
+              <p className="text-[13px] font-bold text-muted">Сыграна — только запись.</p>
+            </div>
+          ) : state ? (
             <TurnClock
               seconds={mainLeft < 0 ? bankOf(active ?? 0) : mainLeft}
               mode={!hasStep ? "idle" : mainLeft < 0 ? "reserve" : "main"}

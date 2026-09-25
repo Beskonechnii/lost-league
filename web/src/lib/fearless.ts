@@ -12,7 +12,15 @@
 //   • Стороны и первый пик чередуются по картам серии.
 //   • Тайминги: основное время хода + банк доп-времени на команду (см. DEFAULT_MAIN_SEC/RESERVE_SEC).
 
-export const FEARLESS_VERSION = 3 as const;
+export const FEARLESS_VERSION = 4 as const;
+
+/**
+ * Версии, которые ещё читаются. В 4 у карты появилось необязательное поле `assigns` (ТЗ 42д), и
+ * состояние версии 3 — это ровно то же самое без него: ломать уже идущие драфты ради нового поля
+ * нельзя. Читатель нормализует версию на чтении, запись сохраняет её уже новой.
+ */
+const READABLE: number[] = [3, FEARLESS_VERSION];
+export const readableVersion = (v: unknown): boolean => typeof v === "number" && READABLE.includes(v);
 
 /** Сторона в последовательности: 0 — первый пик/бан на этой карте, 1 — второй. */
 export type Seq = 0 | 1;
@@ -45,7 +53,17 @@ export type TeamIdx = 0 | 1;
 /** Одно взятие/бан: команда (индекс) + герой + действие. */
 export type Move = { team: TeamIdx; heroId: number; action: "ban" | "pick" };
 
-export type GameDraft = { moves: Move[] };
+/**
+ * Кто каким героем играет на этой карте (ТЗ 42д). Адресуется УЧАСТНИКОМ комнаты (`LobbyMember.id`),
+ * а не профилем игрока: за сторону может стоять человек без анкеты в ростере, и ник для подписи
+ * берётся из того же списка участников, что рисует комнату.
+ */
+export type Assign = { heroId: number; memberId: number; byAdmin?: boolean };
+
+export type GameDraft = { moves: Move[]; assigns?: Assign[] };
+
+/** Назначений на карте: пятёрка на сторону. Карта закрыта, когда их десять (ТЗ 42д §4). */
+export const ASSIGNS_TOTAL = 10;
 
 export type FearlessState = {
   version: typeof FEARLESS_VERSION;
@@ -113,6 +131,40 @@ export function picksOfGame(state: FearlessState, gameIdx: number): Move[] {
   return (state.games[gameIdx]?.moves ?? []).filter((m) => m.action === "pick");
 }
 
+/** Пятёрка одной стороны на карте: из неё её игроки и разбирают героев (ТЗ 42д). */
+export const teamPicksOf = (state: FearlessState, gameIdx: number, team: TeamIdx): number[] =>
+  picksOfGame(state, gameIdx).flatMap((m) => (m.team === team ? [m.heroId] : []));
+
+/** Назначения карты. Поля может не быть вовсе — состояние версии 3 про него не знает. */
+export const assignsOf = (state: FearlessState, gameIdx: number): Assign[] => state.games[gameIdx]?.assigns ?? [];
+
+/** Все десять героев разобраны — карта закрыта. */
+export const isGameAssigned = (state: FearlessState, gameIdx: number): boolean =>
+  assignsOf(state, gameIdx).length >= ASSIGNS_TOTAL;
+
+/**
+ * Занять героя за участником. Герой занимается ПЕРВЫМ нажавшим (решение 24.09.2026): занятый
+ * чужим — без изменений, и отличить «не прошло» от «прошло» вызывающий может сравнением ссылки.
+ * Свой выбор при этом переезжает: прошлое назначение того же участника снимается.
+ */
+export function applyAssign(
+  state: FearlessState,
+  gameIdx: number,
+  a: { memberId: number; heroId: number; team: TeamIdx; byAdmin?: boolean },
+): FearlessState {
+  const game = state.games[gameIdx];
+  if (!game) return state;
+  // Брать можно только из пятёрки СВОЕЙ стороны: чужой пик игроку не достанется никак.
+  if (!teamPicksOf(state, gameIdx, a.team).includes(a.heroId)) return state;
+  const assigns = game.assigns ?? [];
+  if (assigns.some((x) => x.heroId === a.heroId && x.memberId !== a.memberId)) return state;
+  const next: Assign[] = [
+    ...assigns.filter((x) => x.memberId !== a.memberId),
+    { heroId: a.heroId, memberId: a.memberId, ...(a.byAdmin ? { byAdmin: true as const } : {}) },
+  ];
+  return { ...state, games: state.games.map((g, i) => (i === gameIdx ? { ...g, assigns: next } : g)) };
+}
+
 /** Герои, ВЗЯТЫЕ в прошлых картах серии — недоступны до конца серии (суть fearless). */
 export function fearlessLocked(state: FearlessState): Set<number> {
   const set = new Set<number>();
@@ -145,7 +197,7 @@ export function applyPick(state: FearlessState, heroId: number): FearlessState {
   if (!step || !isSelectable(state, heroId)) return state;
   const team = teamOfSeq(state, state.current, step.seq);
   const games = state.games.map((g, i) =>
-    i === state.current ? { moves: [...g.moves, { team, heroId, action: step.action }] } : g,
+    i === state.current ? { ...g, moves: [...g.moves, { team, heroId, action: step.action }] } : g,
   );
   return { ...state, games };
 }
@@ -154,7 +206,7 @@ export function applyPick(state: FearlessState, heroId: number): FearlessState {
 export function undo(state: FearlessState): FearlessState {
   const g = state.games[state.current];
   if (!g || g.moves.length === 0) return state;
-  const games = state.games.map((gg, i) => (i === state.current ? { moves: gg.moves.slice(0, -1) } : gg));
+  const games = state.games.map((gg, i) => (i === state.current ? { ...gg, moves: gg.moves.slice(0, -1) } : gg));
   return { ...state, games };
 }
 
