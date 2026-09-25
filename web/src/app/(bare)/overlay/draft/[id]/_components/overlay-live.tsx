@@ -1,38 +1,27 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { currentTurn, lastMovedPlayer, memberIds, type DraftState, type PoolPlayer } from "@/lib/draft";
+import { currentTurn, memberIds, type DraftState, type PoolPlayer } from "@/lib/draft";
 import { DraftPlayerLine } from "@/app/(admin)/underbeer/[id]/_components/player-line";
 import { StatusPill } from "@/components/pouf/feedback";
 import { Icon } from "@/components/pouf/Icon";
-import { PartnerMark } from "@/components/pouf/media";
 import { Card } from "@/components/pouf/surface";
-import { OVERLAY_DARK_SKIN } from "./skin";
+import { useLiveDraft } from "./use-live-draft";
 
-// Живой оверлей: опрашивает сессию раз в ~1.5с и перерисовывает составы, пока идёт драфт.
-// OBS держит сцену открытой всё эфирное время, поэтому опрос дешевле любого сокета и не требует
-// отдельного канала — сервер отдаёт готовый payload, пул резолвим на клиенте по id.
+// Живой оверлей UNDERBEER: опрос сессии (`useLiveDraft`) и составы команд поверх игры.
 //
 // Кожа — Light Clay по умолчанию (ТЗ 35). Карточка НЕПРОЗРАЧНА (бумага Кита
 // `bg-surface`+`cushion-card`): она перекрывает игру под собой полностью, полупрозрачность ей
-// не нужна.
+// не нужна. Страница прозрачна — это накладка на игру, а не самостоятельная сцена.
 //
-// ФОН СОБЫТИЯ (23.09.2026, решение Стаса): у события с партнёром под карточки ложится его
-// картинка. Это отменяет прозрачность страницы для таких событий — оверлей перестаёт быть
-// накладкой поверх игры и становится самостоятельной сценой OBS. У обычного UNDERBEER фона нет,
-// прозрачность сохраняется как была (правило группы `(bare)`).
-//
-// ТЁМНАЯ КОЖА (23.09.2026, решение Стаса — отменяет 15.09.2026 «тёмной эфирной кожи не делаем
-// нигде»): на тёмной картинке события светлая бумага Кита читается наклейкой. `OVERLAY_DARK_SKIN`
-// (см. `skin.ts`) вешается на ту же рамку, что и картинка, и ТОЛЬКО когда она есть — у обычного
-// UNDERBEER кожи по-прежнему нет, вёрстка остаётся светлой и прозрачной без единой правки.
+// Сцена Mix Cup — соседний файл `overlay-mixcup.tsx` (ТЗ 44): у неё своя раскладка (8 команд,
+// пул, полоса знаков), тёмная кожа и фон события. Разводит их `page.tsx` по `tournament.kind`,
+// чтобы правка эфира Mix Cup не утаскивала за собой вид чужого инструмента.
 
 export function OverlayLive({
   sessionId,
   initialState,
   pool,
   showMmr,
-  partner,
 }: {
   sessionId: number;
   initialState: DraftState;
@@ -40,40 +29,8 @@ export function OverlayLive({
   /** Показывает ли лига MMR. Числа в пуле уже сняты на сервере, но без флага «Σ MMR 0» и пустая
    *  подпись «MMR» остались бы в эфире: подпись уходит вместе со значением. */
   showMmr: boolean;
-  /** Партнёр-организатор (Mix Cup by Eclipse, ТЗ 33) — не передан у обычного UNDERBEER.
-   *  `background` — картинка под карточки; пока её нет, фон страницы остаётся прозрачным. */
-  partner?: { name: string; src: string | null; background?: string | null };
 }) {
-  const [state, setState] = useState<DraftState>(initialState);
-  // «Последний взятый» — не поле payload (ТЗ 35 не меняет формат), а разница между соседними
-  // тиками опроса: `prevRef` держит срез с прошлого тика, первый тик сравнивать не с чем.
-  const prevRef = useRef<DraftState | null>(null);
-  const [lastPickId, setLastPickId] = useState<number | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    const tick = async () => {
-      try {
-        const res = await fetch(`/api/underbeer/${sessionId}`, { cache: "no-store" });
-        if (!res.ok) return;
-        const session = (await res.json()) as { payload: string };
-        const next = JSON.parse(session.payload) as DraftState;
-        if (!alive) return;
-        const moved = lastMovedPlayer(prevRef.current, next);
-        if (next.phase === "draft" && moved != null) setLastPickId(moved);
-        else if (next.phase !== "draft") setLastPickId(null);
-        prevRef.current = next;
-        setState(next);
-      } catch {
-        // сеть моргнула — оставляем последнее состояние, следующий тик подхватит
-      }
-    };
-    const timer = setInterval(tick, 1500);
-    return () => {
-      alive = false;
-      clearInterval(timer);
-    };
-  }, [sessionId]);
+  const { state, lastPickId } = useLiveDraft(sessionId, initialState);
 
   const byId = new Map(pool.map((p) => [p.id, p]));
   const cur = currentTurn(state);
@@ -81,14 +38,7 @@ export function OverlayLive({
   const notStarted = state.phase !== "draft" && state.phase !== "done";
 
   return (
-    <div
-      className="min-h-screen bg-cover bg-center bg-no-repeat p-6 font-pouf"
-      style={
-        partner?.background
-          ? { backgroundImage: `url(${partner.background})`, ...OVERLAY_DARK_SKIN }
-          : undefined
-      }
-    >
+    <div className="min-h-screen p-6 font-pouf">
       {notStarted ? (
         <div className="grid min-h-[calc(100vh-3rem)] place-items-center">
           <div className="rounded-card bg-surface px-8 py-6 text-center cushion-card">
@@ -160,16 +110,6 @@ export function OverlayLive({
               </Card>
             );
           })}
-        </div>
-      )}
-
-      {/* Знак организатора — фиксированный угол, вне грида команд: сетка центрирована по ширине
-          экрана и по числу команд (2–8), угол гарантированно свободен при любом их числе (ТЗ 35
-          п.7). 48px поля с каждой стороны на 1920×1080 — запас внутри вещательной safe area. */}
-      {partner && (
-        <div className="fixed bottom-12 right-12 flex flex-col items-center gap-1.5 rounded-card bg-surface px-4 py-3 cushion-card">
-          <PartnerMark src={partner.src} name={partner.name} size="md" />
-          <span className="text-[11px] font-bold text-muted">Организатор</span>
         </div>
       )}
     </div>

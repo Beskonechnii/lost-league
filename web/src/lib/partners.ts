@@ -16,3 +16,26 @@ export const ECLIPSE_PARTNER = {
   // поверх игры. Убрать фон — вернуть сюда null, вёрстка это переживает без правок.
   background: "/assets/partners/eclipse-overlay-bg.webp" as string | null,
 };
+
+/** Знак в нижней полосе эфирной сцены: файл плюс имя для alt. */
+export type OverlayMark = { name: string; src: string };
+
+/**
+ * Знаки сцены Mix Cup (ТЗ 44) — данными, а не разметкой: состав меняется от события к событию,
+ * и правка списка не должна быть правкой вёрстки. Платформа стоит отдельно — в верхнем левом
+ * углу сцены, партнёры с организаторами — бегущей строкой внизу, без подписей групп
+ * (решение Стаса 26.09.2026).
+ *
+ * Файлы — PNG с прозрачным фоном, высота 200px, знаки светлые под тёмную сцену Eclipse.
+ * Пропорции у знаков разные, поэтому строка равняет их по ВЫСОТЕ, а ширину отдаёт файлу.
+ */
+export const OVERLAY_PLATFORM: OverlayMark = { name: "Spirit CTRL", src: "/assets/partners/spirit-ctrl.png" };
+
+export const OVERLAY_MARKS: OverlayMark[] = [
+  { name: "League of Spirits", src: "/assets/partners/league-of-spirits.png" },
+  { name: "Eclipse", src: "/assets/partners/eclipse-logo.png" },
+  { name: "MKS", src: "/assets/partners/mks.png" },
+  { name: "Brave", src: "/assets/partners/brave.png" },
+  { name: "NetBox", src: "/assets/partners/netbox.png" },
+  { name: "Gorilla", src: "/assets/partners/gorilla.png" },
+];
