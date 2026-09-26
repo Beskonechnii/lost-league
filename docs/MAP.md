@@ -19,6 +19,8 @@
     │                   snapshot.json — снимок всей БД, коммитится (перенос между устройствами)
     │                   theme.json — цвета UI, коммитится; правит панель /admin/theme (см. §2)
     ├── scripts/        одноразовые/ручные утилиты (tsx), не часть рантайма
+    │                   screen-sheet.ts + screen-sheet.screens.ts — лист контрольных кадров (скилл `sheet`),
+    │                   один PNG со всеми экранами в web/.sheets/ (в .gitignore)
     ├── public/
     │   ├── assets/     иконки Dota (heroes/items/abilities), вендорятся скриптом
     │   │   └── brand/  знак и вордмарк SPIRIT/CTRL (mark.svg, wordmark.svg); фавикон — src/app/icon.svg

@@ -72,7 +72,7 @@
 оно само говорит, что делать и где смотреть. Заметил, что делаем одно и то же третий раз —
 предложи имя и заведи скилл в `.claude/skills/`.
 
-Действующие: `pickup` · `stage` · `ship` · `serve` · `stop` · `roster-sync` · `kit`.
+Действующие: `pickup` · `stage` · `ship` · `serve` · `stop` · `roster-sync` · `kit` · `sheet`.
 
 `pickup` открывает сессию (`state.sh` — состояние одной командой), `ship` закрывает
 (WORKLOG → commit → push). Отдельного `handoff` больше нет: закрытие сессии одно, что для
