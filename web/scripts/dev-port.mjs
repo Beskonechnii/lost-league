@@ -73,6 +73,11 @@ if (port !== FIRST) console.log(`Порт ${FIRST} занят — поднима
 
 // Аргументы после `npm run dev --` пробрасываем как есть.
 const extra = process.argv.slice(2);
-const child = spawn("next", ["dev", "-p", String(port), ...extra], { stdio: "inherit", shell: false, env: process.env });
+// На Windows spawn без shell не резолвит .cmd-обёртки в node_modules/.bin — отсюда ENOENT.
+const child = spawn("next", ["dev", "-p", String(port), ...extra], {
+  stdio: "inherit",
+  shell: process.platform === "win32",
+  env: process.env,
+});
 child.on("exit", (code, signal) => process.exit(signal ? 1 : (code ?? 0)));
 for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => child.kill(sig));
